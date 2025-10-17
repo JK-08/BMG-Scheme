@@ -328,7 +328,8 @@ const styles = {
     fontWeight: '700',
   },
   datePickerButton: {
-    height: 56,
+   height: 50,
+    width: "95%",
     backgroundColor: COLORS.input,
     borderRadius: SIZES.radius,
     justifyContent: 'center',

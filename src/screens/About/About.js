@@ -51,7 +51,7 @@ const AboutPage = () => {
 
   return (
     <ImageBackground
-      source={require('../../assets/bg4.jpg')}
+      source={require('../../assets/image.png')}
       style={[styles.background, { width, height }]}
       resizeMode="cover" // ensure image covers entire screen
     >

@@ -436,7 +436,7 @@ const SchemePassbook = ({ navigation, route }) => {
 
   return (
     <ImageBackground
-      source={require("../../assets/bg4.jpg")}
+      source={require("../../assets/image.png")}
       style={styles.mainBackground}
       imageStyle={styles.backgroundImageStyle}
     >
@@ -481,11 +481,13 @@ const styles = StyleSheet.create({
     paddingBottom: moderateScale(20),
   },
   floatingCard: {
-    backgroundColor: COLORS.label1,
+    backgroundColor: COLORS.card2,
     marginHorizontal: SIZES.padding,
     marginTop: moderateScale(12),
     padding: moderateScale(20),
     borderRadius: SIZES.radius_lg,
+    borderWidth: 1,
+    borderColor: COLORS.borderColor,
     shadowColor: COLORS.shadow,
     shadowOffset: { width: 0, height: 8 },
     shadowOpacity: 0.15,

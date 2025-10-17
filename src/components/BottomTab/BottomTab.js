@@ -59,7 +59,7 @@ function BottomTab({ screen }) {
           size={scale(20)}
           color={getIconColor('GOLDPLANS')}
         />
-        <Text style={getTextStyle('GOLDPLANS')}>Gold Plans</Text>
+        <Text style={getTextStyle('GOLDPLANS')}>Scheme Plans</Text>
       </TouchableOpacity>
       
      

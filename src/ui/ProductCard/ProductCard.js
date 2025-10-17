@@ -128,13 +128,13 @@ function ProductCard({ productData, navigation }) {
             <View style={styles.iconBadge}>
               <MaterialIcons 
                 name="account-balance" 
-                size={18} 
+                size={16} 
                 color={isActive ? COLORS.primary : COLORS.gray} 
               />
             </View>
             <View style={styles.headerInfo}>
               <TextDefault style={styles.schemeCode}>
-                {groupCode} - {regNo}
+                {pname}
               </TextDefault>
               <TextDefault style={styles.schemeName} numberOfLines={1}>
                 {schemeSummary?.schemeName || pname}
@@ -143,11 +143,18 @@ function ProductCard({ productData, navigation }) {
           </View>
           
           {status && (
-            <View style={[
-              styles.statusBadge,
-              { backgroundColor: isActive ? COLORS.success : COLORS.danger }
-            ]}>
+            <View style={styles.statusContainer}>
+              <View style={[
+                styles.statusBadge,
+                { backgroundColor: isActive ? COLORS.success : COLORS.danger }
+              ]}>
+                
               <TextDefault style={styles.statusText}>{status}</TextDefault>
+              
+            </View>
+            <View style={styles.nameContainer}>
+              <TextDefault style={styles.statusText1}>{groupCode} - {regNo}</TextDefault>
+            </View>
             </View>
           )}
         </View>
@@ -286,8 +293,8 @@ const styles = StyleSheet.create({
     gap: moderateScale(12),
   },
   iconBadge: {
-    width: moderateScale(40),
-    height: moderateScale(40),
+    width: moderateScale(30),
+    height: moderateScale(30),
     borderRadius: moderateScale(12),
     backgroundColor: 'rgba(255, 255, 255, 0.95)',
     justifyContent: 'center',
@@ -305,18 +312,38 @@ const styles = StyleSheet.create({
   },
   schemeName: {
     color: COLORS.white,
+    fontSize: moderateScale(13),
+    ...FONTS.body1,
+  },
+  statusContainer: {
+    flexDirection: 'column',
+    alignItems: 'center',
+    gap: moderateScale(4),
+  },
+  nameContainer: {
+    color: COLORS.white,
     fontSize: moderateScale(14),
     ...FONTS.body1,
+    backgroundColor:'rgba(88, 7, 7, 1)',
+    borderRadius: moderateScale(12),
+    padding: moderateScale(4),
   },
   statusBadge: {
     paddingHorizontal: moderateScale(10),
     paddingVertical: moderateScale(4),
     borderRadius: moderateScale(12),
+    // gap: moderateScale(4),
   },
   statusText: {
     color: COLORS.white,
     fontSize: moderateScale(10),
     fontWeight: '700',
+    ...FONTS.body1,
+  },
+  statusText1: {
+    color: COLORS.white,
+    fontSize: moderateScale(11),
+    // fontWeight: '700',
     ...FONTS.body1,
   },
   statsContainer: {

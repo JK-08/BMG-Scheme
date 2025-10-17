@@ -160,18 +160,18 @@ const PaymentDetailScreen = ({ navigation, route }) => {
           body { font-family: Arial, sans-serif; margin: 0; padding: 20px; color: #333; }
           .receipt-container { max-width: 400px; margin: 0 auto; border: 2px solid #000; padding: 20px; background-color: #fff; }
           .header { text-align: center; border-bottom: 2px solid #000; padding-bottom: 10px; margin-bottom: 20px; }
-          .company-name { font-size: 22px; font-weight: bold; margin-bottom: 5px; color: #2c5aa0; }
+          .company-name { font-size: 22px; font-weight: bold; margin-bottom: 5px; color: rgba(16, 14, 128, 1); }
           .address { font-size: 14px; margin-bottom: 10px; }
           .receipt-title { font-size: 18px; font-weight: bold; margin-bottom: 20px; text-align: center; }
           .detail-row { display: flex; justify-content: space-between; margin-bottom: 8px; padding-bottom: 6px; border-bottom: 1px dashed #ccc; }
           .detail-label { font-weight: bold; flex: 1; }
           .detail-value { flex: 1; text-align: left; }
           .amount-section { background-color: #f5f5f5; padding: 12px; margin: 16px 0; border-radius: 6px; text-align: center; }
-          .amount { font-size: 20px; font-weight: bold; color: #2c5aa0; }
+          .amount { font-size: 20px; font-weight: bold; color: rgba(16, 14, 128, 1); }
           .silver-info { background-color: #e8f5e8; padding: 8px; margin: 8px 0; border-radius: 4px; text-align: center; }
           .footer { text-align: center; margin-top: 20px; padding-top: 10px; border-top: 2px solid #000; font-style: italic; }
           .timestamp { font-size: 12px; color: #666; text-align: center; margin-bottom: 10px; }
-          .scheme-type { background-color: #2c5aa0; color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
+          .scheme-type { background-color: rgba(16, 14, 128, 1); color: white; padding: 4px 8px; border-radius: 4px; font-size: 12px; }
         </style>
       </head>
       <body>
@@ -444,7 +444,7 @@ const styles = StyleSheet.create({
     fontSize: SIZES.fontSm,
   },
   schemeTypeBadge: {
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.gradientcolor10,
     paddingHorizontal: moderateScale(12),
     paddingVertical: moderateScale(6),
     borderRadius: moderateScale(20),
@@ -562,7 +562,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.gradientcolor10,
     padding: moderateScale(16),
     borderRadius: SIZES.radius,
     gap: moderateScale(8),

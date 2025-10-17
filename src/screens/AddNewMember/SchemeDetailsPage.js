@@ -206,7 +206,7 @@ const SchemeDetailsPage = ({
       style={styles.container}
     >
       <ImageBackground 
-        source={require("../../assets/bg4.jpg")} 
+        source={require("../../assets/image.png")} 
         style={styles.backgroundImage}
         resizeMode="cover"
       >

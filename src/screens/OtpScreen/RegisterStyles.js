@@ -184,12 +184,13 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.25,
     shadowRadius: moderateScale(6),
     elevation: 5,
+    height: moderateScale(48),
   },
   buttonGradient: {
     paddingVertical: verticalScale(10), // Reduced padding
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: verticalScale(44), // Fixed button height
+    minHeight: verticalScale(40), // Fixed button height
   },
   primaryButtonText: {
     ...FONTS.h5,

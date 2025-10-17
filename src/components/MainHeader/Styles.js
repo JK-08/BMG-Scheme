@@ -189,10 +189,10 @@ export default StyleSheet.create({
   },
 
   rateValue: {
-    ...FONTS.body1,
+    ...FONTS.heading,
     color: COLORS.primary,
     fontSize: moderateScale(18),
-    fontWeight: "700",
+    // fontWeight: "700",
     marginBottom: verticalScale(2),
   },
 

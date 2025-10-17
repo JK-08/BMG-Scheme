@@ -282,7 +282,7 @@ function OtpPage({ navigation, route }) {
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
       <ImageBackground
-        source={require("../../assets/bg4.jpg")}
+        source={require("../../assets/image.png")}
         style={styles.backgroundImage}
       >
         <KeyboardAvoidingView
@@ -359,7 +359,7 @@ function OtpPage({ navigation, route }) {
                     colors={
                       showFullScreenLoader
                         ? ["#555", "#444"]
-                        : [COLORS.gradientcolor7, COLORS.gradientcolor8]
+                        : [COLORS.gradientcolor10, COLORS.gradientcolor9]
                     }
                     style={styles.buttonGradient}
                   >

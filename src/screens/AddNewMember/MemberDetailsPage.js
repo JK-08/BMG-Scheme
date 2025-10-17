@@ -27,6 +27,7 @@ import {
 } from "./Validations";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 const { COLORS, SIZES, FONTS } = appTheme;
+import { MaterialIcons } from "@expo/vector-icons";
 
 const MemberDetailsPage = ({
   memberData,
@@ -355,23 +356,32 @@ const MemberDetailsPage = ({
       keyboardVerticalOffset={Platform.select({ ios: 60, android: 80 })}
       style={styles.container}
     >
-      <ImageBackground source={require("../../assets/bg4.jpg")} style={styles.mainBackground} imageStyle={styles.backgroundImageStyle}>
+      <ImageBackground source={require("../../assets/image.png")} style={styles.mainBackground} imageStyle={styles.backgroundImageStyle}>
         <ScrollView
           ref={scrollViewRef}
           contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight > 0 ? keyboardHeight - 250 : 20 }]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <CommonHeader title={"MemberDetails"} />
-          <View style={[styles.card]}>
+        <CommonHeader
+          title="Member Details"
+          showBack
+          backIconName="arrow-back"
+          backIconColor={COLORS.white}
+          backgroundColor="transparent"
+          textColor={COLORS.black}
+          transparent
+          centerTitle
+          rightComponent={
             <TouchableOpacity
-              style={[styles.button, styles.clearButton, { backgroundColor: COLORS.danger, marginBottom: SIZES.margin }]}
-              onPress={clearSavedData}
-              activeOpacity={0.7}
+              onPress={() => clearSavedData()}
+              style={styles.actionButton}
             >
-              <Text style={[styles.buttonText, FONTS.h6, { color: COLORS.white }]}>Clear Saved Data</Text>
+              <MaterialIcons name="delete" size={22} color={COLORS.white} />
             </TouchableOpacity>
-
+          }
+        />
+          <View style={[styles.card]}>
             <View style={styles.inputContainer}>
               <Text style={[styles.label, FONTS.h6]}>
                 First Name <Text style={[styles.asterisk, { color: COLORS.danger }]}>*</Text>
@@ -636,6 +646,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: SIZES.padding,
   },
+   actionButton: { 
+    padding: 8,
+    backgroundColor: COLORS.primary,
+    borderRadius: 20,
+  },
   card: {
     backgroundColor: COLORS.card1,
     borderRadius: SIZES.radius_lg,
@@ -657,7 +672,8 @@ const styles = StyleSheet.create({
     letterSpacing: 0.3,
   },
   input: {
-    height: 56,
+    height: 50,
+    width: "95%",
     backgroundColor: COLORS.input,
     borderRadius: SIZES.radius,
     paddingHorizontal: SIZES.padding,
@@ -683,7 +699,8 @@ const styles = StyleSheet.create({
     borderWidth: 1.5,
     borderColor: COLORS.borderColor,
     paddingHorizontal: SIZES.padding,
-    height: 56,
+height: 50,
+    width: "95%",
   },
   countryCode: {
     ...FONTS.h6,

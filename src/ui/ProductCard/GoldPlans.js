@@ -4,22 +4,22 @@ import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { TextDefault } from "../../components";
 import { alignment, colors, scale } from "../../utils";
-import { colors1 } from "../../utils/colors";
 import { COLORS, FONTS, SIZES } from "../../utils/Theme";
 
 function GoldPlan(props) {
-  const {
-    schemeId,
-    schemeName,
-    description = "No description available",
-  } = props;
-
-  // console.log("Gold Plan Loaded");
-  // console.log("Scheme ID:", schemeId);
-  // console.log("Scheme Name:", schemeName);
-  // console.log("Descriptions:", description);
+  const { schemeId, schemeName, description = "No description available" } = props;
 
   const navigation = useNavigation();
+
+  // Define quotes for different schemes
+  const schemeQuotes = {
+    BAS: "Start your journey to financial freedom with BAS!",
+    BDS: "Secure your future with the trusted BDS plan.",
+    BFD: "BFD helps you grow wealth step by step.",
+  };
+
+  // Pick quote based on description or fallback
+  const displayQuote = schemeQuotes[description] || "";
 
   // Handle scheme navigation
   const handleJoinScheme = () => {
@@ -27,7 +27,6 @@ function GoldPlan(props) {
   };
 
   const handleKnowMore = () => {
-    // Navigate to scheme details or show information
     navigation.navigate("KnowMore", { schemeId });
   };
 
@@ -51,21 +50,19 @@ function GoldPlan(props) {
         {/* Center Section */}
         <View style={styles.centerSection}>
           <TextDefault style={styles.description}>{description}</TextDefault>
+          {displayQuote !== "" && (
+            <TextDefault style={styles.quote}>{displayQuote}</TextDefault>
+          )}
+          
         </View>
 
         {/* Bottom Section */}
         <View style={styles.bottomSection}>
-          <TouchableOpacity
-            style={styles.payButton}
-            onPress={handleKnowMore}
-          >
+          <TouchableOpacity style={styles.payButton} onPress={handleKnowMore}>
             <TextDefault style={styles.payButtonText}>Know More</TextDefault>
           </TouchableOpacity>
 
-          <TouchableOpacity
-            style={styles.payButton}
-            onPress={handleJoinScheme}
-          >
+          <TouchableOpacity style={styles.payButton} onPress={handleJoinScheme}>
             <TextDefault style={styles.payButtonText}>Join Scheme</TextDefault>
           </TouchableOpacity>
         </View>
@@ -96,6 +93,8 @@ const styles = StyleSheet.create({
   centerSection: {
     marginBottom: scale(5),
     ...alignment.Psmall,
+    marginTop: scale(-15),
+    gap: scale(8),
   },
   bottomSection: {
     flexDirection: "row",
@@ -111,7 +110,6 @@ const styles = StyleSheet.create({
   },
   text: {
     color: colors.greenColor,
-    fontSize: scale(12),
     fontWeight: "bold",
     ...FONTS.body1,
     fontSize: SIZES.font,
@@ -123,18 +121,18 @@ const styles = StyleSheet.create({
     ...FONTS.body1,
     fontSize: SIZES.fontSm,
   },
+  quote: {
+    color: colors.white,
+    fontSize: SIZES.h6,
+    fontWeight: "bold",
+    marginBottom: 5,
+    ...FONTS.body1,
+  },
   description: {
     color: colors.white,
-    fontSize: 14,
-    marginBottom: 20,
+    fontSize: SIZES.h4,
     fontWeight: "bold",
     ...FONTS.body,
-    fontSize: SIZES.h4,
-  },
-  schemeText: {
-    color: colors.greenColor,
-    fontSize: 14,
-    marginTop: 5,
   },
 });
 

@@ -293,7 +293,7 @@ function MainLanding() {
 
         {/* Gold Plans */}
         <View style={styles.contentWrapper}>
-          <Text style={styles.contentText}>Customized Gold Plans for You</Text>
+          <Text style={styles.contentText}>Our Customized Plans for You</Text>
           <Text style={styles.contentText1}>
             Choose from a range of Our Scheme Plans with unique benefits.
           </Text>
@@ -349,7 +349,7 @@ function MainLanding() {
   return (
     <View style={[styles.flex, styles.safeAreaStyle]}>
       <ImageBackground
-        source={require("../../assets/bg4.jpg")}
+        source={require("../../assets/image.png")}
         style={styles.mainBackground}
         imageStyle={styles.backgroundImageStyle}
       >

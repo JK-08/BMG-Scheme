@@ -41,7 +41,7 @@ const PaymentSuccess = () => {
         index: 0,
         routes: [{ name: "MainLanding" }],
       });
-    }, 10000);
+    }, 20000);
     return () => clearTimeout(timer);
   }, []);
 

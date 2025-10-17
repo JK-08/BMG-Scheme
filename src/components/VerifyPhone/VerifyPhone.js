@@ -100,10 +100,26 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
   // Shake animation for errors
   const shakeAnimation = () => {
     Animated.sequence([
-      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: -10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 10, duration: 50, useNativeDriver: true }),
-      Animated.timing(shakeAnim, { toValue: 0, duration: 50, useNativeDriver: true }),
+      Animated.timing(shakeAnim, {
+        toValue: 10,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: -10,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 10,
+        duration: 50,
+        useNativeDriver: true,
+      }),
+      Animated.timing(shakeAnim, {
+        toValue: 0,
+        duration: 50,
+        useNativeDriver: true,
+      }),
     ]).start();
   };
 
@@ -142,7 +158,7 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
 
       const hashCodes = await getHash();
       setAppHash(hashCodes);
-      console.log("📲 App Hash:", hashCodes);
+      console.log("📲 hashKey:", hashCodes);
 
       if (startListener) {
         startListener();
@@ -229,14 +245,25 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
 
     setLoading(true);
     setOtpMessage("");
+
     try {
+      // Get hashKey directly
+      const hashCodes = await getHash();
+      console.log("📲 hashKey:", hashCodes);
+
+      // Send OTP using hashCodes[0]
       const response = await fetch(`${API_BASE_URL}/user/forgot-password`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           contactNumber: phoneNumber,
-          appHash: appHash[0] || "",
+          hashKey: hashCodes[0] || "",
         }),
+      });
+
+      console.log("📤 OTP send request:", {
+        contactNumber: phoneNumber,
+        hashKey: hashCodes[0] || "",
       });
 
       const result = await response.text();
@@ -245,12 +272,12 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
       if (response.ok) {
         showToast("OTP sent successfully ✓");
         setShowOtpInput(true);
-        setResendTimer(30);
+        setResendTimer(10);
 
         if (Platform.OS === "android") {
           setWaitingForOtp(true);
           setShowFullScreenLoader(true);
-          initializeSmsListener();
+          initializeSmsListener(); // you can still initialize listener here
         } else {
           setWaitingForOtp(false);
           setShowFullScreenLoader(false);
@@ -293,14 +320,20 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
         return;
       }
 
-      const response = await fetch(`${API_BASE_URL}/user/verify-otp`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contactNumber: storedPhone,
-          otp: otpVal,
-        }),
-      });
+      const params = new URLSearchParams({
+        contactNumber: storedPhone,
+        otp: otpVal,
+      }).toString();
+
+      const response = await fetch(
+        `${API_BASE_URL}/user/verify-otp?${params}`,
+        {
+          method: "POST", // or "GET" depending on your API
+          headers: {
+            "Content-Type": "application/json", // optional for GET
+          },
+        }
+      );
 
       const result = await response.json();
       console.log("✅ Verify response:", result);
@@ -423,7 +456,9 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
                           styles.buttonDisabled,
                       ]}
                       onPress={sendOtp}
-                      disabled={loading || !phoneNumber || phoneNumber.length !== 10}
+                      disabled={
+                        loading || !phoneNumber || phoneNumber.length !== 10
+                      }
                       activeOpacity={0.8}
                     >
                       {loading ? (
@@ -438,7 +473,9 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
                     <View style={styles.infoBox}>
                       <Text style={styles.infoText}>
                         OTP sent to{" "}
-                        <Text style={styles.phoneHighlight}>+91 {phoneNumber}</Text>
+                        <Text style={styles.phoneHighlight}>
+                          +91 {phoneNumber}
+                        </Text>
                       </Text>
                     </View>
 
@@ -519,7 +556,9 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
                         <View style={styles.timerContainer}>
                           <Text style={styles.timerText}>
                             Resend OTP in{" "}
-                            <Text style={styles.timerNumber}>{resendTimer}s</Text>
+                            <Text style={styles.timerNumber}>
+                              {resendTimer}s
+                            </Text>
                           </Text>
                         </View>
                       ) : (
@@ -550,7 +589,9 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
                   <View style={styles.loaderCard}>
                     <ActivityIndicator size="large" color={COLORS.primary} />
                     <Text style={styles.loaderTitle}>
-                      {waitingForOtp ? "Waiting for OTP..." : "Verifying OTP..."}
+                      {waitingForOtp
+                        ? "Waiting for OTP..."
+                        : "Verifying OTP..."}
                     </Text>
                     {waitingForOtp && (
                       <Text style={styles.loaderSubtext}>

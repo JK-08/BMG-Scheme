@@ -139,6 +139,11 @@ disabledText: {
   color: COLORS.textLight,
   opacity: 0.5,
 },
+clearOtpText: {
+  ...FONTS.body1,
+  color: COLORS.primary,
+  textDecorationLine: 'underline',
+},
   otpInput: {
     width: '100%',
     height: '100%',
@@ -146,6 +151,9 @@ disabledText: {
     color: COLORS.white,
     ...FONTS.body1,
     fontWeight: '600',
+    borderWidth: 1,
+    borderColor: COLORS.borderColor,
+    borderRadius: SIZES.radius_sm,
   },
 
   // Buttons

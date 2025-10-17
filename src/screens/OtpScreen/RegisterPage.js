@@ -267,7 +267,7 @@ function RegisterPage({ navigation }) {
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
       <ImageBackground 
-        source={require("../../assets/bg4.jpg")} 
+        source={require("../../assets/image.png")} 
         style={styles.backgroundImage}
       >
         <KeyboardAvoidingView 
@@ -346,7 +346,7 @@ function RegisterPage({ navigation }) {
                   disabled={loading}
                 >
                   <LinearGradient
-                    colors={loading ? ["#555", "#444"] : [COLORS.gradientcolor7, COLORS.gradientcolor8]}
+                    colors={loading ? ["#555", "#444"] : [COLORS.gradientcolor10, COLORS.gradientcolor9]}
                     style={styles.buttonGradient}
                   >
                     {loading ? (

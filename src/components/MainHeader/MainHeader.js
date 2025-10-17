@@ -172,7 +172,7 @@ function Header() {
 
   return (
     <LinearGradient
-      colors={[COLORS.gradientcolor7, COLORS.gradientcolor8]} // Gold to Orange gradient - you can change these colors
+      colors={[COLORS.gradientcolor9, COLORS.gradientcolor10]} // Gold to Orange gradient - you can change these colors
       start={{ x: 0, y: 1 }}
       end={{ x: 1, y: 0 }}
       style={styles.headerContainer1}
@@ -240,9 +240,9 @@ function Header() {
               <Text style={[styles.rateValue, styles.goldText]}>
                 ₹{goldRate || "---"}
               </Text>
-              <Text style={[styles.rateUnit, styles.goldText]}>
+              {/* <Text style={[styles.rateUnit, styles.goldText]}>
                 22K Per gram
-              </Text>
+              </Text> */}
             </View>
           </View>
         </LinearGradient>
@@ -273,7 +273,7 @@ function Header() {
               <Text style={[styles.rateValue, styles.silverText]}>
                 ₹{silverRate || "---"}
               </Text>
-              <Text style={[styles.rateUnit, styles.silverText]}>Per gram</Text>
+              {/* <Text style={[styles.rateUnit, styles.silverText]}>Per gram</Text> */}
             </View>
           </View>
         </LinearGradient>

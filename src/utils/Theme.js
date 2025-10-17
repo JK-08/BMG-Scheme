@@ -20,7 +20,7 @@ export const COLORS = {
   transparent: "rgba(255, 255, 255, 0)",
 
   // Core Brand (updated)
-  primary: "rgba(74, 144, 226, 1)",         // main blue
+  primary: "rgba(18, 17, 105, 1)",         // main blue
   primaryLight: "rgba(74, 144, 226, 0.15)",
   secondary: "rgba(225, 100, 250, 1)",      // main magenta/pink
   notification: "rgba(201, 137, 0, 1)",
@@ -65,6 +65,7 @@ export const COLORS = {
   gradientPrimary3: ["rgba(255, 255, 255, 1)", "rgba(255, 255, 255, 1)"],
   gradientPrimary4: ["rgba(221, 221, 221, 1)", "rgba(221, 221, 221, 1)"],
   gradientPrimary5: ["rgba(74, 144, 226, 1)", "rgba(225, 100, 250, 1)"],
+  gradientPrimary6: ["rgba(18, 13, 85, 1)", "rgba(18, 17, 105, 1)"],
 
   // Product card
   gradientcolor1: "rgba(74, 144, 226, 1)",
@@ -79,6 +80,12 @@ export const COLORS = {
 
   gradientcolor7: "rgba(74, 144, 226, 1)",
   gradientcolor8: "rgba(225, 100, 250, 1)",
+
+  gradientcolor9: "rgba(18, 17, 105, 1)",
+  gradientcolor10: "rgba(18, 17, 105, 1)",
+
+  gradientcolor11: "rgba(18, 17, 105, 1)",
+  gradientcolor12: "rgba(18, 13, 85, 1)",
 };
 
 export const DIGIGOLD_COLORS = {

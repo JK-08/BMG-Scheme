@@ -310,7 +310,7 @@ const PaymentHistoryScreen = ({ navigation, route }) => {
 
   return (
     <ImageBackground
-      source={require("../../assets/bg4.jpg")}
+      source={require("../../assets/image.png")}
       style={styles.mainBackground}
       imageStyle={styles.backgroundImageStyle}
     >

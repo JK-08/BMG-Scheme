@@ -145,9 +145,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.3,
     shadowRadius: moderateScale(8),
     elevation: 6,
+    height: moderateScale(48),
+    // padding: moderateScale(2),
   },
   buttonGradient: {
-    paddingVertical: verticalScale(14),
+    paddingVertical: verticalScale(9),
     alignItems: 'center',
     justifyContent: 'center',
   },

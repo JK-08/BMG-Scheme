@@ -67,7 +67,7 @@ function LoginPage({ route }) {
 
       let idToken = tokens?.idToken || userInfo?.idToken;
       if (!idToken) throw new Error("No ID token received from Google");
-
+      console.log("Google ID Token:", idToken);
       await handleGoogleAuthentication(idToken, userInfo.user);
     } catch (error) {
       console.error("Google Sign-In Error:", error);
@@ -93,6 +93,7 @@ function LoginPage({ route }) {
 
   // ✅ Google Authentication → Backend (NO contact number storage)
   const handleGoogleAuthentication = async (idToken, userInfo = null) => {
+   console.log("Google Authentication Payload:", { idToken });
     try {
       const payload = { idToken };
       if (userInfo) {
@@ -228,7 +229,7 @@ const handleLogin = async () => {
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
       <ImageBackground
-        source={require("../../assets/bg4.jpg")}
+        source={require("../../assets/image.png")}
         style={styles.backgroundImage}
       >
         <KeyboardAvoidingView
@@ -286,7 +287,7 @@ const handleLogin = async () => {
                     colors={
                       loading
                         ? ["#555", "#444"]
-                        : [COLORS.gradientcolor7, COLORS.gradientcolor8]
+                        : [COLORS.gradientcolor10, COLORS.gradientcolor9]
                     }
                     style={styles.buttonGradient}
                   >
