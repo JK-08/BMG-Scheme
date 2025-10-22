@@ -442,19 +442,19 @@ const PaymentHistoryScreen = ({ navigation, route }) => {
             </View>
 
             {/* Filter Chips */}
-            <View style={styles.filterContainer}>
+            {/* <View style={styles.filterContainer}>
               <FilterChip
                 label="All"
                 value="all"
                 count={paymentHistory.length}
               />
-              <FilterChip label="Paid" value="paid" count={filterCounts.paidCount} />
-              <FilterChip
+              <FilterChip label="Paid" value="paid" count={filterCounts.paidCount} /> */}
+              {/* <FilterChip
                 label="Pending"
                 value="pending"
                 count={filterCounts.pendingCount}
-              />
-            </View>
+              /> */}
+            {/* </View> */}
 
             {/* Payment List */}
             <View style={styles.historySection}>

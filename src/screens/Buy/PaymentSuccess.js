@@ -1,4 +1,3 @@
-// screens/PaymentSuccess.js
 import React, { useEffect, useState } from "react";
 import {
   View,
@@ -6,11 +5,9 @@ import {
   TouchableOpacity,
   StyleSheet,
   ActivityIndicator,
-  ScrollView,
+  Image,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
-import { Ionicons } from "@expo/vector-icons";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const PaymentSuccess = () => {
@@ -19,22 +16,32 @@ const PaymentSuccess = () => {
   const [storedPaymentData, setStoredPaymentData] = useState(null);
   const [loading, setLoading] = useState(true);
 
-  const {
-    status,
-    orderDetails,
-    productData,
-    schemeData,
-    paymentStatus,
-  } = route.params || {};
+  // ✅ Extract all possible params
+  const { status, orderDetails, schemeData, paymentStatus, productData } =
+    route.params || {};
 
   const isSuccess = status === "SUCCESS";
 
-  // ✅ Load stored payment data from AsyncStorage
+  console.log("✅ PaymentSuccess Params:", route.params);
+
+  // ✅ Load stored payment data (from AsyncStorage)
   useEffect(() => {
+    const loadStoredPaymentData = async () => {
+      try {
+        const storedData = await AsyncStorage.getItem("paymentResponse");
+        if (storedData) {
+          setStoredPaymentData(JSON.parse(storedData));
+        }
+      } catch (error) {
+        console.error("❌ Error loading stored payment data:", error);
+      } finally {
+        setLoading(false);
+      }
+    };
     loadStoredPaymentData();
   }, []);
 
-  // ✅ Auto navigate to MainLanding after 4 seconds
+  // ✅ Auto navigate to home after delay
   useEffect(() => {
     const timer = setTimeout(() => {
       navigation.reset({
@@ -45,217 +52,206 @@ const PaymentSuccess = () => {
     return () => clearTimeout(timer);
   }, []);
 
-  const loadStoredPaymentData = async () => {
-    try {
-      const storedData = await AsyncStorage.getItem('paymentResponse');
-      if (storedData) {
-        setStoredPaymentData(JSON.parse(storedData));
-        console.log("📱 Loaded stored payment data:", JSON.parse(storedData));
-      }
-    } catch (error) {
-      console.error("❌ Error loading stored payment data:", error);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleGoHome = () => {
+  // ✅ Manual continue
+  const handleContinue = () => {
     navigation.reset({
       index: 0,
       routes: [{ name: "MainLanding" }],
     });
   };
 
-  // ✅ Use paymentStatus from params or stored data
+  // ✅ Navigate to payment history
+// ✅ Navigate to payment history
+const handleViewInstallments = () => {
+  if (!productData) {
+    console.warn("⚠️ No productData found to navigate!");
+    return;
+  }
+
+  navigation.navigate("PaymentHistory", {
+    accountDetails: productData,
+    schemeName:
+      productData?.schemeSummary?.schemeName ||
+      orderDetails?.schemeInfo?.schemeName ||
+      schemeData?.schemeName ||
+      "Unknown Scheme",
+    productdata: productData,
+  });
+};
+
+
   const finalPaymentStatus = paymentStatus || storedPaymentData;
+
+  // ✅ Safely extract groupCode & regNo
+  const groupCode =
+    productData?.groupCode ||
+    orderDetails?.groupCode ||
+    orderDetails?.productData?.groupCode ||
+    "N/A";
+
+  const regNo =
+    productData?.regNo ||
+    orderDetails?.regNo ||
+    orderDetails?.productData?.regNo ||
+    "N/A";
 
   if (loading) {
     return (
       <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color="#4CAF50" />
+        <ActivityIndicator size="large" color="#C29E59" />
         <Text style={styles.loadingText}>Loading payment details...</Text>
       </View>
     );
   }
 
   return (
-    <LinearGradient
-      colors={
-        isSuccess
-          ? ["#d4edda", "#ffffff"]
-          : ["#f8d7da", "#ffffff"]
-      }
-      style={styles.container}
-    >
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.card}>
-          <Ionicons
-            name={isSuccess ? "checkmark-circle" : "close-circle"}
-            size={80}
-            color={isSuccess ? "#4CAF50" : "#E53935"}
-          />
+    <View style={styles.container}>
+      <View style={styles.card}>
+        <Image
+          source={require("../../assets/icons/success.png")}
+          style={styles.image}
+          resizeMode="contain"
+        />
 
-          <Text
-            style={[
-              styles.title,
-              { color: isSuccess ? "#4CAF50" : "#E53935" },
-            ]}
+        <Text style={styles.title}>Congratulations!</Text>
+
+        <Text style={styles.subtitle}>
+          You've successfully joined in{" "}
+          <Text style={{ fontWeight: "bold" }}>
+            {orderDetails?.schemeInfo?.schemeName ||
+              productData?.schemeSummary?.schemeName ||
+              "SuperGold Scheme"}
+          </Text>
+          .
+        </Text>
+
+        <Text style={styles.infoText}>
+          Your payment of{" "}
+          <Text style={{ fontWeight: "bold" }}>
+            ₹{orderDetails?.amount || productData?.amount}
+          </Text>{" "}
+          has been processed successfully and your Scheme Code is{" "}        </Text>
+
+        {/* ✅ Show Group Code & Reg No */}
+        <Text style={[styles.highlightText, { marginTop: 15 }]}>
+          {groupCode} - {regNo}
+        </Text>
+
+        {/* ✅ Show Transaction ID */}
+        <Text style={[styles.infoText, { marginTop: 10 }]}>
+          Transaction ID
+        </Text>
+        <Text style={styles.highlightText}>
+          {finalPaymentStatus?.payphiResponse?.txnID || "APP26RCPT7790921"}
+        </Text>
+
+        <View style={styles.buttonRow}>
+          <TouchableOpacity
+            style={[styles.button, styles.secondaryButton]}
+            onPress={handleViewInstallments}
           >
-            {isSuccess ? "Payment Successful!" : "Payment Failed"}
-          </Text>
-
-          <Text style={styles.subtitle}>
-            {isSuccess
-              ? "Thank you for your payment."
-              : "Unfortunately, your payment could not be completed."}
-          </Text>
-
-          <View style={styles.detailsBox}>
-            <DetailRow label="Order ID" value={orderDetails?.orderId} />
-            <DetailRow label="Merchant Txn No" value={orderDetails?.merchantTxnNo} />
-            <DetailRow label="Reg No" value={orderDetails?.customer?.regNo} />
-            <DetailRow label="Group Code" value={orderDetails?.customer?.groupCode} />
-            <DetailRow label="Customer" value={orderDetails?.customer?.name} />
-            <DetailRow label="Scheme Name" value={orderDetails?.schemeInfo?.schemeName || "N/A"} />
-            <DetailRow label="Installment" value={schemeData?.installment} />
-            <DetailRow label="Amount Paid" value={`₹ ${orderDetails?.amount}`} />
-            <DetailRow label="Payment Mode" value={finalPaymentStatus?.payphiResponse?.paymentMode} />
-            <DetailRow
-              label="Payment Date"
-              value={finalPaymentStatus?.payphiResponse?.paymentDateTime || new Date().toISOString().split("T")[0]}
-            />
-            
-            {/* Payphi Response Details */}
-            {finalPaymentStatus?.payphiResponse && (
-              <>
-                <Text style={styles.sectionTitle}>Transaction Details</Text>
-                <DetailRow label="Transaction ID" value={finalPaymentStatus.payphiResponse.txnID} />
-                <DetailRow label="Auth ID" value={finalPaymentStatus.payphiResponse.txnAuthID} />
-                <DetailRow label="Status" value={finalPaymentStatus.payphiResponse.txnStatus} />
-                <DetailRow label="Response Code" value={finalPaymentStatus.payphiResponse.txnResponseCode} />
-                <DetailRow label="Bank" value={finalPaymentStatus.payphiResponse.paymentSubInstType} />
-                <DetailRow label="Customer Email" value={finalPaymentStatus.payphiResponse.customerEmailID} />
-                <DetailRow label="Customer Mobile" value={finalPaymentStatus.payphiResponse.customerMobileNo} />
-              </>
-            )}
-          </View>
-
-          <Text style={styles.note}>
-            Redirecting to MainLanding in a few seconds...
-          </Text>
+            <Text style={[styles.buttonText, { color: "#C29E59" }]}>
+              View Installments
+            </Text>
+          </TouchableOpacity>
 
           <TouchableOpacity
-            style={[
-              styles.button,
-              { backgroundColor: isSuccess ? "#4CAF50" : "#E53935" },
-            ]}
-            onPress={handleGoHome}
+            style={[styles.button, styles.primaryButton]}
+            onPress={handleContinue}
           >
-            <Text style={styles.buttonText}>Go to MainLanding</Text>
+            <Text style={styles.buttonText}>Continue</Text>
           </TouchableOpacity>
         </View>
-      </ScrollView>
-    </LinearGradient>
+      </View>
+    </View>
   );
 };
-
-const DetailRow = ({ label, value }) => (
-  <View style={styles.row}>
-    <Text style={styles.label}>{label}</Text>
-    <Text style={styles.value}>{value || "—"}</Text>
-  </View>
-);
 
 export default PaymentSuccess;
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-  },
-  scrollContent: {
-    flexGrow: 1,
+    backgroundColor: "#EFEAF5",
     justifyContent: "center",
     alignItems: "center",
-    paddingVertical: 20,
+    paddingHorizontal: 20,
+  },
+  card: {
+    width: "100%",
+    backgroundColor: "#fff",
+    borderRadius: 16,
+    padding: 25,
+    alignItems: "center",
+    shadowColor: "#000",
+    shadowOpacity: 0.1,
+    shadowRadius: 6,
+    elevation: 5,
+  },
+  image: {
+    width: 120,
+    height: 120,
+    marginBottom: 20,
+  },
+  title: {
+    fontSize: 22,
+    fontWeight: "700",
+    color: "#000",
+    marginBottom: 10,
+  },
+  subtitle: {
+    fontSize: 15,
+    color: "#333",
+    textAlign: "center",
+    marginBottom: 15,
+  },
+  infoText: {
+    fontSize: 14,
+    color: "#555",
+    textAlign: "center",
+  },
+  highlightText: {
+    fontSize: 15,
+    color: "#C29E59",
+    fontWeight: "bold",
+    textAlign: "center",
+    marginTop: 4,
+  },
+  buttonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: 25,
+    width: "100%",
+  },
+  button: {
+    flex: 1,
+    paddingVertical: 12,
+    borderRadius: 10,
+    marginHorizontal: 6,
+    alignItems: "center",
+  },
+  primaryButton: {
+    backgroundColor: "#C29E59",
+  },
+  secondaryButton: {
+    borderWidth: 1.5,
+    borderColor: "#C29E59",
+    backgroundColor: "#fff",
+  },
+  buttonText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#fff",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#ffffff",
+    backgroundColor: "#fff",
   },
   loadingText: {
     marginTop: 10,
     fontSize: 16,
-    color: "#666",
-  },
-  card: {
-    width: "90%",
-    padding: 25,
-    borderRadius: 14,
-    backgroundColor: "#fff",
-    shadowColor: "#000",
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
-    alignItems: "center",
-  },
-  title: {
-    fontSize: 22,
-    fontWeight: "bold",
-    marginTop: 10,
-    marginBottom: 5,
-  },
-  subtitle: {
-    fontSize: 15,
-    color: "#555",
-    textAlign: "center",
-    marginBottom: 15,
-  },
-  detailsBox: {
-    width: "100%",
-    backgroundColor: "#f7f7f7",
-    borderRadius: 10,
-    padding: 12,
-    marginBottom: 20,
-  },
-  sectionTitle: {
-    fontSize: 16,
-    fontWeight: "bold",
-    color: "#333",
-    marginTop: 10,
-    marginBottom: 8,
-    textAlign: "center",
-  },
-  row: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    marginBottom: 6,
-  },
-  label: {
-    fontSize: 14,
-    color: "#555",
-    fontWeight: "600",
-  },
-  value: {
-    fontSize: 14,
-    color: "#333",
-    fontWeight: "500",
-  },
-  note: {
-    fontSize: 13,
     color: "#777",
-    textAlign: "center",
-    marginBottom: 10,
-  },
-  button: {
-    paddingVertical: 12,
-    paddingHorizontal: 35,
-    borderRadius: 8,
-  },
-  buttonText: {
-    color: "#fff",
-    fontWeight: "600",
-    fontSize: 16,
   },
 });

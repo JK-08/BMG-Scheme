@@ -42,7 +42,7 @@ function DiscoverPlace({ navigation }) {
       console.log('Number of accounts found:', accounts.length);
 
       if (!accounts || accounts.length === 0) {
-        setError('No schemes available for this account, So please join the scheme and enjoy our benifits');
+        setError('No schemes available for this account, So please join the scheme and enjoy our benefits');
         setProductData([]);
         setLoading(false);
         return;

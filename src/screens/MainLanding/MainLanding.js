@@ -301,7 +301,7 @@ function MainLanding() {
 
         <View style={[styles.titleSpacer, { flex: 1 }]}>
           <SectionHeader
-            title="Gold Plans"
+            title="Scheme Plans"
             onViewAll={() => navigation.navigate("GoldPlanScreen")}
           />
           <SwipeableCards

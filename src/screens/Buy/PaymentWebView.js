@@ -62,10 +62,10 @@ const PaymentWebView = () => {
       console.log("🔍 Checking payment status for:", merchantTxnNo);
 
       const payload = {
-        merchantId: "T_03342",
+       
         merchantTxnNo,
         originalTxnNo: merchantTxnNo,
-        transactionType: "STATUS",
+        
       };
 
       console.log("📤 PAYPHI STATUS PAYLOAD:", JSON.stringify(payload, null, 2));
