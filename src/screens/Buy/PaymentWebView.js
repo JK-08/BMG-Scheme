@@ -61,21 +61,21 @@ const PaymentWebView = () => {
     try {
       console.log("🔍 Checking payment status for:", merchantTxnNo);
 
-      const payload = {
+      const payload1 = {
        
         merchantTxnNo,
         originalTxnNo: merchantTxnNo,
         
       };
 
-      console.log("📤 PAYPHI STATUS PAYLOAD:", JSON.stringify(payload, null, 2));
+      console.log("📤 PAYPHI STATUS PAYLOAD:", JSON.stringify(payload1, null, 2));
 
       const response = await fetch(
         "https://scheme.bmgjewellers.com/api/v1/payment/status",
         {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
+          body: JSON.stringify(payload1),
         }
       );
 

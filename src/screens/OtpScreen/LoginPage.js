@@ -15,6 +15,7 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import {
   GoogleSignin,
   statusCodes,
@@ -24,6 +25,10 @@ import appTheme from "../../utils/Theme";
 import styles from "./LoginStyles.js";
 import userService from "../../services/UserService";
 import { useNavigation } from "@react-navigation/native";
+import {
+  registerForPushNotificationsAsync,
+  sendPushTokenToServer,
+} from "../../utils/Notification.js";
 
 const { COLORS } = appTheme;
 
@@ -93,7 +98,7 @@ function LoginPage({ route }) {
 
   // ✅ Google Authentication → Backend (NO contact number storage)
   const handleGoogleAuthentication = async (idToken, userInfo = null) => {
-   console.log("Google Authentication Payload:", { idToken });
+    console.log("Google Authentication Payload:", { idToken });
     try {
       const payload = { idToken };
       if (userInfo) {
@@ -138,6 +143,11 @@ function LoginPage({ route }) {
           username: username,
           // Note: No userPhoneNumber stored for Google login
         });
+        const expoToken = await registerForPushNotificationsAsync();
+        if (expoToken) {
+          console.log("✅ Expo Push Token after Google login:", expoToken);
+          await sendPushTokenToServer(expoToken, id);
+        }
 
         showToast(message || "Logged in successfully with Google");
         navigation.navigate("MpinScreen", { step: 3 });
@@ -151,78 +161,85 @@ function LoginPage({ route }) {
   };
 
   // ✅ Regular Login (WITH contact number storage)
-// ✅ Regular Login (WITH contact number storage)
-const handleLogin = async () => {
-  if (!contactOrEmailOrUsername || !password) {
-    return showToast("Please enter email/username and password");
-  }
-
-  setLoading(true);
-  try {
-    const res = await userService.loginUser({
-      contactOrEmailOrUsername,
-      password,
-    });
-
-    // ✅ STEP 1: Console the login response
-    console.log("🔵 REGULAR LOGIN RESPONSE:", JSON.stringify(res, null, 2));
-
-    if (res.success && res.data?.token) {
-      const data = res.data;
-      
-      // ✅ STEP 2: Store the data - FIXED: using data.contact instead of data.contactNumber
-      const storageItems = [
-        ["authToken", data.token],
-        ["userId", String(data.id)],
-        ["userEmail", data.email || ""],
-        ["username", data.username || ""],
-        ["userPhoneNumber", data.contact || ""], // ✅ CHANGED: data.contact instead of data.contactNumber
-        ["userData", JSON.stringify(data)],
-      ];
-      
-      await AsyncStorage.multiSet(storageItems);
-
-      // ✅ STEP 3: Console the stored data
-      console.log("🟢 REGULAR LOGIN - Stored Data (With Phone Number):", {
-        authToken: data.token,
-        userId: data.id,
-        userEmail: data.email,
-        username: data.username,
-        userPhoneNumber: data.contact, // ✅ CHANGED: data.contact
-        fullData: data,
-      });
-
-      // ✅ Verify stored data by reading it back
-      const storedData = await AsyncStorage.multiGet([
-        "authToken", 
-        "userId", 
-        "userEmail", 
-        "username", 
-        "userPhoneNumber",
-        "userData"
-      ]);
-      
-      console.log("🟣 REGULAR LOGIN - Verified Stored Data:", {
-        authToken: storedData[0][1],
-        userId: storedData[1][1],
-        userEmail: storedData[2][1],
-        username: storedData[3][1],
-        userPhoneNumber: storedData[4][1], // ✅ Now this should show "7603905056"
-        userData: storedData[5][1] ? JSON.parse(storedData[5][1]) : null,
-      });
-
-      showToast("Login successful!");
-      navigation.navigate("MpinScreen", { step: 3 });
-    } else {
-      showToast(res.error || "Invalid credentials");
+  // ✅ Regular Login (WITH contact number storage)
+  const handleLogin = async () => {
+    if (!contactOrEmailOrUsername || !password) {
+      return showToast("Please enter email/username and password");
     }
-  } catch (err) {
-    console.error("🔴 LOGIN ERROR:", err);
-    showToast(err.message || "Network error");
-  } finally {
-    setLoading(false);
-  }
-};
+
+    setLoading(true);
+    try {
+      const res = await userService.loginUser({
+        contactOrEmailOrUsername,
+        password,
+      });
+
+      // ✅ STEP 1: Console the login response
+      console.log("🔵 REGULAR LOGIN RESPONSE:", JSON.stringify(res, null, 2));
+
+      if (res.success && res.data?.token) {
+        const data = res.data;
+
+        // ✅ STEP 2: Store the data - FIXED: using data.contact instead of data.contactNumber
+        const storageItems = [
+          ["authToken", data.token],
+          ["userId", String(data.id)],
+          ["userEmail", data.email || ""],
+          ["username", data.username || ""],
+          ["userPhoneNumber", data.contact || ""], // ✅ CHANGED: data.contact instead of data.contactNumber
+          ["userData", JSON.stringify(data)],
+        ];
+
+        await AsyncStorage.multiSet(storageItems);
+
+        // ✅ STEP 3: Console the stored data
+        console.log("🟢 REGULAR LOGIN - Stored Data (With Phone Number):", {
+          authToken: data.token,
+          userId: data.id,
+          userEmail: data.email,
+          username: data.username,
+          userPhoneNumber: data.contact, // ✅ CHANGED: data.contact
+          fullData: data,
+        });
+
+        // ✅ Verify stored data by reading it back
+        const storedData = await AsyncStorage.multiGet([
+          "authToken",
+          "userId",
+          "userEmail",
+          "username",
+          "userPhoneNumber",
+          "userData",
+        ]);
+
+        console.log("🟣 REGULAR LOGIN - Verified Stored Data:", {
+          authToken: storedData[0][1],
+          userId: storedData[1][1],
+          userEmail: storedData[2][1],
+          username: storedData[3][1],
+          userPhoneNumber: storedData[4][1], // ✅ Now this should show "7603905056"
+          userData: storedData[5][1] ? JSON.parse(storedData[5][1]) : null,
+        });
+
+        // ✅ After storing AsyncStorage data
+        const token = await registerForPushNotificationsAsync();
+        if (token) {
+          console.log("✅ Expo Push Token after login:", token);
+          await sendPushTokenToServer(token, data.id); // Optional: send to backend
+        }
+
+        showToast("Login successful!");
+        navigation.navigate("MpinScreen", { step: 3 });
+      } else {
+        showToast(res.error || "Invalid credentials");
+      }
+    } catch (err) {
+      console.error("🔴 LOGIN ERROR:", err);
+      showToast(err.message || "Network error");
+    } finally {
+      setLoading(false);
+    }
+  };
   const navigateToRegister = () => navigation.navigate("RegisterPage");
   const dismissKeyboard = () => Keyboard.dismiss();
 

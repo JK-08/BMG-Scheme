@@ -15,33 +15,20 @@ import {
   Dimensions,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getHash, useOtpVerify, removeListener } from "react-native-otp-verify";
-import { API_BASE_URL } from "../../Config/API";
 import { COLORS, SIZES, FONTS, moderateScale } from "../../utils/Theme";
 
 const { width, height } = Dimensions.get("window");
 
 const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
   const [phoneNumber, setPhoneNumber] = useState("");
-  const [enteredOtp, setEnteredOtp] = useState("");
-  const [otpMessage, setOtpMessage] = useState("");
+  const [confirmPhoneNumber, setConfirmPhoneNumber] = useState("");
   const [loading, setLoading] = useState(false);
-  const [resendTimer, setResendTimer] = useState(0);
-  const [showOtpInput, setShowOtpInput] = useState(false);
-  const [waitingForOtp, setWaitingForOtp] = useState(false);
-  const [appHash, setAppHash] = useState([]);
-  const [showFullScreenLoader, setShowFullScreenLoader] = useState(false);
-  const [autoOtpTimeout, setAutoOtpTimeout] = useState(null);
+  const [message, setMessage] = useState("");
 
   // Animation refs
   const slideAnim = useRef(new Animated.Value(height)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
-  const pulseAnim = useRef(new Animated.Value(1)).current;
-
-  const { message, timeoutError, startListener, stopListener } = useOtpVerify({
-    numberOfDigits: 6,
-  });
 
   // ------------------- ANIMATIONS -------------------
   useEffect(() => {
@@ -59,6 +46,9 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
           useNativeDriver: true,
         }),
       ]).start();
+      
+      // Load existing phone number if available
+      loadExistingPhone();
     } else {
       Animated.parallel([
         Animated.timing(slideAnim, {
@@ -75,27 +65,18 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
     }
   }, [visible]);
 
-  // Pulse animation for auto-detect
-  useEffect(() => {
-    if (waitingForOtp) {
-      Animated.loop(
-        Animated.sequence([
-          Animated.timing(pulseAnim, {
-            toValue: 1.1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-          Animated.timing(pulseAnim, {
-            toValue: 1,
-            duration: 800,
-            useNativeDriver: true,
-          }),
-        ])
-      ).start();
-    } else {
-      pulseAnim.setValue(1);
+  // Load existing phone number
+  const loadExistingPhone = async () => {
+    try {
+      const existingPhone = await AsyncStorage.getItem("userPhoneNumber");
+      if (existingPhone) {
+        setPhoneNumber(existingPhone);
+        setConfirmPhoneNumber(existingPhone);
+      }
+    } catch (error) {
+      console.log("Error loading existing phone:", error);
     }
-  }, [waitingForOtp]);
+  };
 
   // Shake animation for errors
   const shakeAnimation = () => {
@@ -123,241 +104,52 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
     ]).start();
   };
 
-  // ------------------- TIMER -------------------
-  useEffect(() => {
-    let timer;
-    if (resendTimer > 0) {
-      timer = setInterval(() => setResendTimer((p) => p - 1), 1000);
-    }
-    return () => clearInterval(timer);
-  }, [resendTimer]);
-
-  // ------------------- CLEANUP -------------------
-  useEffect(() => {
-    return () => {
-      try {
-        removeListener();
-        stopListener && stopListener();
-        setWaitingForOtp(false);
-        setShowFullScreenLoader(false);
-        if (autoOtpTimeout) {
-          clearTimeout(autoOtpTimeout);
-        }
-      } catch (e) {
-        console.error("Cleanup SMS listener error:", e);
-      }
-    };
-  }, [visible]);
-
-  // ------------------- INITIALIZE SMS LISTENER -------------------
-  const initializeSmsListener = async () => {
-    try {
-      if (autoOtpTimeout) {
-        clearTimeout(autoOtpTimeout);
-      }
-
-      const hashCodes = await getHash();
-      setAppHash(hashCodes);
-      console.log("📲 hashKey:", hashCodes);
-
-      if (startListener) {
-        startListener();
-        setWaitingForOtp(true);
-        setShowFullScreenLoader(true);
-        console.log("✅ SMS listener started successfully");
-
-        const timeout = setTimeout(() => {
-          console.log("⏰ Auto OTP detection timeout (30s)");
-          setWaitingForOtp(false);
-          setShowFullScreenLoader(false);
-          showToast("You can enter OTP manually");
-          stopListener && stopListener();
-        }, 30000);
-
-        setAutoOtpTimeout(timeout);
-      }
-    } catch (e) {
-      console.error("❌ SMS listener init error:", e);
-      setWaitingForOtp(false);
-      setShowFullScreenLoader(false);
-      showToast("You can enter OTP manually");
-    }
-  };
-
-  // ------------------- DETECT OTP FROM MESSAGE -------------------
-  useEffect(() => {
-    if (message && waitingForOtp) {
-      console.log("📨 SMS message received:", message);
-
-      const patterns = [
-        /your\s+otp\s+(?:for\s+\w+\s+)?is\s*(\d{6})/i,
-        /otp.*?is\s*[:\-]?\s*(\d{6})/i,
-        /otp[:\s]+(\d{6})/i,
-        /\b(\d{6})\b/,
-        /(\d{6}).*otp/i,
-      ];
-
-      for (const pattern of patterns) {
-        const match = message.match(pattern);
-        if (match) {
-          const detected = match[1] || match[0];
-          console.log("✅ Detected OTP:", detected);
-
-          if (autoOtpTimeout) {
-            clearTimeout(autoOtpTimeout);
-          }
-
-          setEnteredOtp(detected);
-          setWaitingForOtp(false);
-          setShowFullScreenLoader(false);
-          setOtpMessage("OTP detected automatically ✓");
-          stopListener && stopListener();
-
-          setTimeout(() => handleVerifyOtp(detected), 800);
-          return;
-        }
-      }
-
-      console.log("❌ No OTP detected in message");
-    }
-  }, [message, waitingForOtp]);
-
-  // ------------------- TIMEOUT HANDLER -------------------
-  useEffect(() => {
-    if (timeoutError && waitingForOtp) {
-      console.log("⏰ OTP detection timeout");
-      showToast("OTP detection timeout. Please enter manually.");
-      setWaitingForOtp(false);
-      setShowFullScreenLoader(false);
-      if (autoOtpTimeout) {
-        clearTimeout(autoOtpTimeout);
-      }
-    }
-  }, [timeoutError, waitingForOtp]);
-
-  // ------------------- SEND OTP -------------------
-  const sendOtp = async () => {
+  // ------------------- VALIDATE AND SAVE PHONE NUMBER -------------------
+  const handleVerifyPhone = async () => {
+    // Basic validation
     if (!phoneNumber || phoneNumber.length !== 10) {
-      setOtpMessage("Enter valid 10-digit phone number");
+      setMessage("Please enter a valid 10-digit phone number");
+      shakeAnimation();
+      return;
+    }
+
+    if (!confirmPhoneNumber || confirmPhoneNumber.length !== 10) {
+      setMessage("Please confirm your 10-digit phone number");
+      shakeAnimation();
+      return;
+    }
+
+    if (phoneNumber !== confirmPhoneNumber) {
+      setMessage("Phone numbers do not match");
+      shakeAnimation();
+      return;
+    }
+
+    // Validate it's a valid Indian mobile number
+    const firstDigit = phoneNumber.charAt(0);
+    if (!['6', '7', '8', '9'].includes(firstDigit)) {
+      setMessage("Please enter a valid Indian mobile number");
       shakeAnimation();
       return;
     }
 
     setLoading(true);
-    setOtpMessage("");
+    setMessage("");
 
     try {
-      // Get hashKey directly
-      const hashCodes = await getHash();
-      console.log("📲 hashKey:", hashCodes);
-
-      // Send OTP using hashCodes[0]
-      const response = await fetch(`${API_BASE_URL}/user/forgot-password`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          contactNumber: phoneNumber,
-          hashKey: hashCodes[0] || "",
-        }),
-      });
-
-      console.log("📤 OTP send request:", {
-        contactNumber: phoneNumber,
-        hashKey: hashCodes[0] || "",
-      });
-
-      const result = await response.text();
-      console.log("📤 OTP send result:", result);
-
-      if (response.ok) {
-        showToast("OTP sent successfully ✓");
-        setShowOtpInput(true);
-        setResendTimer(10);
-
-        if (Platform.OS === "android") {
-          setWaitingForOtp(true);
-          setShowFullScreenLoader(true);
-          initializeSmsListener(); // you can still initialize listener here
-        } else {
-          setWaitingForOtp(false);
-          setShowFullScreenLoader(false);
-        }
-
-        await AsyncStorage.setItem("pendingPhone", phoneNumber);
-      } else {
-        setOtpMessage("Failed to send OTP. Please try again.");
-        shakeAnimation();
-        showToast("Failed to send OTP");
-      }
-    } catch (err) {
-      console.error("❌ OTP send error:", err);
-      setOtpMessage("Network error. Please check your connection.");
+      // Save to AsyncStorage
+      await AsyncStorage.setItem("userPhoneNumber", phoneNumber);
+      
+      showToast("Phone number verified successfully ✓");
+      
+      // Call onVerified to maintain compatibility with your existing flow
+      onVerified();
+      resetModal();
+    } catch (error) {
+      console.error("❌ Error saving phone number:", error);
+      setMessage("Failed to verify phone number. Please try again.");
       shakeAnimation();
-      showToast("Network error while sending OTP");
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ------------------- VERIFY OTP -------------------
-  const handleVerifyOtp = async (autoOtp) => {
-    const otpVal = autoOtp || enteredOtp;
-    if (otpVal.length !== 6) {
-      setOtpMessage("Enter valid 6-digit OTP");
-      shakeAnimation();
-      return;
-    }
-
-    setLoading(true);
-    setShowFullScreenLoader(true);
-    setOtpMessage("Verifying OTP...");
-
-    try {
-      const storedPhone = await AsyncStorage.getItem("pendingPhone");
-      if (!storedPhone) {
-        showToast("No phone number stored");
-        setShowFullScreenLoader(false);
-        return;
-      }
-
-      const params = new URLSearchParams({
-        contactNumber: storedPhone,
-        otp: otpVal,
-      }).toString();
-
-      const response = await fetch(
-        `${API_BASE_URL}/user/verify-otp?${params}`,
-        {
-          method: "POST", // or "GET" depending on your API
-          headers: {
-            "Content-Type": "application/json", // optional for GET
-          },
-        }
-      );
-
-      const result = await response.json();
-      console.log("✅ Verify response:", result);
-
-      if (result.success) {
-        showToast("OTP verified successfully ✓");
-        await AsyncStorage.setItem("verifiedPhone", storedPhone);
-        stopListener && stopListener();
-        if (autoOtpTimeout) {
-          clearTimeout(autoOtpTimeout);
-        }
-        setShowFullScreenLoader(false);
-        onVerified();
-        onClose();
-      } else {
-        setOtpMessage(result.message || "Invalid OTP. Please try again.");
-        shakeAnimation();
-        setShowFullScreenLoader(false);
-      }
-    } catch (err) {
-      console.error("❌ Verification error:", err);
-      setOtpMessage("Verification failed. Please try again.");
-      shakeAnimation();
-      setShowFullScreenLoader(false);
+      showToast("Error verifying phone number");
     } finally {
       setLoading(false);
     }
@@ -365,29 +157,30 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
 
   const resetModal = () => {
     setPhoneNumber("");
-    setEnteredOtp("");
-    setOtpMessage("");
-    setResendTimer(0);
-    setShowOtpInput(false);
-    setWaitingForOtp(false);
-    setShowFullScreenLoader(false);
-    if (autoOtpTimeout) {
-      clearTimeout(autoOtpTimeout);
-    }
-    stopListener && stopListener();
+    setConfirmPhoneNumber("");
+    setMessage("");
     onClose();
   };
 
-  const handleManualOtpChange = (text) => {
-    setEnteredOtp(text);
-    if (waitingForOtp && text.length > 0) {
-      setWaitingForOtp(false);
-      setShowFullScreenLoader(false);
-      if (autoOtpTimeout) {
-        clearTimeout(autoOtpTimeout);
-      }
-      stopListener && stopListener();
-    }
+  // Handle phone number input - only numbers
+  const handlePhoneNumberChange = (text) => {
+    const numericText = text.replace(/[^0-9]/g, '');
+    setPhoneNumber(numericText);
+    setMessage(""); // Clear message when user starts typing
+  };
+
+  // Handle confirm phone number input - only numbers
+  const handleConfirmPhoneNumberChange = (text) => {
+    const numericText = text.replace(/[^0-9]/g, '');
+    setConfirmPhoneNumber(numericText);
+    setMessage(""); // Clear message when user starts typing
+  };
+
+  // Check if both fields are valid and ready for submission
+  const isFormValid = () => {
+    return phoneNumber.length === 10 && 
+           confirmPhoneNumber.length === 10 && 
+           phoneNumber === confirmPhoneNumber;
   };
 
   if (!visible) return null;
@@ -414,199 +207,82 @@ const OtpModal = ({ visible, onClose, onVerified, showToast }) => {
               {/* Header with gradient effect */}
               <View style={styles.header}>
                 <View style={styles.headerGradient} />
-                <Text style={styles.title}>
-                  {showOtpInput ? "🔐 Verify OTP" : "📱 Phone Verification"}
-                </Text>
+                <Text style={styles.title}>📱 Verify Phone Number</Text>
                 <Text style={styles.subtitle}>
-                  {showOtpInput
-                    ? "Enter the 6-digit code sent to your phone"
-                    : "We'll send you a verification code"}
+                  Enter and confirm your phone number to continue
                 </Text>
               </View>
 
               <View style={styles.content}>
-                {!showOtpInput ? (
-                  <>
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Phone Number</Text>
-                      <View style={styles.phoneInputWrapper}>
-                        <Text style={styles.countryCode}>+91</Text>
-                        <TextInput
-                          style={styles.phoneInput}
-                          placeholder="Enter 10-digit number"
-                          placeholderTextColor={COLORS.placeholder}
-                          keyboardType="phone-pad"
-                          maxLength={10}
-                          value={phoneNumber}
-                          onChangeText={setPhoneNumber}
-                        />
-                      </View>
-                    </View>
-
-                    {otpMessage !== "" && (
-                      <View style={styles.messageContainer}>
-                        <Text style={styles.errorText}>⚠️ {otpMessage}</Text>
-                      </View>
-                    )}
-
-                    <TouchableOpacity
-                      style={[
-                        styles.primaryButton,
-                        (!phoneNumber || phoneNumber.length !== 10) &&
-                          styles.buttonDisabled,
-                      ]}
-                      onPress={sendOtp}
-                      disabled={
-                        loading || !phoneNumber || phoneNumber.length !== 10
-                      }
-                      activeOpacity={0.8}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#fff" size="small" />
-                      ) : (
-                        <Text style={styles.primaryButtonText}>Send OTP</Text>
-                      )}
-                    </TouchableOpacity>
-                  </>
-                ) : (
-                  <>
-                    <View style={styles.infoBox}>
-                      <Text style={styles.infoText}>
-                        OTP sent to{" "}
-                        <Text style={styles.phoneHighlight}>
-                          +91 {phoneNumber}
-                        </Text>
-                      </Text>
-                    </View>
-
-                    {waitingForOtp && (
-                      <Animated.View
-                        style={[
-                          styles.autoDetectBanner,
-                          { transform: [{ scale: pulseAnim }] },
-                        ]}
-                      >
-                        <View style={styles.autoDetectContent}>
-                          <ActivityIndicator
-                            size="small"
-                            color={COLORS.primary}
-                          />
-                          <Text style={styles.autoDetectText}>
-                            Auto-detecting OTP (30s)
-                          </Text>
-                        </View>
-                      </Animated.View>
-                    )}
-
-                    <View style={styles.inputContainer}>
-                      <Text style={styles.inputLabel}>Enter OTP</Text>
-                      <TextInput
-                        style={[
-                          styles.otpInput,
-                          waitingForOtp && styles.otpInputDisabled,
-                        ]}
-                        placeholder="● ● ● ● ● ●"
-                        placeholderTextColor={COLORS.placeholder}
-                        keyboardType="numeric"
-                        maxLength={6}
-                        value={enteredOtp}
-                        onChangeText={handleManualOtpChange}
-                        editable={!waitingForOtp}
-                      />
-                    </View>
-
-                    {otpMessage !== "" && (
-                      <View
-                        style={[
-                          styles.messageContainer,
-                          otpMessage.includes("detected") && styles.successBox,
-                        ]}
-                      >
-                        <Text
-                          style={
-                            otpMessage.includes("detected")
-                              ? styles.successText
-                              : styles.errorText
-                          }
-                        >
-                          {otpMessage.includes("detected") ? "✓ " : "⚠️ "}
-                          {otpMessage}
-                        </Text>
-                      </View>
-                    )}
-
-                    <TouchableOpacity
-                      style={[
-                        styles.primaryButton,
-                        enteredOtp.length !== 6 && styles.buttonDisabled,
-                      ]}
-                      onPress={() => handleVerifyOtp()}
-                      disabled={loading || enteredOtp.length !== 6}
-                      activeOpacity={0.8}
-                    >
-                      {loading ? (
-                        <ActivityIndicator color="#fff" size="small" />
-                      ) : (
-                        <Text style={styles.primaryButtonText}>Verify OTP</Text>
-                      )}
-                    </TouchableOpacity>
-
-                    <View style={styles.actionsContainer}>
-                      {resendTimer > 0 ? (
-                        <View style={styles.timerContainer}>
-                          <Text style={styles.timerText}>
-                            Resend OTP in{" "}
-                            <Text style={styles.timerNumber}>
-                              {resendTimer}s
-                            </Text>
-                          </Text>
-                        </View>
-                      ) : (
-                        <TouchableOpacity
-                          onPress={sendOtp}
-                          style={styles.linkButton}
-                          activeOpacity={0.7}
-                        >
-                          <Text style={styles.linkText}>🔄 Resend OTP</Text>
-                        </TouchableOpacity>
-                      )}
-
-                      <TouchableOpacity
-                        onPress={resetModal}
-                        style={styles.linkButton}
-                        activeOpacity={0.7}
-                      >
-                        <Text style={styles.linkText}>✏️ Change Number</Text>
-                      </TouchableOpacity>
-                    </View>
-                  </>
-                )}
-              </View>
-
-              {/* Full Screen Loader */}
-              {showFullScreenLoader && (
-                <View style={styles.fullScreenLoader}>
-                  <View style={styles.loaderCard}>
-                    <ActivityIndicator size="large" color={COLORS.primary} />
-                    <Text style={styles.loaderTitle}>
-                      {waitingForOtp
-                        ? "Waiting for OTP..."
-                        : "Verifying OTP..."}
-                    </Text>
-                    {waitingForOtp && (
-                      <Text style={styles.loaderSubtext}>
-                        Auto-detection active • 30 seconds
-                      </Text>
-                    )}
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Phone Number</Text>
+                  <View style={styles.phoneInputWrapper}>
+                    <Text style={styles.countryCode}>+91</Text>
+                    <TextInput
+                      style={styles.phoneInput}
+                      placeholder="Enter 10-digit number"
+                      placeholderTextColor={COLORS.placeholder}
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                      value={phoneNumber}
+                      onChangeText={handlePhoneNumberChange}
+                    />
                   </View>
                 </View>
-              )}
+
+                <View style={styles.inputContainer}>
+                  <Text style={styles.inputLabel}>Confirm Phone Number</Text>
+                  <View style={styles.phoneInputWrapper}>
+                    <Text style={styles.countryCode}>+91</Text>
+                    <TextInput
+                      style={styles.phoneInput}
+                      placeholder="Re-enter 10-digit number"
+                      placeholderTextColor={COLORS.placeholder}
+                      keyboardType="phone-pad"
+                      maxLength={10}
+                      value={confirmPhoneNumber}
+                      onChangeText={handleConfirmPhoneNumberChange}
+                    />
+                  </View>
+                </View>
+
+                {message !== "" && (
+                  <View style={styles.messageContainer}>
+                    <Text style={styles.errorText}>⚠️ {message}</Text>
+                  </View>
+                )}
+
+                <View style={styles.validationInfo}>
+                  <Text style={styles.validationText}>
+                    • Must be 10 digits long{'\n'}
+                    • Must be a valid Indian mobile number{'\n'}
+                    • Both entries must match exactly
+                  </Text>
+                </View>
+
+                <TouchableOpacity
+                  style={[
+                    styles.primaryButton,
+                    !isFormValid() && styles.buttonDisabled,
+                  ]}
+                  onPress={handleVerifyPhone}
+                  disabled={loading || !isFormValid()}
+                  activeOpacity={0.8}
+                >
+                  {loading ? (
+                    <ActivityIndicator color="#fff" size="small" />
+                  ) : (
+                    <Text style={styles.primaryButtonText}>Verify Phone Number</Text>
+                  )}
+                </TouchableOpacity>
+              </View>
 
               {/* Close button */}
               <TouchableOpacity
                 style={styles.closeButton}
                 onPress={resetModal}
                 activeOpacity={0.7}
+                disabled={loading}
               >
                 <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
@@ -715,61 +391,6 @@ const styles = StyleSheet.create({
     paddingHorizontal: moderateScale(16),
     paddingVertical: moderateScale(16),
   },
-  otpInput: {
-    ...FONTS.body1,
-    fontSize: moderateScale(24),
-    fontWeight: "700",
-    textAlign: "center",
-    letterSpacing: moderateScale(8),
-    backgroundColor: COLORS.input,
-    borderRadius: moderateScale(12),
-    borderWidth: 2,
-    borderColor: COLORS.borderColor,
-    paddingVertical: moderateScale(18),
-    color: COLORS.text,
-  },
-  otpInputDisabled: {
-    backgroundColor: COLORS.surface,
-    opacity: 0.6,
-  },
-  infoBox: {
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: moderateScale(12),
-    padding: moderateScale(16),
-    marginBottom: moderateScale(20),
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.primary,
-  },
-  infoText: {
-    ...FONTS.font,
-    color: COLORS.text,
-    textAlign: "center",
-  },
-  phoneHighlight: {
-    ...FONTS.body1,
-    fontWeight: "700",
-    color: COLORS.primary,
-  },
-  autoDetectBanner: {
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: moderateScale(12),
-    padding: moderateScale(12),
-    marginBottom: moderateScale(16),
-    borderWidth: 1,
-    borderColor: COLORS.primary,
-    borderStyle: "dashed",
-  },
-  autoDetectContent: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  autoDetectText: {
-    ...FONTS.fontSm,
-    color: COLORS.primary,
-    marginLeft: moderateScale(8),
-    fontWeight: "600",
-  },
   messageContainer: {
     backgroundColor: COLORS.danger + "15",
     borderRadius: moderateScale(10),
@@ -778,21 +399,22 @@ const styles = StyleSheet.create({
     borderLeftWidth: 3,
     borderLeftColor: COLORS.danger,
   },
-  successBox: {
-    backgroundColor: COLORS.success + "15",
-    borderLeftColor: COLORS.success,
-  },
   errorText: {
     ...FONTS.fontSm,
     color: COLORS.danger,
     textAlign: "center",
     fontWeight: "500",
   },
-  successText: {
-    ...FONTS.fontSm,
-    color: COLORS.success,
-    textAlign: "center",
-    fontWeight: "600",
+  validationInfo: {
+    backgroundColor: COLORS.primaryLight,
+    borderRadius: moderateScale(10),
+    padding: moderateScale(16),
+    marginBottom: moderateScale(20),
+  },
+  validationText: {
+    ...FONTS.fontXs,
+    color: COLORS.text,
+    lineHeight: moderateScale(18),
   },
   primaryButton: {
     backgroundColor: COLORS.primary,
@@ -830,71 +452,6 @@ const styles = StyleSheet.create({
     fontSize: moderateScale(16),
     color: COLORS.white,
     fontWeight: "700",
-  },
-  actionsContainer: {
-    marginTop: moderateScale(24),
-    gap: moderateScale(12),
-  },
-  timerContainer: {
-    alignItems: "center",
-    padding: moderateScale(12),
-  },
-  timerText: {
-    ...FONTS.fontSm,
-    color: COLORS.textLight,
-  },
-  timerNumber: {
-    ...FONTS.body1,
-    fontWeight: "700",
-    color: COLORS.primary,
-  },
-  linkButton: {
-    padding: moderateScale(12),
-    alignItems: "center",
-  },
-  linkText: {
-    ...FONTS.font,
-    color: COLORS.primary,
-    fontWeight: "600",
-  },
-  fullScreenLoader: {
-    position: "absolute",
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
-    backgroundColor: "rgba(255, 255, 255, 0.95)",
-    justifyContent: "center",
-    alignItems: "center",
-    borderRadius: moderateScale(20),
-  },
-  loaderCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: moderateScale(16),
-    padding: moderateScale(32),
-    alignItems: "center",
-    ...Platform.select({
-      ios: {
-        shadowColor: COLORS.black,
-        shadowOffset: { width: 0, height: 4 },
-        shadowOpacity: 0.1,
-        shadowRadius: 12,
-      },
-      android: {
-        elevation: 8,
-      },
-    }),
-  },
-  loaderTitle: {
-    ...FONTS.h6,
-    color: COLORS.title,
-    marginTop: moderateScale(16),
-    marginBottom: moderateScale(8),
-  },
-  loaderSubtext: {
-    ...FONTS.fontSm,
-    color: COLORS.textLight,
-    textAlign: "center",
   },
   closeButton: {
     position: "absolute",

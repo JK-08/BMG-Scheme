@@ -66,7 +66,7 @@ const CustomPicker = ({
         <View
           style={[styles.modalOverlay, { backgroundColor: COLORS.overlay }]}
         >
-          <View style={[styles.modalContent, { backgroundColor: COLORS.textLight1 }]}>
+          <View style={[styles.modalContent, { backgroundColor: COLORS.white }]}>
             <View
               style={[
                 styles.modalHeader,
