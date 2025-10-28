@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BMG-Scheme",
-    "slug": "bmg-scheme-final",
+    "slug": "bmg-scheme-demo-build",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -29,9 +29,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "995468b7-cb87-47c0-9f20-5a131a603ea2"
+        "projectId": "199d4c90-c29e-4dd9-be29-f6a9194cc1f8"
       }
     },
-    "owner": "brightechsoftware"
+    "owner": "kiruba08"
   }
 }
