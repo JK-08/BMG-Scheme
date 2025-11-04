@@ -1,21 +1,21 @@
 {
   "project_info": {
-    "project_number": "419933275851",
-    "project_id": "bmg-scheme-2025",
-    "storage_bucket": "bmg-scheme-2025.firebasestorage.app"
+    "project_number": "236619852139",
+    "project_id": "bmg-scheme-new",
+    "storage_bucket": "bmg-scheme-new.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:419933275851:android:513dc60f78608756903d4e",
+        "mobilesdk_app_id": "1:236619852139:android:6a75761cde001c4fb3442e",
         "android_client_info": {
-          "package_name": "com.brightechsoftware.bmgschemefinal"
+          "package_name": "com.bmg.bmgscheme"
         }
       },
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyBM5LK9LZ3epsHsFCgKQXIF7nvQp6CNFTg"
+          "current_key": "AIzaSyB7ZUsIYRhfOe2IyAdFGRbRuj9xdBTpHS8"
         }
       ],
       "services": {

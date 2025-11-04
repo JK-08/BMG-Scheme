@@ -2,7 +2,7 @@
   "expo": {
     "name": "BMG Digi Schemes",
     "slug": "bmg-scheme-android-and-ios",
-    "version": "1.0.9",
+    "version": "1.0.11",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,7 +16,7 @@
       "supportsTablet": true
     },
     "android": {
-      "versionCode": 10,
+      "versionCode": 12,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
@@ -30,9 +30,9 @@
     },
     "extra": {
       "eas": {
-        "projectId": "25086129-a0ad-4417-b5b4-36a34a68fc78"
+        "projectId": "52c6b975-92fe-4f6b-ab11-ca7813fc76a6"
       }
     },
-    "owner": "kiruba08"
+    "owner": "brightechsoftware"
   }
 }
