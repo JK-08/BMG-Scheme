@@ -1,8 +1,8 @@
 {
   "expo": {
-    "name": "BMG-Scheme",
-    "slug": "bmg-scheme-demo-build",
-    "version": "1.0.0",
+    "name": "BMG Digi Schemes",
+    "slug": "bmg-scheme-android-and-ios",
+    "version": "1.0.9",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -16,20 +16,21 @@
       "supportsTablet": true
     },
     "android": {
+      "versionCode": 10,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
       },
       "edgeToEdgeEnabled": true,
       "googleServicesFile": "./google-services.json",
-      "package": "com.brightechsoftware.bmgschemefinal"
+      "package": "com.bmg.bmgscheme"
     },
     "web": {
       "favicon": "./assets/icon.png"
     },
     "extra": {
       "eas": {
-        "projectId": "199d4c90-c29e-4dd9-be29-f6a9194cc1f8"
+        "projectId": "25086129-a0ad-4417-b5b4-36a34a68fc78"
       }
     },
     "owner": "kiruba08"
