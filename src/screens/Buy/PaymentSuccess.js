@@ -15,14 +15,33 @@ const PaymentSuccess = () => {
   const navigation = useNavigation();
   const [storedPaymentData, setStoredPaymentData] = useState(null);
   const [loading, setLoading] = useState(true);
+  const [isJoiningPayment, setIsJoiningPayment] = useState(true);
 
   // ✅ Extract all possible params
-  const { status, orderDetails, schemeData, paymentStatus, productData } =
-    route.params || {};
+  const { 
+    status, 
+    orderDetails, 
+    schemeData, 
+    paymentStatus, 
+    productData,
+    isInstallmentPayment, // Add this flag to distinguish payment types
+    paymentType 
+  } = route.params || {};
 
   const isSuccess = status === "SUCCESS";
 
   console.log("✅ PaymentSuccess Params:", route.params);
+
+  // ✅ Determine if this is a joining payment or installment payment
+  useEffect(() => {
+    // Check various ways to determine payment type
+    const joiningPayment = 
+      !isInstallmentPayment &&
+      paymentType !== "installment" &&
+      !route.params?.isInstallmentPayment;
+    
+    setIsJoiningPayment(joiningPayment);
+  }, [route.params, isInstallmentPayment, paymentType]);
 
   // ✅ Load stored payment data (from AsyncStorage)
   useEffect(() => {
@@ -61,24 +80,22 @@ const PaymentSuccess = () => {
   };
 
   // ✅ Navigate to payment history
-// ✅ Navigate to payment history
-const handleViewInstallments = () => {
-  if (!productData) {
-    console.warn("⚠️ No productData found to navigate!");
-    return;
-  }
+  const handleViewInstallments = () => {
+    if (!productData) {
+      console.warn("⚠️ No productData found to navigate!");
+      return;
+    }
 
-  navigation.navigate("PaymentHistory", {
-    accountDetails: productData,
-    schemeName:
-      productData?.schemeSummary?.schemeName ||
-      orderDetails?.schemeInfo?.schemeName ||
-      schemeData?.schemeName ||
-      "Unknown Scheme",
-    productdata: productData,
-  });
-};
-
+    navigation.navigate("PaymentHistory", {
+      accountDetails: productData,
+      schemeName:
+        productData?.schemeSummary?.schemeName ||
+        orderDetails?.schemeInfo?.schemeName ||
+        schemeData?.schemeName ||
+        "Unknown Scheme",
+      productdata: productData,
+    });
+  };
 
   const finalPaymentStatus = paymentStatus || storedPaymentData;
 
@@ -94,6 +111,13 @@ const handleViewInstallments = () => {
     orderDetails?.regNo ||
     orderDetails?.productData?.regNo ||
     "N/A";
+
+  // ✅ Get scheme name
+  const schemeName =
+    orderDetails?.schemeInfo?.schemeName ||
+    productData?.schemeSummary?.schemeName ||
+    schemeData?.schemeName ||
+    "SuperGold Scheme";
 
   if (loading) {
     return (
@@ -113,29 +137,38 @@ const handleViewInstallments = () => {
           resizeMode="contain"
         />
 
-        <Text style={styles.title}>Congratulations!</Text>
-
-        <Text style={styles.subtitle}>
-          You've successfully joined in{" "}
-          <Text style={{ fontWeight: "bold" }}>
-            {orderDetails?.schemeInfo?.schemeName ||
-              productData?.schemeSummary?.schemeName ||
-              "SuperGold Scheme"}
-          </Text>
-          .
+        <Text style={styles.title}>
+          {isJoiningPayment ? "Congratulations!" : "Payment Successful!"}
         </Text>
+
+        {/* ✅ Different messages for joining vs installment payments */}
+        {isJoiningPayment ? (
+          <Text style={styles.subtitle}>
+            You've successfully joined in{" "}
+            <Text style={{ fontWeight: "bold" }}>{schemeName}</Text>.
+          </Text>
+        ) : (
+          <Text style={styles.subtitle}>
+            Your installment payment for{" "}
+            <Text style={{ fontWeight: "bold" }}>{schemeName}</Text> has been processed successfully.
+          </Text>
+        )}
 
         <Text style={styles.infoText}>
           Your payment of{" "}
           <Text style={{ fontWeight: "bold" }}>
             ₹{orderDetails?.amount || productData?.amount}
           </Text>{" "}
-          has been processed successfully and your Scheme Code is{" "}        </Text>
-
-        {/* ✅ Show Group Code & Reg No */}
-        <Text style={[styles.highlightText, { marginTop: 15 }]}>
-          {groupCode} - {regNo}
+          has been processed successfully
+          {isJoiningPayment && " and your Scheme Code is"}
         </Text>
+
+        {/* ✅ Show Group Code & Reg No only for joining payments */}
+        {isJoiningPayment && (
+          <Text style={[styles.highlightText, { marginTop: 15 }]}>
+            {groupCode} - {regNo}
+          </Text>
+        )}
 
         {/* ✅ Show Transaction ID */}
         <Text style={[styles.infoText, { marginTop: 10 }]}>
@@ -151,7 +184,7 @@ const handleViewInstallments = () => {
             onPress={handleViewInstallments}
           >
             <Text style={[styles.buttonText, { color: "#C29E59" }]}>
-              View Installments
+              {isJoiningPayment ? "View Installments" : "Payment History"}
             </Text>
           </TouchableOpacity>
 
@@ -204,11 +237,13 @@ const styles = StyleSheet.create({
     color: "#333",
     textAlign: "center",
     marginBottom: 15,
+    lineHeight: 22,
   },
   infoText: {
     fontSize: 14,
     color: "#555",
     textAlign: "center",
+    lineHeight: 20,
   },
   highlightText: {
     fontSize: 15,

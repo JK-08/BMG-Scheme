@@ -16,15 +16,17 @@ import GoldPlan from "../../ui/ProductCard/GoldPlans";
 import ProductCard from "../../ui/ProductCard/ProductCard";
 import { SafeAreaView } from "react-native-safe-area-context";
 import styles from "./styles";
-import { colors1 } from "../../utils/colors";
+import appTheme from "../../utils/MainTheme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ProductCardSkeleton from "../../components/SkeletonLoader/ProductCardSkeleton";
 import GoldPlansSkeleton from "../../components/SkeletonLoader/GoldPlansSkeleton";
 import MainPageWithYouTube from "../Youtube/Youtube";
 import MainHeader from "../../components/MainHeader/MainHeader";
-import OtpModal from "../../components/VerifyPhone/VerifyPhone"; // ✅ your otp modal
 import { getPhoneDetails } from "../../services/SchemeDetailsService";
+import { getUserData } from "../../utils/AsynchStorageHelper";
+import { getAllSchemes } from "../../services/SchemeNameService";
 
+const { COLORS, SIZES, FONTS } = appTheme;
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const showToast = (message) => {
@@ -44,7 +46,7 @@ const SwipeableCards = React.memo(
     renderItem,
     renderSkeleton,
     emptyMessage,
-    cardWidth = SCREEN_WIDTH * 0.9,
+    cardWidth = SCREEN_WIDTH,
   }) => {
     const [currentIndex, setCurrentIndex] = useState(0);
 
@@ -54,20 +56,36 @@ const SwipeableCards = React.memo(
       setCurrentIndex(index);
     };
 
+    // Show skeleton when loading
     if (loading) {
+      // Create dummy data for skeleton (3 items)
+      const skeletonData = Array.from({ length: 3 }, (_, index) => ({
+        id: index,
+      }));
+
       return (
         <View style={styles.swipeableContainer}>
           <FlatList
-            data={Array(3).fill()}
+            data={skeletonData}
             horizontal
             pagingEnabled
             showsHorizontalScrollIndicator={false}
-            renderItem={({ index }) => (
+            onMomentumScrollEnd={onMomentumScrollEnd}
+            renderItem={({ item, index }) => (
               <View style={[styles.cardWrapper, { width: cardWidth }]}>
-                {renderSkeleton(index)}
+                {renderSkeleton ? (
+                  renderSkeleton(index)
+                ) : (
+                  <View style={styles.skeletonPlaceholder}>
+                    <Text>Loading...</Text>
+                  </View>
+                )}
               </View>
             )}
-            keyExtractor={(_, index) => index.toString()}
+            keyExtractor={(item) => item.id.toString()}
+            decelerationRate="fast"
+            snapToInterval={cardWidth}
+            snapToAlignment="center"
           />
         </View>
       );
@@ -76,12 +94,9 @@ const SwipeableCards = React.memo(
     if (error || !data || data.length === 0) {
       return (
         <View style={styles.emptyStateContainer}>
-          <TextDefault
-            textColor={colors1.error}
-            style={{ textAlign: "center", marginTop: 20 }}
-          >
+          <Text style={styles.emptyStateText}>
             {error || emptyMessage || "No data available"}
-          </TextDefault>
+          </Text>
         </View>
       );
     }
@@ -121,8 +136,8 @@ const SwipeableCards = React.memo(
                   {
                     backgroundColor:
                       index === currentIndex
-                        ? colors1.primary
-                        : colors1.lightGray,
+                        ? COLORS.secondary
+                        : COLORS.borderLight,
                   },
                 ]}
               />
@@ -137,13 +152,9 @@ const SwipeableCards = React.memo(
 // ------------------- SECTION HEADER COMPONENT -------------------
 const SectionHeader = React.memo(({ title, onViewAll }) => (
   <View style={styles.sectionHeaderContainer}>
-    <TextDefault textColor={colors1.primaryText} style={styles.titletext}>
-      {title}
-    </TextDefault>
+    <Text style={styles.titleText}>{title}</Text>
     <TouchableOpacity onPress={onViewAll}>
-      <TextDefault textColor={colors1.primary} H5 style={styles.viewAllText}>
-        View All
-      </TextDefault>
+      <Text style={styles.viewAllText}>View All</Text>
     </TouchableOpacity>
   </View>
 ));
@@ -158,21 +169,25 @@ function MainLanding() {
   const [schemesLoading, setSchemesLoading] = useState(true);
   const [schemesError, setSchemesError] = useState(null);
   const [productError, setProductError] = useState(null);
-  const [showOtpModal, setShowOtpModal] = useState(false);
 
   // ------------------- FETCH SCHEMES -------------------
+  /* -----------------------------------------
+                FETCH SAVING SCHEMES
+  ------------------------------------------ */
   const fetchSchemes = useCallback(async () => {
+    setSchemesLoading(true);
+    setSchemesError(null);
+
     try {
-      setSchemesLoading(true);
-      const schemesData = [
-        { schemeId: "1", schemeName: "BMG AMOUNT SCHEME", description: "BAS" },
-        { schemeId: "2", schemeName: "BMG DIGI SILVER", description: "BDS" },
-        { schemeId: "3", schemeName: "BMG FIXED DEPOSIT", description: "BFD" },
-      ];
-      setSchemes(schemesData);
-    } catch (error) {
-      console.error("Error fetching schemes:", error);
-      setSchemesError("Failed to fetch Gold Plans");
+      const result = await getAllSchemes();
+
+      if (!result?.length) {
+        return setSchemesError("No saving schemes found");
+      }
+
+      setSchemes(result);
+    } catch {
+      setSchemesError("Failed to load saving schemes");
     } finally {
       setSchemesLoading(false);
     }
@@ -182,17 +197,29 @@ function MainLanding() {
   const fetchProductData = useCallback(async () => {
     setProductLoading(true);
     setProductError(null);
+
     try {
-      const storedPhone = await AsyncStorage.getItem("userPhoneNumber");
+      // ✅ Get full user data (instead of individual key)
+      const user = await getUserData();
+
+      if (!user) {
+        console.log("❌ No user data found in storage");
+        setProductError("Please complete your registration to view schemes");
+        setProductData([]);
+        return;
+      }
+
+      const storedPhone = user.contactNumber || user.phoneNumber;
       if (!storedPhone) {
-        console.log("❌ Phone not verified. Showing OTP modal.");
-        setShowOtpModal(true);
-        setProductLoading(false);
+        console.log("❌ Phone number missing in stored user data");
+        setProductError("Please complete your registration to view schemes");
+        setProductData([]);
         return;
       }
 
       console.log("📱 Fetching products for phone:", storedPhone);
       const accounts = await getPhoneDetails(storedPhone);
+
       if (!accounts || accounts.length === 0) {
         setProductError("No Schemes available for this account");
         setProductData([]);
@@ -209,34 +236,25 @@ function MainLanding() {
 
       setProductData(processed);
     } catch (err) {
-      console.error("Error fetching product data:", err);
+      console.error("❌ Error fetching product data:", err);
       setProductError("Failed to fetch schemes data");
     } finally {
       setProductLoading(false);
     }
   }, []);
 
-  // ------------------- OTP VERIFIED CALLBACK -------------------
-  const handleOtpVerified = useCallback(() => {
-    setShowOtpModal(false);
-    showToast("Phone number verified");
-    fetchProductData();
-  }, [fetchProductData]);
-
   // ------------------- INITIAL LOAD -------------------
   useEffect(() => {
     fetchSchemes();
-    (async () => {
-      const storedPhone = await AsyncStorage.getItem("userPhoneNumber");
-      if (storedPhone) {
-        console.log("✅ Verified phone found:", storedPhone);
-        fetchProductData();
-      } else {
-        console.log("🔒 No verified phone found, showing OTP modal...");
-        setShowOtpModal(true);
-      }
-    })();
+    fetchProductData();
   }, [fetchSchemes, fetchProductData]);
+
+  // Refresh data when screen comes into focus
+  useFocusEffect(
+    useCallback(() => {
+      fetchProductData();
+    }, [fetchProductData])
+  );
 
   const handlePayNow = useCallback(
     (item) => {
@@ -259,13 +277,6 @@ function MainLanding() {
       <>
         <MainHeader />
         <Slider />
-
-        <View style={styles.contentWrapper}>
-          <Text style={styles.contentText}>Welcome to BMG Jewellers</Text>
-          <Text style={styles.contentText1}>
-            Join a savings scheme and save to buy your dream jewels!
-          </Text>
-        </View>
 
         {/* Your Schemes */}
         <View style={styles.titleSpacer}>
@@ -301,34 +312,31 @@ function MainLanding() {
 
         <View style={[styles.titleSpacer, { flex: 1 }]}>
           <SectionHeader
-            title="Scheme Plans"
+            title="Saving Schemes"
             onViewAll={() => navigation.navigate("GoldPlanScreen")}
           />
           <SwipeableCards
             data={schemes}
             loading={schemesLoading}
             error={schemesError}
+            emptyMessage="No saving schemes available"
             renderItem={(scheme) => (
               <GoldPlan
-                schemeId={scheme.schemeId}
+                key={scheme.SchemeId}
+                schemeId={scheme.SchemeId}
                 schemeName={scheme.schemeName}
-                description={scheme.description}
+                description={scheme.description || ""}
                 styles={styles.itemCardContainer}
               />
             )}
             renderSkeleton={(index) => <GoldPlansSkeleton key={index} />}
-            cardWidth={SCREEN_WIDTH * 0.75}
+            cardWidth={SCREEN_WIDTH * 0.9}
           />
         </View>
 
         <View style={styles.youtubeContainer}>
           <View style={styles.youtubeWrapper}>
-            <TextDefault
-              textColor={colors1.primaryText}
-              style={styles.titletext}
-            >
-              Promotions & Offers
-            </TextDefault>
+            <Text style={styles.titleText}>Promotions & Offers</Text>
           </View>
           <MainPageWithYouTube />
         </View>
@@ -355,19 +363,11 @@ function MainLanding() {
       >
         <SafeAreaView style={styles.safeArea}>
           <FlatList
-            contentContainerStyle={{ paddingBottom: 20 }}
+            contentContainerStyle={styles.scrollContainer}
             showsVerticalScrollIndicator={false}
             ListHeaderComponent={renderHeaderContent}
             data={[]}
             renderItem={null}
-          />
-
-          {/* ✅ OTP Modal */}
-          <OtpModal
-            visible={showOtpModal}
-            onClose={() => setShowOtpModal(false)}
-            onVerified={handleOtpVerified}
-            showToast={showToast}
           />
         </SafeAreaView>
       </ImageBackground>

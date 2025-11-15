@@ -1,8 +1,8 @@
-import React, { useEffect, useState } from 'react';
-import { NavigationContainer } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { createStackNavigator } from '@react-navigation/stack';
-import * as Screen from '../screens';
+import React, { useEffect, useState } from "react";
+import { NavigationContainer } from "@react-navigation/native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { createStackNavigator } from "@react-navigation/stack";
+import * as Screen from "../screens";
 
 const MainStack = createStackNavigator();
 const NavigationStack = createStackNavigator();
@@ -18,22 +18,20 @@ function Drawer() {
       <NavigationStack.Screen name="HelpCenter" component={Screen.HelpCenterPage} />
       <NavigationStack.Screen name="PrivacyPolicy" component={Screen.PrivacyPolicyPage} />
       <NavigationStack.Screen name="TermsandCondition" component={Screen.TermsConditionsPage} />
-      <NavigationStack.Screen name="AddNewMember" component={Screen.AddNewMember}/>
-      <NavigationStack.Screen name='GoldPlanScreen' component={Screen.GoldPlanScreen}/>
-      <NavigationStack.Screen name='OTP' component={Screen.OTP}/>
-      <NavigationStack.Screen name='KnowMore' component={Screen.KnowMore}/>
-      <NavigationStack.Screen name='Buy' component={Screen.Buy}/>
-      <NavigationStack.Screen name='EditingProfile' component={Screen.EditingProfile}/>
-      <NavigationStack.Screen name='PaymentHistory' component={Screen.PaymentHistory}/>
-      <NavigationStack.Screen name='MainPageWithYouTube' component={Screen.MainPageWithYouTube}/>
-      <NavigationStack.Screen name='ProfileSidebar' component={Screen.ProfileSidebar}/>
-      <NavigationStack.Screen name='AboutPage' component={Screen.AboutPage}/>
-      <NavigationStack.Screen name='PaymentDetailScreen' component={Screen.PaymentDetailScreen}/>
-      <NavigationStack.Screen name='PaymentGateway' component={Screen.PaymentGateway}/>
-      <NavigationStack.Screen name='PaymentWebView' component={Screen.PaymentWebView}/>
-      <NavigationStack.Screen name='PaymentSuccess' component={Screen.PaymentSuccess}/>
-      
-      {/* Removed RegisterPage and LoginPage from here */}
+      <NavigationStack.Screen name="AddNewMember" component={Screen.AddNewMember} />
+      <NavigationStack.Screen name="GoldPlanScreen" component={Screen.GoldPlanScreen} />
+      <NavigationStack.Screen name="KnowMore" component={Screen.KnowMore} />
+      <NavigationStack.Screen name="Buy" component={Screen.Buy} />
+      <NavigationStack.Screen name="EditingProfile" component={Screen.EditingProfile} />
+      <NavigationStack.Screen name="PaymentHistory" component={Screen.PaymentHistory} />
+      <NavigationStack.Screen name="MainPageWithYouTube" component={Screen.MainPageWithYouTube} />
+      <NavigationStack.Screen name="ProfileSidebar" component={Screen.ProfileSidebar} />
+      <NavigationStack.Screen name="AboutPage" component={Screen.AboutPage} />
+      <NavigationStack.Screen name="PaymentDetailScreen" component={Screen.PaymentDetailScreen} />
+      <NavigationStack.Screen name="PaymentGateway" component={Screen.PaymentGateway} />
+      <NavigationStack.Screen name="PaymentWebView" component={Screen.PaymentWebView} />
+      <NavigationStack.Screen name="PaymentSuccess" component={Screen.PaymentSuccess} />
+      <NavigationStack.Screen name="FAQPage" component={Screen.FAQPage} />
     </NavigationStack.Navigator>
   );
 }
@@ -41,42 +39,67 @@ function Drawer() {
 function AppContainer() {
   const [initialRoute, setInitialRoute] = useState(null);
 
-  useEffect(() => {
-    const checkUserState = async () => {
-      // AsyncStorage.clear();
-      try {
-        const isMpinCreated = await AsyncStorage.getItem('isMpinCreated');
-        if (isMpinCreated === 'true') {
-          setInitialRoute('VerifyMpinScreen'); 
-        } else {
-          setInitialRoute('LoginPage'); // Changed from 'OTP' to 'LoginPage'
-        }
-      } catch (error) {
-        console.error('Error checking user state:', error);
-        setInitialRoute('LoginPage'); // Changed from 'OTP' to 'LoginPage'
-      }
-    };
+useEffect(() => {
+  const checkUserState = async () => {
+    try {
+      const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
+      const isMpinCreated = await AsyncStorage.getItem("isMpinCreated");
+      const userPhoneNumber = await AsyncStorage.getItem("userPhoneNumber");
 
-    checkUserState();
-  }, []);
+      console.log("🟩 Storage Values:", {
+        hasSeenOnboarding,
+        isMpinCreated,
+        userPhoneNumber,
+      });
+
+      if (!hasSeenOnboarding) {
+        // First-time open → Onboarding
+        setInitialRoute("OnboardingScreen");
+      } else if (userPhoneNumber) {
+        // Phone number exists → go to MPIN
+        if (isMpinCreated === "true") {
+          setInitialRoute("VerifyMpinScreen");
+        } else {
+          setInitialRoute("MpinScreen");
+        }
+      } else {
+        // No phone number → show login
+        setInitialRoute("LoginPage");
+      }
+    } catch (error) {
+      console.error("❌ Error checking user state:", error);
+      setInitialRoute("LoginPage");
+    }
+  };
+
+  checkUserState();
+}, []);
+
 
   if (!initialRoute) {
-    return null; 
+    // Add splash or loader here if you want
+    return null;
   }
 
   return (
     <NavigationContainer>
-      <MainStack.Navigator screenOptions={{ headerShown: false }} initialRouteName={initialRoute}>
-        {/* Auth Screens in MainStack */}
+      <MainStack.Navigator
+        screenOptions={{ headerShown: false }}
+        initialRouteName={initialRoute}
+      >
+        {/* Onboarding & Auth Screens */}
+        <MainStack.Screen name="OnboardingScreen" component={Screen.OnboardingScreen} />
         <MainStack.Screen name="LoginPage" component={Screen.LoginPage} />
         <MainStack.Screen name="RegisterPage" component={Screen.RegisterPage} />
         <MainStack.Screen name="OTP" component={Screen.OTP} />
-        <MainStack.Screen name="MainLanding" component={Screen.MainLanding} />
-        
+
         {/* MPIN Screens */}
         <MainStack.Screen name="MpinScreen" component={Screen.MpinScreen} />
         <MainStack.Screen name="VerifyMpinScreen" component={Screen.VerifyMpinScreen} />
-        
+        <MainStack.Screen name="ForgotMpin" component={Screen.ResetMpinScreen} />
+        <MainStack.Screen name="EnterNumber" component={Screen.EnterNumberScreen} />
+        <MainStack.Screen name="VerifyOtp" component={Screen.VerifyOtpScreen} />
+
         {/* Main App */}
         <MainStack.Screen name="Drawer" component={Drawer} />
       </MainStack.Navigator>

@@ -3,20 +3,20 @@ import {
   View,
   Text,
   ScrollView,
-  TouchableOpacity,
   ImageBackground,
+  StyleSheet,
 } from "react-native";
 import BottomTab from "../../components/BottomTab/BottomTab";
-import { colors } from "../../utils";
 import GoldPlan from "../../ui/ProductCard/GoldPlans";
-import { StyleSheet } from "react-native";
 import GoldPlansSkeleton from "../../components/SkeletonLoader/GoldPlansSkeleton";
-import { MaterialIcons } from "@expo/vector-icons";
 import { SafeAreaView } from "react-native-safe-area-context";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
-import { API_BASE_URL_OLD } from "../../Config/API";
+import { getAllSchemes } from "../../services/SchemeNameService";
+import appTheme from "../../utils/MainTheme";
 
-function GoldPlanScreen({ navigation }) {
+const { COLORS, moderateScale } = appTheme;
+
+function GoldPlanScreen() {
   const [schemes, setSchemes] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -24,19 +24,17 @@ function GoldPlanScreen({ navigation }) {
     const fetchSchemes = async () => {
       try {
         setLoading(true);
-        const response = await fetch(
-          `${API_BASE_URL_OLD}/member/scheme`
-        );
-        const data = await response.json();
+        const data = await getAllSchemes();
+
         const formattedSchemes = data.map((s) => ({
-          schemeId: s.SchemeId,
-          schemeName: s.schemeName,
-          description: s.SchemeSName,
+          schemeId: s.SchemeId ?? 0,
+          schemeName: s.schemeName || s.SchemeName || "Unnamed Scheme",
+          description: s.SchemeSName || s.schemeSName || "No description",
         }));
+
         setSchemes(formattedSchemes);
-        console.log("Scheme",formattedSchemes)
       } catch (error) {
-        console.error("Error fetching schemes:", error);
+        console.error("Failed to load schemes:", error);
       } finally {
         setLoading(false);
       }
@@ -55,13 +53,13 @@ function GoldPlanScreen({ navigation }) {
       );
     }
 
-    if (!schemes || schemes.length === 0) {
+    if (!schemes.length) {
       return <Text style={styles.noDataText}>No Gold Plans available.</Text>;
     }
 
-    return schemes.map((scheme, index) => (
+    return schemes.map((scheme) => (
       <GoldPlan
-        key={index}
+        key={scheme.schemeId}
         schemeId={scheme.schemeId}
         schemeName={scheme.schemeName}
         description={scheme.description}
@@ -78,10 +76,8 @@ function GoldPlanScreen({ navigation }) {
         imageStyle={styles.backgroundImageStyle}
       >
         <SafeAreaView style={styles.safeArea}>
-          {/* Reusable Header */}
-          <CommonHeader title="Scheme Plans" />
+          <CommonHeader title="Saving Schemes" />
 
-          {/* Content */}
           <ScrollView
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
@@ -89,7 +85,6 @@ function GoldPlanScreen({ navigation }) {
             {renderContent()}
           </ScrollView>
 
-          {/* Bottom Navigation */}
           <BottomTab screen="GOLDPLANS" />
         </SafeAreaView>
       </ImageBackground>
@@ -98,51 +93,13 @@ function GoldPlanScreen({ navigation }) {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: colors.white,
-  },
-  mainBackground: {
-    flex: 1,
-    width: "100%",
-    height: "100%",
-  },
-  backgroundImageStyle: {
-    opacity: 0.9,
-  },
-  safeArea: {
-    flex: 1,
-  },
-  backButton: {
-    position: "absolute",
-    top: 10,
-    left: 15,
-    zIndex: 1,
-    padding: 10,
-  },
-  titleContainer: {
-    alignItems: "center",
-    marginTop: 60,
-    marginBottom: 20,
-  },
-  titleText: {
-    fontSize: 20,
-    fontWeight: "bold",
-    color: colors.titleText,
-  },
-  scrollContent: {
-    flexGrow: 1,
-    paddingHorizontal: 15,
-    paddingBottom: 20,
-  },
-  itemCardContainer: {
-    marginBottom: 15,
-  },
-  noDataText: {
-    color: colors.redColor,
-    textAlign: "center",
-    padding: 20,
-  },
+  container: { flex: 1 },
+  mainBackground: { flex: 1, width: "100%", height: "100%" },
+  backgroundImageStyle: { opacity: 0.9 },
+  safeArea: { flex: 1 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 15, paddingBottom: 20 },
+  itemCardContainer: { marginBottom: 15 },
+  noDataText: { color: COLORS.danger, textAlign: "center", padding: 20 },
 });
 
 export default GoldPlanScreen;

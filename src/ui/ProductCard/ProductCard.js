@@ -1,416 +1,372 @@
-import React from 'react';
+import React, { useMemo, useCallback } from "react";
 import {
   View,
   TouchableOpacity,
   StyleSheet,
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import { TextDefault } from '../../components';
-import { COLORS, SIZES, FONTS, moderateScale } from '../../utils/Theme';
-import MaterialIcons from 'react-native-vector-icons/MaterialIcons';
+  Dimensions,
+  ImageBackground,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import MaterialIcons from "react-native-vector-icons/MaterialIcons";
+import { TextDefault } from "../../components";
+import appTheme from "../../utils/MainTheme";
 
-function ProductCard({ productData, navigation }) {
-  // If productData is an array, take the first item (for single card display)
-  // If it's a single object, use it directly
-  const item = Array.isArray(productData) ? productData[0] : productData;
+const { COLORS, SIZES, FONTS, moderateScale } = appTheme;
 
-  if (!item) {
-    return (
-      <View style={styles.emptyContainer}>
-        <MaterialIcons name="inbox" size={40} color={COLORS.gray} />
-        <TextDefault style={styles.emptyText}>No product data</TextDefault>
-      </View>
-    );
-  }
+const SCREEN_WIDTH = Dimensions.get("window").width;
+const CARD_WIDTH = SCREEN_WIDTH * 0.96;
+const CARD_HEIGHT = CARD_WIDTH / 1.6;
 
-  const { pname, regNo, groupCode, maturityDate, schemeSummary, personalInfo, status } = item;
-  const isActive = status === 'Active';
-
-  // Determine scheme type and whether to show weight or amount
-  const schemeSName = schemeSummary?.schemeSName;
-  const isWeightLedger = schemeSummary?.weightLedger === 'Y';
-  
-  // Scheme type checks
-  const isBMGAmountScheme = schemeSName === 'BAS';
-  const isBMGDigiSilver = schemeSName === 'BDS';
-  const isBMGFixedDeposit = schemeSName === 'BFD';
-
-  // Calculate installment values
-  const paidInstallments = parseInt(schemeSummary?.schemaSummaryTransBalance?.insPaid) || 0;
-  const totalInstallments = parseInt(schemeSummary?.instalment) || 0;
-  const isInstallmentCompleted = paidInstallments >= totalInstallments;
-
-  // Determine what to display based on weightLedger flag
-  let statValue1, statLabel1;
-  
-  if (isWeightLedger) {
-    // Show weight for silver schemes
-    statValue1 = `${schemeSummary?.totalWeight || 0}g`;
-    statLabel1 = 'Total Silver';
-  } else if (isBMGAmountScheme) {
-    // Show installments for amount schemes
-    statValue1 = `${paidInstallments}/${totalInstallments}`;
-    statLabel1 = 'Installments';
-  } else {
-    // Show amount received for other schemes
-    statValue1 = `₹${parseFloat(schemeSummary?.schemaSummaryTransBalance?.amtrecd || 0).toLocaleString('en-IN')}`;
-    statLabel1 = 'Amount Saved';
-  }
-
-  const totalAmount = `₹${parseFloat(schemeSummary?.schemaSummaryTransBalance?.amtrecd || 0).toLocaleString('en-IN')}`;
-
-  const formatDate = (dateString) => {
-    if (!dateString) return 'N/A';
-    const date = new Date(dateString);
-    return date.toLocaleDateString('en-GB', {
-      day: '2-digit',
-      month: 'short',
-      year: 'numeric',
-    });
-  };
-
-  const handleViewDetails = () => {
-    navigation.navigate('ProductDescription', {
-      productData: item,
-      status: item.status,
-      accountDetails: {
-        schemeSummary: item.schemeSummary,
-        personalInfo: item.personalInfo
-      },
-    });
-  };
-
-  const handlePayNow = () => {
-    const isDigiSilverPlan = isBMGDigiSilver;
-
-    console.log('Navigating to Buy with data:', {
-      productData: item,
-      status: item.status,
-      accountDetails: {
-        schemeSummary: item.schemeSummary,
-        personalInfo: item.personalInfo
-      },
-      isDigiSilverPlan,
-    });
-
-    navigation.navigate('Buy', {
-      productData: item,
-      status: item.status,
-      accountDetails: {
-        schemeSummary: item.schemeSummary,
-        personalInfo: item.personalInfo
-      },
-      isDigiSilverPlan,
-    });
-  };
-
-  // Determine if Pay Now button should be shown
-  // Hide Pay Now for: inactive cards, fixed deposits, or completed installments
-  const shouldShowPayNow = isActive && 
-                          !isBMGFixedDeposit && 
-                          !(isBMGAmountScheme && isInstallmentCompleted);
+/* ------------------ Small Reusable Stat Component ------------------ */
+const StatBox = React.memo(({ label, value, isActive }) => {
+  const textColor = isActive ? COLORS.textInverse : COLORS.textTertiary;
 
   return (
+    <View style={styles.statBox}>
+      <TextDefault style={[styles.statLabel, { color: textColor }]}>
+        {label}
+      </TextDefault>
+      <TextDefault style={[styles.statValue, { color: textColor }]}>
+        {value}
+      </TextDefault>
+    </View>
+  );
+});
+
+/* ------------------ Date Formatter ------------------ */
+const formatDate = (dateString) => {
+  if (!dateString) return "N/A";
+  try {
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-GB", {
+      day: "2-digit",
+      month: "short",
+      year: "numeric",
+    });
+  } catch {
+    return "N/A";
+  }
+};
+
+/* ------------------ Empty State ------------------ */
+const EmptyProductCard = React.memo(() => (
+  <View
+    style={[styles.emptyContainer, { width: CARD_WIDTH, height: CARD_HEIGHT }]}
+  >
+    <MaterialIcons
+      name="inbox"
+      size={moderateScale(32)}
+      color={COLORS.textTertiary}
+    />
+    <TextDefault style={styles.emptyText}>No product data</TextDefault>
+  </View>
+));
+
+/* ------------------ Main Component ------------------ */
+function ProductCard({ productData, navigation }) {
+  const item = Array.isArray(productData) ? productData[0] : productData;
+  if (!item) return <EmptyProductCard />;
+
+  const { pname, regNo, groupCode, maturityDate, schemeSummary, status } = item;
+
+  /* ------------------ Dynamic Scheme Logic ------------------ */
+  const {
+    isActive,
+    isWeightScheme,
+    isAmountScheme,
+    isFixedDeposit,
+    isInstallmentCompleted,
+    statValue1,
+    statLabel1,
+    totalAmount,
+    formattedMaturityDate,
+    bonusEarned,
+  } = useMemo(() => {
+    const summary = schemeSummary || {};
+    const trans = summary.schemaSummaryTransBalance || {};
+
+    const isActive = status === "Active";
+
+    // Backend flags
+    const weightFlag =
+      summary.WeightLedger === "Y" || summary.weightLedger === "Y";
+    const fixedInsFlag = summary.FixedIns === "Y" || summary.fixedIns === "Y";
+
+    // Meaningful names (no BMG)
+    const isWeightScheme = weightFlag; // (Y, N)
+    const isAmountScheme = !weightFlag && fixedInsFlag; // (N, Y)
+    const isFixedDeposit = !weightFlag && !fixedInsFlag; // (N, N)
+
+    // Installments
+    const paid = parseInt(trans.insPaid) || 0;
+    const total = parseInt(summary.Instalment || summary.instalment) || 0;
+    const isInstallmentCompleted = paid >= total;
+
+    // Bonus
+    const bonusEarned = item.bonusAmount
+      ? `₹ ${parseFloat(item.bonusAmount).toLocaleString("en-IN", {
+          maximumFractionDigits: 2,
+        })}`
+      : "₹ 0";
+
+    // STAT BOX 1
+    let statLabel1 = "";
+    let statValue1 = "";
+
+    if (isWeightScheme) {
+      statLabel1 = "Weight Saved";
+      statValue1 = `${summary.totalWeight || 0}g`;
+    } else if (isAmountScheme) {
+      statLabel1 = "Installments";
+      statValue1 = `${paid}/${total}`;
+    } else {
+      statLabel1 = "Amount Saved";
+      statValue1 = `₹${parseFloat(trans.amtrecd || 0).toLocaleString("en-IN")}`;
+    }
+
+    const totalAmount = `₹${parseFloat(trans.amtrecd || 0).toLocaleString(
+      "en-IN"
+    )}`;
+
+    return {
+      isActive,
+      isWeightScheme,
+      isAmountScheme,
+      isFixedDeposit,
+      isInstallmentCompleted,
+      statValue1,
+      statLabel1,
+      totalAmount,
+      formattedMaturityDate: formatDate(maturityDate),
+      bonusEarned,
+    };
+  }, [schemeSummary, status, maturityDate, item]);
+
+  /* ------------------ Navigation ------------------ */
+  const handleViewDetails = useCallback(() => {
+    navigation.navigate("ProductDescription", { productData: item });
+  }, [navigation, item]);
+
+  const handlePayNow = useCallback(() => {
+    navigation.navigate("Buy", { productData: item });
+  }, [navigation, item]);
+
+  /* ------------------ Pay Now Button Visibility ------------------ */
+  const shouldShowPayNow = useMemo(
+    () =>
+      isActive &&
+      !isFixedDeposit &&
+      !(isAmountScheme && isInstallmentCompleted),
+    [isActive, isFixedDeposit, isAmountScheme, isInstallmentCompleted]
+  );
+
+  /* ------------------ Gradient ------------------ */
+  const gradientColors = isActive
+    ? COLORS.gradient.brand1
+    : [COLORS.textDisabled, COLORS.textTertiary];
+
+  /* ------------------ UI ------------------ */
+  return (
     <TouchableOpacity
-      activeOpacity={0.8}
+      activeOpacity={0.9}
       onPress={handleViewDetails}
       style={[styles.cardContainer, !isActive && styles.inactiveCard]}
     >
-      <LinearGradient
-        colors={isActive ? COLORS.gradientPrimary : ['#bdc3c7', '#95a5a6']}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 1, y: 1 }}
-        style={styles.gradientBackground}
-      >
-        {/* Header Section */}
-        <View style={styles.headerSection}>
+      <LinearGradient colors={gradientColors} style={styles.gradientBackground}>
+        {/* -------- Header -------- */}
+        <View style={styles.headerRow}>
           <View style={styles.headerLeft}>
-            <View style={styles.iconBadge}>
-              <MaterialIcons 
-                name="account-balance" 
-                size={16} 
-                color={isActive ? COLORS.primary : COLORS.gray} 
+            <View style={styles.headerText}>
+              <TextDefault style={styles.schemeCode}>
+                {groupCode} - {regNo}
+              </TextDefault>
+              <TextDefault style={styles.schemeName}>
+                {pname || "Customer"}
+              </TextDefault>
+            </View>
+          </View>
+
+          <View style={styles.headerRight}>
+            <TextDefault style={styles.schemeTitle}>
+              {schemeSummary?.schemeName || pname}
+            </TextDefault>
+            <View style={styles.statusContainer}>
+              <TextDefault style={styles.statusLabel}>Status: </TextDefault>
+              <TextDefault style={styles.statusValue}>{status}</TextDefault>
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: isActive ? COLORS.success : COLORS.error },
+                ]}
               />
             </View>
-            <View style={styles.headerInfo}>
-              <TextDefault style={styles.schemeCode}>
-                {pname}
-              </TextDefault>
-              <TextDefault style={styles.schemeName} numberOfLines={1}>
-                {schemeSummary?.schemeName || pname}
-              </TextDefault>
-            </View>
           </View>
-          
-          {status && (
-            <View style={styles.statusContainer}>
-              <View style={[
-                styles.statusBadge,
-                { backgroundColor: isActive ? COLORS.success : COLORS.danger }
-              ]}>
-                
-              <TextDefault style={styles.statusText}>{status}</TextDefault>
-              
-            </View>
-            <View style={styles.nameContainer}>
-              <TextDefault style={styles.statusText1}>{groupCode} - {regNo}</TextDefault>
-            </View>
-            </View>
-          )}
         </View>
 
-        {/* Stats Grid */}
+        {/* -------- Stats Section -------- */}
         <View style={styles.statsContainer}>
-          <View style={styles.statBox}>
-            <MaterialIcons 
-              name={isWeightLedger ? "scale" : "event-note"} 
-              size={20} 
-              color={isActive ? "rgba(255,255,255,0.9)" : "#7f8c8d"} 
-            />
-            <TextDefault style={[styles.statLabel, { color: isActive ? 'rgba(255,255,255,0.9)' : '#7f8c8d' }]}>
-              {statLabel1}
-            </TextDefault>
-            <TextDefault style={[styles.statValue, { color: isActive ? COLORS.white : '#7f8c8d' }]}>
-              {statValue1}
-            </TextDefault>
-          </View>
-
+          <StatBox label={statLabel1} value={statValue1} isActive={isActive} />
           <View style={styles.statDivider} />
-
-          <View style={styles.statBox}>
-            <MaterialIcons 
-              name="payments" 
-              size={20} 
-              color={isActive ? "rgba(255,255,255,0.9)" : "#7f8c8d"} 
-            />
-            <TextDefault style={[styles.statLabel, { color: isActive ? 'rgba(255,255,255,0.9)' : '#7f8c8d' }]}>
-              {isWeightLedger ? 'Silver Value' : 'Total Amount'}
-            </TextDefault>
-            <TextDefault style={[styles.statValue, { color: isActive ? COLORS.white : '#7f8c8d' }]}>
-              {totalAmount}
-            </TextDefault>
-          </View>
-
+          <StatBox
+            label={isWeightScheme ? "Silver Value" : "Total Amount"}
+            value={totalAmount}
+            isActive={isActive}
+          />
           <View style={styles.statDivider} />
-
-          <View style={styles.statBox}>
-            <MaterialIcons 
-              name="event" 
-              size={20} 
-              color={isActive ? "rgba(255,255,255,0.9)" : "#7f8c8d"} 
-            />
-            <TextDefault style={[styles.statLabel, { color: isActive ? 'rgba(255,255,255,0.9)' : '#7f8c8d' }]}>
-              Maturity
-            </TextDefault>
-            <TextDefault 
-              style={[styles.statValue, { color: isActive ? COLORS.white : '#7f8c8d' }]} 
-              numberOfLines={1}
-            >
-              {formatDate(maturityDate)}
-            </TextDefault>
-          </View>
+          <StatBox
+            label="Bonus Earned"
+            value={bonusEarned}
+            isActive={isActive}
+          />
         </View>
 
-        {/* Action Buttons */}
-        <View style={styles.actionContainer}>
-          <TouchableOpacity
-            style={[styles.actionButton, !shouldShowPayNow && styles.fullWidthButton]}
-            onPress={handleViewDetails}
-            activeOpacity={0.7}
+        <LinearGradient
+          colors={["#FFD700", "#FFB700", "#FFD700"]}
+          style={styles.goldDivider}
+        />
+
+        {/* -------- Bottom Section -------- */}
+        <View style={styles.bottomRow}>
+          {/* Left Gold Circle */}
+          <ImageBackground
+            source={require("../../assets/gold.png")}
+            style={styles.circle}
           >
-            <MaterialIcons 
-              name="visibility" 
-              size={16} 
-              color={isActive ? COLORS.primary : COLORS.gray} 
-            />
-            <TextDefault style={[
-              styles.actionButtonText, 
-              { color: isActive ? COLORS.primary : COLORS.gray }
-            ]}>
-              View Details
+            <TextDefault style={styles.circleLabel}>
+              {isWeightScheme ? "Weight" : "Amount"}
+            </TextDefault>
+            <TextDefault style={styles.circleValue}>
+              {isWeightScheme ? statValue1 : totalAmount}
+            </TextDefault>
+          </ImageBackground>
+
+          {/* Maturity */}
+          <View style={styles.maturitySection}>
+            <TextDefault style={styles.maturityLabel}>Maturity</TextDefault>
+            <View style={styles.maturityRow}>
+              <MaterialIcons name="event" size={14} color={COLORS.white} />
+              <TextDefault style={styles.maturityValue}>
+                {formattedMaturityDate}
+              </TextDefault>
+            </View>
+          </View>
+
+          {/* Pay / View Button */}
+          <TouchableOpacity
+            onPress={shouldShowPayNow ? handlePayNow : handleViewDetails}
+            style={styles.actionButton}
+          >
+            <TextDefault style={styles.actionText}>
+              {shouldShowPayNow ? "Pay" : "View"}
             </TextDefault>
           </TouchableOpacity>
-
-          {shouldShowPayNow && (
-            <TouchableOpacity
-              style={[styles.actionButton, styles.payButton]}
-              onPress={handlePayNow}
-              activeOpacity={0.7}
-            >
-              <MaterialIcons name="payment" size={16} color={COLORS.white} />
-              <TextDefault style={styles.payButtonText}>Pay Now</TextDefault>
-            </TouchableOpacity>
-          )}
         </View>
       </LinearGradient>
     </TouchableOpacity>
   );
 }
 
+/* ------------------ Styles ------------------ */
 const styles = StyleSheet.create({
-  emptyContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
-    padding: moderateScale(20),
-    margin: moderateScale(8),
-    backgroundColor: 'rgba(255,255,255,0.9)',
-    borderRadius: SIZES.radius_lg,
-  },
-  emptyText: {
-    color: COLORS.gray,
-    marginTop: moderateScale(10),
-    fontSize: moderateScale(14),
-    textAlign: 'center',
-  },
   cardContainer: {
-    margin: moderateScale(15),
-    borderRadius: SIZES.radius_lg,
-    overflow: 'hidden',
-    shadowColor: '#000',
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.2,
-    shadowRadius: 8,
-    elevation: 6,
+    width: CARD_WIDTH,
+    height: CARD_HEIGHT,
+    borderRadius: SIZES.radius.lg,
+    overflow: "hidden",
+    alignSelf: "center",
   },
-  inactiveCard: {
-    shadowOpacity: 0.1,
-    elevation: 2,
-  },
+  inactiveCard: { opacity: 0.85 },
+
   gradientBackground: {
-    borderRadius: SIZES.radius_lg,
-    padding: moderateScale(16),
-  },
-  headerSection: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: moderateScale(16),
-  },
-  headerLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
     flex: 1,
-    gap: moderateScale(12),
+    padding: SIZES.sm,
+    justifyContent: "space-between",
   },
-  iconBadge: {
-    width: moderateScale(30),
-    height: moderateScale(30),
-    borderRadius: moderateScale(12),
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    justifyContent: 'center',
-    alignItems: 'center',
+
+  headerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
-  headerInfo: {
-    flex: 1,
+
+  headerLeft: { flexDirection: "row", flex: 1 },
+  headerText: { flex: 1 },
+
+  schemeCode: { ...FONTS.body, color: COLORS.white, fontWeight: "600" },
+  schemeName: { ...FONTS.caption, color: COLORS.white, opacity: 0.9 },
+  headerRight: { alignItems: "flex-end" },
+
+  schemeTitle: { ...FONTS.body, color: COLORS.white, fontWeight: "600" },
+
+  statusContainer: { flexDirection: "row", alignItems: "center" },
+  statusLabel: { ...FONTS.caption, color: COLORS.white, opacity: 0.8 },
+  statusValue: { ...FONTS.caption, color: COLORS.white },
+
+  statusDot: {
+    width: 8,
+    height: 8,
+    borderRadius: 4,
+    marginLeft: 4,
   },
-  schemeCode: {
-    color: COLORS.white,
-    fontSize: moderateScale(14),
-    opacity: 0.9,
-    marginBottom: moderateScale(2),
-    ...FONTS.subheading,
-  },
-  schemeName: {
-    color: COLORS.white,
-    fontSize: moderateScale(13),
-    ...FONTS.body1,
-  },
-  statusContainer: {
-    flexDirection: 'column',
-    alignItems: 'center',
-    gap: moderateScale(4),
-  },
-  nameContainer: {
-    color: COLORS.white,
-    fontSize: moderateScale(14),
-    ...FONTS.body1,
-    backgroundColor:'rgba(88, 7, 7, 1)',
-    borderRadius: moderateScale(12),
-    padding: moderateScale(4),
-  },
-  statusBadge: {
-    paddingHorizontal: moderateScale(10),
-    paddingVertical: moderateScale(4),
-    borderRadius: moderateScale(12),
-    // gap: moderateScale(4),
-  },
-  statusText: {
-    color: COLORS.white,
-    fontSize: moderateScale(10),
-    fontWeight: '700',
-    ...FONTS.body1,
-  },
-  statusText1: {
-    color: COLORS.white,
-    fontSize: moderateScale(11),
-    // fontWeight: '700',
-    ...FONTS.body1,
-  },
+
   statsContainer: {
-    flexDirection: 'row',
-    backgroundColor: 'rgba(255, 255, 255, 0.15)',
-    borderRadius: SIZES.radius,
-    padding: moderateScale(12),
-    marginBottom: moderateScale(12),
-    borderWidth: 1,
-    borderColor: 'rgba(255, 255, 255, 0.2)',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    paddingTop: SIZES.xs,
   },
-  statBox: {
-    flex: 1,
-    alignItems: 'center',
-    gap: moderateScale(4),
+
+  statBox: { flex: 1, alignItems: "center" },
+  statDivider: { width: 1, backgroundColor: "rgba(255,255,255,0.3)" },
+
+  statLabel: { ...FONTS.caption, fontSize: SIZES.font.xs },
+  statValue: { ...FONTS.bodySmall, fontWeight: "600" },
+
+  goldDivider: { width: "100%", height: 1.2, marginVertical: SIZES.xs },
+
+  bottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
-  statLabel: {
-    fontSize: moderateScale(11),
-    fontWeight: '500',
-    textAlign: 'center',
-    ...FONTS.body1,
+
+  circle: {
+    width: moderateScale(80),
+    height: moderateScale(80),
+    justifyContent: "center",
+    alignItems: "center",
   },
-  statValue: {
-    fontSize: moderateScale(12),
-    fontWeight: '700',
-    textAlign: 'center',
-    ...FONTS.body1,
-  },
-  statDivider: {
-    width: 1,
-    backgroundColor: 'rgba(255, 255, 255, 0.2)',
-    marginHorizontal: moderateScale(8),
-  },
-  actionContainer: {
-    flexDirection: 'row',
-    gap: moderateScale(10),
-    marginBottom: moderateScale(8),
-  },
+
+  circleLabel: { ...FONTS.caption, color: COLORS.textPrimary },
+  circleValue: { ...FONTS.body, color: COLORS.textPrimary, fontWeight: "700" },
+
+  maturitySection: { alignItems: "center", flex: 1 },
+  maturityLabel: { ...FONTS.caption, color: COLORS.white },
+  maturityRow: { flexDirection: "row", alignItems: "center" },
+
+  maturityValue: { ...FONTS.body, color: COLORS.white, marginLeft: 4 },
+
   actionButton: {
-    flex: 1,
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
-    paddingVertical: moderateScale(10),
-    paddingHorizontal: moderateScale(12),
-    borderRadius: moderateScale(10),
-    gap: moderateScale(6),
+    backgroundColor: COLORS.white,
+    paddingVertical: SIZES.xs,
+    paddingHorizontal: SIZES.md,
+    borderRadius: SIZES.radius.md,
   },
-  fullWidthButton: {
-    flex: 0,
-    width: '100%',
+
+  actionText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    fontWeight: "600",
   },
-  payButton: {
-    backgroundColor: COLORS.success,
+
+  emptyContainer: {
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius.lg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
-  actionButtonText: {
-    fontSize: moderateScale(12),
-    fontWeight: '700',
-    ...FONTS.body1,
-  },
-  payButtonText: {
-    color: COLORS.white,
-    fontSize: moderateScale(12),
-    fontWeight: '700',
-    ...FONTS.body1,
-  },
+
+  emptyText: { ...FONTS.caption, color: COLORS.textTertiary },
 });
 
-export default ProductCard;
+export default React.memo(ProductCard);

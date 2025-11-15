@@ -6,159 +6,310 @@ import {
   TouchableOpacity,
   ActivityIndicator,
   Text,
-  ScrollView
+  ScrollView,
+  ImageBackground,
+  StyleSheet
 } from 'react-native';
 import { useNavigation } from '@react-navigation/native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import appTheme from '../../utils/Theme';
+import MainTheme from '../../utils/MainTheme';
 import CommonHeader from '../../components/CommonHeader/CommonHeader';
+import Icon from 'react-native-vector-icons/MaterialIcons';
 import { API_BASE_URL } from '../../Config/API';
-const { COLORS, SIZES, FONTS } = appTheme;
+import { getUserData, clearUserData } from '../../utils/AsynchStorageHelper';
 
-// Replace with your backend API base URL
-
+const { COLORS, SIZES, FONTS, verticalScale, moderateScale } = MainTheme;
 
 function DeleteAccount() {
   const navigation = useNavigation();
   const [loading, setLoading] = useState(false);
 
-const handleDeleteAccount = async () => {
-  Alert.alert(
-    'Confirm Account Deletion',
-    'Are you sure you want to delete your account? This will remove all your data from this device.',
-    [
-      { text: 'Cancel', style: 'cancel' },
-      {
-        text: 'Delete',
-        style: 'destructive',
-        onPress: async () => {
-          setLoading(true);
-          try {
-            // Get user ID from AsyncStorage
-            const userId = await AsyncStorage.getItem('userId');
-            if (!userId) throw new Error('User ID not found');
+  const handleDeleteAccount = async () => {
+    Alert.alert(
+      'Confirm Account Deletion',
+      'Are you sure you want to permanently delete your account? This action cannot be undone.',
+      [
+        { text: 'Cancel', style: 'cancel' },
+        {
+          text: 'Delete Account',
+          style: 'destructive',
+          onPress: async () => {
+            setLoading(true);
+            try {
+              const userData = await getUserData();
+              if (!userData || !userData.id) throw new Error('User ID not found');
 
-            console.log(`Deleting account for user ID: ${userId}`);
+              const response = await fetch(`${API_BASE_URL}/user/delete/${userData.id}`, {
+                method: 'DELETE',
+              });
 
-            const response = await fetch(`${API_BASE_URL}/user/delete/${userId}`, {
-              method: 'DELETE',
-            });
+              const result = await response.json();
 
-            const result = await response.json();
-            console.log('API response:', result);
+              if (response.ok) {
+                await clearUserData();
 
-            if (response.ok) {
-              // Clear all AsyncStorage data
-              const allKeys = await AsyncStorage.getAllKeys();
-              await AsyncStorage.multiRemove(allKeys);
-
-              Alert.alert(
-                'Account Deleted',
-                result.message || 'Your account has been deleted.',
-                [{ text: 'OK', onPress: () => navigation.replace('LoginPage') }]
-              );
-            } else {
-              Alert.alert('Error', result.message || 'Failed to delete account.');
+                Alert.alert(
+                  'Account Deleted Successfully',
+                  result.message || 'Your account has been permanently deleted.',
+                  [{ text: 'OK', onPress: () => navigation.replace('LoginPage') }]
+                );
+              } else {
+                Alert.alert('Deletion Failed', result.message || 'Failed to delete account. Please try again.');
+              }
+            } catch (error) {
+              console.error('Error deleting account:', error);
+              Alert.alert('Error', 'Failed to delete account. Please check your connection and try again.');
+            } finally {
+              setLoading(false);
             }
-          } catch (error) {
-            console.error('Error deleting account:', error);
-            Alert.alert('Error', 'Failed to delete account. Please try again.');
-          } finally {
-            setLoading(false);
-          }
+          },
         },
-      },
-    ]
-  );
-};
-
+      ]
+    );
+  };
 
   if (loading) {
     return (
       <SafeAreaView style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Removing your data...</Text>
+        <ImageBackground
+          source={require('../../assets/image.png')}
+          style={styles.backgroundImage}
+          resizeMode="cover"
+        >
+          <View style={styles.loadingContent}>
+            <ActivityIndicator size="large" color={COLORS.error} />
+            <Text style={styles.loadingText}>Removing your data securely...</Text>
+          </View>
+        </ImageBackground>
       </SafeAreaView>
     );
   }
 
   return (
     <SafeAreaView style={styles.container}>
-      <CommonHeader title="Account Deletion" />
-      <ScrollView
-        style={styles.scrollView}
-        contentContainerStyle={styles.contentContainer}
-        showsVerticalScrollIndicator={false}
+      <ImageBackground
+        source={require('../../assets/image.png')}
+        style={styles.backgroundImage}
+        resizeMode="cover"
       >
-        <View style={styles.warningContainer}>
-          <Text style={styles.warningTitle}>
-            Are you sure you want to delete your account?
-          </Text>
-          
-          <Text style={styles.warningText}>
-            This will remove all your data from this device. You'll need to sign up again to use the app.
-          </Text>
+        <CommonHeader title="Delete Account" />
+        <ScrollView
+          style={styles.scrollView}
+          contentContainerStyle={styles.contentContainer}
+          showsVerticalScrollIndicator={false}
+        >
+          {/* Warning Header */}
+          <View style={styles.warningHeader}>
+            <View style={styles.warningIcon}>
+              <Icon name="warning" size={moderateScale(32)} color={COLORS.error} />
+            </View>
+            <Text style={styles.warningTitle}>Permanent Account Deletion</Text>
+            <Text style={styles.warningSubtitle}>This action cannot be undone</Text>
+          </View>
 
-          <View style={styles.instructionsContainer}>
-            <Text style={styles.instructionsTitle}>Important Instructions Before Deletion:</Text>
-            <Text style={styles.instructionItem}>
-              • All your personal information, transaction history, and app preferences will be permanently deleted.
-            </Text>
-            <Text style={styles.instructionItem}>
-              • For Digi Gold: Your Digi Gold holdings will be automatically liquidated at the current market rate. Proceeds will be transferred back to your original payment method within 3-5 business days. Any pending transactions will be canceled.
-            </Text>
-            <Text style={styles.instructionItem}>
-              • You will lose access to any active schemes, subscriptions, or rewards points associated with this account.
-            </Text>
-            <Text style={styles.instructionItem}>
-              • This action cannot be undone. If you have any Digi Gold or other investments, consider withdrawing them first.
-            </Text>
-            <Text style={styles.instructionItem}>
-              • Contact support at support@bmgjewellers.com if you need assistance with withdrawal before deletion.
+          {/* Main Warning */}
+          <View style={styles.mainWarning}>
+            <Text style={styles.mainWarningText}>
+              All your personal data, transaction history, and account information will be permanently deleted from our systems.
             </Text>
           </View>
-        </View>
 
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={styles.deleteButton}
-          onPress={handleDeleteAccount}
-          disabled={loading}
-        >
-          <Text style={styles.deleteButtonText}>
-            {loading ? 'Deleting...' : 'Delete Account'}
-          </Text>
-        </TouchableOpacity>
-        
-        <TouchableOpacity
-          activeOpacity={0.7}
-          style={styles.cancelButton}
-          onPress={() => navigation.goBack()}
-          disabled={loading}
-        >
-          <Text style={styles.cancelButtonText}>Cancel</Text>
-        </TouchableOpacity>
-      </ScrollView>
+          {/* Instructions */}
+          <View style={styles.instructionsContainer}>
+            <Text style={styles.instructionsTitle}>Before You Proceed</Text>
+
+            {[
+              { icon: 'info', text: 'All personal information and transaction history will be permanently deleted' },
+              { icon: 'monetization-on', text: 'Digi Gold holdings will be liquidated at current market rates' },
+              { icon: 'schedule', text: 'Proceeds will be transferred within 3-5 business days' },
+              { icon: 'cancel', text: 'Active schemes and rewards points will be lost' },
+              { icon: 'support-agent', text: 'Contact support for assistance with withdrawals' },
+            ].map((item, idx) => (
+              <View key={idx} style={styles.instructionItem}>
+                <Icon name={item.icon} size={moderateScale(16)} color={COLORS.warning} />
+                <Text style={styles.instructionText}>{item.text}</Text>
+              </View>
+            ))}
+          </View>
+
+          {/* Contact Support */}
+          <View style={styles.supportContainer}>
+            <Text style={styles.supportText}>Need help? Contact our support team</Text>
+            <Text style={styles.supportEmail}>support@bmgjewellers.com</Text>
+          </View>
+
+          {/* Action Buttons */}
+          <View style={styles.actionsContainer}>
+            <TouchableOpacity
+              style={styles.deleteButton}
+              onPress={handleDeleteAccount}
+              disabled={loading}
+            >
+              <Icon name="delete-forever" size={moderateScale(20)} color={COLORS.white} />
+              <Text style={styles.deleteButtonText}>
+                {loading ? 'Deleting Account...' : 'Delete Account Permanently'}
+              </Text>
+            </TouchableOpacity>
+
+            <TouchableOpacity
+              style={styles.cancelButton}
+              onPress={() => navigation.goBack()}
+              disabled={loading}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+          </View>
+        </ScrollView>
+      </ImageBackground>
     </SafeAreaView>
   );
 }
 
-const styles = {
-  container: { flex: 1, backgroundColor: COLORS.background },
+const styles = StyleSheet.create({
+  container: { flex: 1 },
+  backgroundImage: { flex: 1 },
   scrollView: { flex: 1 },
-  contentContainer: { flexGrow: 1, padding: SIZES.padding, justifyContent: 'center' },
-  loadingContainer: { flex: 1, justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.background, padding: SIZES.padding },
-  loadingText: { ...FONTS.font, color: COLORS.text, marginTop: SIZES.margin },
-  warningContainer: { alignItems: 'center', padding: SIZES.padding },
-  warningTitle: { ...FONTS.h4, color: COLORS.danger, textAlign: 'center', fontWeight: '900', marginBottom: SIZES.margin / 2 },
-  warningText: { ...FONTS.font, color: COLORS.textLight, textAlign: 'center', lineHeight: SIZES.font * 1.4, marginBottom: SIZES.margin * 2 },
-  instructionsContainer: { backgroundColor: COLORS.card, borderRadius: SIZES.radius, padding: SIZES.padding, marginBottom: SIZES.margin * 2, borderLeftWidth: 4, borderLeftColor: COLORS.warning },
-  instructionsTitle: { ...FONTS.h6, color: COLORS.warning, fontWeight: 'bold', marginBottom: SIZES.margin, textAlign: 'center' },
-  instructionItem: { ...FONTS.fontSm, color: COLORS.text, lineHeight: SIZES.fontSm * 1.4, marginBottom: SIZES.margin / 2 },
-  deleteButton: { justifyContent: 'center', alignItems: 'center', backgroundColor: COLORS.danger, borderRadius: SIZES.radius, width: '100%', padding: SIZES.padding, marginBottom: SIZES.margin },
-  deleteButtonText: { ...FONTS.h6, color: COLORS.white, fontWeight: 'bold' },
-  cancelButton: { width: '100%', paddingVertical: SIZES.padding, alignItems: 'center' },
-  cancelButtonText: { ...FONTS.h6, color: COLORS.primary, fontWeight: '600' },
-};
+  contentContainer: { flexGrow: 1, padding: SIZES.padding.md, paddingBottom: verticalScale(40) },
+  loadingContainer: { flex: 1 },
+  loadingContent: {
+    flex: 1,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: 'rgba(255,255,255,0.9)',
+  },
+  loadingText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textSecondary,
+    marginTop: verticalScale(16),
+  },
+  warningHeader: {
+    alignItems: 'center',
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.lg,
+    marginBottom: verticalScale(20),
+    borderWidth: 2,
+    borderColor: COLORS.errorLight,
+    shadowColor: COLORS.error,
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 4,
+  },
+  warningIcon: { marginBottom: verticalScale(12) },
+  warningTitle: {
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.xl,
+    color: COLORS.error,
+    textAlign: 'center',
+    marginBottom: verticalScale(4),
+  },
+  warningSubtitle: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+  },
+  mainWarning: {
+    backgroundColor: COLORS.errorLight + '20',
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginBottom: verticalScale(20),
+    borderLeftWidth: 4,
+    borderLeftColor: COLORS.error,
+  },
+  mainWarningText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    lineHeight: verticalScale(22),
+    textAlign: 'center',
+  },
+  instructionsContainer: {
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginBottom: verticalScale(20),
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  instructionsTitle: {
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.lg,
+    color: COLORS.textPrimary,
+    marginBottom: verticalScale(16),
+    textAlign: 'center',
+  },
+  instructionItem: {
+    flexDirection: 'row',
+    alignItems: 'flex-start',
+    marginBottom: verticalScale(12),
+    paddingLeft: moderateScale(4),
+  },
+  instructionText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    lineHeight: verticalScale(20),
+    flex: 1,
+    marginLeft: moderateScale(12),
+  },
+  supportContainer: {
+    backgroundColor: COLORS.infoLight + '20',
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginBottom: verticalScale(20),
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.infoLight,
+  },
+  supportText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    marginBottom: verticalScale(4),
+    color: COLORS.textPrimary,
+    textAlign: 'center',
+  },
+  supportEmail: {
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.md,
+    color: COLORS.info,
+    textAlign: 'center',
+  },
+  actionsContainer: { marginTop: verticalScale(10) },
+  deleteButton: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.error,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginBottom: verticalScale(12),
+    shadowColor: COLORS.error,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+  deleteButtonText: {
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.lg,
+    color: COLORS.white,
+    marginLeft: moderateScale(8),
+  },
+  cancelButton: {
+    padding: SIZES.padding.md,
+    alignItems: 'center',
+    borderRadius: SIZES.radius.md,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.white,
+  },
+  cancelButtonText: {
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.lg,
+    color: COLORS.primary,
+  },
+});
 
 export default DeleteAccount;

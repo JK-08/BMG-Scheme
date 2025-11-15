@@ -7,7 +7,7 @@ import {
   FlatList,
   StyleSheet
 } from "react-native";
-import appTheme from "../../utils/Theme";
+import appTheme from "../../utils/MainTheme";
 
 const { COLORS, SIZES, FONTS } = appTheme;
 
@@ -37,23 +37,22 @@ const CustomPicker = ({
         style={[
           styles.pickerButton,
           !enabled && styles.pickerDisabled,
-          { backgroundColor: COLORS.input, borderColor: COLORS.borderColor },
         ]}
         onPress={() => enabled && setModalVisible(true)}
         activeOpacity={0.7}
+        disabled={!enabled}
       >
         <Text
           style={[
             styles.pickerText,
-            selectedValue ? FONTS.font : [styles.placeholderText, FONTS.font],
+            selectedValue ? styles.selectedText : styles.placeholderText,
           ]}
+          numberOfLines={1}
         >
           {selectedLabel}
         </Text>
         <View style={styles.pickerIcon}>
-          <Text style={[styles.pickerIconText, { color: COLORS.iconPrimary }]}>
-            ▼
-          </Text>
+          <Text style={styles.pickerIconText}>⌄</Text>
         </View>
       </TouchableOpacity>
 
@@ -63,58 +62,55 @@ const CustomPicker = ({
         visible={modalVisible}
         onRequestClose={() => setModalVisible(false)}
       >
-        <View
-          style={[styles.modalOverlay, { backgroundColor: COLORS.overlay }]}
-        >
-          <View style={[styles.modalContent, { backgroundColor: COLORS.white }]}>
-            <View
-              style={[
-                styles.modalHeader,
-                {
-                  backgroundColor: COLORS.surface,
-                  borderBottomColor: COLORS.borderColor,
-                },
-              ]}
-            >
-              <Text style={[styles.modalTitle, FONTS.h5]}>Select Option</Text>
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Select Option</Text>
               <TouchableOpacity
-                style={[
-                  styles.closeButtonContainer,
-                  { backgroundColor: COLORS.primaryLight },
-                ]}
+                style={styles.closeButton}
                 onPress={() => setModalVisible(false)}
+                activeOpacity={0.7}
               >
-                <Text style={[styles.closeButton, { color: COLORS.primary }]}>
-                  ✕
-                </Text>
+                <Text style={styles.closeButtonText}>✕</Text>
               </TouchableOpacity>
             </View>
+
+            {/* Options List */}
             <FlatList
               data={items}
-              keyExtractor={(item, index) => index.toString()}
+              keyExtractor={(item, index) => `picker-${item.value}-${index}`}
+              showsVerticalScrollIndicator={false}
               renderItem={({ item }) => (
                 <TouchableOpacity
                   style={[
-                    styles.modalItem,
-                    { borderBottomColor: COLORS.borderColor },
-                    item.value === selectedValue && {
-                      backgroundColor: COLORS.primaryLight,
-                    },
+                    styles.optionItem,
+                    item.value === selectedValue && styles.selectedOption,
                   ]}
                   onPress={() => handleSelect(item)}
                   activeOpacity={0.7}
                 >
                   <Text
                     style={[
-                      styles.modalItemText,
-                      FONTS.font,
-                      item.value === selectedValue && { color: COLORS.primary },
+                      styles.optionText,
+                      item.value === selectedValue && styles.selectedOptionText,
                     ]}
+                    numberOfLines={2}
                   >
                     {item.label}
                   </Text>
+                  {item.value === selectedValue && (
+                    <View style={styles.selectedIndicator}>
+                      <Text style={styles.selectedIndicatorText}>✓</Text>
+                    </View>
+                  )}
                 </TouchableOpacity>
               )}
+              ListEmptyComponent={
+                <View style={styles.emptyContainer}>
+                  <Text style={styles.emptyText}>No options available</Text>
+                </View>
+              }
             />
           </View>
         </View>
@@ -123,88 +119,151 @@ const CustomPicker = ({
   );
 };
 
-const styles = {
+const styles = StyleSheet.create({
+  // Picker Button Styles
   pickerButton: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    height: 56,
-    backgroundColor: COLORS.input,
-    borderRadius: SIZES.radius,
-    paddingHorizontal: SIZES.padding,
+    height: SIZES.input.height,
+    borderRadius: SIZES.radius.md,
+    paddingHorizontal: SIZES.padding.md,
     borderWidth: 1.5,
-    borderColor: COLORS.borderColor,
-  },
-  pickerText: {
-    ...FONTS.font,
-    color: COLORS.text,
-    flex: 1,
-  },
-  placeholderText: {
-    ...FONTS.font,
-    color: COLORS.placeholder,
-  },
-  pickerIcon: {
-    marginLeft: SIZES.margin,
-  },
-  pickerIconText: {
-    fontSize: SIZES.fontLg,
-    color: COLORS.iconPrimary,
+    borderColor: COLORS.borderMedium,
+    backgroundColor: 'transparent',
   },
   pickerDisabled: {
-    opacity: 0.6,
-    backgroundColor: COLORS.darkInput,
+    opacity: 0.5,
   },
+  pickerText: {
+    flex: 1,
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    lineHeight: SIZES.font.md * 1.4,
+  },
+  selectedText: {
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.body,
+  },
+  placeholderText: {
+    color: COLORS.textTertiary,
+    fontFamily: FONTS.family.body,
+  },
+  pickerIcon: {
+    marginLeft: SIZES.sm,
+  },
+  pickerIconText: {
+    fontSize: SIZES.font.md,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.family.body,
+  },
+
+  // Modal Overlay
   modalOverlay: {
     flex: 1,
     backgroundColor: COLORS.overlay,
     justifyContent: 'center',
     alignItems: 'center',
+    padding: SIZES.padding.lg,
   },
+
+  // Modal Content
   modalContent: {
-    backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius_lg,
-    width: '92%',
-    maxHeight: '85%',
-    elevation: 12,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.lg,
+    width: '100%',
+    maxHeight: '80%',
+    overflow: 'hidden',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    ...appTheme.SHADOWS.lg,
   },
+
+  // Modal Header
   modalHeader: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    padding: SIZES.padding,
+    padding: SIZES.padding.lg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderColor,
-    backgroundColor: COLORS.surface,
+    borderBottomColor: COLORS.borderLight,
   },
   modalTitle: {
-    ...FONTS.h5,
-    color: COLORS.title,
-    letterSpacing: 0.3,
-  },
-  closeButtonContainer: {
-    padding: 10,
-    borderRadius: 24,
-    backgroundColor: COLORS.primaryLight,
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.lg,
+    color: COLORS.textPrimary,
+    flex: 1,
   },
   closeButton: {
-    fontSize: SIZES.h5,
-    color: COLORS.primary,
-    fontWeight: 'bold',
+    width: SIZES.icon.md,
+    height: SIZES.icon.md,
+    borderRadius: SIZES.radius.full,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginLeft: SIZES.sm,
   },
-  modalItem: {
-    padding: SIZES.padding,
+  closeButtonText: {
+    fontSize: SIZES.font.md,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.family.bodyBold,
+    lineHeight: SIZES.font.md,
+  },
+
+  // Option Items
+  optionItem: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'space-between',
+    paddingVertical: SIZES.padding.md,
+    paddingHorizontal: SIZES.padding.lg,
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderColor,
+    borderBottomColor: COLORS.borderLight,
   },
-  modalItemText: {
-    ...FONTS.font,
-    color: COLORS.text,
+  selectedOption: {
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
   },
-};
+  optionText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    flex: 1,
+    marginRight: SIZES.sm,
+    lineHeight: SIZES.font.md * 1.4,
+  },
+  selectedOptionText: {
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.bodyBold,
+  },
+  selectedIndicator: {
+    width: SIZES.icon.sm,
+    height: SIZES.icon.sm,
+    borderRadius: SIZES.radius.full,
+    backgroundColor: COLORS.primary,
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  selectedIndicatorText: {
+    fontSize: SIZES.font.xs,
+    color: COLORS.white,
+    fontFamily: FONTS.family.bodyBold,
+    lineHeight: SIZES.font.xs,
+  },
+
+  // Empty State
+  emptyContainer: {
+    padding: SIZES.padding.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  emptyText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.sm,
+    color: COLORS.textTertiary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    lineHeight: SIZES.font.sm * 1.4,
+  },
+});
 
 export default CustomPicker;

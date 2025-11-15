@@ -8,32 +8,35 @@ import {
   TouchableOpacity,
   Animated,
   Linking,
+  Text,
 } from 'react-native';
+
+import { getAppBanners } from '../../services/SliderService';
 import { COLORS } from '../../utils/Theme';
 
 const { width } = Dimensions.get('window');
 
-// Colors
 const colors = {
   primary: '#CD865C',
   primaryLight: '#E8B79D',
   background: '#FFF9F6',
   shadow: 'rgba(179, 95, 52, 0.3)',
-  cardBackground: '#FFFFFF',
 };
 
-// Skeleton Card with shimmer effect
+// ▪ Skeleton Loader
 const SkeletonCard = () => {
   const shimmer = useRef(new Animated.Value(-1)).current;
 
   useEffect(() => {
-    Animated.loop(
+    const animation = Animated.loop(
       Animated.timing(shimmer, {
         toValue: 1,
         duration: 1200,
         useNativeDriver: true,
       })
-    ).start();
+    );
+    animation.start();
+    return () => animation.stop();
   }, []);
 
   const translateX = shimmer.interpolate({
@@ -42,13 +45,10 @@ const SkeletonCard = () => {
   });
 
   return (
-    <View style={styles.sliderItem1}>
+    <View style={styles.sliderItem}>
       <View style={styles.imageContainer}>
         <Animated.View
-          style={[
-            styles.skeletonOverlay,
-            { transform: [{ translateX }] },
-          ]}
+          style={[styles.skeletonOverlay, { transform: [{ translateX }] }]}
         />
       </View>
     </View>
@@ -64,159 +64,148 @@ export default function EnhancedSlider() {
   const flatListRef = useRef(null);
   const intervalRef = useRef(null);
   const scrollX = useRef(new Animated.Value(0)).current;
-  const isScrollingRef = useRef(false); // Track manual scrolling
+  const isUserScrolling = useRef(false);
 
-  const FALLBACK_BANNERS = [
-    { id: 1, image_path: '../../assets/image/slider3.jpg', url: 'https://bmgjewellers.com/shop-left?itemName=EARRINGS' },
-    { id: 2, image_path: '../../assets/image/slider2.jpg', url: 'https://bmgjewellers.com/shop-left?itemName=NECKLACES' },
-    { id: 3, image_path: '../../assets/image/slider1.jpg', url: 'https://bmgjewellers.com/shop-left?itemName=FESTIVAL' },
-    { id: 4, image_path: '../../assets/image/slider1.jpg', url: 'https://bmgjewellers.com/shop-left?itemName=FESTIVAL' },
-  ];
-
-  // Fetch banners - FIXED: Proper cleanup
+  // ▪ Load from service
   useEffect(() => {
-    let isMounted = true;
-
-    const fetchBanners = async () => {
+    (async () => {
       try {
-        const response = await fetch('https://app.bmgjewellers.com/api/v1/App_banner/list');
-        const data = await response.json();
-        
-        if (!isMounted) return;
+        const data = await getAppBanners();
 
-        const bannersWithUrls = data.map((banner, index) => {
-          const fallbackBanner = FALLBACK_BANNERS[index] || FALLBACK_BANNERS[0];
-          return { 
-            ...banner, 
-            url: fallbackBanner.url, 
-            image_path: banner.image_path 
-          };
-        });
-        setBanners(bannersWithUrls);
-      } catch (error) {
-        if (!isMounted) return;
-        setBanners(FALLBACK_BANNERS);
+        if (Array.isArray(data) && data.length > 0) {
+          setBanners(data);
+        } else {
+          setBanners([]);
+        }
+      } catch {
+        setBanners([]);
       } finally {
-        if (!isMounted) return;
         setLoading(false);
       }
-    };
-
-    fetchBanners();
-
-    return () => {
-      isMounted = false;
-    };
+    })();
   }, []);
 
-  // Auto-scroll logic - FIXED: Simplified dependencies
+  // ▪ Auto scroll
   useEffect(() => {
     if (!banners.length || !isAutoScrolling) return;
 
-    startAutoScroll();
-    return () => stopAutoScroll();
-  }, [banners.length, isAutoScrolling]); // Removed currentIndex from dependencies
-
-  const startAutoScroll = useCallback(() => {
-    if (intervalRef.current) clearInterval(intervalRef.current);
-    
     intervalRef.current = setInterval(() => {
-      if (isAutoScrolling && banners.length > 0 && !isScrollingRef.current) {
-        const nextIndex = currentIndex === banners.length - 1 ? 0 : currentIndex + 1;
+      if (!isUserScrolling.current) {
+        const nextIndex =
+          currentIndex === banners.length - 1 ? 0 : currentIndex + 1;
         scrollToIndex(nextIndex);
       }
     }, 4000);
+
+    return () => clearInterval(intervalRef.current);
   }, [banners.length, currentIndex, isAutoScrolling]);
 
-  const stopAutoScroll = useCallback(() => {
-    if (intervalRef.current) {
-      clearInterval(intervalRef.current);
-      intervalRef.current = null;
-    }
-  }, []);
-
   const scrollToIndex = useCallback((index) => {
-    if (flatListRef.current && banners.length > 0) {
-      flatListRef.current.scrollToIndex({ index, animated: true });
-      setCurrentIndex(index);
-    }
-  }, [banners.length]);
-
-  const onScrollEnd = useCallback((event) => {
-    const newIndex = Math.round(event.nativeEvent.contentOffset.x / width);
-    if (newIndex !== currentIndex) {
-      setCurrentIndex(newIndex);
-    }
-    isScrollingRef.current = false;
-  }, [currentIndex]);
-
-  const onScrollBeginDrag = useCallback(() => {
-    isScrollingRef.current = true;
-    setIsAutoScrolling(false);
-    stopAutoScroll();
-  }, [stopAutoScroll]);
-
-  const onScrollEndDrag = useCallback(() => {
-    // Restart auto-scroll after a delay when user stops dragging
-    setTimeout(() => {
-      setIsAutoScrolling(true);
-      isScrollingRef.current = false;
-    }, 3000);
+    flatListRef.current?.scrollToIndex({ index, animated: true });
+    setCurrentIndex(index);
   }, []);
 
-  const handleBannerPress = (url) => {
-    Linking.openURL(url).catch(err => console.error('Failed to open URL:', err));
+  const onScrollEnd = useCallback(
+    (event) => {
+      const newIndex = Math.round(event.nativeEvent.contentOffset.x / width);
+      if (newIndex !== currentIndex) setCurrentIndex(newIndex);
+      isUserScrolling.current = false;
+    },
+    [currentIndex]
+  );
+
+  const onScrollBeginDrag = () => {
+    isUserScrolling.current = true;
+    setIsAutoScrolling(false);
+    clearInterval(intervalRef.current);
   };
 
-  const renderSliderItem = useCallback(({ item }) => {
-    const imageUrl = `https://app.bmgjewellers.com${item.image_path}`;
-    return (
+  const onScrollEndDrag = () => {
+    setTimeout(() => {
+      isUserScrolling.current = false;
+      setIsAutoScrolling(true);
+    }, 2500);
+  };
+
+  // ▪ Open subtitle URL
+  const handleBannerPress = useCallback((subtitle) => {
+    if (!subtitle) return;
+    Linking.openURL(subtitle).catch((err) =>
+      console.error('Unable to open URL:', err)
+    );
+  }, []);
+
+  // ▪ Render Slider Image
+  const renderSliderItem = useCallback(
+    ({ item }) => (
       <TouchableOpacity
         style={styles.sliderItem}
         activeOpacity={0.9}
-        onPress={() => handleBannerPress(item.url)}
+        onPress={() => handleBannerPress(item.subtitle)}
       >
         <View style={styles.imageContainer}>
           <Image
             style={styles.sliderImage}
-            source={{ uri: imageUrl }}
+            source={{
+              uri:
+                item.image_path?.startsWith('/uploads')
+                  ? `https://app.bmgjewellers.com${item.image_path}`
+                  : item.image_path,
+            }}
             resizeMode="cover"
-            onError={(error) => console.log('Image loading error:', error)}
           />
           <View style={styles.overlay} />
         </View>
       </TouchableOpacity>
-    );
-  }, []);
+    ),
+    [handleBannerPress]
+  );
 
-  const renderPaginationDots = useCallback(() => (
+  // ▪ Pagination
+  const renderPaginationDots = () => (
     <View style={styles.paginationContainer}>
-      {banners.map((_, index) => (
+      {banners.map((_, i) => (
         <View
-          key={index}
+          key={i}
           style={[
             styles.paginationDot,
-            index === currentIndex && styles.paginationDotActive,
+            i === currentIndex && styles.paginationDotActive,
           ]}
         />
       ))}
     </View>
-  ), [banners.length, currentIndex]);
+  );
 
-  // Show skeleton loader if still loading
+  // ▪ When loading → Only Skeleton Loader
   if (loading) {
     return (
       <FlatList
         data={[1, 2, 3]}
-        keyExtractor={(item) => item.toString()}
         horizontal
         showsHorizontalScrollIndicator={false}
+        keyExtractor={(item) => item.toString()}
         renderItem={() => <SkeletonCard />}
         contentContainerStyle={{ paddingHorizontal: 15 }}
       />
     );
   }
 
+  // ▪ When API fails → show "No banners available" + skeleton look
+  if (!loading && banners.length === 0) {
+    return (
+      <View style={{ paddingVertical: 10, alignItems: 'center' }}>
+        <Text style={{ color: COLORS.textDark, fontSize: 16 }}>
+          No banners available
+        </Text>
+
+        <View style={{ marginTop: 10 }}>
+          <SkeletonCard />
+        </View>
+      </View>
+    );
+  }
+
+  // ▪ Main UI
   return (
     <View style={styles.container}>
       <Animated.FlatList
@@ -225,7 +214,7 @@ export default function EnhancedSlider() {
         horizontal
         showsHorizontalScrollIndicator={false}
         renderItem={renderSliderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={(item) => item.id?.toString()}
         snapToInterval={width}
         snapToAlignment="center"
         decelerationRate="fast"
@@ -237,7 +226,7 @@ export default function EnhancedSlider() {
         onMomentumScrollEnd={onScrollEnd}
         onScrollBeginDrag={onScrollBeginDrag}
         onScrollEndDrag={onScrollEndDrag}
-        getItemLayout={(data, index) => ({
+        getItemLayout={(_, index) => ({
           length: width,
           offset: width * index,
           index,
@@ -246,41 +235,33 @@ export default function EnhancedSlider() {
         maxToRenderPerBatch={3}
         windowSize={5}
       />
+
       {banners.length > 1 && renderPaginationDots()}
     </View>
   );
 }
 
+// (Styles remain unchanged)
 const styles = StyleSheet.create({
   container: {
     marginVertical: 10,
-    position: 'relative',
   },
   sliderItem: {
-    width: width,
+    width,
     justifyContent: 'center',
     alignItems: 'center',
-    paddingHorizontal: 5,
-  },
-  sliderItem1: {
-    width: width,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingHorizontal: 5,
-    paddingRight: 30,
   },
   imageContainer: {
     width: '95%',
-    height: 200,
+    height: 220,
     borderRadius: 20,
     overflow: 'hidden',
-    position: 'relative',
     elevation: 8,
+    backgroundColor: COLORS.textLight,
     shadowColor: colors.shadow,
     shadowOffset: { width: 0, height: 4 },
     shadowOpacity: 0.3,
     shadowRadius: 6,
-    backgroundColor: COLORS.textLight,
   },
   sliderImage: {
     width: '100%',
@@ -288,11 +269,7 @@ const styles = StyleSheet.create({
     borderRadius: 20,
   },
   overlay: {
-    position: 'absolute',
-    top: 0,
-    left: 0,
-    right: 0,
-    bottom: 0,
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: 'rgba(0,0,0,0.1)',
     borderRadius: 20,
   },
@@ -304,10 +281,7 @@ const styles = StyleSheet.create({
   paginationContainer: {
     flexDirection: 'row',
     justifyContent: 'center',
-    alignItems: 'center',
-    marginTop: 15,
-    marginBottom: 8,
-    paddingHorizontal: 20,
+    marginTop: 12,
   },
   paginationDot: {
     width: 8,

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState } from "react";
 import {
   View,
   FlatList,
@@ -6,18 +6,18 @@ import {
   Alert,
   StyleSheet,
   RefreshControl,
-} from 'react-native';
-import AsyncStorage from '@react-native-async-storage/async-storage';
-import { SafeAreaView } from 'react-native-safe-area-context';
+} from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import { SafeAreaView } from "react-native-safe-area-context";
 
-import styles from './styles';
-import BottomTab from '../../components/BottomTab/BottomTab';
-import { TextDefault } from '../../components';
-import ProductCard from '../../ui/ProductCard/ProductCard';
-import ProductCardSkeleton from '../../components/SkeletonLoader/ProductCardSkeleton';
-import CommonHeader from '../../components/CommonHeader/CommonHeader';
-import { getPhoneDetails } from '../../services/SchemeDetailsService';
-import { COLORS } from '../../utils/Theme';
+import styles from "./styles";
+import BottomTab from "../../components/BottomTab/BottomTab";
+import { TextDefault } from "../../components";
+import ProductCard from "../../ui/ProductCard/ProductCard";
+import ProductCardSkeleton from "../../components/SkeletonLoader/ProductCardSkeleton";
+import CommonHeader from "../../components/CommonHeader/CommonHeader";
+import { getPhoneDetails } from "../../services/SchemeDetailsService";
+import { COLORS } from "../../utils/Theme";
 
 function DiscoverPlace({ navigation }) {
   const [productData, setProductData] = useState([]);
@@ -27,22 +27,24 @@ function DiscoverPlace({ navigation }) {
 
   const fetchPhoneSearchData = async () => {
     try {
-      const storedPhoneNumber = await AsyncStorage.getItem('userPhoneNumber');
+      const storedPhoneNumber = await AsyncStorage.getItem("userPhoneNumber");
       if (!storedPhoneNumber) {
-        setError('Phone number not found');
+        setError("Phone number not found");
         setLoading(false);
         return;
       }
 
-      console.log('Fetching data for phone:', storedPhoneNumber);
-      
+      console.log("Fetching data for phone:", storedPhoneNumber);
+
       // Use the service to get phone details
       const accounts = await getPhoneDetails(storedPhoneNumber);
-      console.log('Raw API response accounts:', accounts);
-      console.log('Number of accounts found:', accounts.length);
+      // console.log("Raw API response accounts:", accounts.length);
+      console.log("Number of accounts found:", accounts.length);
 
       if (!accounts || accounts.length === 0) {
-        setError('No schemes available for this account, So please join the scheme and enjoy our benefits');
+        setError(
+          "No schemes available for this account, So please join the scheme and enjoy our benefits"
+        );
         setProductData([]);
         setLoading(false);
         return;
@@ -51,9 +53,11 @@ function DiscoverPlace({ navigation }) {
       // Process accounts and determine status
       const processedProducts = accounts.map((item) => {
         const currentDate = new Date();
-        const maturityDate = item.maturityDate ? new Date(item.maturityDate) : null;
+        const maturityDate = item.maturityDate
+          ? new Date(item.maturityDate)
+          : null;
         const isActive = !maturityDate || currentDate < maturityDate;
-        const status = isActive ? 'Active' : 'Deactive';
+        const status = isActive ? "Active" : "Deactive";
 
         return {
           ...item,
@@ -65,21 +69,21 @@ function DiscoverPlace({ navigation }) {
           maturitydate: item.maturityDate,
           accountDetails: {
             schemeSummary: item.schemeSummary,
-            personalInfo: item.personalInfo
-          }
+            personalInfo: item.personalInfo,
+          },
         };
       });
 
-      console.log('Processed products:', processedProducts.length);
+      console.log("Processed products:", processedProducts.length);
       setProductData(processedProducts);
 
       if (processedProducts.length === 0) {
-        setError('No valid product data found');
+        setError("No valid product data found");
       }
     } catch (err) {
-      console.error('Fetch error:', err);
+      console.error("Fetch error:", err);
       setError(`Failed to fetch data: ${err.message}`);
-      Alert.alert('Fetch Error', `Failed to load data: ${err.message}`);
+      Alert.alert("Fetch Error", `Failed to load data: ${err.message}`);
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -96,10 +100,7 @@ function DiscoverPlace({ navigation }) {
   };
 
   const renderProductCard = ({ item }) => (
-    <ProductCard
-      productData={item}
-      navigation={navigation}
-    />
+    <ProductCard productData={item} navigation={navigation} />
   );
 
   const renderContent = () => {
@@ -116,9 +117,7 @@ function DiscoverPlace({ navigation }) {
     if (error && productData.length === 0) {
       return (
         <View style={localStyles.errorContainer}>
-          <TextDefault style={localStyles.errorText}>
-            {error}
-          </TextDefault>
+          <TextDefault style={localStyles.errorText}>{error}</TextDefault>
         </View>
       );
     }
@@ -127,7 +126,9 @@ function DiscoverPlace({ navigation }) {
       <FlatList
         data={productData}
         renderItem={renderProductCard}
-        keyExtractor={(item, index) => `${item.regNo}-${item.groupCode}-${index}`}
+        keyExtractor={(item, index) =>
+          `${item.regNo}-${item.groupCode}-${index}`
+        }
         contentContainerStyle={localStyles.listContainer}
         showsVerticalScrollIndicator={false}
         refreshControl={
@@ -138,6 +139,7 @@ function DiscoverPlace({ navigation }) {
             tintColor={COLORS.primary}
           />
         }
+        ItemSeparatorComponent={() => <View style={{ height: 16 }} />} // 👈 spacing between cards
         ListEmptyComponent={
           <View style={localStyles.emptyContainer}>
             <TextDefault style={localStyles.emptyText}>
@@ -152,16 +154,14 @@ function DiscoverPlace({ navigation }) {
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={require('../../assets/image.png')}
+        source={require("../../assets/image.png")}
         style={styles.mainBackground}
         imageStyle={styles.backgroundImageStyle}
       >
         <SafeAreaView style={styles.safeArea}>
           <CommonHeader title="Your Schemes" />
-          
-          <View style={localStyles.contentContainer}>
-            {renderContent()}
-          </View>
+
+          <View style={localStyles.contentContainer}>{renderContent()}</View>
 
           <BottomTab screen="SCHEMES" />
         </SafeAreaView>
@@ -178,29 +178,36 @@ const localStyles = StyleSheet.create({
     flex: 1,
     padding: 16,
   },
-  listContainer: {
-    paddingBottom: 20,
-  },
+  cardContainer: {
+  marginBottom: 16,
+},
+listContainer: {
+  paddingVertical: 20, // top & bottom spacing
+  paddingHorizontal: 16, // optional side padding
+},
+
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 20,
+    marginBottom: 10, // Added bottom margin
   },
   emptyContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     padding: 40,
+    marginBottom: 10, // Added bottom margin
   },
   errorText: {
     color: COLORS.danger,
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 16,
   },
   emptyText: {
     color: COLORS.textLight,
-    textAlign: 'center',
+    textAlign: "center",
     fontSize: 16,
   },
 });

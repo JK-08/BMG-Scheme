@@ -8,6 +8,7 @@ import AppContainer from './src/routes/routes';
 import { colors } from './src/utils/colors';
 import useFonts from './src/utils/Fonts';
 
+
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
@@ -54,6 +55,7 @@ export default function App() {
         backgroundColor={colors.background} 
       />
       <AppContainer />
+      
       <FlashMessage position="top" />
     </SafeAreaView>
   );

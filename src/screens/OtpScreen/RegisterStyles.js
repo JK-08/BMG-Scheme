@@ -1,7 +1,5 @@
-// styles.js
 import { StyleSheet, Platform } from 'react-native';
-import appTheme from '../../utils/Theme';
-import { scale } from '../../utils';
+import appTheme from '../../utils/MainTheme';
 
 const { COLORS, SIZES, FONTS, moderateScale, verticalScale } = appTheme;
 
@@ -13,194 +11,319 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   scrollContainer: {
     flexGrow: 1,
     justifyContent: 'center',
-    paddingTop: verticalScale(20),
+    paddingTop: verticalScale(SIZES.xss),
+    paddingBottom: SIZES.xxl,
   },
   container: {
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: moderateScale(20),
-    paddingVertical: verticalScale(10),
+    paddingHorizontal: SIZES.padding.lg,
   },
 
-  // Logo Section - Smaller and closer to top
+  // Logo Section
   logoContainer: {
     alignItems: 'center',
-    marginBottom: verticalScale(10),
-    marginTop: verticalScale(-60),
+    marginBottom: SIZES.xss,
   },
   logoImage: {
-    width: moderateScale(100),
-    height: moderateScale(100),
+    width: moderateScale(420),
+    height: moderateScale(150),
     resizeMode: 'contain',
-    borderRadius: scale(50),
+    borderRadius: SIZES.radius.full,
   },
 
-  // Card Container - Compact height
+  // Card Container
   card: {
     width: '100%',
-    maxWidth: moderateScale(380),
-    backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius,
-    paddingHorizontal: moderateScale(20),
-    paddingVertical: verticalScale(20), // Reduced padding
-    shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(6),
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: moderateScale(12),
-    elevation: 8,
-    borderWidth: 1,
-    borderColor: COLORS.borderColor,
-    marginTop: verticalScale(5),
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.xs,
   },
 
-  // Typography - Compact spacing
+  // Typography
   title: {
-    ...FONTS.heading,
+    ...FONTS.h3,
     textAlign: 'center',
-    marginBottom: verticalScale(4),
-    color: COLORS.primary,
-    fontSize: SIZES.h3,
+    marginBottom: SIZES.xs,
+    color: COLORS.secondaryDark,
   },
   subtitle: {
     ...FONTS.body,
     textAlign: 'center',
-    marginBottom: verticalScale(16),
-    color: COLORS.textLight,
-    fontSize: SIZES.h4,
+    marginBottom: SIZES.xs,
+    color: COLORS.textSecondary,
   },
   label: {
-    ...FONTS.subheading,
-    fontWeight: '600',
-    marginBottom: verticalScale(4),
-    color: COLORS.text,
-    marginTop: verticalScale(12), // Reduced margin
-    fontSize: SIZES.h6,
-  },
-  linkText: {
-    ...FONTS.subheading,
-    textAlign: 'center',
-    color: COLORS.primary,
-    marginTop: verticalScale(16),
-    // textDecorationLine: 'underline',
-    fontWeight: '500',
-    fontSize: SIZES.font,
-  },
-  linkText1: {
-    ...FONTS.subheading,
-    textAlign: 'center',
-    color: COLORS.danger,
-    marginTop: verticalScale(16),
-    textDecorationLine: 'underline',
-    fontWeight: '500',
+    ...FONTS.body,
+    marginBottom: SIZES.xs,
+    color: COLORS.textPrimary,
+    marginTop: SIZES.xs,
   },
   errorText: {
-    ...FONTS.fontXs,
-    color: COLORS.danger,
-    marginTop: verticalScale(2),
-    marginLeft: moderateScale(4),
-    fontFamily:FONTS.body1.fontFamily
+    ...FONTS.caption,
+    color: COLORS.error,
+    marginTop: SIZES.xs,
+    marginLeft: SIZES.xs,
   },
 
-  // Input Fields - Compact
+  // Input Fields
   input: {
-    backgroundColor: COLORS.input,
-    borderRadius: SIZES.radius_sm,
-    paddingHorizontal: moderateScale(14),
-    paddingVertical: Platform.OS === 'ios' ? verticalScale(10) : verticalScale(8),
+    // backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.md,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: Platform.OS === 'ios' ? SIZES.md : SIZES.sm,
     borderWidth: 1,
-    borderColor: COLORS.borderColor,
-    fontSize: SIZES.font,
-    color: COLORS.text,
-    ...FONTS.body1,
-    shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(1),
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: moderateScale(2),
-    elevation: 1,
-    minHeight: verticalScale(40), // Fixed height for consistency
+    borderColor: COLORS.borderMedium,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.body,
+    // ...appTheme.SHADOWS.sm,
+    minHeight: SIZES.input.height,
   },
 
-  // Phone Input Container - Compact
+  // Phone Input Container
   inputContainer: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: COLORS.input,
-    borderRadius: SIZES.radius_sm,
+    // backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.md,
     borderWidth: 1,
-    borderColor: COLORS.borderColor,
-    paddingHorizontal: moderateScale(14),
-    paddingVertical: Platform.OS === 'ios' ? verticalScale(8) : verticalScale(6),
-    shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(1),
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: moderateScale(2),
-    elevation: 1,
-    minHeight: verticalScale(40), // Fixed height
+    borderColor: COLORS.inputBorder,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: Platform.OS === 'ios' ? SIZES.sm : SIZES.xs,
+    // ...appTheme.SHADOWS.sm,
+    minHeight: SIZES.input.height,
   },
   inputError: {
-    borderColor: COLORS.danger,
+    borderColor: COLORS.error,
     borderWidth: 1.5,
   },
   countryCode: {
-    ...FONTS.fontSm,
-    color: COLORS.text,
-    marginRight: moderateScale(6),
+    ...FONTS.bodySmall,
+    color: COLORS.textPrimary,
+    marginRight: SIZES.sm,
     fontWeight: '600',
-    paddingRight: moderateScale(6),
+    paddingRight: SIZES.sm,
     borderRightWidth: 1,
-    borderRightColor: COLORS.borderColor,
+    borderRightColor: COLORS.borderMedium,
   },
   phoneInput: {
     flex: 1,
-    fontSize: SIZES.font,
-    color: COLORS.text,
-    ...FONTS.body1,
-    paddingLeft: moderateScale(6),
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.body,
+    paddingLeft: SIZES.sm,
+    paddingVertical: Platform.OS === 'ios' ? SIZES.sm : 0,
   },
 
-  // Buttons - Compact
+  // Buttons
   primaryButton: {
-    borderRadius: SIZES.radius_sm,
-    marginTop: verticalScale(20), // Reduced margin
+    borderRadius: SIZES.radius.md,
+    marginTop: SIZES.xl,
     overflow: 'hidden',
-    shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(3),
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: moderateScale(6),
-    elevation: 5,
-    height: moderateScale(48),
+    ...appTheme.SHADOWS.md,
+    height: SIZES.button.lg,
   },
   buttonGradient: {
-    paddingVertical: verticalScale(10), // Reduced padding
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: verticalScale(40), // Fixed button height
   },
   primaryButtonText: {
-    ...FONTS.h5,
+    ...FONTS.h6,
+    color: COLORS.textInverse,
     fontWeight: '600',
-    color: COLORS.white,
-    fontSize: SIZES.h5,
   },
   disabledButton: {
     opacity: 0.6,
   },
+
+  // Login Link
+  loginContainer: {
+    flexDirection: 'row',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginTop: SIZES.xl,
+  },
+  loginText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+  },
+  loginLink: {
+    ...FONTS.body,
+    color: COLORS.secondaryDark,
+    fontWeight: '600',
+    marginLeft: SIZES.xs,
+  },
+
+  // Loading Overlay
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.overlay,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loadingText: {
+    ...FONTS.body,
+    color: COLORS.white,
+    marginTop: SIZES.md,
+  },
+  // Add to your existing StyleSheet.create({
+requiredStar: {
+  color: COLORS.error,
+  fontSize: SIZES.font.md,
+},
+
+// Update the existing errorText style if needed:
+errorText: {
+  ...FONTS.caption,
+  color: COLORS.error,
+  marginTop: SIZES.xs,
+  marginLeft: SIZES.xs,
+},
+
+// Ensure inputError style exists:
+inputError: {
+  borderColor: COLORS.error,
+  borderWidth: 1.5,
+},
+// Add to your existing StyleSheet.create({
+
+// Password Container with Eye Icon
+passwordContainer: {
+ flexDirection: 'row',
+    alignItems: 'center',
+    // backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.md,
+    borderWidth: 1,
+    borderColor: COLORS.inputBorder,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: Platform.OS === 'ios' ? SIZES.sm : SIZES.xs,
+    // ...appTheme.SHADOWS.sm,
+    minHeight: SIZES.input.height,
+},
+passwordInput: {
+  flex: 1,
+  fontSize: SIZES.font.md,
+  color: COLORS.textPrimary,
+  fontFamily: FONTS.family.body,
+  paddingVertical: 0,
+},
+eyeIcon: {
+  padding: SIZES.xs,
+  marginLeft: SIZES.xs,
+},
+eyeIconImage: {
+  width: SIZES.icon.sm,
+  height: SIZES.icon.sm,
+  tintColor: COLORS.textTertiary,
+},
+
+// Required field star
+requiredStar: {
+  color: COLORS.error,
+  fontSize: SIZES.font.md,
+},
+
+// Error text
+errorText: {
+  ...FONTS.caption,
+  color: COLORS.error,
+  marginTop: SIZES.xs,
+  marginLeft: SIZES.xs,
+},
+
+// Input error state
+inputError: {
+  borderColor: COLORS.error,
+  borderWidth: 1.5,
+},
+// Add these styles to your RegisterStyles.js
+dividerContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginVertical: SIZES.md,
+},
+divider: {
+  flex: 1,
+  height: 1,
+  backgroundColor: COLORS.border,
+},
+dividerText: {
+  marginHorizontal: SIZES.md,
+  color: COLORS.textSecondary,
+  ...FONTS.bodySmall,
+},
+googleButton: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'center',
+  backgroundColor: COLORS.white,
+  borderWidth: 1,
+  borderColor: COLORS.border,
+  borderRadius: SIZES.md,
+  paddingVertical: SIZES.md,
+  paddingHorizontal: SIZES.lg,
+  marginBottom: SIZES.xss,
+},
+googleButtonContent: {
+  flexDirection: 'row',
+  alignItems: 'center',
+},
+googleIcon: {
+  width: 20,
+  height: 20,
+  marginRight: SIZES.md,
+},
+googleButtonText: {
+  color: COLORS.textPrimary,
+  ...FONTS.bodyMedium,
+  fontWeight: '500',
+},
 });
+
+// Platform-specific adjustments
+if (Platform.OS === 'web') {
+  styles.scrollContainer = {
+    ...styles.scrollContainer,
+    paddingTop: verticalScale(SIZES.xxl * 1.5),
+    minHeight: '100vh',
+  };
+  
+  styles.card = {
+    ...styles.card,
+    cursor: 'default',
+    maxWidth: moderateScale(420),
+  };
+  
+  styles.input = {
+    ...styles.input,
+    outlineStyle: 'none',
+    paddingVertical: SIZES.md,
+  };
+  
+  styles.phoneInput = {
+    ...styles.phoneInput,
+    outlineStyle: 'none',
+  };
+  
+  styles.primaryButton = {
+    ...styles.primaryButton,
+    cursor: 'pointer',
+  };
+  
+  styles.loginLink = {
+    ...styles.loginLink,
+    cursor: 'pointer',
+  };
+  
+}
 
 export default styles;

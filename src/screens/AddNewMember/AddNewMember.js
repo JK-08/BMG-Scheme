@@ -1,5 +1,5 @@
 import React, { useState, useEffect } from "react";
-import { View, Alert, StyleSheet, ActivityIndicator } from "react-native";
+import { View, Alert, StyleSheet, ActivityIndicator, Text } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import { WebView } from "react-native-webview";
 import appTheme from "../../utils/Theme";
@@ -7,21 +7,43 @@ import MemberDetailsPage from "./MemberDetailsPage";
 import SchemeDetailsPage from "./SchemeDetailsPage";
 import { API_BASE_URL_OLD, API_BASE_URL } from "../../Config/API";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import smsService from "../../services/SMSService";
 
 const { COLORS } = appTheme;
 
-// All three schemes
-const schemes = [
-  { SchemeId: 1, schemeName: "BMG AMOUNT SCHEME", SchemeSName: "BAS" },
-  { SchemeId: 2, schemeName: "BMG DIGI SILVER", SchemeSName: "BDS" },
-  { SchemeId: 3, schemeName: "BMG FIXED DEPOSIT", SchemeSName: "BFD" },
-];
+// Service function to fetch all schemes
+const getAllSchemes = async () => {
+  try {
+    const response = await fetch(`${API_BASE_URL_OLD}/member/scheme`, {
+      method: "GET",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+    });
+    if (!response.ok) {
+      throw new Error(`HTTP Error: ${response.status}`);
+    }
+    const data = await response.json();
+    return data; // Array of schemes
+  } catch (error) {
+    console.error("Error fetching schemes:", error);
+    throw error;
+  }
+};
 
 const AddNewMember = () => {
   const [currentStep, setCurrentStep] = useState(1);
   const navigation = useNavigation();
   const route = useRoute();
-  const { schemeId } = route.params || {};
+
+  // Extract both schemeId and schemeName from route params
+  const { schemeId, schemeName } = route.params || {};
+
+  console.log("🟢 Route params:", route.params);
+  console.log("🟢 Scheme ID from params:", schemeId);
+  console.log("🟢 Scheme Name from params:", schemeName);
+
   const [token, setToken] = useState(null);
 
   // Payment state
@@ -29,6 +51,10 @@ const AddNewMember = () => {
   const [paymentUrl, setPaymentUrl] = useState("");
   const [paymentProcessed, setPaymentProcessed] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(true);
+
+  // NEW STATE: Track payment completion and processing status
+  const [paymentCompleted, setPaymentCompleted] = useState(false);
+  const [processingPayment, setProcessingPayment] = useState(false); // NEW: For showing loading after WebView closes
 
   const [memberData, setMemberData] = useState({
     namePrefix: "Mr",
@@ -62,6 +88,10 @@ const AddNewMember = () => {
   const [schemeOptions, setSchemeOptions] = useState([]);
   const [isFetchingSchemeOptions, setIsFetchingSchemeOptions] = useState(false);
 
+  // New state for storing all schemes
+  const [allSchemes, setAllSchemes] = useState([]);
+  const [isFetchingSchemes, setIsFetchingSchemes] = useState(false);
+
   const [validationErrors, setValidationErrors] = useState({});
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isProcessingPayment, setIsProcessingPayment] = useState(false);
@@ -70,12 +100,76 @@ const AddNewMember = () => {
   const [orderDetails, setOrderDetails] = useState(null);
   const [currentPaymentData, setCurrentPaymentData] = useState(null);
 
-  // Get scheme name
+  // Fetch all schemes on component mount
+  useEffect(() => {
+    fetchAllSchemes();
+  }, []);
+
+  // NEW EFFECT: Handle payment completion
+  useEffect(() => {
+    if (paymentCompleted) {
+      // Directly navigate to home after payment completion
+      resetFormFields();
+      navigation.navigate("MainLanding");
+    }
+  }, [paymentCompleted]);
+
+  // Fetch all available schemes
+  const fetchAllSchemes = async () => {
+    setIsFetchingSchemes(true);
+    try {
+      const schemes = await getAllSchemes();
+      setAllSchemes(schemes);
+    } catch (error) {
+      console.error("Error fetching all schemes:", error);
+      Alert.alert("Error", "Failed to fetch schemes. Please try again.");
+    } finally {
+      setIsFetchingSchemes(false);
+    }
+  };
+
+  // Get scheme name based on scheme type logic
   const getSchemeName = (id) => {
-    if (!id) return "No Scheme Selected";
+    if (!id) return schemeName || "No Scheme Selected";
     const numericId = Number(id);
-    const scheme = schemes.find((s) => s.SchemeId === numericId);
-    return scheme ? scheme.schemeName : "Unknown Scheme";
+    const scheme = allSchemes.find((s) => s.SchemeId === numericId);
+
+    if (!scheme) return schemeName || "Unknown Scheme";
+
+    // Return the actual scheme name from API response
+    return scheme.schemeName || schemeName || "Unknown Scheme";
+  };
+
+  // Get scheme short name from API response
+  const getSchemeShortName = (id) => {
+    if (!id) return "";
+    const numericId = Number(id);
+    const scheme = allSchemes.find((s) => s.SchemeId === numericId);
+
+    if (!scheme) return "";
+
+    // Return the actual scheme short name from API response
+    return scheme.SchemeSName || "";
+  };
+
+  // Get scheme type for internal logic (this can still use the logic)
+  const getSchemeType = (id) => {
+    if (!id) return null;
+    const numericId = Number(id);
+    const scheme = allSchemes.find((s) => s.SchemeId === numericId);
+
+    if (!scheme) return null;
+
+    // Use the logic to determine scheme type without hardcoding names
+    if (scheme.WeightLedger === "N" && scheme.FixedIns === "Y") {
+      return "AMOUNT_SCHEME";
+    } else if (scheme.WeightLedger === "Y" && scheme.FixedIns === "N") {
+      return "DIGI_SILVER";
+    } else if (scheme.WeightLedger === "N" && scheme.FixedIns === "N") {
+      return "FIXED_DEPOSIT";
+    } else {
+      return "OTHER";
+    }
   };
 
   // Fetch GROUPCODE and REGNO for selected scheme
@@ -138,6 +232,7 @@ const AddNewMember = () => {
       setShowWebView(false);
       setPaymentUrl("");
       setIsProcessingPayment(false);
+      setProcessingPayment(false); // Reset processing state
     } else if (currentStep === 2) {
       // If in scheme details, go back to member details
       setCurrentStep(1);
@@ -159,12 +254,6 @@ const AddNewMember = () => {
       errors.mobile = "Mobile number is required";
     else if (memberFormData.mobile.length !== 10)
       errors.mobile = "Mobile number must be 10 digits";
-    if (!memberFormData.aadharNumber?.trim())
-      errors.aadharNumber = "Aadhaar number is required";
-    else if (memberFormData.aadharNumber.length !== 12)
-      errors.aadharNumber = "Aadhaar number must be 12 digits";
-    if (!memberFormData.panNumber?.trim())
-      errors.panNumber = "PAN number is required";
 
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
@@ -234,7 +323,12 @@ const AddNewMember = () => {
   };
 
   // Initiate payment
-  const initiatePayment = async (orderId, amount, defaultRegNo, defaultGroupCode) => {
+  const initiatePayment = async (
+    orderId,
+    amount,
+    defaultRegNo,
+    defaultGroupCode
+  ) => {
     try {
       const paymentPayload = {
         merchantTxnNo: orderId,
@@ -279,7 +373,9 @@ const AddNewMember = () => {
         throw new Error(errorText);
       }
 
-      const paymentUrl = (await redirectRes.text()).replace(/^"+|"+$/g, "").trim();
+      const paymentUrl = (await redirectRes.text())
+        .replace(/^"+|"+$/g, "")
+        .trim();
       console.log("Payment URL:", paymentUrl);
 
       return {
@@ -304,7 +400,10 @@ const AddNewMember = () => {
         transactionType: "STATUS",
       };
 
-      console.log("📤 PAYPHI STATUS PAYLOAD:", JSON.stringify(payload, null, 2));
+      console.log(
+        "📤 PAYPHI STATUS PAYLOAD:",
+        JSON.stringify(payload, null, 2)
+      );
 
       const response = await fetch(
         "https://scheme.bmgjewellers.com/api/v1/payment/status",
@@ -336,11 +435,14 @@ const AddNewMember = () => {
         orderStatus: paymentStatus.orderStatus,
         message: paymentStatus.message,
         timestamp: new Date().toISOString(),
-        orderDetails: orderDetails
+        orderDetails: orderDetails,
       };
 
-      await AsyncStorage.setItem('paymentResponse', JSON.stringify(paymentData));
-      console.log("💾 Payment data stored successfully in AsyncStorage");
+      await AsyncStorage.setItem(
+        "paymentResponse",
+        JSON.stringify(paymentData)
+      );
+      console.log("💾 Payment data ", paymentData);
     } catch (error) {
       console.error("❌ Error storing payment data:", error);
     }
@@ -387,7 +489,7 @@ const AddNewMember = () => {
         openingDate: new Date().toISOString().slice(0, 19).replace("T", " "),
         userId2: "9999",
         amount: parseFloat(schemeFormData.amount || "0"),
-        ...(numericSchemeId === 2 &&
+        ...(getSchemeType(numericSchemeId) === "DIGI_SILVER" &&
           schemeFormData.calculatedWeight && {
             calculatedWeight: parseFloat(schemeFormData.calculatedWeight),
           }),
@@ -435,13 +537,20 @@ const AddNewMember = () => {
 
     if (url.includes(successUrl)) {
       setPaymentProcessed(true);
-      // Small delay to ensure payment is fully processed
+      // Immediately hide WebView and show loading while processing
+      setShowWebView(false);
+      setProcessingPayment(true); // Show loading indicator
       setTimeout(() => {
         handlePaymentSuccess();
-      }, 2000);
+      }, 1000);
     } else if (url.includes(failureUrl)) {
       setPaymentProcessed(true);
-      handlePaymentFailure();
+      // Immediately hide WebView and show loading while processing
+      setShowWebView(false);
+      setProcessingPayment(true); // Show loading indicator
+      setTimeout(() => {
+        handlePaymentFailure();
+      }, 1000);
     }
   };
 
@@ -452,10 +561,12 @@ const AddNewMember = () => {
       }
 
       // Check payment status
-      const paymentStatus = await checkPaymentStatus(orderDetails.merchantTxnNo);
+      const paymentStatus = await checkPaymentStatus(
+        orderDetails.merchantTxnNo
+      );
 
       if (paymentStatus?.orderStatus === "PAID") {
-        // Submit member data
+        // 1️⃣ Submit Member Data
         await submitMemberData(
           currentPaymentData.numericSchemeId,
           currentPaymentData.schemeData,
@@ -463,42 +574,74 @@ const AddNewMember = () => {
           currentPaymentData.regNo
         );
 
+        // 2️⃣ Send Welcome SMS
+        try {
+          await smsService.sendWelcomeSMS(
+            memberData.mobile,
+            memberData.name,
+            getSchemeName(currentPaymentData.numericSchemeId),
+            currentPaymentData.schemeData.amount,
+            new Date().toISOString().slice(0, 10),
+            "BMG JEWELLERS PVT LTD"
+          );
+          console.log("📩 Welcome SMS sent");
+        } catch (smsErr) {
+          console.log("❌ SMS sending failed:", smsErr);
+        }
+
+        // Hide loading and show success popup
+        setProcessingPayment(false);
         Alert.alert(
           "Success",
-          `Member added successfully to ${getSchemeName(currentPaymentData.numericSchemeId)}!`,
-          [{ text: "OK", onPress: () => {
-            resetFormFields();
-            navigation.navigate("MainLanding");
-          }}]
+          `Member added successfully to ${getSchemeName(
+            currentPaymentData.numericSchemeId
+          )}!`,
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                setPaymentCompleted(true);
+              },
+            },
+          ]
         );
       } else {
         throw new Error("Payment not confirmed");
       }
     } catch (error) {
       console.error("Error in payment success handling:", error);
+      // Hide loading and show error popup
+      setProcessingPayment(false);
       Alert.alert(
         "Payment Warning",
         "Payment was successful but there was an issue saving member data. Please contact support.",
-        [{ text: "OK", onPress: () => navigation.navigate("MainLanding") }]
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setPaymentCompleted(true);
+            },
+          },
+        ]
       );
     } finally {
-      setShowWebView(false);
       setIsProcessingPayment(false);
     }
   };
 
   const handlePaymentFailure = () => {
+    // Hide loading and show failure popup
+    setProcessingPayment(false);
     Alert.alert(
       "Payment Failed",
       "Your payment was not successful. Please try again.",
       [
-        { 
-          text: "OK", 
+        {
+          text: "OK",
           onPress: () => {
-            setShowWebView(false);
             setIsProcessingPayment(false);
-          }
-        }
+          },
+        },
       ]
     );
   };
@@ -553,7 +696,7 @@ const AddNewMember = () => {
         );
       }
 
-      // If no matching amount found, just pick the first record (for schemes like BDS or BFD)
+      // If no matching amount found, just pick the first record (for schemes like DIGI_SILVER or FIXED_DEPOSIT)
       if (!selectedRecord) {
         selectedRecord = apiData[0];
       }
@@ -569,10 +712,16 @@ const AddNewMember = () => {
       Alert.alert(
         "Success",
         `Member added successfully to ${getSchemeName(numericSchemeId)}!`,
-        [{ text: "OK", onPress: () => navigation.navigate("MainLanding") }]
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              resetFormFields();
+              navigation.navigate("MainLanding");
+            },
+          },
+        ]
       );
-
-      resetFormFields();
     } catch (error) {
       console.error("Error during member creation:", error);
       Alert.alert(
@@ -607,7 +756,7 @@ const AddNewMember = () => {
         );
       }
 
-      // If no matching amount found, just pick the first record (for schemes like BDS or BFD)
+      // If no matching amount found, just pick the first record (for schemes like DIGI_SILVER or FIXED_DEPOSIT)
       if (!selectedRecord) {
         selectedRecord = apiData[0];
       }
@@ -683,7 +832,6 @@ const AddNewMember = () => {
       setPaymentUrl(paymentData.paymentUrl);
       setShowWebView(true);
       setPaymentProcessed(false);
-
     } catch (error) {
       console.error("Error during payment processing:", error);
       Alert.alert(
@@ -733,9 +881,34 @@ const AddNewMember = () => {
     setShowWebView(false);
     setPaymentUrl("");
     setPaymentProcessed(false);
+    setPaymentCompleted(false);
+    setProcessingPayment(false); // Reset processing state
   };
 
+  // NEW: Loading component for payment processing
+  const renderProcessingPayment = () => (
+    <View style={styles.processingContainer}>
+      <ActivityIndicator size="large" color="#d4af37" />
+      <Text style={styles.processingText}>
+        Processing your payment...
+      </Text>
+      <Text style={styles.processingSubText}>
+        Please wait while we confirm your payment
+      </Text>
+    </View>
+  );
+
   const renderStep = () => {
+    // If payment is completed, don't render anything (will navigate to home)
+    if (paymentCompleted) {
+      return null;
+    }
+
+    // NEW: Show loading indicator while processing payment after WebView closes
+    if (processingPayment) {
+      return renderProcessingPayment();
+    }
+
     if (showWebView) {
       // Render WebView for payment
       return (
@@ -782,11 +955,12 @@ const AddNewMember = () => {
             setValidationErrors={setValidationErrors}
             isSubmitting={isSubmitting || isProcessingPayment}
             API_BASE_URL={API_BASE_URL_OLD}
-            schemes={schemes}
+            schemes={allSchemes} // Pass dynamically fetched schemes
             selectedSchemeId={schemeData.selectedSchemeId}
             schemeName={getSchemeName(schemeData.selectedSchemeId)}
             schemeOptions={schemeOptions}
             isFetchingSchemeOptions={isFetchingSchemeOptions}
+            isFetchingSchemes={isFetchingSchemes}
           />
         );
       default:
@@ -807,6 +981,28 @@ const styles = StyleSheet.create({
     backgroundColor: "rgba(255,255,255,0.8)",
     justifyContent: "center",
     alignItems: "center",
+  },
+  // NEW: Styles for payment processing screen
+  processingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.background,
+    padding: 20,
+  },
+  processingText: {
+    fontSize: 18,
+    fontWeight: "bold",
+    marginTop: 20,
+    color: COLORS.primary,
+    textAlign: "center",
+  },
+  processingSubText: {
+    fontSize: 14,
+    marginTop: 10,
+    color: COLORS.text,
+    textAlign: "center",
+    opacity: 0.7,
   },
 });
 

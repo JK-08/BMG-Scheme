@@ -8,15 +8,14 @@ import {
   Alert,
   StyleSheet,
 } from "react-native";
-import appTheme from "../../utils/Theme";
-import CustomPicker from "../../screens/AddNewMember/CustomPicker";
+import appTheme from "../../utils/MainTheme";
 
 const { COLORS, SIZES, FONTS } = appTheme;
 
 const DigiSilverScheme = ({
   formData,
   updateFormData,
-  validationErrors,
+  validationErrors = {},
   setValidationErrors,
   isSubmitting,
   API_BASE_URL_OLD,
@@ -24,50 +23,42 @@ const DigiSilverScheme = ({
   inputRefs,
   setActiveInput,
 }) => {
-  const [goldRate, setGoldRate] = useState(null);
-  const [loadingGoldRate, setLoadingGoldRate] = useState(false);
-  const [goldRateError, setGoldRateError] = useState(false);
+  const [silverRate, setSilverRate] = useState(null);
+  const [loadingSilverRate, setLoadingSilverRate] = useState(false);
+  const [silverRateError, setSilverRateError] = useState(false);
 
-  // Fetch silver rate for BMG DIGI SILVER
+  // Fetch Silver Rate
   const fetchSilverRate = useCallback(async () => {
-    setLoadingGoldRate(true);
-    setGoldRateError(false);
+    setLoadingSilverRate(true);
+    setSilverRateError(false);
+
     try {
       const controller = new AbortController();
       const timeoutId = setTimeout(() => controller.abort(), 10000);
 
       const response = await fetch(`${API_BASE_URL_OLD}/account/todayrate`, {
         signal: controller.signal,
-        headers: {
-          Accept: "application/json",
-        },
+        headers: { Accept: "application/json" },
       });
 
       clearTimeout(timeoutId);
 
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: Failed to fetch silver rate`);
-      }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
 
       const data = await response.json();
-
-      // Use silver rate if available, otherwise fallback to gold rate
       const rate = data.SILVERRATE || data.GOLDRATE;
-      
-      if (!rate || isNaN(rate)) {
-        throw new Error("Invalid silver rate received from server");
-      }
 
-      setGoldRate(rate);
+      if (!rate || isNaN(rate)) throw new Error("Invalid rate received");
+      setSilverRate(rate);
     } catch (error) {
       console.error("Error fetching silver rate:", error);
-      setGoldRateError(true);
-      setGoldRate(null);
+      setSilverRate(null);
+      setSilverRateError(true);
 
       if (error.name !== "AbortError") {
         Alert.alert(
-          "Error",
-          "Failed to fetch current silver rate. Please check your internet connection and try again.",
+          "Connection Error",
+          "Failed to fetch current silver rate.",
           [
             { text: "Retry", onPress: fetchSilverRate },
             { text: "Cancel", style: "cancel" },
@@ -75,246 +66,277 @@ const DigiSilverScheme = ({
         );
       }
     } finally {
-      setLoadingGoldRate(false);
+      setLoadingSilverRate(false);
     }
   }, [API_BASE_URL_OLD]);
 
+  // Fetch rate on mount or scheme change
   useEffect(() => {
-    // Fetch silver rate for BMG DIGI SILVER (SchemeId: 2)
-    if (numericSchemeId === 2 && goldRate === null && !loadingGoldRate && !goldRateError) {
+    if (numericSchemeId === 2 && silverRate === null && !loadingSilverRate) {
       fetchSilverRate();
     }
-  }, [numericSchemeId, goldRate, loadingGoldRate, goldRateError, fetchSilverRate]);
+  }, [numericSchemeId, silverRate, loadingSilverRate, fetchSilverRate]);
 
+  // Convert amount to silver weight
   const convertAmountToWeight = useCallback(
     (amountValue) => {
       if (
-        goldRate &&
+        silverRate &&
         amountValue &&
         !isNaN(amountValue) &&
         parseFloat(amountValue) > 0
       ) {
-        const weightInGrams = (parseFloat(amountValue) / goldRate).toFixed(3);
-        updateFormData('calculatedWeight', weightInGrams);
+        const weight = (parseFloat(amountValue) / silverRate).toFixed(3);
+        updateFormData("calculatedWeight", weight);
       } else {
-        updateFormData('calculatedWeight', "");
+        updateFormData("calculatedWeight", "");
       }
     },
-    [goldRate, updateFormData]
+    [silverRate, updateFormData]
   );
 
+  // Handle amount input
   const handleAmountChange = (text) => {
-    const sanitizedText = text.replace(/[^0-9.]/g, "");
+    const sanitized = text.replace(/[^0-9.]/g, "");
+    const parts = sanitized.split(".");
+    if (parts.length > 2 || (parts[1] && parts[1].length > 2)) return;
 
-    const parts = sanitizedText.split(".");
-    if (parts.length > 2 || (parts[1] && parts[1].length > 2)) {
-      return;
-    }
-
-    updateFormData('amount', sanitizedText);
-    convertAmountToWeight(sanitizedText);
+    updateFormData("amount", sanitized);
+    convertAmountToWeight(sanitized);
   };
 
-  // Validate Digi Silver specific fields
+  // Validate fields
   useEffect(() => {
     const errors = { ...validationErrors };
-    
-    if (formData.amount) {
-      if (isNaN(formData.amount) || parseFloat(formData.amount) <= 0) {
-        errors.amount = "Please enter a valid amount greater than 0";
-      } else if (parseFloat(formData.amount) < 1) {
-        errors.amount = "Minimum payment amount is ₹1";
-      } else {
-        delete errors.amount;
-      }
-    }
 
-    if (!goldRate && !loadingGoldRate) {
-      errors.goldRate = "Current silver rate is not available. Please retry fetching.";
-    } else {
-      delete errors.goldRate;
-    }
+    if (
+      !formData?.amount ||
+      isNaN(formData.amount) ||
+      parseFloat(formData.amount) <= 0
+    ) {
+      errors.amount = "Enter a valid amount greater than 0";
+    } else if (parseFloat(formData.amount) < 1) {
+      errors.amount = "Minimum amount is ₹1";
+    } else delete errors.amount;
 
-    if (formData.calculatedWeight && parseFloat(formData.calculatedWeight) <= 0) {
-      errors.calculatedWeight = "Calculated silver weight is invalid.";
-    } else {
-      delete errors.calculatedWeight;
-    }
+    if (!silverRate && !loadingSilverRate) {
+      errors.silverRate = "Silver rate unavailable. Retry fetching.";
+    } else delete errors.silverRate;
+
+    if (
+      formData?.calculatedWeight &&
+      parseFloat(formData.calculatedWeight) <= 0
+    ) {
+      errors.calculatedWeight = "Calculated weight is invalid.";
+    } else delete errors.calculatedWeight;
 
     setValidationErrors(errors);
-  }, [formData.amount, formData.calculatedWeight, goldRate, loadingGoldRate]);
+  }, [
+    formData?.amount,
+    formData?.calculatedWeight,
+    silverRate,
+    loadingSilverRate,
+  ]);
 
   return (
     <>
+      {/* Amount Input */}
       <View style={styles.inputContainer}>
-        <Text style={[styles.label, FONTS.h6]}>
-          Amount (₹) <Text style={[styles.asterisk, { color: COLORS.danger }]}>*</Text>
-        </Text>
+        <View style={styles.labelContainer}>
+          <Text style={styles.label}>Investment Amount</Text>
+          <Text style={styles.asterisk}>*</Text>
+        </View>
         <TextInput
-          style={[
-            styles.input,
-            validationErrors.amount && styles.inputError,
-            { backgroundColor: COLORS.input, borderColor: COLORS.borderColor }
-          ]}
+          style={[styles.input, validationErrors?.amount && styles.inputError]}
           keyboardType="decimal-pad"
-          value={formData.amount}
+          value={formData?.amount || ""}
           editable={!isSubmitting}
           onChangeText={handleAmountChange}
-          placeholder="Enter amount for Digi Silver"
-          placeholderTextColor={COLORS.placeholder}
+          placeholder="Enter amount in ₹"
+          placeholderTextColor={COLORS.textTertiary}
           maxLength={10}
-          onFocus={() => setActiveInput('amount')}
-          ref={(ref) => (inputRefs.current['amount'] = ref)}
+          onFocus={() => setActiveInput?.("amount")}
+          ref={(ref) =>
+            inputRefs?.current && (inputRefs.current["amount"] = ref)
+          }
         />
-        {validationErrors.amount && (
-          <Text style={[styles.errorText, FONTS.fontSm]}>{validationErrors.amount}</Text>
+        {validationErrors?.amount && (
+          <Text style={styles.errorText}>{validationErrors.amount}</Text>
         )}
       </View>
 
+      {/* Silver Rate Display */}
       <View style={styles.inputContainer}>
-        <Text style={[styles.label, FONTS.h6]}>Current Silver Rate</Text>
-        {loadingGoldRate ? (
-          <ActivityIndicator size="small" color={COLORS.primary} style={{ marginTop: SIZES.margin }} />
-        ) : goldRateError ? (
+        <Text style={styles.label}>Current Silver Rate</Text>
+        {loadingSilverRate ? (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="small" color={COLORS.primary} />
+            <Text style={styles.loadingText}>Fetching current rate...</Text>
+          </View>
+        ) : silverRateError ? (
           <TouchableOpacity
-            style={[
-              styles.retryButton,
-              { backgroundColor: COLORS.primaryLight, borderColor: COLORS.danger }
-            ]}
+            style={styles.retryButton}
             onPress={fetchSilverRate}
             disabled={isSubmitting}
           >
-            <Text style={[styles.retryText, FONTS.fontSm, { color: COLORS.danger }]}>
+            <Text style={styles.retryText}>
               Failed to load rate. Tap to retry
             </Text>
           </TouchableOpacity>
-        ) : goldRate ? (
-          <View
-            style={[
-              styles.staticValueContainer,
-              { backgroundColor: COLORS.input, borderColor: COLORS.borderColor }
-            ]}
-          >
-            <Text style={[styles.staticValueText, FONTS.font]}>
-              {`₹${goldRate} / gm`}
-            </Text>
+        ) : silverRate ? (
+          <View style={styles.rateDisplay}>
+            <Text style={styles.rateText}>₹{silverRate} per gram</Text>
           </View>
         ) : (
-          <View
-            style={[
-              styles.staticValueContainer,
-              { backgroundColor: COLORS.input, borderColor: COLORS.borderColor }
-            ]}
-          >
-            <Text style={[styles.staticValueText, FONTS.font]}>N/A</Text>
+          <View style={styles.rateDisplay}>
+            <Text style={styles.ratePlaceholder}>Rate not available</Text>
           </View>
         )}
-        {validationErrors.goldRate && (
-          <Text style={[styles.errorText, FONTS.fontSm]}>{validationErrors.goldRate}</Text>
+        {validationErrors?.silverRate && (
+          <Text style={styles.errorText}>{validationErrors.silverRate}</Text>
         )}
       </View>
 
+      {/* Calculated Weight */}
       <View style={styles.inputContainer}>
-        <Text style={[styles.label, FONTS.h6]}>Calculated Silver Weight (grams)</Text>
-        <TextInput
+        <Text style={styles.label}>Calculated Silver Weight</Text>
+        <View
           style={[
-            styles.input,
-            styles.disabledInput,
-            validationErrors.calculatedWeight && styles.inputError,
-            { backgroundColor: COLORS.darkInput, borderColor: COLORS.borderColor }
+            styles.weightDisplay,
+            validationErrors?.calculatedWeight && styles.inputError,
           ]}
-          value={formData.calculatedWeight ? `${formData.calculatedWeight} g` : ''}
-          editable={false}
-          placeholder="Weight will be calculated"
-          placeholderTextColor={COLORS.placeholder}
-        />
-        {validationErrors.calculatedWeight && (
-          <Text style={[styles.errorText, FONTS.fontSm]}>{validationErrors.calculatedWeight}</Text>
-        )}
-        {formData.amount && formData.calculatedWeight && parseFloat(formData.calculatedWeight) > 0 && (
-          <Text style={[styles.hintText, FONTS.fontXs]}>
-            You will purchase {formData.calculatedWeight}g of silver.
+        >
+          <Text
+            style={[
+              styles.weightText,
+              !formData?.calculatedWeight && styles.weightPlaceholder,
+            ]}
+          >
+            {formData?.calculatedWeight
+              ? `${formData.calculatedWeight} grams`
+              : "Weight will be calculated automatically"}
+          </Text>
+        </View>
+        {validationErrors?.calculatedWeight && (
+          <Text style={styles.errorText}>
+            {validationErrors.calculatedWeight}
           </Text>
         )}
+        {formData?.amount &&
+          formData?.calculatedWeight &&
+          parseFloat(formData.calculatedWeight) > 0 && (
+            <Text style={styles.hintText}>
+              You will purchase {formData.calculatedWeight} grams of silver
+            </Text>
+          )}
       </View>
     </>
   );
 };
 
 const styles = StyleSheet.create({
-  inputContainer: {
-    marginBottom: SIZES.margin * 1,
+  inputContainer: { marginBottom: SIZES.lg },
+  labelContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: SIZES.xs,
   },
   label: {
-    ...FONTS.h6,
-    color: COLORS.label,
-    marginBottom: SIZES.margin / 2,
-    letterSpacing: 0.3,
-  },
-  input: {
-    height: 56,
-    backgroundColor: COLORS.input,
-    borderRadius: SIZES.radius,
-    paddingHorizontal: SIZES.padding,
-    ...FONTS.h6,
-    color: COLORS.title,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderColor,
-  },
-  inputError: {
-    borderColor: COLORS.danger,
-    borderWidth: 2,
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    marginRight: SIZES.xs,
   },
   asterisk: {
-    color: COLORS.danger,
-    fontSize: SIZES.fontLg,
-    fontWeight: '700',
+    fontSize: SIZES.font.md,
+    color: COLORS.error,
+    fontFamily: FONTS.family.bodyBold,
   },
-  disabledInput: {
-    backgroundColor: COLORS.darkInput,
-    color: COLORS.textLight,
-    opacity: 0.7,
+  input: {
+    height: SIZES.input.height,
     borderWidth: 1.5,
-    borderColor: COLORS.borderColor,
+    borderColor: COLORS.borderMedium,
+    borderRadius: SIZES.radius.md,
+    paddingHorizontal: SIZES.padding.md,
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    backgroundColor: "transparent",
   },
-  staticValueContainer: {
-    height: 56,
-    backgroundColor: COLORS.input,
-    borderRadius: SIZES.radius,
+  inputError: { borderColor: COLORS.error, borderWidth: 1.5 },
+  loadingContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: SIZES.md,
+    paddingHorizontal: SIZES.sm,
+  },
+  loadingText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.sm,
+    color: COLORS.textTertiary,
+    marginLeft: SIZES.sm,
+  },
+  rateDisplay: {
+    height: SIZES.input.height,
     borderWidth: 1.5,
-    borderColor: COLORS.borderColor,
-    justifyContent: 'center',
-    paddingHorizontal: SIZES.padding,
+    borderColor: COLORS.borderMedium,
+    borderRadius: SIZES.radius.md,
+    paddingHorizontal: SIZES.padding.md,
+    justifyContent: "center",
+    backgroundColor: "transparent",
   },
-  staticValueText: {
-    ...FONTS.font,
-    color: COLORS.text,
+  rateText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
   },
+  ratePlaceholder: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textTertiary,
+    fontStyle: "italic",
+  },
+  weightDisplay: {
+    height: SIZES.input.height,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderMedium,
+    borderRadius: SIZES.radius.md,
+    paddingHorizontal: SIZES.padding.md,
+    justifyContent: "center",
+    backgroundColor: "transparent",
+  },
+  weightText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+  },
+  weightPlaceholder: { color: COLORS.textTertiary, fontStyle: "italic" },
   retryButton: {
-    paddingVertical: 10,
-    paddingHorizontal: SIZES.padding,
-    borderRadius: SIZES.radius_sm,
-    backgroundColor: COLORS.primaryLight,
-    alignSelf: 'flex-start',
-    marginTop: SIZES.margin,
+    paddingVertical: SIZES.md,
+    paddingHorizontal: SIZES.padding.md,
     borderWidth: 1.5,
-    borderColor: COLORS.danger,
+    borderColor: COLORS.error,
+    borderRadius: SIZES.radius.md,
+    alignItems: "center",
   },
   retryText: {
-    ...FONTS.fontSm,
-    color: COLORS.danger,
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.sm,
+    color: COLORS.error,
+    textAlign: "center",
   },
   errorText: {
-    ...FONTS.fontSm,
-    color: COLORS.danger,
-    marginTop: 6,
-    marginLeft: 6,
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.sm,
+    color: COLORS.error,
+    marginTop: SIZES.xs,
   },
   hintText: {
-    ...FONTS.fontXs,
-    color: COLORS.textLight,
-    marginTop: 8,
-    fontStyle: 'italic',
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.xs,
+    color: COLORS.textTertiary,
+    marginTop: SIZES.xs,
+    fontStyle: "italic",
   },
 });
 

@@ -1,35 +1,79 @@
-import React from 'react';
-import { View, StyleSheet } from 'react-native';
-import SkeletonLoader from './SkeletonLoader';
-import { scale, verticalScale, colors } from '../../utils';
+import React from "react";
+import { View, StyleSheet, Dimensions } from "react-native";
+import SkeletonLoader from "./SkeletonLoader";
+import appTheme from "../../utils/MainTheme";
+
+const { COLORS, SIZES, moderateScale } = appTheme;
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
+const CARD_WIDTH = SCREEN_WIDTH * 0.96;
+const CARD_HEIGHT = CARD_WIDTH / 1.6;
 
 const ProductCardSkeleton = () => {
   return (
-    <View style={styles.container}>
+    <View style={[styles.container, { width: CARD_WIDTH, height: CARD_HEIGHT }]}>
+      {/* Header */}
       <View style={styles.header}>
-        <SkeletonLoader width={scale(120)} height={verticalScale(20)} style={styles.darkSkeleton} />
-        <SkeletonLoader width={scale(80)} height={verticalScale(20)} style={styles.lightSkeleton} />
+        <SkeletonLoader
+          width={moderateScale(120)}
+          height={moderateScale(18)}
+          style={styles.darkSkeleton}
+        />
+        <SkeletonLoader
+          width={moderateScale(80)}
+          height={moderateScale(18)}
+          style={styles.lightSkeleton}
+        />
       </View>
-      
+
+      {/* Stats / Content */}
       <View style={styles.content}>
         <View style={styles.row}>
-          <SkeletonLoader width={scale(100)} height={verticalScale(15)} style={styles.mediumSkeleton} />
-          <SkeletonLoader width={scale(80)} height={verticalScale(15)} style={styles.lightSkeleton} />
+          <SkeletonLoader
+            width={moderateScale(70)}
+            height={moderateScale(15)}
+            style={styles.mediumSkeleton}
+          />
+          <SkeletonLoader
+            width={moderateScale(70)}
+            height={moderateScale(15)}
+            style={styles.lightSkeleton}
+          />
         </View>
-        
+
         <View style={styles.row}>
-          <SkeletonLoader width={scale(120)} height={verticalScale(15)} style={styles.mediumSkeleton} />
-          <SkeletonLoader width={scale(90)} height={verticalScale(15)} style={styles.lightSkeleton} />
+          <SkeletonLoader
+            width={moderateScale(80)}
+            height={moderateScale(15)}
+            style={styles.mediumSkeleton}
+          />
+          <SkeletonLoader
+            width={moderateScale(60)}
+            height={moderateScale(15)}
+            style={styles.lightSkeleton}
+          />
         </View>
-        
+
         <View style={styles.row}>
-          <SkeletonLoader width={scale(140)} height={verticalScale(15)} style={styles.mediumSkeleton} />
-          <SkeletonLoader width={scale(70)} height={verticalScale(15)} style={styles.lightSkeleton} />
+          <SkeletonLoader
+            width={moderateScale(100)}
+            height={moderateScale(15)}
+            style={styles.mediumSkeleton}
+          />
+          <SkeletonLoader
+            width={moderateScale(60)}
+            height={moderateScale(15)}
+            style={styles.lightSkeleton}
+          />
         </View>
       </View>
-      
+
+      {/* Footer / Action Button */}
       <View style={styles.footer}>
-        <SkeletonLoader width={scale(100)} height={verticalScale(40)} style={styles.darkSkeleton} />
+        <SkeletonLoader
+          width={moderateScale(100)}
+          height={moderateScale(36)}
+          style={styles.darkSkeleton}
+        />
       </View>
     </View>
   );
@@ -37,42 +81,46 @@ const ProductCardSkeleton = () => {
 
 const styles = StyleSheet.create({
   container: {
-    padding: scale(15),
-    backgroundColor: colors.whiteColor,
-    borderRadius: 10,
-    marginVertical: verticalScale(8),
-    marginHorizontal: scale(10),
-    elevation: 3,
-    shadowColor: colors.black,
+    borderRadius: SIZES.radius.lg,
+    backgroundColor: COLORS.surface,
+    padding: moderateScale(12),
+    marginVertical: moderateScale(8),
+    alignSelf: "center",
+    justifyContent: "space-between",
+    shadowColor: COLORS.black,
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.25,
-    shadowRadius: 3.84,
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 2,
   },
   header: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: verticalScale(15),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: moderateScale(12),
   },
   content: {
-    marginBottom: verticalScale(15),
+    marginBottom: moderateScale(12),
   },
   row: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginBottom: verticalScale(10),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: moderateScale(8),
   },
   footer: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   darkSkeleton: {
-    backgroundColor: colors.brownColor,
+    backgroundColor: COLORS.borderLight,
+    borderRadius: SIZES.radius.sm,
   },
   mediumSkeleton: {
-    backgroundColor: colors.lightpink,
+    backgroundColor: COLORS.textDisabled,
+    borderRadius: SIZES.radius.sm,
   },
   lightSkeleton: {
-    backgroundColor: colors.lightyellow,
+    backgroundColor: COLORS.textTertiary,
+    borderRadius: SIZES.radius.sm,
   },
 });
 
-export default ProductCardSkeleton; 
+export default React.memo(ProductCardSkeleton);

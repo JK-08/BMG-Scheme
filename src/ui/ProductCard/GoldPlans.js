@@ -1,138 +1,136 @@
 import React from "react";
-import { View, TouchableOpacity, StyleSheet } from "react-native";
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  ImageBackground,
+} from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { LinearGradient } from "expo-linear-gradient";
 import { TextDefault } from "../../components";
-import { alignment, colors, scale } from "../../utils";
-import { COLORS, FONTS, SIZES } from "../../utils/Theme";
+import appTheme from "../../utils/MainTheme";
 
-function GoldPlan(props) {
-  const { schemeId, schemeName, description = "No description available" } = props;
+import scheme1 from "../../assets/image/2.jpg";
+import scheme2 from "../../assets/image/3.jpg";
+import scheme3 from "../../assets/image/4.jpg";
 
+const { COLORS, SIZES, FONTS, moderateScale, SHADOWS } = appTheme;
+
+function GoldPlan({
+  schemeId = 0,
+  schemeName = "Unnamed Scheme",
+  description = "",
+  styles: customStyles,
+}) {
   const navigation = useNavigation();
 
-  // Define quotes for different schemes
-  const schemeQuotes = {
-    BAS: "Start your journey to financial freedom with BAS!",
-    BDS: "Secure your future with the trusted BDS plan.",
-    BFD: "BFD helps you grow wealth step by step.",
+  // Map images by schemeId (instead of hardcoding names)
+  const schemeImagesById = {
+    1: scheme1,
+    2: scheme3,
+    3: scheme2,
   };
 
-  // Pick quote based on description or fallback
-  const displayQuote = schemeQuotes[description] || "";
+  const schemeImage = schemeImagesById[schemeId] || null;
 
-  // Handle scheme navigation
+  // Navigate to AddNewMember page
   const handleJoinScheme = () => {
-    navigation.navigate("AddNewMember", { schemeId });
+    navigation.navigate("AddNewMember", {
+      schemeId,
+      schemeName,
+    });
+    console.log(
+      "Navigating to AddNewMember with scheme ID:",
+      schemeId,
+      "Name:",
+      schemeName
+    );
   };
 
+  // Navigate to KnowMore page
   const handleKnowMore = () => {
-    navigation.navigate("KnowMore", { schemeId });
+    navigation.navigate("KnowMore", {
+      schemeId,
+      schemeName,
+    });
   };
 
   return (
-    <TouchableOpacity style={[styles.cardContainer, props.styles]}>
-      <LinearGradient
-        colors={[COLORS.gradientcolor7, COLORS.gradientcolor8]}
-        start={{ x: 0, y: 0 }}
-        end={{ x: 0, y: 1 }}
-        style={styles.gradientBackground}
-      >
-        {/* Top Section */}
-        <View style={styles.topSection}>
-          <View style={styles.rightTop}>
-            <TextDefault style={styles.text} bold>
-              {schemeName}
-            </TextDefault>
-          </View>
-        </View>
+    <View style={[styles.cardContainer, customStyles]}>
+      <ImageBackground
+        source={schemeImage}
+        style={styles.imageBackground}
+        imageStyle={{
+          borderTopLeftRadius: SIZES.radius.lg,
+          borderTopRightRadius: SIZES.radius.lg,
+        }}
+        resizeMode="cover"
+      />
 
-        {/* Center Section */}
-        <View style={styles.centerSection}>
-          <TextDefault style={styles.description}>{description}</TextDefault>
-          {displayQuote !== "" && (
-            <TextDefault style={styles.quote}>{displayQuote}</TextDefault>
-          )}
-          
-        </View>
+      <View style={styles.buttonRow}>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.knowMoreButton]}
+          onPress={handleKnowMore}
+        >
+          <TextDefault style={styles.knowMoreButtonText}>Know More</TextDefault>
+        </TouchableOpacity>
 
-        {/* Bottom Section */}
-        <View style={styles.bottomSection}>
-          <TouchableOpacity style={styles.payButton} onPress={handleKnowMore}>
-            <TextDefault style={styles.payButtonText}>Know More</TextDefault>
-          </TouchableOpacity>
-
-          <TouchableOpacity style={styles.payButton} onPress={handleJoinScheme}>
-            <TextDefault style={styles.payButtonText}>Join Scheme</TextDefault>
-          </TouchableOpacity>
-        </View>
-      </LinearGradient>
-    </TouchableOpacity>
+        <TouchableOpacity
+          style={[styles.actionButton, styles.joinButton]}
+          onPress={handleJoinScheme}
+        >
+          <TextDefault style={styles.joinButtonText}>Join Scheme</TextDefault>
+        </TouchableOpacity>
+      </View>
+    </View>
   );
 }
 
 const styles = StyleSheet.create({
   cardContainer: {
-    borderRadius: scale(15),
+    borderRadius: SIZES.radius.lg,
     overflow: "hidden",
+    width: "95%",
+    alignSelf: "center",
+    marginVertical: moderateScale(10),
+    backgroundColor: COLORS.surface,
+    ...SHADOWS.sm,
   },
-  gradientBackground: {
-    borderRadius: scale(15),
-    padding: scale(5),
-    overflow: "hidden",
+  imageBackground: {
+    width: "100%",
+    height: moderateScale(200),
+    justifyContent: "flex-end",
   },
-  topSection: {
+  buttonRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: scale(20),
-    ...alignment.Psmall,
+    padding: SIZES.md,
   },
-  rightTop: {
-    alignItems: "flex-end",
-  },
-  centerSection: {
-    marginBottom: scale(5),
-    ...alignment.Psmall,
-    marginTop: scale(-15),
-    gap: scale(8),
-  },
-  bottomSection: {
-    flexDirection: "row",
-    justifyContent: "space-between",
+  actionButton: {
+    flex: 1,
+    paddingVertical: SIZES.sm,
+    borderRadius: SIZES.radius.md,
     alignItems: "center",
-    marginTop: scale(10),
+    justifyContent: "center",
   },
-  payButton: {
-    backgroundColor: colors.white,
-    paddingVertical: scale(5),
-    paddingHorizontal: scale(10),
-    borderRadius: scale(5),
+  knowMoreButton: {
+    backgroundColor: COLORS.surface,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    marginRight: moderateScale(8),
   },
-  text: {
-    color: colors.greenColor,
-    fontWeight: "bold",
-    ...FONTS.body1,
-    fontSize: SIZES.font,
+  joinButton: {
+    backgroundColor: COLORS.secondary,
+    marginLeft: moderateScale(8),
   },
-  payButtonText: {
-    color: colors.black,
-    fontWeight: "bold",
-    textAlign: "center",
-    ...FONTS.body1,
-    fontSize: SIZES.fontSm,
+  knowMoreButtonText: {
+    ...FONTS.bodySmall,
+    color: COLORS.textPrimary,
+    fontWeight: "600",
   },
-  quote: {
-    color: colors.white,
-    fontSize: SIZES.h6,
-    fontWeight: "bold",
-    marginBottom: 5,
-    ...FONTS.body1,
-  },
-  description: {
-    color: colors.white,
-    fontSize: SIZES.h4,
-    fontWeight: "bold",
-    ...FONTS.body,
+  joinButtonText: {
+    ...FONTS.bodySmall,
+    color: COLORS.textInverse,
+    fontWeight: "600",
   },
 });
 

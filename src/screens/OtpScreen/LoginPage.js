@@ -14,68 +14,130 @@ import {
   Keyboard,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import AsyncStorage from "@react-native-async-storage/async-storage";
-
 import {
   GoogleSignin,
   statusCodes,
 } from "@react-native-google-signin/google-signin";
 import { showToast } from "../../utils/toast";
-import appTheme from "../../utils/Theme";
-import styles from "./LoginStyles.js";
+import theme from "../../utils/MainTheme";
+import styles from "./LoginStyles";
 import userService from "../../services/UserService";
 import { useNavigation } from "@react-navigation/native";
 import {
   registerForPushNotificationsAsync,
   sendPushTokenToServer,
-} from "../../utils/Notification.js";
+} from "../../utils/Notification";
+import { saveUserData } from "../../utils/AsynchStorageHelper";
 
-const { COLORS } = appTheme;
+const { COLORS, SIZES } = theme;
 
-function LoginPage({ route }) {
+function LoginPage() {
   const [contactOrEmailOrUsername, setContactOrEmailOrUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [showPassword, setShowPassword] = useState(false);
+  const [errors, setErrors] = useState({
+    contactOrEmailOrUsername: "",
+    password: "",
+  });
+  const [touched, setTouched] = useState({
+    contactOrEmailOrUsername: false,
+    password: false,
+  });
+
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const navigation = useNavigation();
 
-  // ✅ Google Sign-In Configuration
+  // ✅ Google Sign-In Config
   useEffect(() => {
-    try {
-      GoogleSignin.configure({
-        webClientId:
-          "657047091285-hetgcscq8hvli59d0c6oqvg9aoat8850.apps.googleusercontent.com",
-        iosClientId:
-          "657047091285-57kkictc0pkfjldtf0u133m82huit6rg.apps.googleusercontent.com",
-        scopes: ["profile", "email"],
-        offlineAccess: true,
-      });
-    } catch (error) {
-      console.error("Google SignIn configuration error:", error);
-    }
+    GoogleSignin.configure({
+      webClientId:
+        "657047091285-hetgcscq8hvli59d0c6oqvg9aoat8850.apps.googleusercontent.com",
+      iosClientId:
+        "657047091285-57kkictc0pkfjldtf0u133m82huit6rg.apps.googleusercontent.com",
+      scopes: ["profile", "email"],
+      offlineAccess: true,
+    });
   }, []);
 
-  // ✅ Handle Google Sign-In
+  const validateField = (fieldName, value) => {
+    const newErrors = { ...errors };
+
+    switch (fieldName) {
+      case "contactOrEmailOrUsername":
+        if (!value.trim()) {
+          newErrors.contactOrEmailOrUsername =
+            "Please enter email or phone number";
+        } else if (!isValidEmailOrPhone(value)) {
+          newErrors.contactOrEmailOrUsername =
+            "Please enter a valid email or phone number";
+        } else {
+          newErrors.contactOrEmailOrUsername = "";
+        }
+        break;
+
+      case "password":
+        if (!value.trim()) {
+          newErrors.password = "Please enter password";
+        } else if (value.length < 6) {
+          newErrors.password = "Password must be at least 6 characters";
+        } else {
+          newErrors.password = "";
+        }
+        break;
+
+      default:
+        break;
+    }
+
+    setErrors(newErrors);
+  };
+
+  const isValidEmailOrPhone = (value) => {
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const phoneRegex = /^[6-9]\d{9}$/;
+    return emailRegex.test(value) || phoneRegex.test(value.replace(/\D/g, ""));
+  };
+
+  const handleFieldChange = (fieldName, value) => {
+    switch (fieldName) {
+      case "contactOrEmailOrUsername":
+        setContactOrEmailOrUsername(value);
+        break;
+      case "password":
+        setPassword(value);
+        break;
+    }
+    if (touched[fieldName]) validateField(fieldName, value);
+  };
+
+  const handleFieldBlur = (fieldName) => {
+    setTouched((prev) => ({ ...prev, [fieldName]: true }));
+    validateField(
+      fieldName,
+      fieldName === "contactOrEmailOrUsername"
+        ? contactOrEmailOrUsername
+        : password
+    );
+  };
+
+  // ✅ Google Sign-In
   const handleGoogleSignIn = async () => {
     try {
       setGoogleLoading(true);
-
       const hasPlayServices = await GoogleSignin.hasPlayServices({
         showPlayServicesUpdateDialog: true,
       });
-      if (!hasPlayServices)
-        throw new Error("Google Play Services not available");
+      if (!hasPlayServices) throw new Error("Google Play Services unavailable");
 
-      await GoogleSignin.signOut(); // Clear previous session
+      await GoogleSignin.signOut();
       const userInfo = await GoogleSignin.signIn();
       const tokens = await GoogleSignin.getTokens();
+      const idToken = tokens?.idToken || userInfo?.idToken;
 
-      let idToken = tokens?.idToken || userInfo?.idToken;
-      if (!idToken) throw new Error("No ID token received from Google");
-      console.log("Google ID Token:", idToken);
+      if (!idToken) throw new Error("No ID token from Google");
       await handleGoogleAuthentication(idToken, userInfo.user);
     } catch (error) {
-      console.error("Google Sign-In Error:", error);
       handleGoogleSignInError(error);
     } finally {
       setGoogleLoading(false);
@@ -83,88 +145,73 @@ function LoginPage({ route }) {
   };
 
   const handleGoogleSignInError = (error) => {
-    if (error.code === statusCodes.SIGN_IN_CANCELLED) {
-      showToast("Google sign-in was cancelled");
-    } else if (error.code === statusCodes.IN_PROGRESS) {
-      showToast("Google sign-in is already in progress");
-    } else if (error.code === statusCodes.PLAY_SERVICES_NOT_AVAILABLE) {
-      showToast("Google Play Services not available");
-    } else if (error.code === statusCodes.SIGN_IN_REQUIRED) {
-      showToast("Please sign in to continue");
-    } else {
-      showToast(`Google sign-in failed: ${error.message || "Try again"}`);
+    switch (error.code) {
+      case statusCodes.SIGN_IN_CANCELLED:
+        showToast("Google sign-in cancelled");
+        break;
+      case statusCodes.IN_PROGRESS:
+        showToast("Google sign-in already in progress");
+        break;
+      case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
+        showToast("Google Play Services unavailable");
+        break;
+      default:
+        showToast(`Google sign-in failed: ${error.message || "Try again"}`);
     }
   };
 
-  // ✅ Google Authentication → Backend (NO contact number storage)
+  // ✅ Google Auth to backend
   const handleGoogleAuthentication = async (idToken, userInfo = null) => {
-    console.log("Google Authentication Payload:", { idToken });
     try {
-      const payload = { idToken };
-      if (userInfo) {
-        payload.userInfo = {
-          email: userInfo.email,
-          name: userInfo.name,
-          photo: userInfo.photo,
-        };
-      }
-
+      const payload = { idToken, userInfo };
       const response = await userService.googleLogin(payload);
 
       if (response.success && response.data) {
-        const {
-          token,
-          id,
-          email,
-          username,
-          picture,
-          socialMedia,
-          message,
-          status,
-        } = response.data;
+        // ✅ Log only the final successful response
+        console.log("✅ Google Login Success:", response.data);
 
-        // ✅ Google login: Store everything EXCEPT contact number
-        await AsyncStorage.multiSet([
-          ["authToken", token],
-          ["userId", String(id)],
-          ["userEmail", email || ""],
-          ["username", username || ""],
-          ["userPicture", picture || ""],
-          ["socialMedia", socialMedia || ""],
-          ["userStatus", status || ""],
-          ["userMessage", message || ""],
-          ["userData", JSON.stringify(response.data)],
-        ]);
+        const { id, email, username, message, contactNumber } = response.data;
 
-        console.log("🟢 GOOGLE LOGIN - Stored Data (No Phone Number):", {
-          authToken: token,
-          userId: id,
-          userEmail: email,
-          username: username,
-          // Note: No userPhoneNumber stored for Google login
-        });
+        await saveUserData(response.data);
+
         const expoToken = await registerForPushNotificationsAsync();
-        if (expoToken) {
-          console.log("✅ Expo Push Token after Google login:", expoToken);
-          await sendPushTokenToServer(expoToken, id);
-        }
+        if (expoToken) await sendPushTokenToServer(expoToken, id);
 
         showToast(message || "Logged in successfully with Google");
-        navigation.navigate("MpinScreen", { step: 3 });
+
+        if (!contactNumber || contactNumber.trim() === "") {
+          navigation.navigate("EnterNumber", {
+            userId: id,
+            email,
+            username,
+          });
+        } else {
+          navigation.navigate("VerifyMpinScreen", { step: 3 });
+        }
       } else {
         showToast(response.error || "Google authentication failed");
       }
     } catch (error) {
-      console.error("Google authentication error:", error);
       showToast("Authentication failed. Please try again.");
     }
   };
 
-  // ✅ Regular Login (WITH contact number storage)
-  // ✅ Regular Login (WITH contact number storage)
+  // ✅ Regular Login
   const handleLogin = async () => {
-    if (!contactOrEmailOrUsername || !password) {
-      return showToast("Please enter email/username and password");
+    const allTouched = { contactOrEmailOrUsername: true, password: true };
+    setTouched(allTouched);
+
+    validateField("contactOrEmailOrUsername", contactOrEmailOrUsername);
+    validateField("password", password);
+
+    const hasErrors =
+      Object.values(errors).some((error) => error !== "") ||
+      !contactOrEmailOrUsername ||
+      !password;
+
+    if (hasErrors) {
+      showToast("Please fix all errors before submitting");
+      return;
     }
 
     setLoading(true);
@@ -174,85 +221,61 @@ function LoginPage({ route }) {
         password,
       });
 
-      // ✅ STEP 1: Console the login response
-      console.log("🔵 REGULAR LOGIN RESPONSE:", JSON.stringify(res, null, 2));
-
       if (res.success && res.data?.token) {
-        const data = res.data;
+        // ✅ Log only final successful response
+        console.log("✅ Login Success:", res.data);
 
-        // ✅ STEP 2: Store the data - FIXED: using data.contact instead of data.contactNumber
-        const storageItems = [
-          ["authToken", data.token],
-          ["userId", String(data.id)],
-          ["userEmail", data.email || ""],
-          ["username", data.username || ""],
-          ["userPhoneNumber", data.contact || ""], // ✅ CHANGED: data.contact instead of data.contactNumber
-          ["userData", JSON.stringify(data)],
-        ];
+        const { id } = res.data;
+        const normalizedData = {
+          ...res.data,
+          contactNumber: res.data.contactNumber || res.data.contact || "",
+        };
 
-        await AsyncStorage.multiSet(storageItems);
+        await saveUserData(normalizedData);
 
-        // ✅ STEP 3: Console the stored data
-        console.log("🟢 REGULAR LOGIN - Stored Data (With Phone Number):", {
-          authToken: data.token,
-          userId: data.id,
-          userEmail: data.email,
-          username: data.username,
-          userPhoneNumber: data.contact, // ✅ CHANGED: data.contact
-          fullData: data,
-        });
-
-        // ✅ Verify stored data by reading it back
-        const storedData = await AsyncStorage.multiGet([
-          "authToken",
-          "userId",
-          "userEmail",
-          "username",
-          "userPhoneNumber",
-          "userData",
-        ]);
-
-        console.log("🟣 REGULAR LOGIN - Verified Stored Data:", {
-          authToken: storedData[0][1],
-          userId: storedData[1][1],
-          userEmail: storedData[2][1],
-          username: storedData[3][1],
-          userPhoneNumber: storedData[4][1], // ✅ Now this should show "7603905056"
-          userData: storedData[5][1] ? JSON.parse(storedData[5][1]) : null,
-        });
-
-        // ✅ After storing AsyncStorage data
         const token = await registerForPushNotificationsAsync();
-        if (token) {
-          console.log("✅ Expo Push Token after login:", token);
-          await sendPushTokenToServer(token, data.id); // Optional: send to backend
-        }
+        if (token) await sendPushTokenToServer(token, id);
 
         showToast("Login successful!");
-        navigation.navigate("MpinScreen", { step: 3 });
+        navigation.navigate("VerifyMpinScreen", { step: 3 });
       } else {
         showToast(res.error || "Invalid credentials");
+        setErrors((prev) => ({
+          ...prev,
+          password: "Invalid email/phone or password",
+        }));
       }
     } catch (err) {
-      console.error("🔴 LOGIN ERROR:", err);
       showToast(err.message || "Network error");
+      setErrors((prev) => ({
+        ...prev,
+        password: "Network error. Please try again.",
+      }));
     } finally {
       setLoading(false);
     }
   };
+
   const navigateToRegister = () => navigation.navigate("RegisterPage");
-  const dismissKeyboard = () => Keyboard.dismiss();
+
+  const RequiredLabel = ({ children }) => (
+    <Text style={styles.label}>
+      {children}
+      <Text style={styles.requiredStar}> *</Text>
+    </Text>
+  );
+
 
   return (
-    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+    <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <ImageBackground
         source={require("../../assets/image.png")}
         style={styles.backgroundImage}
       >
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={styles.keyboardAvoidingView}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
-          keyboardVerticalOffset={Platform.OS === "ios" ? 64 : 0}
+          keyboardVerticalOffset={Platform.OS === "ios" ? SIZES.xxl : 0}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContainer}
@@ -262,7 +285,7 @@ function LoginPage({ route }) {
             <View style={styles.container}>
               <View style={styles.logoContainer}>
                 <Image
-                  source={require("../../assets/image/logo4.png")}
+                  source={require("../../assets/image/logo2.png")}
                   style={styles.logoImage}
                 />
               </View>
@@ -271,27 +294,78 @@ function LoginPage({ route }) {
                 <Text style={styles.title}>Login</Text>
                 <Text style={styles.subtitle}>Sign in to continue</Text>
 
-                <Text style={styles.label}>Email or Phone</Text>
+                {/* Email/Phone Field */}
+                <RequiredLabel>Email or Phone</RequiredLabel>
                 <TextInput
-                  style={styles.input}
+                  style={[
+                    styles.input,
+                    errors.contactOrEmailOrUsername && styles.inputError,
+                  ]}
                   value={contactOrEmailOrUsername}
-                  onChangeText={setContactOrEmailOrUsername}
+                  onChangeText={(value) =>
+                    handleFieldChange("contactOrEmailOrUsername", value)
+                  }
+                  onBlur={() => handleFieldBlur("contactOrEmailOrUsername")}
                   placeholder="Enter email or phone"
-                  placeholderTextColor={COLORS.textLight}
+                  placeholderTextColor={COLORS.textTertiary}
                   autoCapitalize="none"
                 />
+                {errors.contactOrEmailOrUsername ? (
+                  <Text style={styles.errorText}>
+                    {errors.contactOrEmailOrUsername}
+                  </Text>
+                ) : null}
 
-                <Text style={styles.label}>Password</Text>
-                <TextInput
-                  style={styles.input}
-                  value={password}
-                  onChangeText={setPassword}
-                  placeholder="Enter password"
-                  placeholderTextColor={COLORS.textLight}
-                  secureTextEntry
-                />
+                {/* Password Field */}
+                <RequiredLabel>Password</RequiredLabel>
+                <View
+                  style={[
+                    styles.passwordContainer,
+                    errors.password && styles.inputError,
+                  ]}
+                >
+                  <TextInput
+                    style={styles.passwordInput}
+                    value={password}
+                    onChangeText={(value) =>
+                      handleFieldChange("password", value)
+                    }
+                    onBlur={() => handleFieldBlur("password")}
+                    placeholder="Enter password"
+                    placeholderTextColor={COLORS.textTertiary}
+                    secureTextEntry={!showPassword}
+                    autoCapitalize="none"
+                  />
+                  <TouchableOpacity
+                    onPress={() => setShowPassword(!showPassword)}
+                    style={styles.eyeIconContainer}
+                  >
+                    <Image
+                      source={
+                        showPassword
+                          ? require("../../assets/icons/eyeopen.png") // 👁️ when visible
+                          : require("../../assets/icons/eyeclose.png") // 🚫 when hidden
+                      }
+                      style={styles.eyeIcon}
+                    />
+                  </TouchableOpacity>
+                </View>
+                {errors.password ? (
+                  <Text style={styles.errorText}>{errors.password}</Text>
+                ) : null}
+                {/* Forgot Password */}
+                <TouchableOpacity
+                  onPress={() =>
+                    navigation.navigate("EnterNumber", { mode: "forgot" })
+                  }
+                  style={styles.forgotPasswordContainer}
+                >
+                  <Text style={styles.forgotPasswordText}>
+                    Forgot Password?
+                  </Text>
+                </TouchableOpacity>
 
-                {/* ✅ Regular Login Button */}
+                {/* ✅ Login Button */}
                 <TouchableOpacity
                   style={[
                     styles.primaryButton,
@@ -301,29 +375,27 @@ function LoginPage({ route }) {
                   disabled={loading}
                 >
                   <LinearGradient
-                    colors={
-                      loading
-                        ? ["#555", "#444"]
-                        : [COLORS.gradientcolor10, COLORS.gradientcolor9]
-                    }
+                    colors={COLORS.gradient.brand}
                     style={styles.buttonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                   >
                     {loading ? (
-                      <ActivityIndicator color={COLORS.black} />
+                      <ActivityIndicator color={COLORS.white} />
                     ) : (
                       <Text style={styles.primaryButtonText}>Login</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
 
-                {/* ✅ Divider */}
+                {/* Divider */}
                 <View style={styles.dividerContainer}>
                   <View style={styles.divider} />
                   <Text style={styles.dividerText}>or continue with</Text>
                   <View style={styles.divider} />
                 </View>
 
-                {/* ✅ Google Sign-In Button */}
+                {/* Google Button */}
                 <TouchableOpacity
                   style={[
                     styles.googleButton,
@@ -335,32 +407,27 @@ function LoginPage({ route }) {
                   {googleLoading ? (
                     <ActivityIndicator color={COLORS.primary} />
                   ) : (
-                    <>
-                      <View style={styles.Google}>
-                        <View>
-                          <Image
-                            source={require("../../assets/icons/google.png")}
-                            style={styles.googleIcon}
-                          />
-                        </View>
-                        <View>
-                          <Text style={styles.googleButtonText}>
-                            Continue with Google
-                          </Text>
-                        </View>
-                      </View>
-                    </>
+                    <View style={styles.googleButtonContent}>
+                      <Image
+                        source={require("../../assets/icons/google.png")}
+                        style={styles.googleIcon}
+                      />
+                      <Text style={styles.googleButtonText}>
+                        Continue with Google
+                      </Text>
+                    </View>
                   )}
                 </TouchableOpacity>
 
-                {/* ✅ Register link */}
-                <TouchableOpacity
-                  onPress={navigateToRegister}
-                  style={{ flexDirection: "row", justifyContent: "center" }}
-                >
-                  <Text style={styles.linkText}>Don't have an account?</Text>
-                  <Text style={styles.linkText1}> Register</Text>
-                </TouchableOpacity>
+                {/* Register */}
+                <View style={styles.registerContainer}>
+                  <Text style={styles.registerText}>
+                    Don't have an account?
+                  </Text>
+                  <TouchableOpacity onPress={navigateToRegister}>
+                    <Text style={styles.registerLink}> Register</Text>
+                  </TouchableOpacity>
+                </View>
               </View>
             </View>
           </ScrollView>

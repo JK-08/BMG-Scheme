@@ -1,242 +1,252 @@
-// styles.js
-import { StyleSheet, Platform } from 'react-native';
-import appTheme from '../../utils/Theme';
-import { scale } from '../../utils';
+// screens/Login/LoginStyles.js
+import { StyleSheet, Platform } from "react-native";
+import theme from "../../utils/MainTheme";
 
-const { COLORS, SIZES, FONTS, moderateScale, verticalScale } = appTheme;
+const { COLORS, SIZES, FONTS, moderateScale, verticalScale, SHADOWS } = theme;
 
 const styles = StyleSheet.create({
-  // Background & Container
   backgroundImage: {
     flex: 1,
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
+  keyboardAvoidingView: { flex: 1 },
   scrollContainer: {
     flexGrow: 1,
-    paddingTop: verticalScale(-70), // Added top padding to push content down from very top
+    paddingTop: verticalScale(SIZES.xs),
+    paddingBottom: verticalScale(SIZES.xl + 14),
   },
   container: {
     flex: 1,
-    alignItems: 'center',
-    paddingHorizontal: moderateScale(30),
-    // paddingTop: verticalScale(40), // Reduced top padding since we have scrollContainer padding
-    paddingBottom: verticalScale(20),
+    alignItems: "center",
+    paddingHorizontal: SIZES.padding.lg,
+    paddingBottom: SIZES.xl + 14,
   },
 
-  // Logo Section - Positioned at top
+  // Logo
   logoContainer: {
-    alignItems: 'center',
-    marginBottom: verticalScale(10),
-    paddingHorizontal: moderateScale(20),
-    marginTop: verticalScale(5), // Small top margin for breathing room
+    alignItems: "center",
+    marginBottom: SIZES.xs,
+    marginTop: -10,
   },
   logoImage: {
-    width: moderateScale(100),
-    height: moderateScale(100),
-    resizeMode: 'contain',
-    borderRadius: scale(50),
-    // borderRadius: SIZES.radius,
-    // shadowColor: COLORS.shadow,
-    // shadowOffset: {
-    //   width: 0,
-    //   height: moderateScale(4),
-    // },
-    // shadowOpacity: 0.3,
-    // shadowRadius: moderateScale(6),
-    // elevation: 8,
+    width: moderateScale(SIZES.icon.xl * 40),
+    height: moderateScale(SIZES.icon.xl * 3.5),
+    resizeMode: "contain",
+    borderRadius: SIZES.radius.md,
   },
 
-  // Card Container - Positioned below logo
+  // Card
   card: {
-    width: '100%',
+    width: "100%",
     maxWidth: moderateScale(400),
-    backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius_lg,
-    paddingHorizontal: moderateScale(24),
-    paddingVertical: verticalScale(32),
-    shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(8),
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: moderateScale(16),
-    elevation: 12,
-    borderWidth: 1,
-    borderColor: COLORS.borderColor,
-    marginTop: verticalScale(0), // Added margin to separate from logo
+    // backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    paddingHorizontal: SIZES.padding.lg,
+    paddingVertical: SIZES.xs,
   },
 
-  // Typography
+  // Texts
   title: {
-    ...FONTS.heading,
-    textAlign: 'center',
-    marginBottom: verticalScale(8),
-    color: COLORS.primary,
-    fontSize: SIZES.h3,
+    ...FONTS.h3,
+    textAlign: "center",
+    color: COLORS.secondaryDark,
+    marginBottom: SIZES.sm,
   },
   subtitle: {
     ...FONTS.body,
-    textAlign: 'center',
-    marginBottom: verticalScale(14),
-    color: COLORS.textLight,
-    fontSize: SIZES.h4,
+    textAlign: "center",
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.xs,
   },
   label: {
-    ...FONTS.subheading,
-    fontWeight: '600',
-    marginBottom: verticalScale(8),
-    color: COLORS.text,
-    marginTop: verticalScale(16),
-    fontSize: SIZES.h6,
-
-  },
-  linkText: {
-    ...FONTS.body1,
-    textAlign: 'center',
-    color: COLORS.primary,
-    marginTop: verticalScale(20),
-    // textDecorationLine: 'underline',
-    fontWeight: '500',
-  },
-  linkText1: {
-    ...FONTS.body1,
-    textAlign: 'center',
-    color: COLORS.danger,
-    marginTop: verticalScale(20),
-    textDecorationLine: 'underline',
-    fontWeight: '500',
+    ...FONTS.body,
+    fontWeight: "600",
+    color: COLORS.textPrimary,
+    marginTop: SIZES.lg,
+    marginBottom: SIZES.sm,
   },
 
-  // Input Fields
+  // Inputs
   input: {
-    backgroundColor: COLORS.input,
-    borderRadius: SIZES.radius_sm,
-    paddingHorizontal: moderateScale(16),
-    paddingVertical: Platform.OS === 'ios' ? verticalScale(14) : verticalScale(12),
+    // backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.sm,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical:
+      Platform.OS === "ios" ? verticalScale(SIZES.md) : verticalScale(SIZES.sm),
     borderWidth: 1,
-    borderColor: COLORS.borderColor,
-    fontSize: SIZES.font,
-    color: COLORS.text,
-    fontFamily: 'TimesNewRoman',
-    shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(2),
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: moderateScale(4),
-    elevation: 2,
-    ...FONTS.body1,
+    borderColor: COLORS.borderMedium,
+    color: COLORS.textPrimary,
+    fontSize: SIZES.font.md,
+    fontFamily: FONTS.family.body,
+    // ...SHADOWS.sm,
   },
+forgotPasswordContainer: {
+  alignSelf: "flex-end",
+  marginTop: 10,
+  marginBottom: 6,
+},
+
+forgotPasswordText: {
+  color: theme.COLORS.error,
+  fontSize: 14,
+  fontWeight: "500",
+},
 
   // Buttons
   primaryButton: {
-    borderRadius: SIZES.radius_sm,
-    marginTop: verticalScale(24),
-    overflow: 'hidden',
-    shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(4),
-    },
-    shadowOpacity: 0.3,
-    shadowRadius: moderateScale(8),
-    elevation: 6,
-    height: moderateScale(48),
-    // padding: moderateScale(2),
+    borderRadius: SIZES.radius.md,
+    marginTop: SIZES.lg,
+    overflow: "hidden",
+    ...SHADOWS.md,
+    height: SIZES.button.lg,
+    width: "70%",
+    alignSelf: "center",
   },
   buttonGradient: {
-    paddingVertical: verticalScale(9),
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    height: "100%",
   },
   primaryButtonText: {
     ...FONTS.h5,
-    fontWeight: '600',
     color: COLORS.white,
-    fontSize: SIZES.h5,
+    fontWeight: "600",
   },
-  disabledButton: {
-    opacity: 0.7,
-    
+  disabledButton: { opacity: 0.7 },
+
+  // Divider
+  dividerContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: SIZES.padding.md,
   },
-  dividerContainer:{
-    alignItems:"center",
-    padding:10
+  divider: { flex: 1, height: 1, backgroundColor: COLORS.borderLight },
+  dividerText: {
+    ...FONTS.bodySmall,
+    color: COLORS.textSecondary,
+    paddingHorizontal: SIZES.padding.sm,
   },
-  dividerText:{
-    ...FONTS.h6,
-    color:COLORS.textLight
+
+  // Google Button
+  googleButton: {
+    backgroundColor: COLORS.white,
+    padding: SIZES.sm,
+    borderRadius: SIZES.radius.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderMedium,
+    width: "100%",
+    marginBottom: SIZES.lg,
+    ...SHADOWS.sm,
+    alignSelf: "center",
   },
-Google: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  justifyContent: 'center',
-  width: '100%',
+  googleButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  googleIcon: {
+    width: SIZES.icon.md,
+    height: SIZES.icon.md,
+    marginRight: SIZES.sm,
+  },
+  googleButtonText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    fontWeight: "600",
+  },
+
+  // Register
+  registerContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  registerText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+  },
+  registerLink: {
+    ...FONTS.body,
+    color: COLORS.secondaryDark,
+    textDecorationLine: "underline",
+    fontWeight: "600",
+  },
+
+  // Loader
+  loadingOverlay: {
+    ...StyleSheet.absoluteFillObject,
+    backgroundColor: COLORS.overlay,
+    justifyContent: "center",
+    alignItems: "center",
+    zIndex: 9999,
+  },
+  loadingText: {
+    ...FONTS.body,
+    color: COLORS.white,
+    marginTop: SIZES.lg,
+  },
+  // Password Container
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    // backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.md,
+    borderWidth: 1,
+    borderColor: COLORS.inputBorder,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: Platform.OS === "ios" ? SIZES.sm : SIZES.xss,
+    // ...SHADOWS.sm,
+    minHeight: SIZES.input.height,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.body,
+  },
+  eyeIconContainer: {
+    padding: SIZES.xs,
+    marginLeft: SIZES.xs,
+  },
+  eyeIcon: {
+    width: SIZES.icon.sm,
+    height: SIZES.icon.sm,
+    tintColor: COLORS.textTertiary,
+  },
+  requiredStar: {
+  color: COLORS.error,
+  fontSize: SIZES.font.md,
 },
-googleButton: {
-  backgroundColor: COLORS.white,
-  padding: 5,
-  borderRadius: 10,
-  marginBottom: 20,
-  borderWidth: 1,
-  borderColor: COLORS.textLight,
-  width: '100%',
+
+// Error text
+errorText: {
+  ...FONTS.caption,
+  color: COLORS.error,
+  marginTop: SIZES.xs,
+  marginLeft: SIZES.xs,
 },
-googleIcon: {
-  width: 40,
-  height: 40,
-  marginRight: 10,
+
+// Input error state
+inputError: {
+  borderColor: COLORS.error,
+  borderWidth: 1.5,
 },
-googleButtonText: {
-  color: COLORS.black,
-  fontSize: 16,
-  fontWeight: '600',
-},
-disabledButton: {
-  opacity: 0.6,
-},
-loadingOverlay: {
-  ...StyleSheet.absoluteFillObject,
-  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 9999,
-},
-loadingText: {
-  color: COLORS.white,
-  marginTop: 20,
-  fontSize: 18,
-  fontWeight: '600',
-},
-  
 });
 
-// Platform-specific adjustments
-if (Platform.OS === 'web') {
-  // Web-specific styles
-  styles.card = {
-    ...styles.card,
-    cursor: 'default',
-  };
-  
-  styles.input = {
-    ...styles.input,
-    outlineStyle: 'none',
-  };
-  
-  styles.primaryButton = {
-    ...styles.primaryButton,
-    cursor: 'pointer',
-  };
-  
-  // Additional web top spacing
+// ✅ Web Adjustments
+if (Platform.OS === "web") {
+  Object.assign(styles.card, { cursor: "default" });
+  Object.assign(styles.input, { outlineStyle: "none" });
+  Object.assign(styles.primaryButton, { cursor: "pointer" });
+  Object.assign(styles.googleButton, { cursor: "pointer" });
+  Object.assign(styles.registerLink, { cursor: "pointer" });
+
   styles.scrollContainer = {
     ...styles.scrollContainer,
-    paddingTop: verticalScale(80),
+    paddingTop: verticalScale(SIZES.xxl * 2),
   };
 }
 

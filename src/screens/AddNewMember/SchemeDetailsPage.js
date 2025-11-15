@@ -13,7 +13,7 @@ import {
   StyleSheet,
   ImageBackground
 } from "react-native";
-import appTheme from "../../utils/Theme";
+import appTheme from "../../utils/MainTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { API_BASE_URL_OLD } from "../../Config/API";
 import CustomPicker from "./CustomPicker";
@@ -29,7 +29,7 @@ const SchemeDetailsPage = ({
   schemeData,
   onSubmit,
   onBack,
-  validationErrors,
+  validationErrors = {},
   setValidationErrors,
   isSubmitting,
   API_BASE_URL,
@@ -120,11 +120,11 @@ const SchemeDetailsPage = ({
     }
 
     // Common validation for all schemes
-    if (!formData.amount) {
+    if (!formData?.amount) {
       errors.amount = "Please enter a valid amount";
     }
 
-    if (!formData.accCode) {
+    if (!formData?.accCode) {
       errors.accCode = "Please select a payment mode";
     }
     
@@ -191,7 +191,7 @@ const SchemeDetailsPage = ({
       default:
         return (
           <View style={styles.noSchemeContainer}>
-            <Text style={[styles.noSchemeText, FONTS.h6]}>
+            <Text style={styles.noSchemeText}>
               Please select a valid scheme
             </Text>
           </View>
@@ -217,20 +217,15 @@ const SchemeDetailsPage = ({
           keyboardShouldPersistTaps="handled"
         >
           <CommonHeader title={"Scheme Details"} />
-          <View style={[styles.card]}>
+          <View style={styles.card}>
 
             {/* Scheme Display (Read-only) */}
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, FONTS.h6]}>
+              <Text style={styles.label}>
                 Selected Scheme
               </Text>
-              <View
-                style={[
-                  styles.staticValueContainer,
-                  { backgroundColor: COLORS.input, borderColor: COLORS.borderColor }
-                ]}
-              >
-                <Text style={[styles.staticValueText, FONTS.font]}>
+              <View style={styles.staticValueContainer}>
+                <Text style={styles.staticValueText}>
                   {schemeName || 'No Scheme Selected'}
                 </Text>
               </View>
@@ -241,11 +236,14 @@ const SchemeDetailsPage = ({
 
             {/* Payment Mode (Common for all schemes) */}
             <View style={styles.inputContainer}>
-              <Text style={[styles.label, FONTS.h6]}>
-                Payment Mode <Text style={[styles.asterisk, { color: COLORS.danger }]}>*</Text>
-              </Text>
+              <View style={styles.labelContainer}>
+                <Text style={styles.label}>
+                  Payment Mode
+                </Text>
+                <Text style={styles.asterisk}>*</Text>
+              </View>
               <CustomPicker
-                selectedValue={formData.accCode}
+                selectedValue={formData?.accCode || ''}
                 onValueChange={(itemValue) => {
                   updateFormData('accCode', itemValue);
                   const selectedType = transactionTypes.find((type) => type.ACCOUNT === itemValue);
@@ -260,19 +258,18 @@ const SchemeDetailsPage = ({
                 placeholder="Select Payment Mode"
                 enabled={!isSubmitting}
               />
-              {validationErrors.accCode && (
-                <Text style={[styles.errorText, FONTS.fontSm]}>{validationErrors.accCode}</Text>
+              {validationErrors?.accCode && (
+                <Text style={styles.errorText}>{validationErrors.accCode}</Text>
               )}
             </View>
 
             {/* Buttons */}
-            <View style={[styles.buttonRow, { gap: SIZES.margin }]}>
+            <View style={styles.buttonRow}>
               <TouchableOpacity
                 style={[
                   styles.button,
                   styles.submitButton,
                   isSubmitting && styles.buttonDisabled,
-                  { backgroundColor: COLORS.primary }
                 ]}
                 onPress={handleSubmit}
                 disabled={isSubmitting}
@@ -281,12 +278,12 @@ const SchemeDetailsPage = ({
                 {isSubmitting ? (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator color={COLORS.white} />
-                    <Text style={[styles.buttonText, styles.loadingText, FONTS.h6, { color: COLORS.white }]}>
+                    <Text style={styles.loadingText}>
                       Submitting...
                     </Text>
                   </View>
                 ) : (
-                  <Text style={[styles.buttonText, FONTS.h6, { color: COLORS.white }]}>Submit</Text>
+                  <Text style={styles.buttonText}>Submit</Text>
                 )}
               </TouchableOpacity>
 
@@ -295,13 +292,12 @@ const SchemeDetailsPage = ({
                   styles.button,
                   styles.backButton,
                   isSubmitting && styles.buttonDisabled,
-                  { backgroundColor: COLORS.secondary, borderColor: COLORS.outline }
                 ]}
                 onPress={onBack}
                 disabled={isSubmitting}
                 activeOpacity={0.7}
               >
-                <Text style={[styles.buttonText, FONTS.h6, { color: COLORS.white }]}>Back</Text>
+                <Text style={styles.buttonText}>Back</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -322,86 +318,90 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
-    padding: SIZES.padding,
+    padding: SIZES.padding.lg,
   },
   card: {
-    backgroundColor: COLORS.card1,
-    borderRadius: SIZES.radius_lg,
-    padding: SIZES.padding,
-    marginBottom: SIZES.margin,
-    elevation: 6,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.15,
-    shadowRadius: 8,
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.lg,
+    marginBottom: SIZES.lg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    ...appTheme.SHADOWS.md,
   },
   inputContainer: {
-    marginBottom: SIZES.margin * 1,
+    marginBottom: SIZES.lg,
+  },
+  labelContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    marginBottom: SIZES.xs,
   },
   label: {
-    ...FONTS.h6,
-    color: COLORS.label,
-    marginBottom: SIZES.margin / 2,
-    letterSpacing: 0.3,
-  },
-  staticValueContainer: {
-    height: 56,
-    backgroundColor: COLORS.input,
-    borderRadius: SIZES.radius,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderColor,
-    justifyContent: 'center',
-    paddingHorizontal: SIZES.padding,
-  },
-  staticValueText: {
-    ...FONTS.font,
-    color: COLORS.text,
-  },
-  errorText: {
-    ...FONTS.fontSm,
-    color: COLORS.danger,
-    marginTop: 6,
-    marginLeft: 6,
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    marginRight: SIZES.xs,
+    lineHeight: SIZES.font.md * 1.4,
   },
   asterisk: {
-    color: COLORS.danger,
-    fontSize: SIZES.fontLg,
-    fontWeight: '700',
+    fontSize: SIZES.font.md,
+    color: COLORS.error,
+    fontFamily: FONTS.family.bodyBold,
+    lineHeight: SIZES.font.md,
+  },
+  staticValueContainer: {
+    height: SIZES.input.height,
+    borderWidth: 1.5,
+    borderColor: COLORS.borderMedium,
+    borderRadius: SIZES.radius.md,
+    paddingHorizontal: SIZES.padding.md,
+    justifyContent: 'center',
+    backgroundColor: 'transparent',
+  },
+  staticValueText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    lineHeight: SIZES.font.md * 1.4,
+  },
+  errorText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.sm,
+    color: COLORS.error,
+    marginTop: SIZES.xs,
+    lineHeight: SIZES.font.sm * 1.4,
   },
   buttonRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginTop: SIZES.margin,
-    gap: SIZES.margin,
-    marginBottom: SIZES.margin * 2,
+    marginTop: SIZES.xl,
+    gap: SIZES.md,
   },
   button: {
     flex: 1,
-    borderRadius: SIZES.radius,
+    borderRadius: SIZES.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    elevation: 4,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 6,
-    height: 46,
+    height: SIZES.button.md,
+    ...appTheme.SHADOWS.sm,
   },
   submitButton: {
     backgroundColor: COLORS.primary,
   },
   backButton: {
-    backgroundColor: COLORS.secondary,
+    backgroundColor: COLORS.textSecondary,
     borderWidth: 1.5,
-    borderColor: COLORS.outline,
+    borderColor: COLORS.borderMedium,
   },
   buttonText: {
-    ...FONTS.h6,
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.md,
     color: COLORS.white,
+    lineHeight: SIZES.font.md * 1.4,
   },
   buttonDisabled: {
-    backgroundColor: COLORS.primaryLight,
-    opacity: 0.7,
+    opacity: 0.6,
   },
   loadingContainer: {
     flexDirection: 'row',
@@ -409,16 +409,28 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   loadingText: {
-    marginLeft: SIZES.margin,
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.sm,
+    color: COLORS.white,
+    marginLeft: SIZES.sm,
+    lineHeight: SIZES.font.sm * 1.4,
   },
   noSchemeContainer: {
-    padding: SIZES.padding,
+    padding: SIZES.padding.lg,
     alignItems: 'center',
     justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    borderStyle: 'dashed',
+    borderRadius: SIZES.radius.md,
+    marginBottom: SIZES.lg,
   },
   noSchemeText: {
-    color: COLORS.textLight,
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textTertiary,
     textAlign: 'center',
+    lineHeight: SIZES.font.md * 1.4,
   },
 });
 

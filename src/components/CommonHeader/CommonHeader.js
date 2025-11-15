@@ -8,10 +8,12 @@ import {
   Platform,
   StatusBar,
 } from 'react-native';
-import { COLORS, FONTS, SIZES, scale, verticalScale, moderateScale } from '../../utils/Theme';
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
+import appTheme from '../../utils/MainTheme';
+
+const { COLORS, FONTS, SIZES, scale, verticalScale, moderateScale } = appTheme;
 
 const CommonHeader = ({
   title,
@@ -20,15 +22,15 @@ const CommonHeader = ({
   rightComponent = null,
   leftComponent = null,
   onBackPress = null,
-  backgroundColor = COLORS.transparent,
-  textColor = COLORS.title,
+  backgroundColor = COLORS.background,
+  textColor = COLORS.textPrimary,
   transparent = false,
   elevated = true,
   animated = true,
   centerTitle = true,
   backIconName = 'arrow-back',
   backIconColor = COLORS.white,
-  statusBarStyle = 'dark-content',
+  statusBarStyle = 'light-content',
   style = {},
 }) => {
   const navigation = useNavigation();
@@ -82,7 +84,10 @@ const CommonHeader = ({
         backgroundColor={transparent ? 'transparent' : backgroundColor}
         translucent={transparent}
       />
-      <SafeAreaView edges={['top']} style={{ backgroundColor: transparent ? 'transparent' : backgroundColor }}>
+      <SafeAreaView
+        edges={['top']}
+        style={{ backgroundColor: transparent ? 'transparent' : backgroundColor }}
+      >
         <Animated.View style={[containerStyle, animatedStyle]}>
           {/* Left Section */}
           <View style={styles.leftSection}>
@@ -96,7 +101,7 @@ const CommonHeader = ({
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <View style={styles.iconContainer}>
-                  <Ionicons name={backIconName} size={moderateScale(24)} color={backIconColor} />
+                  <Ionicons name={backIconName} size={moderateScale(22)} color={backIconColor} />
                 </View>
               </TouchableOpacity>
             ) : (
@@ -114,7 +119,10 @@ const CommonHeader = ({
               {title}
             </Text>
             {subtitle && (
-              <Text style={[styles.subtitle, { color: textColor }]} numberOfLines={1}>
+              <Text
+                style={[styles.subtitle, { color: COLORS.textSecondary }]}
+                numberOfLines={1}
+              >
                 {subtitle}
               </Text>
             )}
@@ -130,13 +138,8 @@ const CommonHeader = ({
   );
 };
 
-// Enhanced Header with Search
-export const SearchHeader = ({
-  title,
-  onSearchPress,
-  onFilterPress,
-  ...props
-}) => {
+// 🔍 Header with Search / Filter
+export const SearchHeader = ({ title, onSearchPress, onFilterPress, ...props }) => {
   return (
     <CommonHeader
       title={title}
@@ -148,7 +151,7 @@ export const SearchHeader = ({
               onPress={onSearchPress}
               activeOpacity={0.7}
             >
-              <Ionicons name="search" size={moderateScale(22)} color={COLORS.primary} />
+              <Ionicons name="search" size={moderateScale(22)} color={COLORS.secondary} />
             </TouchableOpacity>
           )}
           {onFilterPress && (
@@ -157,7 +160,7 @@ export const SearchHeader = ({
               onPress={onFilterPress}
               activeOpacity={0.7}
             >
-              <Ionicons name="filter" size={moderateScale(22)} color={COLORS.primary} />
+              <Ionicons name="filter" size={moderateScale(22)} color={COLORS.secondary} />
             </TouchableOpacity>
           )}
         </View>
@@ -167,12 +170,8 @@ export const SearchHeader = ({
   );
 };
 
-// Enhanced Header with Actions
-export const ActionHeader = ({
-  title,
-  actions = [],
-  ...props
-}) => {
+// ⚙️ Header with Multiple Actions
+export const ActionHeader = ({ title, actions = [], ...props }) => {
   return (
     <CommonHeader
       title={title}
@@ -188,7 +187,7 @@ export const ActionHeader = ({
               <Ionicons
                 name={action.icon}
                 size={moderateScale(22)}
-                color={action.color || COLORS.primary}
+                color={action.color || COLORS.secondary}
               />
               {action.badge && (
                 <View style={styles.badge}>
@@ -217,21 +216,6 @@ const styles = StyleSheet.create({
     backgroundColor: 'transparent',
     borderBottomWidth: 0,
   },
-  // elevated: {
-  //   ...Platform.select({
-  //     ios: {
-  //       shadowColor: COLORS.shadow,
-  //       shadowOffset: { width: 0, height: 2 },
-  //       shadowOpacity: 0.1,
-  //       shadowRadius: 4,
-  //     },
-  //     android: {
-  //       elevation: 4,
-  //     },
-  //   }),
-  // },
-
-  // Sections
   leftSection: {
     width: moderateScale(50),
     alignItems: 'flex-start',
@@ -251,8 +235,6 @@ const styles = StyleSheet.create({
     alignItems: 'flex-end',
     justifyContent: 'center',
   },
-
-  // Icon Button
   iconButton: {
     width: moderateScale(40),
     height: moderateScale(40),
@@ -261,50 +243,41 @@ const styles = StyleSheet.create({
     borderRadius: moderateScale(20),
   },
   iconContainer: {
-    width: moderateScale(40),
-    height: moderateScale(40),
+    width: moderateScale(38),
+    height: moderateScale(38),
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: moderateScale(20),
-    backgroundColor: COLORS.primary,
+    borderRadius: moderateScale(19),
+    backgroundColor: COLORS.secondary,
   },
-
-  // Placeholders
   leftPlaceholder: {
     width: moderateScale(40),
   },
   rightPlaceholder: {
     width: moderateScale(40),
   },
-
-  // Text
   title: {
     ...FONTS.h5,
     fontSize: moderateScale(18),
-    // fontWeight: '700',
-    color: COLORS.title,
+    color: COLORS.textPrimary,
     letterSpacing: 0.3,
   },
   subtitle: {
-    ...FONTS.fontSm,
+    ...FONTS.bodySmall,
     fontSize: moderateScale(12),
-    color: COLORS.textLight,
+    color: COLORS.textSecondary,
     marginTop: verticalScale(2),
   },
-
-  // Action Buttons
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
     gap: scale(4),
   },
-
-  // Badge
   badge: {
     position: 'absolute',
     top: moderateScale(4),
     right: moderateScale(4),
-    backgroundColor: COLORS.danger,
+    backgroundColor: COLORS.error,
     borderRadius: moderateScale(10),
     minWidth: moderateScale(16),
     height: moderateScale(16),
@@ -316,7 +289,6 @@ const styles = StyleSheet.create({
     ...FONTS.fontXs,
     fontSize: moderateScale(10),
     color: COLORS.white,
-    // fontWeight: '700',
   },
 });
 

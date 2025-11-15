@@ -6,17 +6,14 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
-  Dimensions,
   ImageBackground
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import { LinearGradient } from 'expo-linear-gradient'
-import { COLORS, SIZES, FONTS, scale, verticalScale, moderateScale } from '../../utils/Theme'
+import { COLORS, SIZES, FONTS, verticalScale, moderateScale,SHADOWS} from '../../utils/MainTheme'
 import CommonHeader from '../../components/CommonHeader/CommonHeader'
-import { BottomTab } from '../../components'
 
-const { width } = Dimensions.get('window')
 const SUPPORT_NUMBER = '919514333601'
 
 function HelpCenterPage() {
@@ -29,8 +26,7 @@ function HelpCenterPage() {
   }
 
   const handleOpenMap = () => {
-    const address =
-      'M/s. BMG Jewellers Pvt Ltd, 160, Melamasi St, Madurai-625001'
+    const address = 'M/s. BMG Jewellers Pvt Ltd, 160, Melamasi St, Madurai-625001'
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
     Linking.openURL(url)
   }
@@ -41,6 +37,44 @@ function HelpCenterPage() {
       alert('Make sure WhatsApp is installed')
     })
   }
+
+  const ContactCard = ({ icon, title, children, iconBg }) => (
+    <LinearGradient
+      colors={[COLORS.background, COLORS.surface]}
+      style={styles.card}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 1, y: 1 }}
+    >
+      <View style={styles.cardHeader}>
+        <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
+          <Icon name={icon} size={20} color={COLORS.white} />
+        </View>
+        <Text style={styles.cardTitle}>{title}</Text>
+      </View>
+      {children}
+    </LinearGradient>
+  )
+
+  const ContactItem = ({ text, icon, onPress, isAddress = false }) => (
+    <TouchableOpacity style={styles.contactItem} onPress={onPress}>
+      {isAddress ? (
+        <View style={styles.addressContainer}>
+          <Text style={styles.contactText}>M/s. BMG Jewellers Pvt Ltd</Text>
+          <Text style={styles.contactText}>160, Melamasi St, Madurai-625001</Text>
+        </View>
+      ) : (
+        <Text style={styles.contactText}>{text}</Text>
+      )}
+      <Icon name={icon} size={18} color={COLORS.secondary} />
+    </TouchableOpacity>
+  )
+
+  const QuickAction = ({ icon, text, onPress }) => (
+    <TouchableOpacity style={styles.actionButton} onPress={onPress}>
+      <Icon name={icon} size={20} color={COLORS.secondary} />
+      <Text style={styles.actionText}>{text}</Text>
+    </TouchableOpacity>
+  )
 
   return (
     <View style={styles.container}>
@@ -57,91 +91,46 @@ function HelpCenterPage() {
         >
           {/* Contact Cards */}
           <View style={styles.cardsContainer}>
-            {/* Phone Numbers Card */}
-            <LinearGradient
-              colors={[COLORS.background, COLORS.surfaceVariant]}
-              style={styles.card}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <ContactCard 
+              icon="phone" 
+              title="Phone Numbers" 
+              iconBg={COLORS.secondary}
             >
-              <View style={styles.cardHeader}>
-                <View style={[styles.iconContainer, styles.phoneIconContainer]}>
-                  <Icon name='phone' size={24} color={COLORS.primary} />
-                </View>
-                <Text style={styles.cardTitle}>Phone Numbers</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.contactItem}
+              <ContactItem
+                text="+91-95143 33601"
+                icon="call"
                 onPress={() => handlePhoneCall('919514333601')}
-              >
-                <Text style={styles.contactText}>+91-95143 33601</Text>
-                <Icon name='call' size={20} color={COLORS.primary} />
-              </TouchableOpacity>
-
-              <TouchableOpacity
-                style={styles.contactItem}
+              />
+              <ContactItem
+                text="+91-95143 33609"
+                icon="call"
                 onPress={() => handlePhoneCall('919514333609')}
-              >
-                <Text style={styles.contactText}>+91-95143 33609</Text>
-                <Icon name='call' size={20} color={COLORS.primary} />
-              </TouchableOpacity>
-            </LinearGradient>
+              />
+            </ContactCard>
 
-            {/* Email Card */}
-            <LinearGradient
-              colors={[COLORS.background, COLORS.surfaceVariant]}
-              style={styles.card}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <ContactCard 
+              icon="email" 
+              title="Email Address" 
+              iconBg={COLORS.secondary}
             >
-              <View style={styles.cardHeader}>
-                <View style={[styles.iconContainer, styles.emailIconContainer]}>
-                  <Icon name='email' size={24} color={COLORS.primary} />
-                </View>
-                <Text style={styles.cardTitle}>Email Address</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.contactItem}
+              <ContactItem
+                text="Contact@bmgjewellers.in"
+                icon="mail-outline"
                 onPress={() => handleEmail('Contact@bmgjewellers.in')}
-              >
-                <Text style={styles.contactText}>Contact@bmgjewellers.in</Text>
-                <Icon name='mail-outline' size={20} color={COLORS.primary} />
-              </TouchableOpacity>
-            </LinearGradient>
+              />
+            </ContactCard>
 
-            {/* Office Address Card */}
-            <LinearGradient
-              colors={[COLORS.background, COLORS.surfaceVariant]}
-              style={styles.card}
-              start={{ x: 0, y: 0 }}
-              end={{ x: 1, y: 1 }}
+            <ContactCard 
+              icon="location-on" 
+              title="Office Address" 
+              iconBg={COLORS.secondary}
             >
-              <View style={styles.cardHeader}>
-                <View
-                  style={[styles.iconContainer, styles.locationIconContainer]}
-                >
-                  <Icon name='location-on' size={24} color={COLORS.primary} />
-                </View>
-                <Text style={styles.cardTitle}>Office Address</Text>
-              </View>
-
-              <TouchableOpacity
-                style={styles.contactItem}
+              <ContactItem
+                icon="place"
                 onPress={handleOpenMap}
-              >
-                <View style={styles.addressContainer}>
-                  <Text style={styles.contactText}>
-                    M/s. BMG Jewellers Pvt Ltd
-                  </Text>
-                  <Text style={styles.contactText}>
-                    160, Melamasi St, Madurai-625001
-                  </Text>
-                </View>
-                <Icon name='place' size={20} color={COLORS.primary} />
-              </TouchableOpacity>
-            </LinearGradient>
+                isAddress={true}
+              />
+            </ContactCard>
           </View>
 
           {/* Support Hours */}
@@ -161,192 +150,158 @@ function HelpCenterPage() {
           <View style={styles.actionsContainer}>
             <Text style={styles.actionsTitle}>Quick Actions</Text>
             <View style={styles.actionsRow}>
-              <TouchableOpacity
-                style={styles.actionButton}
-                onPress={() =>
-                  handleWhatsApp('Hello! I need help via Live Chat.')
-                }
-              >
-                <Icon name='chat' size={24} color={COLORS.primary} />
-                <Text style={styles.actionText}>Live Chat</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
+              <QuickAction
+                icon="chat"
+                text="Live Chat"
+                onPress={() => handleWhatsApp('Hello! I need help via Live Chat.')}
+              />
+              <QuickAction
+                icon="help-outline"
+                text="FAQs"
                 onPress={() => handleWhatsApp('I would like to see the FAQs.')}
-              >
-                <Icon name='help-outline' size={24} color={COLORS.primary} />
-                <Text style={styles.actionText}>FAQs</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={styles.actionButton}
+              />
+              <QuickAction
+                icon="description"
+                text="Support"
                 onPress={() => handlePhoneCall('919514333601')}
-              >
-                <Icon name='description' size={24} color={COLORS.primary} />
-                <Text style={styles.actionText}>Support</Text>
-              </TouchableOpacity>
+              />
             </View>
           </View>
         </ScrollView>
       </ImageBackground>
-      {/* <BottomTab /> */}
     </View>
   )
 }
 
 const styles = StyleSheet.create({
   container: { 
-    flex: 1, 
-    // backgroundColor: COLORS.background 
+    flex: 1,
   },
   backgroundImage: {
     flex: 1,
-    width: '100%',
-    height: '100%'
   },
   scrollContainer: { 
     flexGrow: 1,
-    paddingBottom: verticalScale(20),
-    paddingTop: verticalScale(10)
+    paddingBottom: verticalScale(16),
   },
   cardsContainer: {
-    paddingHorizontal: SIZES.padding,
-    marginBottom: verticalScale(25),
-    marginTop: verticalScale(10)
+    paddingHorizontal: SIZES.padding.md,
+    marginBottom: verticalScale(20),
   },
   card: {
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    marginBottom: verticalScale(16),
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginBottom: verticalScale(12),
+    // ...SHADOWS.sm,
     borderWidth: 1,
-    borderColor: COLORS.borderColor,
-    backgroundColor: COLORS.background
+    borderColor: COLORS.borderLight,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: verticalScale(16),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.primaryLight,
-    paddingBottom: verticalScale(12)
+    marginBottom: verticalScale(12),
   },
   iconContainer: {
-    width: scale(44),
-    height: scale(44),
-    borderRadius: SIZES.radius_sm,
+    width: moderateScale(36),
+    height: moderateScale(36),
+    borderRadius: SIZES.radius.sm,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: scale(12)
-  },
-  phoneIconContainer: { 
-    backgroundColor: COLORS.primaryLight 
-  },
-  emailIconContainer: { 
-    backgroundColor: COLORS.primaryLight 
-  },
-  locationIconContainer: { 
-    backgroundColor: COLORS.primaryLight 
+    marginRight: moderateScale(10),
   },
   cardTitle: {
-    ...FONTS.h5,
-    color: COLORS.primary
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.lg,
+    color: COLORS.textPrimary,
   },
   contactItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: verticalScale(12),
+    paddingVertical: verticalScale(10),
     borderBottomWidth: 1,
-    borderBottomColor: COLORS.primaryLight
+    borderBottomColor: COLORS.borderLight,
   },
   contactText: {
-    ...FONTS.font,
-    color: COLORS.text,
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
     flex: 1,
-    marginRight: scale(10)
+    marginRight: moderateScale(8),
   },
   addressContainer: { 
-    flex: 1 
+    flex: 1,
   },
   hoursContainer: {
-    backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    marginHorizontal: SIZES.padding,
-    marginBottom: verticalScale(25),
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginHorizontal: SIZES.padding.md,
+    marginBottom: verticalScale(20),
+    ...SHADOWS.sm,
     borderWidth: 1,
-    borderColor: COLORS.borderColor
+    borderColor: COLORS.borderLight,
   },
   hoursTitle: {
-    ...FONTS.h5,
-    color: COLORS.primary,
-    marginBottom: verticalScale(16),
-    textAlign: 'center'
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.lg,
+    color: COLORS.textPrimary,
+    marginBottom: verticalScale(12),
+    textAlign: 'center',
   },
   hoursRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: verticalScale(10),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.primaryLight
+    paddingVertical: verticalScale(8),
   },
   hoursDay: {
-    ...FONTS.font,
-    color: COLORS.text,
-    fontWeight: '500'
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
   },
   hoursTime: { 
-    ...FONTS.font, 
-    color: COLORS.primary, 
-    fontWeight: '600' 
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary, 
   },
   actionsContainer: {
-    backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius,
-    padding: SIZES.padding,
-    marginHorizontal: SIZES.padding,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginHorizontal: SIZES.padding.md,
+    // ...SHADOWS.sm,
     borderWidth: 1,
-    borderColor: COLORS.borderColor
+    borderColor: COLORS.borderLight,
   },
   actionsTitle: {
-    ...FONTS.h5,
-    color: COLORS.primary,
-    marginBottom: verticalScale(16),
-    textAlign: 'center'
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.lg,
+    color: COLORS.textPrimary,
+    marginBottom: verticalScale(12),
+    textAlign: 'center',
   },
   actionsRow: { 
     flexDirection: 'row', 
-    justifyContent: 'space-around' 
+    justifyContent: 'space-between',
+    gap: moderateScale(8),
   },
   actionButton: {
     alignItems: 'center',
-    padding: SIZES.padding,
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: SIZES.radius_sm,
-    width: width * 0.25,
-    minHeight: verticalScale(80),
-    justifyContent: 'center'
+    padding: SIZES.padding.sm,
+    backgroundColor: COLORS.secondaryLight + '30',
+    borderRadius: SIZES.radius.sm,
+    flex: 1,
+    minHeight: verticalScale(70),
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight,
   },
   actionText: {
-    ...FONTS.fontSm,
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.sm,
     color: COLORS.primary,
-    marginTop: verticalScale(8),
+    marginTop: verticalScale(6),
     textAlign: 'center',
-    fontWeight: '600'
   }
 })
 

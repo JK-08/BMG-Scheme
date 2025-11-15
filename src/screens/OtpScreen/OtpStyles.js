@@ -1,5 +1,5 @@
 import { StyleSheet, Platform } from 'react-native';
-import appTheme from '../../utils/Theme';
+import appTheme from '../../utils/MainTheme';
 
 const { COLORS, SIZES, FONTS, moderateScale, verticalScale } = appTheme;
 
@@ -11,176 +11,119 @@ const styles = StyleSheet.create({
     height: '100%',
     resizeMode: 'cover',
   },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'flex-start',
-    paddingTop: verticalScale(20),
+    justifyContent: 'center',
+    paddingTop: verticalScale(SIZES.xl),
+    paddingBottom: SIZES.xl,
   },
   container: {
     flex: 1,
     alignItems: 'center',
-    justifyContent: 'flex-start',
-    paddingHorizontal: moderateScale(16),
-    paddingVertical: verticalScale(10),
+    justifyContent: 'center',
+    paddingHorizontal: SIZES.padding.lg,
   },
 
   // Logo Section
   logoContainer: {
     alignItems: 'center',
-    marginBottom: verticalScale(15),
-    marginTop: verticalScale(-25),
+    marginBottom: SIZES.xl,
   },
   logoImage: {
     width: moderateScale(120),
     height: moderateScale(120),
     resizeMode: 'contain',
+    borderRadius: SIZES.radius.full,
   },
 
   // Card Container
   card: {
     width: '100%',
-    maxWidth: moderateScale(380),
-    backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius,
-    paddingHorizontal: moderateScale(20),
-    paddingVertical: verticalScale(20),
-    shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(6),
-    },
-    shadowOpacity: 0.2,
-    shadowRadius: moderateScale(12),
-    elevation: 8,
+    maxWidth: moderateScale(400),
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius.xl,
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: SIZES.xxl,
+    ...appTheme.SHADOWS.lg,
     borderWidth: 1,
-    borderColor: COLORS.borderColor,
-    marginTop: verticalScale(5),
+    borderColor: COLORS.borderLight,
   },
 
   // Typography
   title: {
-    ...FONTS.h4,
+    ...FONTS.h3,
     textAlign: 'center',
-    marginBottom: verticalScale(4),
-    color: COLORS.primary,
+    marginBottom: SIZES.sm,
+    color: COLORS.secondaryDark,
   },
   subtitle: {
     ...FONTS.body,
     textAlign: 'center',
-    marginBottom: verticalScale(24),
-    color: COLORS.textLight,
-    lineHeight: moderateScale(20),
-    fontSize: SIZES.h5,
+    marginBottom: SIZES.xl,
+    color: COLORS.textSecondary,
+    lineHeight: SIZES.font.lg * 1.4,
   },
- linkContainer: {
-  borderRadius: SIZES.radius_sm,
-  paddingVertical: verticalScale(8),
-  paddingHorizontal: moderateScale(12),
-  marginBottom: verticalScale(16),
-  alignItems: 'center',
-  justifyContent: 'center',
-},
-
-linkText: {
-  ...FONTS.subheading,
-  textAlign: 'center',
-  color: COLORS.primary,
-  fontWeight: '600',
-  textDecorationLine: 'underline', // makes it look like a link
-  letterSpacing: 0.3,
-},
-
 
   // OTP Container
   otpContainer: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    marginBottom: verticalScale(24),
-    marginTop: verticalScale(16),
+    marginBottom: SIZES.lg,
+    marginTop: SIZES.md,
+    gap: SIZES.xs,
   },
   otpInputWrapper: {
-    width: moderateScale(44),
-    height: moderateScale(50),
-    borderRadius: SIZES.radius_sm,
+    width: moderateScale(50),
+    height: moderateScale(60),
+    borderRadius: SIZES.radius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(2),
-    },
-    shadowOpacity: 0.1,
-    shadowRadius: moderateScale(4),
-    elevation: 3,
+    ...appTheme.SHADOWS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
-  waitingContainer: {
-  alignItems: "center",
-  marginVertical: 20,
-  padding: 15,
-  backgroundColor: COLORS.background + "80", // semi-transparent
-  borderRadius: 10,
-  borderWidth: 1,
-  borderColor: COLORS.primary,
-},
-waitingText: {
-  color: COLORS.primary,
-  marginTop: 10,
-  fontSize: 16,
-  fontWeight: "bold",
-  textAlign: "center",
-},
-waitingSubtext: {
-  color: COLORS.textDark,
-  marginTop: 5,
-  fontSize: 12,
-  textAlign: "center",
-},
-disabledText: {
-  color: COLORS.textLight,
-  opacity: 0.5,
-},
-clearOtpText: {
-  ...FONTS.body1,
-  color: COLORS.primary,
-  textDecorationLine: 'underline',
-},
   otpInput: {
     width: '100%',
     height: '100%',
-    fontSize: SIZES.h4,
-    color: COLORS.white,
-    ...FONTS.body1,
+    fontSize: SIZES.font.xl,
+    color: COLORS.textInverse,
+    fontFamily: FONTS.family.bodyBold,
+    textAlign: 'center',
+    borderRadius: SIZES.radius.md,
+  },
+
+  // Clear OTP Button
+  clearOtpButton: {
+    alignSelf: 'center',
+    marginBottom: SIZES.lg,
+    padding: SIZES.sm,
+  },
+  clearOtpText: {
+    ...FONTS.body,
+    color: COLORS.primary,
     fontWeight: '600',
-    borderWidth: 1,
-    borderColor: COLORS.borderColor,
-    borderRadius: SIZES.radius_sm,
   },
 
   // Buttons
   primaryButton: {
-    borderRadius: SIZES.radius_sm,
-    marginTop: verticalScale(16),
+    borderRadius: SIZES.radius.md,
+    marginTop: SIZES.md,
     overflow: 'hidden',
-    shadowColor: COLORS.shadow,
-    shadowOffset: {
-      width: 0,
-      height: moderateScale(3),
-    },
-    shadowOpacity: 0.25,
-    shadowRadius: moderateScale(6),
-    elevation: 5,
+    ...appTheme.SHADOWS.md,
+    height: SIZES.button.lg,
   },
   buttonGradient: {
-    paddingVertical: verticalScale(12),
+    flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    minHeight: verticalScale(44),
   },
   primaryButtonText: {
-    ...FONTS.body1,
+    ...FONTS.h6,
+    color: COLORS.textInverse,
     fontWeight: '600',
-    color: COLORS.white,
-    fontSize: SIZES.font,
   },
   disabledButton: {
     opacity: 0.6,
@@ -191,149 +134,109 @@ clearOtpText: {
     flexDirection: 'row',
     justifyContent: 'center',
     alignItems: 'center',
-    marginTop: verticalScale(20),
-    paddingVertical: verticalScale(8),
+    marginTop: SIZES.xl,
+    paddingVertical: SIZES.sm,
   },
   resendText: {
-    ...FONTS.body1,
-    color: COLORS.textLight,
-    
+    ...FONTS.body,
+    color: COLORS.textSecondary,
   },
   resendLink: {
-    ...FONTS.body1,
-    color: COLORS.danger,
+    ...FONTS.body,
+    color: COLORS.secondaryDark,
     fontWeight: '600',
-    textDecorationLine: 'underline',
   },
-  resendDisabled: {
-    color: COLORS.textLight,
-  },
-  // Add these styles to your existing OtpStyles.js
-
-fullScreenLoader: {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 9999,
-},
-loaderBackground: {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.7)',
-  backdropFilter: Platform.OS === 'web' ? 'blur(10px)' : undefined,
-  // For React Native, we use opacity instead of backdrop-filter
-},
-loaderContent: {
-  backgroundColor: COLORS.white,
-  padding: 30,
-  borderRadius: 20,
-  alignItems: 'center',
-  justifyContent: 'center',
-  minWidth: 250,
-  minHeight: 200,
-  shadowColor: '#000',
-  shadowOffset: {
-    width: 0,
-    height: 2,
-  },
-  shadowOpacity: 0.25,
-  shadowRadius: 3.84,
-  elevation: 5,
-},
-loadingText: {
-  marginTop: 20,
-  fontSize: 18,
-  fontWeight: 'bold',
-  color: COLORS.primary,
-  textAlign: 'center',
-},
-loadingSubtext: {
-  marginTop: 10,
-  fontSize: 14,
-  color: COLORS.gray,
-  textAlign: 'center',
-},
-// Add/Update these styles in your OtpStyles.js
-
-fullScreenLoader: {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  justifyContent: 'center',
-  alignItems: 'center',
-  zIndex: 9999,
-},
-loaderBackground: {
-  position: 'absolute',
-  top: 0,
-  left: 0,
-  right: 0,
-  bottom: 0,
-  backgroundColor: 'rgba(0, 0, 0, 0.8)',
-  // For React Native, we use opacity instead of backdrop-filter
-},
-loaderContent: {
-  backgroundColor: COLORS.white,
-  padding: 30,
-  borderRadius: 20,
-  alignItems: 'center',
-  justifyContent: 'center',
-  minWidth: 280,
-  minHeight: 220,
-  shadowColor: '#000',
-  shadowOffset: {
-    width: 0,
-    height: 4,
-  },
-  shadowOpacity: 0.3,
-  shadowRadius: 5,
-  elevation: 8,
-  margin: 20,
-},
-loadingText: {
-  marginTop: 20,
-  fontSize: 18,
-  fontWeight: 'bold',
-  color: COLORS.primary,
-  textAlign: 'center',
-},
-loadingSubtext: {
-  marginTop: 10,
-  fontSize: 14,
-  color: COLORS.gray,
-  textAlign: 'center',
-  lineHeight: 20,
-},
-loadingTimer: {
-  marginTop: 8,
-  fontSize: 12,
-  color: COLORS.secondary,
-  textAlign: 'center',
+ resendDisabled: {
+  color: COLORS.textDisabled,
   fontStyle: 'italic',
 },
-disabledText: {
-  opacity: 0.5,
-},
-disabledButton: {
-  opacity: 0.6,
-},
+
+
+  // Link Container
+  linkContainer: {
+    borderRadius: SIZES.radius.sm,
+    paddingVertical: SIZES.sm,
+    paddingHorizontal: SIZES.padding.sm,
+    marginTop: SIZES.lg,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  linkText: {
+    ...FONTS.body,
+    textAlign: 'center',
+    color: COLORS.secondaryDark,
+    fontWeight: '600',
+  },
+
+  // Full Screen Loader
+  fullScreenLoader: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    justifyContent: 'center',
+    alignItems: 'center',
+    zIndex: 9999,
+  },
+  loaderBackground: {
+    position: 'absolute',
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: COLORS.overlay,
+  },
+  loaderContent: {
+    backgroundColor: COLORS.surface,
+    padding: SIZES.xl,
+    borderRadius: SIZES.radius.xl,
+    alignItems: 'center',
+    justifyContent: 'center',
+    minWidth: moderateScale(280),
+    minHeight: moderateScale(200),
+    margin: SIZES.lg,
+    ...appTheme.SHADOWS.lg,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  loadingText: {
+    ...FONTS.h5,
+    marginTop: SIZES.lg,
+    color: COLORS.primary,
+    textAlign: 'center',
+  },
+  loadingSubtext: {
+    ...FONTS.body,
+    marginTop: SIZES.sm,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    lineHeight: SIZES.font.md * 1.4,
+  },
+  loadingTimer: {
+    ...FONTS.caption,
+    marginTop: SIZES.xs,
+    color: COLORS.secondary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  disabledText: {
+    opacity: 0.5,
+  },
 });
 
 // Platform-specific adjustments
 if (Platform.OS === 'web') {
+  styles.scrollContainer = {
+    ...styles.scrollContainer,
+    paddingTop: verticalScale(SIZES.xxl * 1.5),
+    minHeight: '100vh',
+  };
+  
   styles.card = {
     ...styles.card,
     cursor: 'default',
-    maxHeight: verticalScale(450),
+    maxWidth: moderateScale(420),
   };
   
   styles.primaryButton = {
@@ -346,54 +249,54 @@ if (Platform.OS === 'web') {
     cursor: 'pointer',
   };
   
-  styles.scrollContainer = {
-    ...styles.scrollContainer,
-    paddingTop: verticalScale(10),
+  styles.linkContainer = {
+    ...styles.linkContainer,
+    cursor: 'pointer',
+  };
+  
+  styles.clearOtpButton = {
+    ...styles.clearOtpButton,
+    cursor: 'pointer',
   };
 }
 
 // Additional responsive adjustments for small screens
-if (SIZES.height < 600) {
+if (SIZES.screen.height < 600) {
   styles.scrollContainer = {
     ...styles.scrollContainer,
-    paddingTop: verticalScale(10),
+    paddingTop: verticalScale(SIZES.lg),
   };
   
   styles.container = {
     ...styles.container,
-    paddingVertical: verticalScale(5),
+    paddingVertical: SIZES.sm,
   };
   
   styles.card = {
     ...styles.card,
-    paddingVertical: verticalScale(16),
-    paddingHorizontal: moderateScale(16),
+    paddingVertical: SIZES.xl,
+    paddingHorizontal: SIZES.padding.lg,
   };
   
   styles.logoImage = {
     ...styles.logoImage,
-    width: moderateScale(70),
-    height: moderateScale(70),
-  };
-  
-  styles.title = {
-    ...styles.title,
-    fontSize: moderateScale(20),
-    marginBottom: verticalScale(2),
+    width: moderateScale(100),
+    height: moderateScale(100),
   };
   
   styles.otpInputWrapper = {
     ...styles.otpInputWrapper,
-    width: moderateScale(40),
-    height: moderateScale(46),
+    width: moderateScale(45),
+    height: moderateScale(55),
   };
 }
 
 // For large screens
-if (SIZES.height > 800) {
+if (SIZES.screen.height > 800) {
   styles.card = {
     ...styles.card,
-    maxWidth: moderateScale(360),
+    maxWidth: moderateScale(420),
+    paddingVertical: SIZES.xxl,
   };
 }
 

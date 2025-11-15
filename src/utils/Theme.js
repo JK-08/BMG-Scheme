@@ -24,12 +24,18 @@ export const COLORS = {
   primaryLight: "rgba(74, 144, 226, 0.15)",
   secondary: "rgba(225, 100, 250, 1)",      // main magenta/pink
   notification: "rgba(201, 137, 0, 1)",
+  primary1:"#ecc218ff",
+  primary2:"#ffe065ff",
+  primary3:"#fca420ff",
+   brand1: ['#b46010ff', '#b46010ff'],
+
 
   // Status
   success: "rgba(46, 125, 50, 1)",
   danger: "rgba(198, 40, 40, 1)",
   warning: "rgba(255, 160, 0, 1)",
   info: "rgba(21, 101, 192, 1)",
+  color1: "rgba(243, 156, 66, 1)",
 
   // Text
   title: "rgba(51, 51, 51, 1)",
@@ -139,38 +145,38 @@ export const FONTS = {
     fontSize: SIZES.fontLg,
     color: COLORS.text,
     lineHeight: moderateScale(24),
-    fontFamily: "Domine",
+    fontFamily: "PoppinsRegular",
   },
   font: {
     fontSize: SIZES.font,
     color: COLORS.text,
     lineHeight: moderateScale(20),
-    fontFamily: "Domine",
+    fontFamily: "PoppinsRegular",
   },
   fontSm: {
     fontSize: SIZES.fontSm,
     color: COLORS.text,
     lineHeight: moderateScale(18),
-    fontFamily: "Domine",
+    fontFamily: "PoppinsRegular",
   },
   fontXs: {
     fontSize: SIZES.fontXs,
     color: COLORS.text,
     lineHeight: moderateScale(16),
-    fontFamily: "Domine",
+    fontFamily: "PoppinsRegular",
   },
 
   // Scalable headings
   h1: {
     fontSize: SIZES.h1,
     color: COLORS.title,
-    fontFamily: "TrajanProBold",
+    fontFamily: "PoppinsBold",
     lineHeight: moderateScale(40),
   },
   h2: {
     fontSize: SIZES.h2,
     color: COLORS.title,
-    fontFamily: "TrajanProBold",
+    fontFamily: "PoppinsBold",
     lineHeight: moderateScale(36),
   },
   h3: {
@@ -187,33 +193,42 @@ export const FONTS = {
   },
   h5: {
     fontSize: SIZES.h5,
-    fontFamily: "DMSerif",
-    lineHeight: moderateScale(26),
+    fontFamily: "PoppinsRegular",
+    // lineHeight: moderateScale(26),
     color: COLORS.title,
   },
   h6: {
     fontSize: SIZES.h6,
     color: COLORS.title,
-    fontFamily: "DMSerif",
+    fontFamily: "PoppinsBold",
     lineHeight: moderateScale(24),
   },
 
   // Custom semantic roles
   heading: {
-    fontFamily: "TrajanProBold",
+    fontFamily: "PoppinsBold",
     // lineHeight: moderateScale(25),
   },
   subheading: {
-    fontFamily: "DMSerif",
+    fontFamily: "PoppinsRegular",
     fontWeight: "500",
   },
-  body: {
+ 
+  body1: {
+    fontFamily: "PoppinsRegular",
+    fontWeight: "500",
+  },
+   body: {
     fontFamily: "DancingScript",
     fontWeight: "600",
   },
-  body1: {
-    fontFamily: "Domine",
-    fontWeight: "500",
+   body2: {
+    fontFamily: "PoppinsRegular",
+    fontWeight: "600",
+  },
+   body3: {
+    fontFamily: "PoppinsBold",
+    // fontWeight: "600",
   },
   fancy: {  
     fontFamily: "Fancy",

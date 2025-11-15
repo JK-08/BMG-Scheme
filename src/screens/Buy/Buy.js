@@ -17,8 +17,9 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { API_BASE_URL, API_BASE_URL_OLD } from "../../Config/API";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import appTheme from "../../utils/Theme";
+import appTheme from "../../utils/MainTheme";
 import CommonHeader from '../../components/CommonHeader/CommonHeader'
+import {BottomTab} from '../../components'
 
 const BuyPage = () => {
   const route = useRoute();
@@ -36,7 +37,7 @@ const BuyPage = () => {
       productData?.personalInfo?.pname ||
       productData?.accountDetails?.personalInfo?.pName ||
       "Customer",
-    defaultContact: productData?.personalInfo?.contact || "9876543210",
+    defaultContact: productData?.personalInfo?.mobile || "9876543210",
     defaultGroupCode: productData?.groupCode || "",
     defaultRegNo: productData?.regNo || "",
   }), [productData]);
@@ -327,154 +328,251 @@ const BuyPage = () => {
   const styles = StyleSheet.create({
     background: {
       flex: 1,
+      backgroundColor: COLORS.white,
     },
     container: {
       flex: 1,
     },
     scrollContent: {
-      padding: SIZES.padding,
-      paddingBottom: SIZES.padding * 2,
+      flexGrow: 1,
+      padding: SIZES.padding.lg,
+      paddingBottom: SIZES.padding.xl,
     },
     headerContainer: {
-      marginBottom: SIZES.margin,
+      marginBottom: SIZES.lg,
       alignItems: "center",
     },
     title: {
-      ...FONTS.h3,
+      ...FONTS.h4,
       textAlign: "center",
-      marginBottom: SIZES.margin / 2,
-      color: COLORS.title,
+      marginBottom: SIZES.sm,
+      color: COLORS.textPrimary,
+      fontFamily: FONTS.family.bodyBold,
     },
-    infoCard: {
-      backgroundColor: COLORS.card,
-      borderRadius: SIZES.radius,
-      padding: SIZES.padding,
-      marginBottom: SIZES.margin,
+    mainCard: {
+      backgroundColor: COLORS.white,
+      borderRadius: SIZES.radius.lg,
+      padding: SIZES.padding.lg,
+      marginBottom: SIZES.lg,
+      ...appTheme.SHADOWS.md,
       borderWidth: 1,
-      borderColor: COLORS.borderColor,
-      shadowColor: COLORS.shadow,
-      shadowOffset: { width: 0, height: 2 },
-      shadowOpacity: 0.1,
-      shadowRadius: 4,
-      elevation: 3,
+      borderColor: COLORS.borderLight,
+    },
+    cardHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: SIZES.md,
+      paddingBottom: SIZES.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: COLORS.borderLight,
+    },
+    cardIcon: {
+      width: SIZES.icon.md,
+      height: SIZES.icon.md,
+      borderRadius: SIZES.radius.sm,
+      backgroundColor: COLORS.primaryLight,
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginRight: SIZES.sm,
+    },
+    cardTitle: {
+      ...FONTS.h5,
+      color: COLORS.textPrimary,
+      fontFamily: FONTS.family.bodyBold,
+    },
+    infoGrid: {
+      marginBottom: SIZES.md,
     },
     infoRow: {
       flexDirection: "row",
-      marginBottom: SIZES.padding / 2,
+      justifyContent: "space-between",
+      alignItems: "center",
+      paddingVertical: SIZES.sm,
+      borderBottomWidth: 1,
+      borderBottomColor: COLORS.borderLight,
     },
     infoLabel: {
-      ...FONTS.body1,
-      fontSize: SIZES.fontSm,
-      color: COLORS.textLight,
-      fontWeight: "600",
-      width: 100,
+      ...FONTS.bodySmall,
+      color: COLORS.textSecondary,
+      fontFamily: FONTS.family.body,
+      flex: 1,
     },
     infoValue: {
-      ...FONTS.body1,
-      fontSize: SIZES.fontSm,
-      color: COLORS.text,
+      ...FONTS.body,
+      color: COLORS.textPrimary,
+      fontFamily: FONTS.family.bodyBold,
       flex: 1,
-      fontWeight: "500",
+      textAlign: 'right',
     },
-    paymentTypeContainer: {
-      backgroundColor: COLORS.primaryLight,
-      borderRadius: SIZES.radius_sm,
-      padding: SIZES.padding / 1.5,
-      marginTop: SIZES.margin / 2,
+    paymentTypeBadge: {
+      backgroundColor: COLORS.white,
+      borderRadius: SIZES.radius.sm,
+      paddingHorizontal: SIZES.md,
+      paddingVertical: SIZES.xs,
+      marginTop: SIZES.sm,
+      alignSelf: 'center',
       borderWidth: 1,
       borderColor: COLORS.primary,
     },
     paymentTypeText: {
-      ...FONTS.body1,
-      fontSize: SIZES.font,
+      ...FONTS.bodySmall,
       color: COLORS.primary,
-      fontWeight: "600",
+      fontFamily: FONTS.family.bodyBold,
       textAlign: "center",
     },
+    amountSection: {
+      backgroundColor: COLORS.white,
+      borderRadius: SIZES.radius.lg,
+      padding: SIZES.padding.lg,
+      marginBottom: SIZES.lg,
+      ...appTheme.SHADOWS.md,
+      borderWidth: 1,
+      borderColor: COLORS.borderLight,
+    },
+    amountHeader: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      marginBottom: SIZES.md,
+    },
+    amountTitle: {
+      ...FONTS.h5,
+      color: COLORS.textPrimary,
+      fontFamily: FONTS.family.bodyBold,
+      marginLeft: SIZES.sm,
+    },
     inputContainer: {
-      marginVertical: SIZES.margin,
+      marginBottom: SIZES.xs,
     },
     inputLabel: {
-      ...FONTS.body1,
-      fontSize: SIZES.font,
-      color: COLORS.title,
-      marginBottom: SIZES.padding / 2,
-      fontWeight: "600",
+      ...FONTS.body,
+      color: COLORS.textPrimary,
+      marginBottom: SIZES.xs,
+      fontFamily: FONTS.family.bodyBold,
+    },
+    inputWrapper: {
+      position: 'relative',
+    },
+    currencySymbol: {
+      position: 'absolute',
+      left: SIZES.padding.md,
+      top: SIZES.padding.md,
+      ...FONTS.bodyLarge,
+      color: COLORS.textPrimary,
+      fontFamily: FONTS.family.bodyBold,
+      zIndex: 1,
     },
     input: {
-      backgroundColor: COLORS.input,
-      borderRadius: SIZES.radius,
-      padding: SIZES.padding,
-      ...FONTS.body1,
-      fontSize: SIZES.fontLg,
-      color: COLORS.text,
-      borderWidth: 1,
-      borderColor: COLORS.outline,
+      backgroundColor: COLORS.inputBackground,
+      borderRadius: SIZES.radius.md,
+      padding: SIZES.padding.xs,
+      paddingLeft: SIZES.padding.xl * 2,
+      ...FONTS.bodyLarge,
+      color: COLORS.textPrimary,
+      borderWidth: 2,
+      borderColor: COLORS.inputBorder,
+      fontFamily: FONTS.family.body,
+      height: SIZES.input.height,
     },
     inputFocused: {
       borderColor: COLORS.primary,
       backgroundColor: COLORS.white,
+      ...appTheme.SHADOWS.sm,
     },
     inputError: {
-      borderColor: COLORS.error || "#e74c3c",
+      borderColor: COLORS.error,
     },
     errorText: {
-      color: COLORS.error || "#e74c3c",
-      fontSize: SIZES.fontSm,
-      marginTop: 4,
-      marginLeft: 4,
+      color: COLORS.error,
+      ...FONTS.bodySmall,
+      marginTop: SIZES.xs,
+      marginLeft: SIZES.xs,
+      fontFamily: FONTS.family.body,
     },
-    amountDisplay: {
-      backgroundColor: COLORS.surfaceVariant,
-      borderRadius: SIZES.radius,
-      padding: SIZES.padding,
-      alignItems: "center",
-      marginVertical: SIZES.margin,
-    },
-    amountLabel: {
-      fontSize: SIZES.fontSm,
-      color: COLORS.textLight,
-      marginBottom: 4,
-    },
-    amountValue: {
-      ...FONTS.h4,
-      color: COLORS.primary,
-      fontWeight: "bold",
-    },
-    buttonContainer: {
-      marginTop: SIZES.margin,
-    },
-    button: {
-      borderRadius: SIZES.radius,
-      padding: SIZES.padding - 3,
+    fixedAmountDisplay: {
+      backgroundColor: COLORS.accentLight1,
+      borderRadius: SIZES.radius.md,
+      padding: SIZES.padding.lg,
       alignItems: "center",
       justifyContent: "center",
-      minHeight: 54,
-      shadowColor: COLORS.primary,
-      shadowOffset: { width: 0, height: 4 },
-      shadowOpacity: 0.3,
-      shadowRadius: 8,
-      elevation: 5,
-      width: "80%",
-      height: 54,
-      alignSelf: "center",
+      borderWidth: 2,
+      borderColor: COLORS.accentLight,
+      ...appTheme.SHADOWS.sm,
+    },
+    amountLabel: {
+      ...FONTS.bodySmall,
+      color: COLORS.textSecondary,
+      marginBottom: SIZES.xs,
+      fontFamily: FONTS.family.body,
+    },
+    amountValue: {
+      ...FONTS.h3,
+      color: COLORS.primary,
+      fontFamily: FONTS.family.bodyBold,
+    },
+    buttonContainer: {
+      marginTop: SIZES.lg,
+    },
+    button: {
+      borderRadius: SIZES.radius.lg,
+      padding: SIZES.padding.md,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: SIZES.button.lg,
+      ...appTheme.SHADOWS.lg,
+      width: "100%",
+    },
+    buttonGradient: {
+      borderRadius: SIZES.radius.lg,
+      padding: SIZES.padding.md,
+      alignItems: "center",
+      justifyContent: "center",
+      minHeight: SIZES.button.lg,
+      width: "100%",
     },
     buttonText: {
-      ...FONTS.body1,
-      fontSize: SIZES.fontLg,
+      ...FONTS.h5,
       color: COLORS.white,
-      fontWeight: "bold",
+      fontFamily: FONTS.family.bodyBold,
       letterSpacing: 0.5,
     },
     disabledButton: {
       opacity: 0.6,
     },
+    loadingContainer: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+    },
+    loadingText: {
+      ...FONTS.body,
+      color: COLORS.white,
+      marginLeft: SIZES.sm,
+      fontFamily: FONTS.family.body,
+    },
+    securityBadge: {
+      flexDirection: 'row',
+      alignItems: 'center',
+      justifyContent: 'center',
+      marginTop: SIZES.lg,
+      padding: SIZES.sm,
+      backgroundColor: COLORS.surface,
+      borderRadius: SIZES.radius.md,
+      borderWidth: 1,
+      borderColor: COLORS.borderLight,
+    },
+    securityText: {
+      ...FONTS.bodySmall,
+      color: COLORS.textSecondary,
+      marginLeft: SIZES.xs,
+      fontFamily: FONTS.family.body,
+    },
   });
 
   return (
     <ImageBackground
-      source={require("../../assets/bg4.jpg")}
+      source={require("../../assets/bg.jpg")}
       style={styles.background}
+      resizeMode="cover"
     >
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -484,94 +582,138 @@ const BuyPage = () => {
           style={styles.container}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
         >
-          <View style={styles.scrollContent}>
-            <CommonHeader title="Payment Details" />
+          <CommonHeader title="Payment Details" />
 
-            {/* Customer Information Card */}
-            <View style={styles.infoCard}>
+          {/* Customer Information Card */}
+          <View style={styles.mainCard}>
+            <View style={styles.cardHeader}>
+              <View style={styles.cardIcon}>
+                <Text style={{ color: COLORS.primary, fontFamily: FONTS.family.bodyBold }}>👤</Text>
+              </View>
+              <Text style={styles.cardTitle}>Customer Information</Text>
+            </View>
+            
+            <View style={styles.infoGrid}>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Customer:</Text>
+                <Text style={styles.infoLabel}>Customer Name</Text>
                 <Text style={styles.infoValue}>{productInfo.defaultName}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Reg No:</Text>
+                <Text style={styles.infoLabel}>Registration No</Text>
                 <Text style={styles.infoValue}>{productInfo.defaultRegNo}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Group:</Text>
+                <Text style={styles.infoLabel}>Group Code</Text>
                 <Text style={styles.infoValue}>{productInfo.defaultGroupCode}</Text>
               </View>
-
-              {/* Payment Type */}
-              <View style={styles.paymentTypeContainer}>
-                <Text style={styles.paymentTypeText}>
-                  Payment Type: {payType || "Loading..."}
-                </Text>
+              <View style={styles.infoRow}>
+                <Text style={styles.infoLabel}>Contact</Text>
+                <Text style={styles.infoValue}>{productInfo.defaultContact}</Text>
               </View>
             </View>
 
-            {/* Amount Input or Display */}
+            {/* Payment Type Badge */}
+            <View style={styles.paymentTypeBadge}>
+              <Text style={styles.paymentTypeText}>
+                {payType ? `${payType} PAYMENT` : "Loading Payment Type..."}
+              </Text>
+            </View>
+          </View>
+
+          {/* Amount Section */}
+          <View style={styles.amountSection}>
+            <View style={styles.amountHeader}>
+              <View style={styles.cardIcon}>
+                <Text style={{ color: COLORS.primary, fontFamily: FONTS.family.bodyBold }}>💰</Text>
+              </View>
+              <Text style={styles.amountTitle}>
+                {productInfo.weightLedger === "Y" ? "Enter Payment Amount" : "Payment Amount"}
+              </Text>
+            </View>
+
             {productInfo.weightLedger === "Y" ? (
               <View style={styles.inputContainer}>
-                <Text style={styles.inputLabel}>Enter Amount *</Text>
-                <TextInput
-                  placeholder="Enter amount (e.g., 5000.00)"
-                  placeholderTextColor={COLORS.placeholder}
-                  value={amount}
-                  onChangeText={handleAmountChange}
-                  onFocus={() => setInputFocused(true)}
-                  onBlur={() => setInputFocused(false)}
-                  keyboardType="decimal-pad"
-                  style={[
-                    styles.input,
-                    inputFocused && styles.inputFocused,
-                    amountError && styles.inputError,
-                  ]}
-                  maxLength={10}
-                  editable={!loading}
-                />
+                <Text style={styles.inputLabel}>Amount *</Text>
+                <View style={styles.inputWrapper}>
+                  <Text style={styles.currencySymbol}>₹</Text>
+                  <TextInput
+                    placeholder="0.00"
+                    placeholderTextColor={COLORS.textTertiary}
+                    value={amount}
+                    onChangeText={handleAmountChange}
+                    onFocus={() => setInputFocused(true)}
+                    onBlur={() => {
+                      setInputFocused(false);
+                      if (amount) validateAmount(amount);
+                    }}
+                    keyboardType="decimal-pad"
+                    style={[
+                      styles.input,
+                      inputFocused && styles.inputFocused,
+                      amountError && styles.inputError,
+                    ]}
+                    maxLength={10}
+                    editable={!loading}
+                    returnKeyType="done"
+                  />
+                </View>
                 {amountError ? (
                   <Text style={styles.errorText}>{amountError}</Text>
-                ) : null}
+                ) : (
+                  <Text style={[styles.errorText, { color: COLORS.textTertiary }]}>
+                    Enter amount between ₹1 - ₹1,00,00,000
+                  </Text>
+                )}
               </View>
             ) : (
-              <View style={styles.amountDisplay}>
-                <Text style={styles.amountLabel}>Amount to Pay</Text>
+              <View style={styles.fixedAmountDisplay}>
+                <Text style={styles.amountLabel}>Total Amount to Pay</Text>
                 <Text style={styles.amountValue}>
                   ₹{formatCurrency(productInfo.defaultAmount)}
                 </Text>
               </View>
             )}
+          </View>
 
-            {/* Proceed Button */}
-            <View style={styles.buttonContainer}>
-              <TouchableOpacity
-                onPress={handleBuy}
-                disabled={loading || !token || (productInfo.weightLedger === "Y" && !!amountError)}
-                activeOpacity={0.8}
+          {/* Proceed Button */}
+          <View style={styles.buttonContainer}>
+            <TouchableOpacity
+              onPress={handleBuy}
+              disabled={loading || !token || (productInfo.weightLedger === "Y" && !!amountError)}
+              activeOpacity={0.8}
+            >
+              <LinearGradient
+                colors={COLORS.gradient.brand1}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[
+                  styles.buttonGradient,
+                  (loading || !token || (productInfo.weightLedger === "Y" && !!amountError)) && 
+                    styles.disabledButton
+                ]}
               >
-                <LinearGradient
-                  colors={COLORS.gradientPrimary6}
-                  start={{ x: 0, y: 0 }}
-                  end={{ x: 1, y: 0 }}
-                  style={[
-                    styles.button,
-                    (loading || !token || (productInfo.weightLedger === "Y" && !!amountError)) && 
-                      styles.disabledButton
-                  ]}
-                >
-                  {loading ? (
+                {loading ? (
+                  <View style={styles.loadingContainer}>
                     <ActivityIndicator color={COLORS.white} size="small" />
-                  ) : (
-                    <Text style={styles.buttonText}>Proceed to Pay</Text>
-                  )}
-                </LinearGradient>
-              </TouchableOpacity>
-            </View>
+                    <Text style={styles.loadingText}>Processing...</Text>
+                  </View>
+                ) : (
+                  <Text style={styles.buttonText}>PROCEED TO PAYMENT</Text>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+          </View>
+
+          {/* Security Badge */}
+          <View style={styles.securityBadge}>
+            <Text style={{ color: COLORS.success, fontFamily: FONTS.family.bodyBold }}>🔒</Text>
+            <Text style={styles.securityText}>Secure & Encrypted Payment</Text>
           </View>
         </ScrollView>
       </KeyboardAvoidingView>
+      <BottomTab />
     </ImageBackground>
   );
 };

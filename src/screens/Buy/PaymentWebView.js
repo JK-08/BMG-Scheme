@@ -29,7 +29,7 @@ const PaymentWebView = () => {
       };
 
       await AsyncStorage.setItem('paymentResponse', JSON.stringify(paymentData));
-      console.log("💾 Payment data stored successfully in AsyncStorage");
+      console.log("💾 Payment data stored successfully in AsyncStorage",paymentData);
     } catch (error) {
       console.error("❌ Error storing payment data:", error);
     }
@@ -49,7 +49,7 @@ const PaymentWebView = () => {
       accCode: "1",
       updateTime: new Date().toISOString().replace("T", " ").split(".")[0],
       installment: (parseInt(schemeInfo?.schemaSummaryTransBalance?.insPaid?.toString() || "0") + 1) || 1,
-      userID: personalInfo?.personalId || "1",
+      userID: "9999",
     };
 
     console.log("📦 FINAL SCHEME COLLECTION PAYLOAD:", JSON.stringify(payload, null, 2));

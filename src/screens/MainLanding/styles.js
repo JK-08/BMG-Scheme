@@ -1,5 +1,7 @@
-import { StyleSheet, Platform } from 'react-native';
-import { COLORS, SIZES, FONTS, scale, verticalScale, moderateScale } from '../../utils/Theme';
+import { StyleSheet, Platform } from "react-native";
+import appTheme from "../../utils/MainTheme";
+
+const { COLORS, SIZES, FONTS, moderateScale, verticalScale } = appTheme;
 
 const styles = StyleSheet.create({
   // Container Styles
@@ -12,145 +14,150 @@ const styles = StyleSheet.create({
   },
   mainBackground: {
     flex: 1,
-    width: SIZES.width,
-    height: SIZES.height,
+    width: "100%",
+    height: "100%",
   },
   backgroundImageStyle: {
     opacity: 0.05,
-    resizeMode: 'contain',
+    resizeMode: "cover",
   },
-  
+  safeArea: {
+    flex: 1,
+  },
+  scrollContainer: {
+    paddingBottom: SIZES.xl,
+  },
+
   // ========== CONTENT WRAPPER ==========
   contentWrapper: {
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(16),
+    paddingHorizontal: SIZES.padding.lg,
+    paddingVertical: SIZES.lg,
     backgroundColor: COLORS.surface,
-    marginHorizontal: scale(16),
-    marginTop: verticalScale(15),
-    borderRadius: SIZES.radius,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    marginHorizontal: SIZES.padding.md,
+    marginTop: SIZES.lg,
+    borderRadius: SIZES.radius.lg,
+    ...appTheme.SHADOWS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   contentText: {
-    ...FONTS.h6,
-    fontSize: moderateScale(16),
-    color: COLORS.title,
-    marginBottom: verticalScale(8),
-    fontWeight: '600',
-    justifyContent: 'center',
-    textAlign: 'center',
+    ...FONTS.h5,
+    color: COLORS.textPrimary,
+    marginBottom: SIZES.sm,
+    textAlign: "center",
   },
   contentText1: {
-    ...FONTS.body1,
-    color: COLORS.textLight,
-    lineHeight: moderateScale(22),
-    textAlign: 'justify',
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    lineHeight: SIZES.font.md * 1.5,
+    textAlign: "center",
   },
 
   // ========== SECTION STYLES ==========
   titleSpacer: {
-    marginTop: verticalScale(10),
-    paddingHorizontal: scale(8),
-    gap: verticalScale(20),
+    marginTop: SIZES.md,
+    paddingHorizontal: SIZES.padding.xs,
+    gap: SIZES.lg,
   },
   sectionHeaderContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: verticalScale(-10),
-    paddingBottom: verticalScale(8),
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SIZES.sm,
+    paddingHorizontal: SIZES.padding.sm,
   },
-  titletext: {
-    ...FONTS.heading,
-    color: COLORS.primary,
-    // fontWeight: 'bold',
-    letterSpacing: 0.5,
-    fontSize: SIZES.h5,
+  titleText: {
+    ...FONTS.h4,
+    color: COLORS.secondary,
   },
   viewAllText: {
-    ...FONTS.heading,
-    color: COLORS.primary,
-    // fontWeight: 'bold',
-    letterSpacing: 0.5,
-    fontSize: SIZES.h6-6,
-    paddingRight: scale(10),
+    ...FONTS.body,
+    color: COLORS.secondary,
+    fontWeight: "600",
   },
 
-  // ========== PRODUCT SCROLL CONTAINERS ==========
-  productScrollContainer: {
-    flexDirection: 'row',
-    paddingVertical: verticalScale(10),
+  // ========== SWIPEABLE CARDS ==========
+  swipeableContainer: {
+    marginBottom: SIZES.md,
+    paddingHorizontal: 0, // remove side padding
   },
-  productgoldContainer: {
-    flexDirection: 'row',
-    paddingVertical: verticalScale(10),
+
+  cardWrapper: {
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 0, // remove spacing
+  },
+
+  paginationContainer: {
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+    marginTop: SIZES.md,
+    paddingHorizontal: SIZES.padding.md,
+  },
+  paginationDot: {
+    width: SIZES.xs,
+    height: SIZES.xs,
+    borderRadius: SIZES.xs / 2,
+    marginHorizontal: SIZES.xs / 2,
   },
 
   // ========== EMPTY STATE ==========
   emptyStateContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: verticalScale(40),
-    paddingHorizontal: scale(20),
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: SIZES.xl,
+    paddingHorizontal: SIZES.padding.lg,
+  },
+  emptyStateText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    textAlign: "center",
   },
 
   // ========== YOUTUBE SECTION ==========
   youtubeContainer: {
-    marginTop: verticalScale(20),
-    paddingHorizontal: scale(16),
-    marginBottom: verticalScale(20),
+    marginTop: SIZES.xss,
+    paddingHorizontal: SIZES.padding.lg,
+    marginBottom: SIZES.xl,
   },
   youtubeWrapper: {
-    marginBottom: verticalScale(12),
-    paddingBottom: verticalScale(8),
+    marginBottom: SIZES.md,
   },
 
   // ========== ITEM CARD ==========
   itemCardContainer: {
-   marginRight: scale(8),
+    marginRight: SIZES.sm,
   },
 
   // ========== LOADING STATES ==========
   loadingContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: verticalScale(50),
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: SIZES.xxl,
   },
   loadingText: {
-    ...FONTS.font,
-    color: COLORS.textLight,
-    marginTop: verticalScale(12),
+    ...FONTS.body,
+    color: COLORS.textTertiary,
+    marginTop: SIZES.md,
   },
 
   // ========== ERROR STATES ==========
   errorContainer: {
     flex: 1,
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: verticalScale(40),
-    paddingHorizontal: scale(20),
+    justifyContent: "center",
+    alignItems: "center",
+    paddingVertical: SIZES.xl,
+    paddingHorizontal: SIZES.padding.lg,
   },
   errorText: {
-    ...FONTS.font,
-    color: COLORS.danger,
-    textAlign: 'center',
-    marginTop: verticalScale(12),
+    ...FONTS.body,
+    color: COLORS.error,
+    textAlign: "center",
+    marginTop: SIZES.md,
   },
-
-  // ========== PLATFORM SPECIFIC ==========
-  iosHeaderPadding: Platform.select({
-    ios: {
-      paddingTop: verticalScale(20),
-    },
-    android: {
-      paddingTop: verticalScale(10),
-    },
-  }),
 });
 
 export default styles;

@@ -7,8 +7,9 @@ import HelpCenterPage from '../screens/HelpCenterPage/HelpCenterPage'
 import PrivacyPolicyPage from '../screens/PrivacyPolicyPage/PrivacyPolicyPage'
 import TermsConditionsPage from '../screens/TermsConditionsPage/TermsConditionsPage'
 import OTP from './OtpScreen/OtpScreen'
-import { MpinScreen } from './MpinScreen/MpinScreen'
-import { VerifyMpinScreen } from './MpinScreen/MpinScreen'
+import ResetMpinScreen from './MpinScreen/ForgotMpin'
+import VerifyMpinScreen from './MpinScreen/VerifyMpin'
+import MpinScreen from './MpinScreen/CreateMpin'
 import { ImageComponent } from 'react-native'
 import AddNewMember from './AddNewMember/AddNewMember'
 import GoldPlanScreen from './GoldPlanScreen/GoldPlanScreen'
@@ -26,6 +27,10 @@ import PaymentDetailScreen from './PaymentHistory/DetailModal'
 import PaymentGateway from './PaymentGateway/PaymentGateway'
 import PaymentWebView from './Buy/PaymentWebView'
 import PaymentSuccess from './Buy/PaymentSuccess'
+import OnboardingScreen from './Onboard/Onboard'
+import EnterNumberScreen from './UpdatePhone/EnterNumberScreen'
+import VerifyOtpScreen from './VerifyOTP/VerifyOTP'
+import FAQPage from './FAQ/FAQ'
 
 export {
   MainLanding,
@@ -37,8 +42,9 @@ export {
   TermsConditionsPage,
   PrivacyPolicyPage,
   OTP,
-  MpinScreen,
+  ResetMpinScreen,
   VerifyMpinScreen,
+  MpinScreen,
   AddNewMember,
   GoldPlanScreen,
   CheckOut,
@@ -54,5 +60,9 @@ export {
   PaymentDetailScreen,
   PaymentGateway,
   PaymentWebView,
-  PaymentSuccess
+  PaymentSuccess,
+  OnboardingScreen,
+  EnterNumberScreen,
+  VerifyOtpScreen,
+  FAQPage
 }

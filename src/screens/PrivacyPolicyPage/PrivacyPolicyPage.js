@@ -1,370 +1,313 @@
-import React from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  StyleSheet, 
+import React from "react";
+import {
+  View,
+  Text,
+  ScrollView,
+  StyleSheet,
   SafeAreaView,
   TouchableOpacity,
   Linking,
-  Dimensions,
-  ImageBackground
-} from 'react-native';
-import { LinearGradient } from 'expo-linear-gradient';
-import Icon from 'react-native-vector-icons/MaterialIcons';
-import appTheme from '../../utils/Theme';
-import CommonHeader from '../../components/CommonHeader/CommonHeader';
+  ImageBackground,
+} from "react-native";
+import { LinearGradient } from "expo-linear-gradient";
+import Icon from "react-native-vector-icons/MaterialIcons";
+import appTheme from "../../utils/MainTheme";
+import CommonHeader from "../../components/CommonHeader/CommonHeader";
 
-const { COLORS, SIZES, FONTS, scale, verticalScale } = appTheme;
-
-const { width } = Dimensions.get('window');
+const { COLORS, SIZES, FONTS, verticalScale, moderateScale } = appTheme;
 
 const PrivacyPolicyPage = () => {
   const handleExternalLink = (url) => {
-    Linking.openURL(url).catch(err => console.error("Couldn't load page", err));
+    Linking.openURL(url).catch((err) =>
+      console.error("Couldn't load page", err)
+    );
   };
+
+  const handleEmail = () => Linking.openURL("mailto:Contact@bmgjewellers.in");
+  const handlePhoneCall = () => Linking.openURL("tel:+919514333601");
 
   const policySections = [
     {
+      title: "Introduction",
+      icon: "info",
+      content:
+        "At BMG Jewellers, your privacy is our top priority. This Privacy Policy describes how we collect, use, disclose, and protect your personal information when you use our Jewellery Chit App, website, or related services.",
+    },
+    {
       title: "Information We Collect",
       icon: "person",
-      content: "Personal identification details (name, email, phone number, etc.), device information and browsing history, location and IP address."
+      content: "",
+      subsections: [
+        {
+          title: "Personal Information",
+          content:
+            "Full Name, Date of Birth, Gender, Contact Details, Residential Address, Government-issued ID (Aadhaar, PAN), Photographs",
+        },
+        {
+          title: "Financial Information",
+          content:
+            "Bank Account Details, UPI ID, Transaction History, Payment Records, Chit contributions",
+        },
+        {
+          title: "Technical Information",
+          content: "Device Information, IP Address, Location, App usage patterns",
+        },
+      ],
     },
     {
-      title: "How We Use Your Data",
+      title: "Purpose of Data Collection",
       icon: "data-usage",
-      content: "To improve our services and personalize your experience, to communicate offers, promotions, or important updates, for analytics and security enhancement."
+      content:
+        "Register and manage your account, Enable chit scheme participation, Process payments and transactions, Verify identity and prevent fraud, Communicate updates and offers, Enhance app performance and security",
     },
     {
-      title: "What We Don't Do",
-      icon: "block",
-      content: "We do not sell your personal information. We do not track your location without consent."
-    },
-    {
-      title: "Data Sharing",
+      title: "Data Sharing & Disclosure",
       icon: "share",
       content: "",
       subsections: [
         {
-          title: "We Do Not Share With",
-          content: "Unaffiliated third parties, social media platforms"
+          title: "We Share With",
+          content:
+            "Trusted Service Providers, Legal Authorities (when required), Business Transfers (merger/acquisition)",
         },
         {
-          title: "We May Share With",
-          content: "Trusted service providers, legal authorities (when required)"
-        }
-      ]
+          title: "We Never Share With",
+          content: "Third parties for commercial gain without your consent",
+        },
+      ],
     },
     {
-      title: "Security Note",
+      title: "Your Rights",
       icon: "security",
-      content: "Your data is encrypted and securely stored as per industry standards. We employ the latest security measures to protect your information."
-    }
+      content:
+        "Access your data, Correct inaccurate information, Withdraw consent, Request data portability, Request deletion (subject to legal requirements)",
+    },
+    {
+      title: "Data Security",
+      icon: "lock",
+      content:
+        "Encryption of sensitive data (SSL/HTTPS), Controlled access to information, Secure data centers, Regular system audits, Confidentiality of login credentials",
+    },
+    {
+      title: "Children's Privacy",
+      icon: "child-care",
+      content:
+        "Our services are intended for individuals aged 18 years and above. We do not knowingly collect personal data from minors.",
+    },
   ];
 
+  const ContactInfo = ({ icon, label, value, onPress, isLink = false }) => (
+    <View style={styles.contactItem}>
+      <View style={styles.contactRow}>
+        <Icon name={icon} size={18} color={COLORS.secondary} />
+        <Text style={styles.contactLabel}>{label}</Text>
+      </View>
+      <TouchableOpacity
+        onPress={onPress}
+        disabled={!onPress}
+        activeOpacity={0.7}
+      >
+        <Text style={[styles.contactValue, isLink && styles.link]}>{value}</Text>
+      </TouchableOpacity>
+    </View>
+  );
+
   return (
-    <SafeAreaView style={styles.container}>
-      <ImageBackground 
-              source={require('../../assets/image.png')}
-              style={styles.backgroundImage}
-              resizeMode="cover"
-            >
-        <ScrollView 
+    <View style={styles.container}>
+      <ImageBackground
+        source={require("../../assets/image.png")}
+        style={styles.backgroundImage}
+        resizeMode="cover"
+      >
+        <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           <CommonHeader title={"Privacy Policy"} />
-
-          {/* Introduction */}
-          <View style={styles.introCard}>
-            <Text style={styles.introText}>
-              At BMG Jewellers, we value your privacy and are committed to protecting your personal information. 
-              This policy outlines how we collect, use, and safeguard your data.
-            </Text>
-          </View>
 
           {/* Policy Sections */}
           {policySections.map((section, index) => (
             <View key={index} style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <View style={styles.iconContainer}>
-                  <Icon name={section.icon} size={24} color={COLORS.primary} />
+                  <Icon name={section.icon} size={20} color={COLORS.white} />
                 </View>
                 <Text style={styles.sectionTitle}>{section.title}</Text>
               </View>
-              <Text style={styles.sectionContent}>{section.content}</Text>
-              
-              {section.subsections && section.subsections.map((subsection, subIndex) => (
-                <View key={subIndex} style={styles.subsection}>
-                  <View style={styles.subsectionHeader}>
-                    <View style={styles.bulletPoint} />
+
+              {section.content ? (
+                <Text style={styles.sectionContent}>{section.content}</Text>
+              ) : null}
+
+              {section.subsections &&
+                section.subsections.map((subsection, subIndex) => (
+                  <View key={subIndex} style={styles.subsection}>
                     <Text style={styles.subsectionTitle}>{subsection.title}</Text>
+                    <Text style={styles.subsectionContent}>
+                      {subsection.content}
+                    </Text>
                   </View>
-                  <Text style={styles.subsectionContent}>{subsection.content}</Text>
-                </View>
-              ))}
+                ))}
             </View>
           ))}
 
-          {/* Security Badge */}
-          <View style={styles.securityBadge}>
-            <Icon name="verified-user" size={32} color={COLORS.primary} />
-            <Text style={styles.securityText}>Your Data is Protected with 256-bit Encryption</Text>
+          {/* Contact Information */}
+          <View style={styles.contactCard}>
+            <Text style={styles.contactCardTitle}>
+              Contact Our Grievance Officer
+            </Text>
+
+            <ContactInfo
+              icon="email"
+              label="Email"
+              value="Contact@bmgjewellers.in"
+              onPress={handleEmail}
+              isLink={true}
+            />
+            <ContactInfo
+              icon="phone"
+              label="Phone"
+              value="+91-95143 33601"
+              onPress={handlePhoneCall}
+            />
+            <ContactInfo
+              icon="business"
+              label="Address"
+              value="M/s. BMG Jewellers Pvt Ltd, 160, Melamasi St, Madurai-625001"
+            />
+            <ContactInfo
+              icon="access-time"
+              label="Office Hours"
+              value="[Mon-Sat 10:00 AM - 6:00 PM, Sun 11:00 AM - 4:00 PM]"
+            />
           </View>
 
-          {/* Additional Information */}
-          <View style={styles.additionalInfo}>
-            <Text style={styles.infoTitle}>Additional Information</Text>
-            
-            <View style={styles.infoItem}>
-              <View style={styles.infoIcon}>
-                <Icon name="language" size={20} color={COLORS.primary} />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoItemTitle}>Website</Text>
-                <TouchableOpacity onPress={() => handleExternalLink("https://bmgjewellers.com")}>
-                  <Text style={styles.link}>https://bmgjewellers.com</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-            
-            <View style={styles.infoItem}>
-              <View style={styles.infoIcon}>
-                <Icon name="support-agent" size={20} color={COLORS.primary} />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoItemTitle}>Contact</Text>
-                <Text style={styles.infoItemContent}>For privacy-related questions, please contact our support team at Contact@bmgjewellers.in</Text>
-              </View>
-            </View>
-            
-            <View style={styles.infoItem}>
-              <View style={styles.infoIcon}>
-                <Icon name="update" size={20} color={COLORS.primary} />
-              </View>
-              <View style={styles.infoContent}>
-                <Text style={styles.infoItemTitle}>Policy Updates</Text>
-                <Text style={styles.infoItemContent}>We may update this policy periodically. Please check back for changes.</Text>
-              </View>
-            </View>
-          </View>
-
-          {/* Consent Footer */}
+          {/* Legal Footer */}
           <LinearGradient
-            colors={[COLORS.primary, COLORS.secondary]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.consentFooter}
+            colors={[COLORS.primary, COLORS.primaryDark]}
+            style={styles.legalFooter}
           >
-            <Icon name="done-all" size={24} color={COLORS.white} />
-            <Text style={styles.consentText}>
-              By using our services, you consent to our privacy policy.
+            <Icon name="gavel" size={20} color={COLORS.white} />
+            <Text style={styles.legalText}>
+              Governed by Indian Laws • Information Technology Act, 2000
             </Text>
           </LinearGradient>
 
           {/* Copyright */}
           <View style={styles.copyright}>
-            <Text style={styles.copyrightText}>© {new Date().getFullYear()} BMG Jewellers. All rights reserved.</Text>
+            <Text style={styles.copyrightText}>
+              © {new Date().getFullYear()} BMG Jewellers. All rights reserved.
+            </Text>
           </View>
         </ScrollView>
-    </ImageBackground>
-    </SafeAreaView>
+      </ImageBackground>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: COLORS.background,
-  },
-  background: {
-    flex: 1,
-  },
-  scrollContent: {
-    paddingBottom: verticalScale(40),
-  },
-  introCard: {
-    backgroundColor: COLORS.card1,
-    borderRadius: SIZES.radius_lg,
-    padding: SIZES.padding,
-    marginHorizontal: SIZES.padding,
-    marginBottom: verticalScale(20),
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.primary,
-  },
-  introText: {
-    ...FONTS.font,
-    color: COLORS.text,
-    lineHeight: verticalScale(24),
-    textAlign: 'center',
-    fontWeight: '500',
-  },
+  container: { flex: 1 },
+  backgroundImage: { flex: 1 },
+  scrollContent: { paddingBottom: verticalScale(20) },
   sectionCard: {
-    backgroundColor: COLORS.card1,
-    borderRadius: SIZES.radius_lg,
-    padding: SIZES.padding,
-    marginHorizontal: SIZES.padding,
-    marginBottom: verticalScale(15),
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginHorizontal: SIZES.padding.md,
+    marginBottom: verticalScale(12),
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
-  sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: verticalScale(15),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderColor,
-    paddingBottom: verticalScale(10),
-  },
+  sectionHeader: { flexDirection: "row", alignItems: "center", marginBottom: verticalScale(8) },
   iconContainer: {
-    width: SIZES.padding,
-    height: SIZES.padding,
-    borderRadius: SIZES.radius,
-    backgroundColor: COLORS.primaryLight,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SIZES.margin,
+    width: moderateScale(32),
+    height: moderateScale(32),
+    borderRadius: SIZES.radius.sm,
+    backgroundColor: COLORS.secondaryDark,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: moderateScale(10),
   },
   sectionTitle: {
-    ...FONTS.h5,
-    color: COLORS.primary,
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.lg,
+    color: COLORS.textPrimary,
     flex: 1,
   },
   sectionContent: {
-    ...FONTS.font,
-    color: COLORS.text,
-    lineHeight: verticalScale(24),
-    marginBottom: verticalScale(10),
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    lineHeight: verticalScale(20),
   },
-  subsection: {
-    marginTop: verticalScale(10),
-  },
-  subsectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: verticalScale(5),
-  },
-  bulletPoint: {
-    width: SIZES.fontSm,
-    height: SIZES.fontSm,
-    borderRadius: SIZES.radius_sm,
-    backgroundColor: COLORS.primary,
-    marginRight: SIZES.margin,
-  },
+  subsection: { marginTop: verticalScale(6) },
   subsectionTitle: {
-    ...FONTS.font,
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.md,
     color: COLORS.primary,
+    marginBottom: verticalScale(2),
   },
   subsectionContent: {
-    ...FONTS.font,
-    color: COLORS.text,
-    lineHeight: verticalScale(24),
-    paddingLeft: SIZES.padding,
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.sm,
+    color: COLORS.textPrimary,
+    lineHeight: verticalScale(18),
   },
-  securityBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.primaryLight,
-    borderRadius: SIZES.radius_lg,
-    padding: SIZES.padding,
-    marginHorizontal: SIZES.padding,
-    marginBottom: verticalScale(20),
+  contactCard: {
+    backgroundColor: COLORS.surface,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginHorizontal: SIZES.padding.md,
+    marginBottom: verticalScale(15),
     borderWidth: 1,
-    borderColor: COLORS.primary,
+    borderColor: COLORS.borderLight,
   },
-  securityText: {
-    ...FONTS.font,
-    color: COLORS.primary,
-    fontWeight: '600',
-    marginLeft: SIZES.margin,
-    flex: 1,
+  contactCardTitle: {
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.lg,
+    color: COLORS.textPrimary,
+    marginBottom: verticalScale(12),
+    textAlign: "center",
   },
-  additionalInfo: {
-    backgroundColor: COLORS.card1,
-    borderRadius: SIZES.radius_lg,
-    padding: SIZES.padding,
-    marginHorizontal: SIZES.padding,
+  contactItem: { marginBottom: verticalScale(12) },
+  contactRow: { flexDirection: "row", alignItems: "center", marginBottom: verticalScale(4) },
+  contactLabel: {
+    fontFamily: FONTS.family.bodyBold,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    marginLeft: moderateScale(6),
+  },
+  contactValue: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    lineHeight: verticalScale(20),
+    paddingLeft: moderateScale(25),
+  },
+  link: { color: COLORS.primary, textDecorationLine: "underline" },
+  legalFooter: {
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginHorizontal: SIZES.padding.md,
+    alignItems: "center",
+    flexDirection: "row",
+    justifyContent: "center",
     marginBottom: verticalScale(15),
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 4,
   },
-  infoTitle: {
-    ...FONTS.h5,
-    color: COLORS.primary,
-    marginBottom: verticalScale(15),
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderColor,
-    paddingBottom: verticalScale(10),
-  },
-  infoItem: {
-    flexDirection: 'row',
-    marginBottom: verticalScale(15),
-  },
-  infoIcon: {
-    width: SIZES.fontLg,
-    alignItems: 'center',
-    justifyContent: 'center',
-    marginRight: SIZES.margin,
-  },
-  infoContent: {
-    flex: 1,
-  },
-  infoItemTitle: {
-    ...FONTS.font,
-    color: COLORS.primary,
-    marginBottom: verticalScale(5),
-  },
-  infoItemContent: {
-    ...FONTS.font,
-    color: COLORS.text,
-    lineHeight: verticalScale(24),
-  },
-  link: {
-    ...FONTS.font,
-    color: COLORS.primary,
-    textDecorationLine: 'underline',
-    fontWeight: '500',
-  },
-  consentFooter: {
-    borderRadius: SIZES.radius_lg,
-    padding: SIZES.padding,
-    marginHorizontal: SIZES.padding,
-    alignItems: 'center',
-    flexDirection: 'row',
-    justifyContent: 'center',
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 4,
-    elevation: 5,
-  },
-  consentText: {
-    ...FONTS.font,
+  legalText: {
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.sm,
     color: COLORS.white,
-    fontWeight: '600',
-    textAlign: 'center',
-    marginLeft: SIZES.margin,
+    fontWeight: "600",
+    marginLeft: moderateScale(8),
+    textAlign: "center",
   },
-  copyright: {
-    alignItems: 'center',
-    marginTop: verticalScale(20),
-    paddingHorizontal: SIZES.padding,
-  },
+  copyright: { alignItems: "center", paddingHorizontal: SIZES.padding.md },
   copyrightText: {
-    ...FONTS.fontSm,
-    color: COLORS.textLight,
-    textAlign: 'center',
+    fontFamily: FONTS.family.body,
+    fontSize: SIZES.font.sm,
+    color: COLORS.textSecondary,
+    textAlign: "center",
   },
 });
 

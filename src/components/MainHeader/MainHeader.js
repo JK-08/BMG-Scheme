@@ -1,3 +1,4 @@
+// components/Header/Header.js
 import React, {
   useState,
   useEffect,
@@ -17,57 +18,63 @@ import {
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useNavigation } from "@react-navigation/native";
-import { colors1 } from "../../utils/colors";
-import styles from "./Styles";
 import { LinearGradient } from "expo-linear-gradient";
 import DrawerMenu from "../../screens/ProfileDashboard/ProfileContainer/ProfileSidebar";
 import { COLORS } from "../../utils/Theme";
+import { colors1 } from "../../utils/colors";
+import styles from "./Styles";
 import { API_BASE_URL_OLD } from "../../Config/API";
 
 // ========== Constants ==========
-
 const ANIMATION_DURATION = 2000;
 const SILVER_ANIMATION_DELAY = 100;
-
 const API_ENDPOINTS = {
   todayRate: `${API_BASE_URL_OLD}/account/todayrate`,
 };
 
 // ========== Helpers ==========
 const showToast = (message) => {
-  if (Platform.OS === "android") {
-    ToastAndroid.show(message, ToastAndroid.SHORT);
-  } else {
-    Alert.alert("", message);
-  }
+  Platform.OS === "android"
+    ? ToastAndroid.show(message, ToastAndroid.SHORT)
+    : Alert.alert("", message);
 };
 
-const formatDate = (date) => {
-  const hours = date.getHours();
-  const minutes = date.getMinutes();
-  const day = date.getDate();
-  const month = date.getMonth() + 1;
-  const year = date.getFullYear();
+const getFormattedUpdateTime = () => {
+  const now = new Date();
 
-  const formattedTime = `${hours > 12 ? hours - 12 : hours}:${
-    minutes < 10 ? "0" + minutes : minutes
-  } ${hours >= 12 ? "PM" : "AM"}`;
-  const formattedDate = `${day < 10 ? "0" + day : day}-${
-    month < 10 ? "0" + month : month
-  }-${year}`;
+  const hours = now.getHours();
+  const minutes = now.getMinutes().toString().padStart(2, "0");
+  const ampm = hours >= 12 ? "PM" : "AM";
+  const formattedHour = hours % 12 === 0 ? 12 : hours % 12;
 
-  return `Rate updated on ${formattedTime} ${formattedDate}`;
+  const day = now.getDate().toString().padStart(2, "0");
+  const monthNames = [
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC",
+  ];
+  const month = monthNames[now.getMonth()];
+  const year = now.getFullYear();
+
+  return `Rate updated on ${formattedHour}:${minutes} ${ampm} ${day}-${month}-${year}`;
 };
 
 // ========== Custom Hook: Coin Animation ==========
 const useCoinAnimation = (delay = 0) => {
   const animationValue = useRef(new Animated.Value(0)).current;
-  const animationRef = useRef(null);
 
   useEffect(() => {
-    const startAnimation = () => {
+    const loopAnimation = () => {
       animationValue.setValue(0);
-
       const animation = Animated.loop(
         Animated.timing(animationValue, {
           toValue: 1,
@@ -75,59 +82,40 @@ const useCoinAnimation = (delay = 0) => {
           useNativeDriver: true,
         })
       );
-
-      if (delay > 0) {
-        setTimeout(() => {
-          animation.start();
-          animationRef.current = animation;
-        }, delay);
-      } else {
-        animation.start();
-        animationRef.current = animation;
-      }
+      delay ? setTimeout(() => animation.start(), delay) : animation.start();
+      return animation;
     };
 
-    startAnimation();
-
-    return () => {
-      if (animationRef.current) {
-        animationRef.current.stop();
-      }
-    };
+    const anim = loopAnimation();
+    return () => anim.stop();
   }, [animationValue, delay]);
 
-  const animatedStyle = useMemo(() => {
+  return useMemo(() => {
     const rotateY = animationValue.interpolate({
       inputRange: [0, 0.5, 1],
       outputRange: ["0deg", "180deg", "360deg"],
     });
-
     const scale = animationValue.interpolate({
       inputRange: [0, 0.5, 1],
       outputRange: [1, 0.6, 1],
     });
-
     const opacity = animationValue.interpolate({
       inputRange: [0, 0.5, 1],
       outputRange: [1, 0.3, 1],
     });
-
     return {
       transform: [{ perspective: 1000 }, { rotateY }, { scale }],
       opacity,
     };
   }, [animationValue]);
-
-  return animatedStyle;
 };
 
 // ========== Header Component ==========
 function Header() {
   const navigation = useNavigation();
-
   const [goldRate, setGoldRate] = useState(null);
   const [silverRate, setSilverRate] = useState(null);
-  const [rateUpdated, setRateUpdated] = useState(null);
+  const [rateUpdated, setRateUpdated] = useState("");
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
 
   const goldAnimatedStyle = useCoinAnimation(0);
@@ -137,31 +125,18 @@ function Header() {
     setIsDrawerVisible((prev) => !prev);
   }, []);
 
-  const closeDrawer = useCallback(() => {
-    setIsDrawerVisible(false);
-  }, []);
+  const closeDrawer = useCallback(() => setIsDrawerVisible(false), []);
 
-  // Fetch Rates
   const fetchRates = useCallback(async () => {
     try {
-      const response = await fetch(API_ENDPOINTS.todayRate, {
-        method: "GET",
-        headers: {
-          Accept: "application/json",
-          "Content-Type": "application/json",
-        },
-      });
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
-      }
-
-      const data = await response.json();
+      const res = await fetch(API_ENDPOINTS.todayRate);
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const data = await res.json();
       setGoldRate(data.GOLDRATE);
       setSilverRate(data.SILVERRATE);
-      setRateUpdated(formatDate(new Date()));
-    } catch (error) {
-      console.error("Error fetching rates:", error);
+      setRateUpdated(getFormattedUpdateTime(new Date()));
+    } catch (err) {
+      console.error("❌ Error fetching rates:", err);
       showToast("Failed to fetch rates");
     }
   }, []);
@@ -172,14 +147,14 @@ function Header() {
 
   return (
     <LinearGradient
-      colors={[COLORS.gradientcolor9, COLORS.gradientcolor10]} // Gold to Orange gradient - you can change these colors
-      start={{ x: 0, y: 1 }}
-      end={{ x: 1, y: 0 }}
+      colors={[COLORS.primary1, COLORS.primary2, COLORS.primary3]}
+      start={{ x: 0, y: 0 }}
+      end={{ x: 0, y: 1 }}
       style={styles.headerContainer1}
     >
-      {/* Top Header Section */}
+      {/* Top Section */}
       <View style={styles.topHeaderSection}>
-        {/* FAQ Icon */}
+        {/* FAQ */}
         <TouchableOpacity
           style={styles.faqIconContainer}
           onPress={() => navigation.navigate("HelpCenter")}
@@ -190,7 +165,7 @@ function Header() {
         {/* Drawer Menu */}
         <DrawerMenu isVisible={isDrawerVisible} onClose={closeDrawer} />
 
-        {/* Logo + Company Name */}
+        {/* Logo + Company */}
         <View style={styles.mainHeaderSection}>
           <View style={styles.logoContainer}>
             <Image
@@ -205,7 +180,7 @@ function Header() {
           </View>
         </View>
 
-        {/* Menu Icon */}
+        {/* Menu */}
         <TouchableOpacity
           style={styles.menuIconContainer}
           onPress={toggleDrawer}
@@ -214,13 +189,16 @@ function Header() {
         </TouchableOpacity>
       </View>
 
-      {/* Rate Cards Overlay Container */}
+      {/* Rate Update Timestamp */}
+      <View style={styles.rateUpdateContainer}>
+        <Text style={styles.updateText}>{getFormattedUpdateTime()}</Text>
+      </View>
+
+      {/* Rate Cards */}
       <View style={styles.rateCardsOverlayContainer}>
-        {/* Gold Rate */}
+        {/* Gold */}
         <LinearGradient
-          colors={["#fff", "#fff", "#fff"]} // Gold gradient
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          colors={["#fff", "#fff", "#fff"]}
           style={styles.rateCardOverlay}
         >
           <View style={styles.rateCardContent}>
@@ -240,18 +218,13 @@ function Header() {
               <Text style={[styles.rateValue, styles.goldText]}>
                 ₹{goldRate || "---"}
               </Text>
-              {/* <Text style={[styles.rateUnit, styles.goldText]}>
-                22K Per gram
-              </Text> */}
             </View>
           </View>
         </LinearGradient>
 
-        {/* Silver Rate */}
+        {/* Silver */}
         <LinearGradient
-          colors={["#fff", "#fff", "#fff"]} // Silver gradient
-          start={{ x: 0, y: 0 }}
-          end={{ x: 1, y: 1 }}
+          colors={["#fff", "#fff", "#fff"]}
           style={styles.rateCardOverlay}
         >
           <View style={styles.rateCardContent}>
@@ -273,7 +246,6 @@ function Header() {
               <Text style={[styles.rateValue, styles.silverText]}>
                 ₹{silverRate || "---"}
               </Text>
-              {/* <Text style={[styles.rateUnit, styles.silverText]}>Per gram</Text> */}
             </View>
           </View>
         </LinearGradient>
@@ -281,4 +253,5 @@ function Header() {
     </LinearGradient>
   );
 }
+
 export default React.memo(Header);

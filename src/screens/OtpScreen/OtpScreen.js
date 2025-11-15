@@ -17,21 +17,25 @@ import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getHash, useOtpVerify, removeListener } from "react-native-otp-verify";
 import { showToast } from "../../utils/toast";
-import appTheme from "../../utils/Theme";
+import appTheme from "../../utils/MainTheme";
 import styles from "./OtpStyles.js";
 import userService from "../../services/UserService";
+import { saveUserData } from "../../utils/AsynchStorageHelper";
 
-const { COLORS } = appTheme;
+const { COLORS, SIZES, FONTS } = appTheme;
 
 function OtpPage({ navigation, route }) {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [verifying, setVerifying] = useState(false);
-  const [resendTimer, setResendTimer] = useState(30);
+const [resendTimer, setResendTimer] = useState(20);
+
   const [autoCompleteOtp, setAutoCompleteOtp] = useState("");
+  const [autoVerifyTimer, setAutoVerifyTimer] = useState(20);
+
   const [appHash, setAppHash] = useState([]);
   const [waitingForOtp, setWaitingForOtp] = useState(true);
   const [smsListenerReady, setSmsListenerReady] = useState(false);
-  const [showFullScreenLoader, setShowFullScreenLoader] = useState(false); // 🔹 NEW STATE
+  const [showFullScreenLoader, setShowFullScreenLoader] = useState(false);
 
   const inputRefs = useRef([]);
   const phoneNumber = route.params?.phoneNumber || "";
@@ -83,7 +87,7 @@ function OtpPage({ navigation, route }) {
         setAutoCompleteOtp(detectedOtp);
         setOtp(detectedOtp.split(""));
         setWaitingForOtp(false);
-        setShowFullScreenLoader(false); // 🔹 Hide loader when OTP detected
+        setShowFullScreenLoader(false);
         showToast("OTP detected automatically!");
 
         setTimeout(() => {
@@ -95,15 +99,14 @@ function OtpPage({ navigation, route }) {
 
   // -------------------- WAITING LOADER (15 seconds) --------------------
   useEffect(() => {
-    // Start waiting for OTP for 15 seconds only if SMS listener is ready
     if (smsListenerReady && Platform.OS === "android") {
-      setShowFullScreenLoader(true); // 🔹 Show full screen loader when waiting starts
-      
+      setShowFullScreenLoader(true);
+
       const timer = setTimeout(() => {
         setWaitingForOtp(false);
-        setShowFullScreenLoader(false); // 🔹 Hide loader when timeout
+        setShowFullScreenLoader(false);
         showToast("You can enter OTP manually");
-      }, 15000); // 15 seconds
+      }, 20000); // 20 seconds
 
       return () => clearTimeout(timer);
     }
@@ -114,9 +117,30 @@ function OtpPage({ navigation, route }) {
     if (timeoutError) {
       showToast("OTP detection timeout. Please enter it manually.");
       setWaitingForOtp(false);
-      setShowFullScreenLoader(false); // 🔹 Hide loader on timeout
+      setShowFullScreenLoader(false);
     }
   }, [timeoutError]);
+
+  // -------------------- AUTO VERIFY TIMER (20 seconds) --------------------
+  useEffect(() => {
+    if (waitingForOtp && smsListenerReady && Platform.OS === "android") {
+      setAutoVerifyTimer(20);
+      const interval = setInterval(() => {
+        setAutoVerifyTimer((prev) => {
+          if (prev <= 1) {
+            clearInterval(interval);
+            setWaitingForOtp(false);
+            setShowFullScreenLoader(false);
+            showToast("You can enter OTP manually");
+            return 0;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      return () => clearInterval(interval);
+    }
+  }, [waitingForOtp, smsListenerReady]);
 
   // -------------------- INITIALIZE LISTENER --------------------
   useEffect(() => {
@@ -127,7 +151,7 @@ function OtpPage({ navigation, route }) {
           const hashCodes = await getHash();
           setAppHash(hashCodes);
           console.log("📲 App Hash:", hashCodes);
-          
+
           if (startListener) {
             startListener();
             setSmsListenerReady(true);
@@ -137,10 +161,9 @@ function OtpPage({ navigation, route }) {
           console.error("❌ Error initializing SMS listener:", error);
           setWaitingForOtp(false);
           setSmsListenerReady(false);
-          setShowFullScreenLoader(false); // 🔹 Hide loader on error
+          setShowFullScreenLoader(false);
         }
       } else {
-        // For iOS, don't show waiting indicator
         setWaitingForOtp(false);
         setSmsListenerReady(false);
         setShowFullScreenLoader(false);
@@ -154,7 +177,7 @@ function OtpPage({ navigation, route }) {
         removeListener();
         stopListener && stopListener();
         setSmsListenerReady(false);
-        setShowFullScreenLoader(false); // 🔹 Hide loader on cleanup
+        setShowFullScreenLoader(false);
       } catch (error) {
         console.error("Cleanup SMS listener error:", error);
       }
@@ -172,10 +195,9 @@ function OtpPage({ navigation, route }) {
 
   // -------------------- OTP HANDLERS --------------------
   const handleOtpChange = (val, idx) => {
-    // If user starts typing manually, stop waiting for auto OTP
     if (val && waitingForOtp) {
       setWaitingForOtp(false);
-      setShowFullScreenLoader(false); // 🔹 Hide loader when user starts typing
+      setShowFullScreenLoader(false);
     }
 
     const updated = [...otp];
@@ -195,48 +217,58 @@ function OtpPage({ navigation, route }) {
     inputRefs.current[0]?.focus();
   };
 
-  const handleVerifyOtp = async () => {
-    const otpValue = otp.join("");
-    if (otpValue.length !== 6) {
-      showToast("Please enter 6-digit OTP");
+const handleVerifyOtp = async () => {
+  const otpValue = otp.join("");
+  if (otpValue.length !== 6) {
+    showToast("Please enter 6-digit OTP");
+    return;
+  }
+
+  console.log("✅ Verifying OTP:", otpValue);
+  setVerifying(true);
+  setShowFullScreenLoader(true);
+
+  try {
+    const tempUserData = await AsyncStorage.getItem("tempUserData");
+    if (!tempUserData) {
+      showToast("User data not found. Please try again.");
+      setVerifying(false);
+      setShowFullScreenLoader(false);
       return;
     }
 
-    console.log("✅ Verifying OTP:", otpValue);
-    setVerifying(true);
-    setShowFullScreenLoader(true); // 🔹 Show loader when verification starts
+    const { phone } = JSON.parse(tempUserData);
+    const res = await userService.verifyOtp(phone, otpValue);
 
-    try {
-      const tempUserData = await AsyncStorage.getItem("tempUserData");
-      if (!tempUserData) {
-        showToast("User data not found. Please try again.");
-        setVerifying(false);
-        setShowFullScreenLoader(false); // 🔹 Hide loader on error
-        return;
-      }
+    if (res.success && res.data) {
+      showToast("OTP verified successfully!");
 
-      const { phone } = JSON.parse(tempUserData);
-      const res = await userService.verifyOtp(phone, otpValue);
+      // ✅ Save user data using helper
+      await saveUserData(res.data);
 
-      if (res.success) {
-        showToast("OTP verified successfully!");
-        await AsyncStorage.removeItem("tempUserData");
-        stopListener && stopListener();
-        setShowFullScreenLoader(false); // 🔹 Hide loader on success
-        navigation.navigate("LoginPage");
-      } else {
-        showToast(res.error || "OTP verification failed");
-        clearOtp();
-        setShowFullScreenLoader(false); // 🔹 Hide loader on failure
-      }
-    } catch (error) {
-      console.error("❌ OTP verification error:", error);
-      showToast("Verification failed. Please try again.");
-      setShowFullScreenLoader(false); // 🔹 Hide loader on error
-    } finally {
-      setVerifying(false);
+      // ✅ Clear temp registration data
+      await AsyncStorage.removeItem("tempUserData");
+
+      // ✅ Stop SMS listener and hide loader
+      stopListener && stopListener();
+      setShowFullScreenLoader(false);
+
+      // ✅ Navigate next
+      navigation.navigate("MpinScreen", { step: 3 });
+    } else {
+      showToast(res.error || "OTP verification failed");
+      clearOtp();
+      setShowFullScreenLoader(false);
     }
-  };
+  } catch (error) {
+    console.error("❌ OTP verification error:", error);
+    showToast("Verification failed. Please try again.");
+    setShowFullScreenLoader(false);
+  } finally {
+    setVerifying(false);
+  }
+};
+
 
   const handleResendOtp = async () => {
     if (resendTimer > 0) return;
@@ -260,11 +292,10 @@ function OtpPage({ navigation, route }) {
         showToast("OTP resent successfully!");
         setResendTimer(20);
         clearOtp();
-        
-        // Restart waiting for auto OTP
+
         if (Platform.OS === "android") {
           setWaitingForOtp(true);
-          setShowFullScreenLoader(true); // 🔹 Show loader again when resending
+          setShowFullScreenLoader(true);
           startListener && startListener();
         }
       } else {
@@ -286,8 +317,9 @@ function OtpPage({ navigation, route }) {
         style={styles.backgroundImage}
       >
         <KeyboardAvoidingView
-          style={{ flex: 1 }}
+          style={styles.keyboardAvoidingView}
           behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? SIZES.xxl : 0}
         >
           <ScrollView
             contentContainerStyle={styles.scrollContainer}
@@ -314,10 +346,12 @@ function OtpPage({ navigation, route }) {
                       key={index}
                       colors={
                         digit
-                          ? [COLORS.gradientcolor7, COLORS.gradientcolor8]
-                          : [COLORS.background, COLORS.background]
+                          ? COLORS.gradient.primary // Using theme gradient
+                          : [COLORS.inputBackground, COLORS.inputBackground]
                       }
                       style={styles.otpInputWrapper}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 1 }}
                     >
                       <TextInput
                         ref={(ref) => (inputRefs.current[index] = ref)}
@@ -328,7 +362,7 @@ function OtpPage({ navigation, route }) {
                         onChangeText={(val) => handleOtpChange(val, index)}
                         textAlign="center"
                         selectionColor={COLORS.primary}
-                        editable={!showFullScreenLoader} // 🔹 Disable input while loader is shown
+                        editable={!showFullScreenLoader}
                       />
                     </LinearGradient>
                   ))}
@@ -337,12 +371,14 @@ function OtpPage({ navigation, route }) {
                 <TouchableOpacity
                   style={styles.clearOtpButton}
                   onPress={clearOtp}
-                  disabled={showFullScreenLoader} // 🔹 Disable while loader is shown
+                  disabled={showFullScreenLoader}
                 >
-                  <Text style={[
-                    styles.clearOtpText,
-                    showFullScreenLoader && styles.disabledText
-                  ]}>
+                  <Text
+                    style={[
+                      styles.clearOtpText,
+                      showFullScreenLoader && styles.disabledText,
+                    ]}
+                  >
                     Clear OTP
                   </Text>
                 </TouchableOpacity>
@@ -356,14 +392,14 @@ function OtpPage({ navigation, route }) {
                   disabled={showFullScreenLoader}
                 >
                   <LinearGradient
-                    colors={
-                      showFullScreenLoader
-                        ? ["#555", "#444"]
-                        : [COLORS.gradientcolor10, COLORS.gradientcolor9]
-                    }
+                    colors={COLORS.gradient.brand}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
                     style={styles.buttonGradient}
                   >
-                    <Text style={styles.primaryButtonText}>Verify OTP</Text>
+                    <Text style={styles.primaryButtonText}>
+                      {verifying ? "Verifying..." : "Verify OTP"}
+                    </Text>
                   </LinearGradient>
                 </TouchableOpacity>
 
@@ -376,7 +412,8 @@ function OtpPage({ navigation, route }) {
                   <Text
                     style={[
                       styles.resendLink,
-                      (resendTimer > 0 || showFullScreenLoader) && styles.resendDisabled,
+                      (resendTimer > 0 || showFullScreenLoader) &&
+                        styles.resendDisabled,
                     ]}
                   >
                     {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend"}
@@ -388,10 +425,12 @@ function OtpPage({ navigation, route }) {
                   style={styles.linkContainer}
                   disabled={showFullScreenLoader}
                 >
-                  <Text style={[
-                    styles.linkText,
-                    showFullScreenLoader && styles.disabledText
-                  ]}>
+                  <Text
+                    style={[
+                      styles.linkText,
+                      showFullScreenLoader && styles.disabledText,
+                    ]}
+                  >
                     Back to Login
                   </Text>
                 </TouchableOpacity>
@@ -399,27 +438,25 @@ function OtpPage({ navigation, route }) {
             </View>
           </ScrollView>
 
-          {/* 🔹 FULL SCREEN LOADER FOR BOTH WAITING AND VERIFYING */}
+          {/* FULL SCREEN LOADER */}
           {showFullScreenLoader && (
             <View style={styles.fullScreenLoader}>
               <View style={styles.loaderBackground} />
               <View style={styles.loaderContent}>
                 <ActivityIndicator size="large" color={COLORS.primary} />
                 <Text style={styles.loadingText}>
-                  {waitingForOtp && !verifying 
-                    ? "Waiting for OTP..." 
-                    : "Verifying OTP..."
-                  }
+                  {waitingForOtp && !verifying
+                    ? "Waiting for OTP..."
+                    : "Verifying OTP..."}
                 </Text>
                 <Text style={styles.loadingSubtext}>
-                  {waitingForOtp && !verifying 
+                  {waitingForOtp && !verifying
                     ? "We're automatically detecting OTP from SMS..."
-                    : "Please wait while we verify your OTP"
-                  }
+                    : "Please wait while we verify your OTP"}
                 </Text>
                 {waitingForOtp && !verifying && (
                   <Text style={styles.loadingTimer}>
-                    This will timeout in 15 seconds
+                    Auto-detecting OTP… {autoVerifyTimer}s remaining
                   </Text>
                 )}
               </View>
