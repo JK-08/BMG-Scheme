@@ -1,7 +1,7 @@
-import { StyleSheet, Platform } from "react-native";
-import appTheme from "../../utils/MainTheme";
+import { StyleSheet, Platform, Dimensions } from "react-native";
+import { COLORS, SIZES, FONTS, SHADOWS, moderateScale } from "../../utils/AppTheme";
 
-const { COLORS, SIZES, FONTS, moderateScale, verticalScale } = appTheme;
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
   // Container Styles
@@ -26,6 +26,10 @@ const styles = StyleSheet.create({
   },
   scrollContainer: {
     paddingBottom: SIZES.xl,
+    flexGrow: 1,
+  },
+  footerSpacer: {
+    height: SIZES.xs,
   },
 
   // ========== CONTENT WRAPPER ==========
@@ -36,9 +40,10 @@ const styles = StyleSheet.create({
     marginHorizontal: SIZES.padding.md,
     marginTop: SIZES.lg,
     borderRadius: SIZES.radius.lg,
-    ...appTheme.SHADOWS.md,
+    ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
+  
   },
   contentText: {
     ...FONTS.h5,
@@ -49,43 +54,56 @@ const styles = StyleSheet.create({
   contentText1: {
     ...FONTS.body,
     color: COLORS.textSecondary,
-    lineHeight: SIZES.font.md * 1.5,
+    lineHeight: SIZES.font.lg * 1.5,
     textAlign: "center",
   },
 
   // ========== SECTION STYLES ==========
   titleSpacer: {
     marginTop: SIZES.md,
-    paddingHorizontal: SIZES.padding.xs,
-    gap: SIZES.lg,
+    paddingHorizontal: SIZES.padding.md,
+    gap: SIZES.md,
   },
   sectionHeaderContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
     marginBottom: SIZES.sm,
-    paddingHorizontal: SIZES.padding.sm,
+    paddingHorizontal: SIZES.padding.xs,
   },
   titleText: {
     ...FONTS.h4,
-    color: COLORS.secondary,
+    color: COLORS.primary,
+    fontSize: SIZES.font.xl,
   },
   viewAllText: {
-    ...FONTS.body,
-    color: COLORS.secondary,
-    fontWeight: "600",
+    ...FONTS.bodyMedium,
+    color: COLORS.primary,
+    fontWeight: FONTS.weight.semiBold,
   },
 
   // ========== SWIPEABLE CARDS ==========
   swipeableContainer: {
-    marginBottom: SIZES.md,
-    paddingHorizontal: 0, // remove side padding
+    marginBottom: SIZES.xs,
   },
-
+  flatListContent: {
+    alignItems: 'center',
+  },
   cardWrapper: {
     alignItems: "center",
     justifyContent: "center",
-    paddingHorizontal: 0, // remove spacing
+    paddingHorizontal: 3,
+  },
+  productCardContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
+  
+  },
+  goldPlanContainer: {
+    width: '100%',
+    alignItems: 'center',
+    justifyContent: 'center',
   },
 
   paginationContainer: {
@@ -98,8 +116,9 @@ const styles = StyleSheet.create({
   paginationDot: {
     width: SIZES.xs,
     height: SIZES.xs,
-    borderRadius: SIZES.xs / 2,
+    borderRadius: SIZES.radius.full,
     marginHorizontal: SIZES.xs / 2,
+    
   },
 
   // ========== EMPTY STATE ==========
@@ -109,6 +128,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingVertical: SIZES.xl,
     paddingHorizontal: SIZES.padding.lg,
+    width: SCREEN_WIDTH - 40,
   },
   emptyStateText: {
     ...FONTS.body,
@@ -118,31 +138,14 @@ const styles = StyleSheet.create({
 
   // ========== YOUTUBE SECTION ==========
   youtubeContainer: {
-    marginTop: SIZES.xss,
+    marginTop: SIZES.xs,
     paddingHorizontal: SIZES.padding.lg,
-    marginBottom: SIZES.xl,
+    // marginBottom: SIZES.xxl,
   },
   youtubeWrapper: {
     marginBottom: SIZES.md,
   },
 
-  // ========== ITEM CARD ==========
-  itemCardContainer: {
-    marginRight: SIZES.sm,
-  },
-
-  // ========== LOADING STATES ==========
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-    paddingVertical: SIZES.xxl,
-  },
-  loadingText: {
-    ...FONTS.body,
-    color: COLORS.textTertiary,
-    marginTop: SIZES.md,
-  },
 
   // ========== ERROR STATES ==========
   errorContainer: {

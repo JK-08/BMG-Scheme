@@ -40,10 +40,6 @@ const AddNewMember = () => {
   // Extract both schemeId and schemeName from route params
   const { schemeId, schemeName } = route.params || {};
 
-  console.log("🟢 Route params:", route.params);
-  console.log("🟢 Scheme ID from params:", schemeId);
-  console.log("🟢 Scheme Name from params:", schemeName);
-
   const [token, setToken] = useState(null);
 
   // Payment state
@@ -55,7 +51,7 @@ const AddNewMember = () => {
   // NEW STATE: Track payment completion and processing status
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false); // NEW: For showing loading after WebView closes
-
+  const nowDateTime = new Date().toISOString().slice(0, 19).replace("T", " ");
   const [memberData, setMemberData] = useState({
     namePrefix: "Mr",
     name: "",
@@ -141,36 +137,36 @@ const AddNewMember = () => {
   };
 
   // Get scheme short name from API response
-  const getSchemeShortName = (id) => {
-    if (!id) return "";
-    const numericId = Number(id);
-    const scheme = allSchemes.find((s) => s.SchemeId === numericId);
+  // const getSchemeShortName = (id) => {
+  //   if (!id) return "";
+  //   const numericId = Number(id);
+  //   const scheme = allSchemes.find((s) => s.SchemeId === numericId);
 
-    if (!scheme) return "";
+  //   if (!scheme) return "";
 
-    // Return the actual scheme short name from API response
-    return scheme.SchemeSName || "";
-  };
+  //   // Return the actual scheme short name from API response
+  //   return scheme.SchemeSName || "";
+  // };
 
   // Get scheme type for internal logic (this can still use the logic)
-  const getSchemeType = (id) => {
-    if (!id) return null;
-    const numericId = Number(id);
-    const scheme = allSchemes.find((s) => s.SchemeId === numericId);
+  // const getSchemeType = (id) => {
+  //   if (!id) return null;
+  //   const numericId = Number(id);
+  //   const scheme = allSchemes.find((s) => s.SchemeId === numericId);
 
-    if (!scheme) return null;
+  //   if (!scheme) return null;
 
-    // Use the logic to determine scheme type without hardcoding names
-    if (scheme.WeightLedger === "N" && scheme.FixedIns === "Y") {
-      return "AMOUNT_SCHEME";
-    } else if (scheme.WeightLedger === "Y" && scheme.FixedIns === "N") {
-      return "DIGI_SILVER";
-    } else if (scheme.WeightLedger === "N" && scheme.FixedIns === "N") {
-      return "FIXED_DEPOSIT";
-    } else {
-      return "OTHER";
-    }
-  };
+  //   // Use the logic to determine scheme type without hardcoding names
+  //   if (scheme.WeightLedger === "N" && scheme.FixedIns === "Y") {
+  //     return "AMOUNT_SCHEME";
+  //   } else if (scheme.WeightLedger === "Y" && scheme.FixedIns === "N") {
+  //     return "DIGI_SILVER";
+  //   } else if (scheme.WeightLedger === "N" && scheme.FixedIns === "N") {
+  //     return "FIXED_DEPOSIT";
+  //   } else {
+  //     return "OTHER";
+  //   }
+  // };
 
   // Fetch GROUPCODE and REGNO for selected scheme
   const fetchSchemeOptions = async (schemeId) => {
@@ -447,66 +443,113 @@ const AddNewMember = () => {
       console.error("❌ Error storing payment data:", error);
     }
   };
+  const generateCashPaymentDetails = () => {
+    // Generate random 10-digit number for card
+    const cardNumber = Math.floor(
+      1000000000 + Math.random() * 9000000000
+    ).toString();
 
+    // Generate 6-digit random number for return reason
+    const rtnNumber = Math.floor(100000 + Math.random() * 900000).toString();
+    const rtnReason = `CASH-${rtnNumber}`;
+
+    return { cardNumber, rtnReason };
+  };
+
+  // Submit member data after successful payment
   // Submit member data after successful payment
   const submitMemberData = async (
     numericSchemeId,
     schemeFormData,
     groupCode,
-    regNo
+    regNo,
+    paymentResponse = null,
+    cashPayment = false // Flag for cash payment
   ) => {
     try {
+      // 1️⃣ Member Details
       const newMember = {
-        title: memberData.namePrefix,
+        title: "",
         initial: getDefaultInitial(memberData.name),
-        pName: memberData.name,
-        sName: memberData.surname,
-        doorNo: memberData.doorNo,
-        address1: memberData.address1,
-        address2: memberData.address2,
-        area: memberData.area,
-        city: memberData.city,
-        state: memberData.selectedState,
-        country: memberData.country,
-        pinCode: memberData.pincode,
-        mobile: memberData.mobile,
+        pName: memberData.name || "",
+        sName: memberData.surname || "",
+        doorNo: memberData.doorNo || "",
+        address1: memberData.address1 || "",
+        address2: memberData.address2 || "",
+        area: memberData.area || "",
+        city: memberData.city || "",
+        state: memberData.selectedState || "",
+        country: memberData.country || "India",
+        pinCode: memberData.pincode || "",
+        mobile: memberData.mobile || "",
         idProof: "Aadhaar",
-        idProofNo: memberData.aadharNumber,
-        panNumber: memberData.panNumber,
-        dob: memberData.dob ? memberData.dob.toISOString().split("T")[0] : "",
-        email: memberData.email,
-        upDateTime: new Date().toISOString().slice(0, 19).replace("T", " "),
+        idProofNo: memberData.aadharNumber || "",
+        panNumber: memberData.panNumber || "",
+        dob: memberData.dob || "",
+        email: memberData.email || "",
+        upDateTime: nowDateTime,
         userId: "999",
-        appVer: "19.12.10.1",
+        appVer: "WEB",
       };
 
+      // 2️⃣ Scheme Summary
       const createSchemeSummary = {
         schemeId: numericSchemeId,
         groupCode,
         regNo,
-        joinDate: new Date().toISOString().slice(0, 19).replace("T", " "),
-        upDateTime2: new Date().toISOString().slice(0, 19).replace("T", " "),
-        openingDate: new Date().toISOString().slice(0, 19).replace("T", " "),
+        joinDate: nowDateTime,
+        upDateTime2: nowDateTime,
+        openingDate: nowDateTime,
         userId2: "9999",
-        amount: parseFloat(schemeFormData.amount || "0"),
-        ...(getSchemeType(numericSchemeId) === "DIGI_SILVER" &&
-          schemeFormData.calculatedWeight && {
-            calculatedWeight: parseFloat(schemeFormData.calculatedWeight),
-          }),
       };
 
+      // 3️⃣ Payment Details (Fail-safe)
+      let paymentDetails = {
+        chqBankCode: "",
+        chqCardNo: "",
+        chqBranch: "",
+        chkBank: "",
+        chqRtnReason: "",
+      };
+
+      if (cashPayment) {
+        // Cash payment defaults
+        const { cardNumber, rtnReason } = generateCashPaymentDetails();
+        paymentDetails = {
+          chqBankCode: schemeFormData.accCode || "CASH",
+          chqCardNo: cardNumber || "0000000000",
+          chqBranch: "Received",
+          chkBank: "CASH",
+          chqRtnReason: rtnReason || "CASH-000000",
+        };
+      } else if (paymentResponse?.payphiResponse) {
+        // Online payment from API response
+        const resp = paymentResponse.payphiResponse;
+        paymentDetails = {
+          chqBankCode: schemeFormData.accCode || resp?.bankCode || "",
+          chqCardNo: resp?.txnID || "N/A",
+          chqBranch: resp?.paymentSubInstType || "N/A",
+          chkBank: resp?.paymentMode || "N/A",
+          chqRtnReason: resp?.merchantTxnNo || "N/A",
+        };
+      }
+
+      // 4️⃣ Scheme Collection Insert
       const schemeCollectInsert = {
         amount: parseFloat(schemeFormData.amount || "0"),
-        modePay: schemeFormData.modePay,
-        accCode: schemeFormData.accCode,
+        modePay: schemeFormData.modePay || "C",
+        accCode: schemeFormData.accCode || "CASH",
+        ...paymentDetails,
       };
 
+      // 5️⃣ Final Request Body
       const requestBody = {
         newMember,
         createSchemeSummary,
         schemeCollectInsert,
       };
 
+      // 6️⃣ Submit API Call
       const submitResponse = await fetch(`${API_BASE_URL_OLD}/member/create`, {
         method: "POST",
         headers: {
@@ -517,10 +560,12 @@ const AddNewMember = () => {
       });
 
       if (!submitResponse.ok) throw new Error(`HTTP ${submitResponse.status}`);
+      const responseData = await submitResponse.json();
+      console.log("✅ Member Create API Response:", responseData);
 
       return true;
     } catch (error) {
-      console.error("Error submitting member data:", error);
+      console.error("❌ Error submitting member data:", error);
       throw error;
     }
   };
@@ -566,12 +611,13 @@ const AddNewMember = () => {
       );
 
       if (paymentStatus?.orderStatus === "PAID") {
-        // 1️⃣ Submit Member Data
+        // 1️⃣ Submit Member Data with payment response
         await submitMemberData(
           currentPaymentData.numericSchemeId,
           currentPaymentData.schemeData,
           currentPaymentData.groupCode,
-          currentPaymentData.regNo
+          currentPaymentData.regNo,
+          paymentStatus // Pass the payment status response
         );
 
         // 2️⃣ Send Welcome SMS
@@ -628,7 +674,6 @@ const AddNewMember = () => {
       setIsProcessingPayment(false);
     }
   };
-
   const handlePaymentFailure = () => {
     // Hide loading and show failure popup
     setProcessingPayment(false);
@@ -676,19 +721,16 @@ const AddNewMember = () => {
   const processCashPayment = async (schemeFormData, numericSchemeId) => {
     setIsSubmitting(true);
     try {
-      // Fetch GROUPCODE and REGNO from API dynamically
       const response = await fetch(
         `${API_BASE_URL_OLD}/member/schemeid?schemeId=${numericSchemeId}`
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const apiData = await response.json();
-
       if (!apiData || apiData.length === 0)
         throw new Error("No scheme data returned from API.");
 
       let selectedRecord;
 
-      // Try to match by amount first
       if (schemeFormData.amount) {
         selectedRecord = apiData.find(
           (item) =>
@@ -696,10 +738,7 @@ const AddNewMember = () => {
         );
       }
 
-      // If no matching amount found, just pick the first record (for schemes like DIGI_SILVER or FIXED_DEPOSIT)
-      if (!selectedRecord) {
-        selectedRecord = apiData[0];
-      }
+      if (!selectedRecord) selectedRecord = apiData[0];
 
       const groupCode = selectedRecord.GROUPCODE;
       const regNo =
@@ -707,7 +746,25 @@ const AddNewMember = () => {
         selectedRecord.REGNO ||
         generateRandomRegNo();
 
-      await submitMemberData(numericSchemeId, schemeFormData, groupCode, regNo);
+      // ✅ Submit member data for CASH payment
+      await submitMemberData(
+        numericSchemeId,
+        schemeFormData,
+        groupCode,
+        regNo,
+        null, // no online payment
+        true // cash payment flag
+      );
+
+      // Send welcome SMS
+      await smsService.sendWelcomeSMS(
+        memberData.mobile,
+        memberData.name,
+        getSchemeName(numericSchemeId),
+        schemeFormData.amount,
+        new Date().toISOString().slice(0, 10),
+        "BMG JEWELLERS PVT LTD"
+      );
 
       Alert.alert(
         "Success",
@@ -723,7 +780,7 @@ const AddNewMember = () => {
         ]
       );
     } catch (error) {
-      console.error("Error during member creation:", error);
+      console.error("Error during member creation (cash):", error);
       Alert.alert(
         "Submission Error",
         error.message || "Failed to create member. Please try again."
@@ -889,9 +946,7 @@ const AddNewMember = () => {
   const renderProcessingPayment = () => (
     <View style={styles.processingContainer}>
       <ActivityIndicator size="large" color="#d4af37" />
-      <Text style={styles.processingText}>
-        Processing your payment...
-      </Text>
+      <Text style={styles.processingText}>Processing your payment...</Text>
       <Text style={styles.processingSubText}>
         Please wait while we confirm your payment
       </Text>

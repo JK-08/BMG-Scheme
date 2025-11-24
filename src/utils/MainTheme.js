@@ -99,7 +99,9 @@ export const COLORS = {
     vibrant: ['#E573C8', '#FFD93D'],           // Light pink to yellow
     warm: ['#F39C42', '#FFD93D'],              // Orange to yellow
     cool: ['#B82D98', '#D245B6'],              // Dark to light magenta
-    surface: ['#F9F9F9', '#FFFFFF'],           // Neutral surface
+    surface: ['#F9F9F9', '#FFFFFF'], 
+    success: ['#2E7D32', '#66BB6A'],   // green gradient
+          // Neutral surface
   },
 };
 

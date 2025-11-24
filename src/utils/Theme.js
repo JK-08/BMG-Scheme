@@ -20,7 +20,7 @@ export const COLORS = {
   transparent: "rgba(255, 255, 255, 0)",
 
   // Core Brand (updated)
-  primary: "rgba(18, 17, 105, 1)",         // main blue
+  primary: "rgba(7, 13, 63, 1)",         // main blue
   primaryLight: "rgba(74, 144, 226, 0.15)",
   secondary: "rgba(225, 100, 250, 1)",      // main magenta/pink
   notification: "rgba(201, 137, 0, 1)",

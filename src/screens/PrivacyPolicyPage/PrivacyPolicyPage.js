@@ -4,17 +4,16 @@ import {
   Text,
   ScrollView,
   StyleSheet,
-  SafeAreaView,
   TouchableOpacity,
   Linking,
   ImageBackground,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import appTheme from "../../utils/MainTheme";
+import theme from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 
-const { COLORS, SIZES, FONTS, verticalScale, moderateScale } = appTheme;
+const { COLORS, SIZES, FONTS, verticalScale, moderateScale, SHADOWS } = theme;
 
 const PrivacyPolicyPage = () => {
   const handleExternalLink = (url) => {
@@ -99,7 +98,7 @@ const PrivacyPolicyPage = () => {
   const ContactInfo = ({ icon, label, value, onPress, isLink = false }) => (
     <View style={styles.contactItem}>
       <View style={styles.contactRow}>
-        <Icon name={icon} size={18} color={COLORS.secondary} />
+        <Icon name={icon} size={moderateScale(18)} color={COLORS.primary} />
         <Text style={styles.contactLabel}>{label}</Text>
       </View>
       <TouchableOpacity
@@ -130,7 +129,7 @@ const PrivacyPolicyPage = () => {
             <View key={index} style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
                 <View style={styles.iconContainer}>
-                  <Icon name={section.icon} size={20} color={COLORS.white} />
+                  <Icon name={section.icon} size={moderateScale(20)} color={COLORS.white} />
                 </View>
                 <Text style={styles.sectionTitle}>{section.title}</Text>
               </View>
@@ -184,10 +183,10 @@ const PrivacyPolicyPage = () => {
 
           {/* Legal Footer */}
           <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryDark]}
+            colors={COLORS.gradient.primary}
             style={styles.legalFooter}
           >
-            <Icon name="gavel" size={20} color={COLORS.white} />
+            <Icon name="gavel" size={moderateScale(20)} color={COLORS.white} />
             <Text style={styles.legalText}>
               Governed by Indian Laws • Information Technology Act, 2000
             </Text>
@@ -208,104 +207,119 @@ const PrivacyPolicyPage = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backgroundImage: { flex: 1 },
-  scrollContent: { paddingBottom: verticalScale(20) },
+  scrollContent: { 
+    flexGrow: 1,
+    paddingBottom: verticalScale(SIZES.padding.xl),
+  },
   sectionCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.md,
-    marginHorizontal: SIZES.padding.md,
-    marginBottom: verticalScale(12),
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.lg,
+    marginHorizontal: SIZES.padding.lg,
+    marginBottom: verticalScale(SIZES.padding.md),
+    ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
-  sectionHeader: { flexDirection: "row", alignItems: "center", marginBottom: verticalScale(8) },
+  sectionHeader: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    marginBottom: verticalScale(SIZES.padding.sm) 
+  },
   iconContainer: {
-    width: moderateScale(32),
-    height: moderateScale(32),
-    borderRadius: SIZES.radius.sm,
-    backgroundColor: COLORS.secondaryDark,
+    width: moderateScale(36),
+    height: moderateScale(36),
+    borderRadius: SIZES.radius.md,
+    backgroundColor: COLORS.primary,
     alignItems: "center",
     justifyContent: "center",
-    marginRight: moderateScale(10),
+    marginRight: SIZES.padding.md,
+    ...SHADOWS.sm,
   },
   sectionTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.lg,
+    ...FONTS.h5,
     color: COLORS.textPrimary,
     flex: 1,
   },
   sectionContent: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.md,
+    ...FONTS.body,
     color: COLORS.textPrimary,
-    lineHeight: verticalScale(20),
+    lineHeight: SIZES.font.lg * 1.4,
   },
-  subsection: { marginTop: verticalScale(6) },
+  subsection: { 
+    marginTop: verticalScale(SIZES.padding.sm) 
+  },
   subsectionTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.md,
+    ...FONTS.bodyMedium,
     color: COLORS.primary,
-    marginBottom: verticalScale(2),
+    marginBottom: verticalScale(SIZES.xs),
   },
   subsectionContent: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.body,
     color: COLORS.textPrimary,
-    lineHeight: verticalScale(18),
+    lineHeight: SIZES.font.md * 1.4,
   },
   contactCard: {
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.md,
-    marginHorizontal: SIZES.padding.md,
-    marginBottom: verticalScale(15),
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.xl,
+    marginHorizontal: SIZES.padding.lg,
+    marginBottom: verticalScale(SIZES.padding.lg),
+    ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
   contactCardTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.lg,
+    ...FONTS.h5,
     color: COLORS.textPrimary,
-    marginBottom: verticalScale(12),
+    marginBottom: verticalScale(SIZES.padding.md),
     textAlign: "center",
   },
-  contactItem: { marginBottom: verticalScale(12) },
-  contactRow: { flexDirection: "row", alignItems: "center", marginBottom: verticalScale(4) },
+  contactItem: { 
+    marginBottom: verticalScale(SIZES.padding.md) 
+  },
+  contactRow: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    marginBottom: verticalScale(SIZES.xs) 
+  },
   contactLabel: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.md,
+    ...FONTS.bodyMedium,
     color: COLORS.textPrimary,
-    marginLeft: moderateScale(6),
+    marginLeft: SIZES.padding.sm,
   },
   contactValue: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.md,
+    ...FONTS.body,
     color: COLORS.textPrimary,
-    lineHeight: verticalScale(20),
-    paddingLeft: moderateScale(25),
+    lineHeight: SIZES.font.lg * 1.3,
+    paddingLeft: moderateScale(28),
   },
-  link: { color: COLORS.primary, textDecorationLine: "underline" },
+  link: { 
+    color: COLORS.primary, 
+    textDecorationLine: "underline" 
+  },
   legalFooter: {
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.md,
-    marginHorizontal: SIZES.padding.md,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.lg,
+    marginHorizontal: SIZES.padding.lg,
     alignItems: "center",
     flexDirection: "row",
     justifyContent: "center",
-    marginBottom: verticalScale(15),
+    marginBottom: verticalScale(SIZES.padding.lg),
+    ...SHADOWS.md,
   },
   legalText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.bodyMedium,
     color: COLORS.white,
-    fontWeight: "600",
-    marginLeft: moderateScale(8),
+    marginLeft: SIZES.padding.sm,
     textAlign: "center",
   },
-  copyright: { alignItems: "center", paddingHorizontal: SIZES.padding.md },
+  copyright: { 
+    alignItems: "center", 
+    paddingHorizontal: SIZES.padding.lg 
+  },
   copyrightText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.bodySmall,
     color: COLORS.textSecondary,
     textAlign: "center",
   },

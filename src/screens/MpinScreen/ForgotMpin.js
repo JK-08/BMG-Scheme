@@ -20,6 +20,9 @@ import { LinearGradient } from "expo-linear-gradient";
 import { mpinStyles as styles } from "./MpinStyles";
 import { showToast, checkWeakMpin } from "../../utils/MpinHelper";
 import { resetMpinApi } from "../../services/MpinService";
+import theme from "../../utils/AppTheme";
+
+const { COLORS } = theme;
 
 function ResetMpinScreen({ navigation }) {
   const [mpin, setMpin] = useState(["", "", "", ""]);
@@ -63,7 +66,6 @@ function ResetMpinScreen({ navigation }) {
     newMpin[index] = value;
     setTargetMpin(newMpin);
 
-    // Check for weak MPIN when all digits are entered
     if (!isConfirm && newMpin.every((digit) => digit !== "") && index === 3) {
       const enteredMpin = newMpin.join("");
       setIsWeakMpin(checkWeakMpin(enteredMpin));
@@ -71,7 +73,6 @@ function ResetMpinScreen({ navigation }) {
       setIsWeakMpin(false);
     }
 
-    // Check if MPINs match when both are complete
     if (mpin.every(digit => digit !== "") && confirmMpin.every(digit => digit !== "")) {
       setMpinMatch(mpin.join("") === confirmMpin.join(""));
     }
@@ -118,10 +119,8 @@ function ResetMpinScreen({ navigation }) {
 
     setIsLoading(true);
     try {
-      // Call API to reset MPIN
       const response = await resetMpinApi(newMpin);
       
-      // Update local storage
       await AsyncStorage.setItem("mpin", newMpin);
       await AsyncStorage.setItem("isMpinCreated", "true");
       
@@ -159,17 +158,15 @@ function ResetMpinScreen({ navigation }) {
                 { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
               ]}
             >
-              {/* Logo Section */}
               <View style={styles.logoContainer}>
                 <View style={styles.logoRow}>
                   <Image
-                    source={require("../../assets/image/logo2.png")}
+                    source={require("../../assets/image/final-logo.jpg")}
                     style={styles.logoImage}
                   />
                 </View>
               </View>
 
-              {/* Content Section */}
               <View style={styles.contentContainer}>
                 <View style={styles.headerSection}>
                   <Text style={styles.title}>Reset MPIN</Text>
@@ -259,7 +256,7 @@ function ResetMpinScreen({ navigation }) {
                       style={styles.buttonWrapper}
                     >
                       <LinearGradient
-                        colors={['#4c669f', '#3b5998', '#192f6a']}
+                        colors={COLORS.gradient.brand}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={[styles.createButton, styles.gradientButton]}

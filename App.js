@@ -1,61 +1,84 @@
-import React, { useEffect, useState } from 'react';
-import { StatusBar, Platform } from 'react-native';
-import { SafeAreaView } from 'react-native-safe-area-context';
-import * as Notifications from 'expo-notifications';
-import FlashMessage from 'react-native-flash-message';
+import React, { useEffect, useState } from "react";
+import { StatusBar, Platform } from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import FlashMessage from "react-native-flash-message";
+import * as Notifications from "expo-notifications";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+import AppContainer from "./src/routes/routes";
+import { colors } from "./src/utils/colors";
+import useFonts from "./src/utils/Fonts";
 
-import AppContainer from './src/routes/routes';
-import { colors } from './src/utils/colors';
-import useFonts from './src/utils/Fonts';
 
+// ⭐ GLOBAL NOTIFICATION HANDLER
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowAlert: true,
+    shouldPlaySound: true,
+    shouldSetBadge: true,
+  }),
+});
+
+// ⭐ CREATE ANDROID CHANNEL
+if (Platform.OS === "android") {
+  Notifications.setNotificationChannelAsync("colored", {
+    name: "Colored Notifications",
+    importance: Notifications.AndroidImportance.MAX,
+    vibrationPattern: [0, 250, 250, 250],
+    sound: "default",
+    lightColor: "#FF4500",
+    enableLights: true,
+  });
+}
 
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
+  // REGISTER & SEND TOKEN
   useEffect(() => {
-    // Load custom fonts
-    const loadAppFonts = async () => {
-      try {
-        await useFonts();
-        setFontsLoaded(true);
-      } catch (error) {
-        console.error('Error loading fonts:', error);
-        setFontsLoaded(true); // Continue even if fonts fail
+    const subscription = Notifications.addNotificationReceivedListener(
+      (notification) => {
+        console.log("📬 Foreground push received:", notification);
+
+        // ⭐ Show notification manually in foreground
+        Notifications.scheduleNotificationAsync({
+          content: notification.request.content,
+          trigger: null, // show immediately
+        });
       }
-    };
-    loadAppFonts();
+    );
+
+    return () => subscription.remove();
   }, []);
 
+  // LOAD FONTS
   useEffect(() => {
-    // Listener for when notification is received while app is in foreground
-    const notificationListener = Notifications.addNotificationReceivedListener(notification => {
-      console.log('📬 Notification Received:', notification);
-    });
+    (async () => {
+      await useFonts();
+      setFontsLoaded(true);
+    })();
+  }, []);
 
-    // Listener for when user taps on notification
-    const responseListener = Notifications.addNotificationResponseReceivedListener(response => {
-      console.log('👆 Notification Tapped:', response);
-      // Handle navigation or actions based on notification data
-    });
+  // LISTENERS
+  useEffect(() => {
+    const sub1 = Notifications.addNotificationReceivedListener((n) =>
+      console.log("📬 Foreground notification:", n)
+    );
+    const sub2 = Notifications.addNotificationResponseReceivedListener((r) =>
+      console.log("👆 Notification tapped:", r)
+    );
 
     return () => {
-      notificationListener.remove();
-      responseListener.remove();
+      sub1.remove();
+      sub2.remove();
     };
   }, []);
 
-  if (!fontsLoaded) {
-    return null; // Or return a loading screen component
-  }
+  if (!fontsLoaded) return null;
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
-      <StatusBar 
-        barStyle="dark-content" 
-        backgroundColor={colors.background} 
-      />
+      <StatusBar barStyle="dark-content" />
       <AppContainer />
-      
       <FlashMessage position="top" />
     </SafeAreaView>
   );

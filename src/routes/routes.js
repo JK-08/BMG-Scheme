@@ -32,6 +32,8 @@ function Drawer() {
       <NavigationStack.Screen name="PaymentWebView" component={Screen.PaymentWebView} />
       <NavigationStack.Screen name="PaymentSuccess" component={Screen.PaymentSuccess} />
       <NavigationStack.Screen name="FAQPage" component={Screen.FAQPage} />
+      <NavigationStack.Screen name="NotificationsPage" component={Screen.NotificationsPage} />
+      <NavigationStack.Screen name="Rewards" component={Screen.RewardsPage} />
     </NavigationStack.Navigator>
   );
 }

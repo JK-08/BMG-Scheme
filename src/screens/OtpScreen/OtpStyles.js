@@ -1,7 +1,7 @@
 import { StyleSheet, Platform } from 'react-native';
-import appTheme from '../../utils/MainTheme';
+import theme from '../../utils/AppTheme'; // Changed from appTheme to theme
 
-const { COLORS, SIZES, FONTS, moderateScale, verticalScale } = appTheme;
+const { COLORS, SIZES, FONTS, moderateScale, verticalScale, SHADOWS } = theme;
 
 const styles = StyleSheet.create({
   // Background & Container
@@ -43,11 +43,11 @@ const styles = StyleSheet.create({
   card: {
     width: '100%',
     maxWidth: moderateScale(400),
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.card,
     borderRadius: SIZES.radius.xl,
-    paddingHorizontal: SIZES.padding.sm,
-    paddingVertical: SIZES.xxl,
-    ...appTheme.SHADOWS.lg,
+    paddingHorizontal: SIZES.padding.xl,
+    paddingVertical: SIZES.padding.xxl,
+    ...SHADOWS.lg,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
@@ -57,7 +57,7 @@ const styles = StyleSheet.create({
     ...FONTS.h3,
     textAlign: 'center',
     marginBottom: SIZES.sm,
-    color: COLORS.secondaryDark,
+    color: COLORS.textPrimary,
   },
   subtitle: {
     ...FONTS.body,
@@ -81,7 +81,7 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius.md,
     justifyContent: 'center',
     alignItems: 'center',
-    ...appTheme.SHADOWS.md,
+    ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
@@ -90,7 +90,7 @@ const styles = StyleSheet.create({
     height: '100%',
     fontSize: SIZES.font.xl,
     color: COLORS.textInverse,
-    fontFamily: FONTS.family.bodyBold,
+    fontFamily: FONTS.family.bold,
     textAlign: 'center',
     borderRadius: SIZES.radius.md,
   },
@@ -99,12 +99,11 @@ const styles = StyleSheet.create({
   clearOtpButton: {
     alignSelf: 'center',
     marginBottom: SIZES.lg,
-    padding: SIZES.sm,
+    padding: SIZES.padding.sm,
   },
   clearOtpText: {
-    ...FONTS.body,
+    ...FONTS.bodyMedium,
     color: COLORS.primary,
-    fontWeight: '600',
   },
 
   // Buttons
@@ -112,7 +111,7 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius.md,
     marginTop: SIZES.md,
     overflow: 'hidden',
-    ...appTheme.SHADOWS.md,
+    ...SHADOWS.md,
     height: SIZES.button.lg,
   },
   buttonGradient: {
@@ -121,9 +120,8 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   primaryButtonText: {
-    ...FONTS.h6,
+    ...FONTS.button,
     color: COLORS.textInverse,
-    fontWeight: '600',
   },
   disabledButton: {
     opacity: 0.6,
@@ -135,37 +133,34 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
     alignItems: 'center',
     marginTop: SIZES.xl,
-    paddingVertical: SIZES.sm,
+    paddingVertical: SIZES.padding.sm,
   },
   resendText: {
     ...FONTS.body,
     color: COLORS.textSecondary,
   },
   resendLink: {
-    ...FONTS.body,
-    color: COLORS.secondaryDark,
-    fontWeight: '600',
+    ...FONTS.bodyMedium,
+    color: COLORS.primary,
   },
- resendDisabled: {
-  color: COLORS.textDisabled,
-  fontStyle: 'italic',
-},
-
+  resendDisabled: {
+    color: COLORS.textDisabled,
+    fontStyle: 'italic',
+  },
 
   // Link Container
   linkContainer: {
     borderRadius: SIZES.radius.sm,
-    paddingVertical: SIZES.sm,
-    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: SIZES.padding.sm,
+    paddingHorizontal: SIZES.padding.md,
     marginTop: SIZES.lg,
     alignItems: 'center',
     justifyContent: 'center',
   },
   linkText: {
-    ...FONTS.body,
+    ...FONTS.bodyMedium,
     textAlign: 'center',
-    color: COLORS.secondaryDark,
-    fontWeight: '600',
+    color: COLORS.primary,
   },
 
   // Full Screen Loader
@@ -188,22 +183,22 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.overlay,
   },
   loaderContent: {
-    backgroundColor: COLORS.surface,
-    padding: SIZES.xl,
+    backgroundColor: COLORS.card,
+    padding: SIZES.padding.xl,
     borderRadius: SIZES.radius.xl,
     alignItems: 'center',
     justifyContent: 'center',
     minWidth: moderateScale(280),
     minHeight: moderateScale(200),
     margin: SIZES.lg,
-    ...appTheme.SHADOWS.lg,
+    ...SHADOWS.lg,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
   loadingText: {
     ...FONTS.h5,
     marginTop: SIZES.lg,
-    color: COLORS.primary,
+    color: COLORS.textPrimary,
     textAlign: 'center',
   },
   loadingSubtext: {
@@ -274,7 +269,7 @@ if (SIZES.screen.height < 600) {
   
   styles.card = {
     ...styles.card,
-    paddingVertical: SIZES.xl,
+    paddingVertical: SIZES.padding.xl,
     paddingHorizontal: SIZES.padding.lg,
   };
   
@@ -296,7 +291,7 @@ if (SIZES.screen.height > 800) {
   styles.card = {
     ...styles.card,
     maxWidth: moderateScale(420),
-    paddingVertical: SIZES.xxl,
+    paddingVertical: SIZES.padding.xxl,
   };
 }
 

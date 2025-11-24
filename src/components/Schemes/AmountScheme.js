@@ -8,10 +8,8 @@ import {
   StyleSheet,
   Animated,
 } from "react-native";
-import appTheme from "../../utils/MainTheme";
+import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 import CustomPicker from "../../screens/AddNewMember/CustomPicker";
-
-const { COLORS, SIZES, FONTS } = appTheme;
 
 const AmountScheme = ({
   formData,
@@ -173,7 +171,6 @@ const AmountScheme = ({
             selectedValue={formData?.amount || ''}
             onValueChange={handleAmountSelection}
             items={[
-              
               ...amounts.map((amt) => ({
                 label: `₹${Number(amt.value).toLocaleString()} • ${amt.groupCode}`,
                 value: amt.value
@@ -182,16 +179,6 @@ const AmountScheme = ({
             placeholder="Choose amount"
             enabled={!isSubmitting}
           />
-          {formData?.amount && (
-            <View style={styles.selectedAmountInfo}>
-              <Text style={styles.amountInfoText}>
-                Selected: <Text style={styles.amountHighlight}>₹{Number(formData.amount).toLocaleString()}</Text>
-              </Text>
-              <View style={styles.successIndicator}>
-                <Text style={styles.successIndicatorText}>✓</Text>
-              </View>
-            </View>
-          )}
         </View>
       ) : (
         <View style={styles.noDataContainer}>
@@ -232,148 +219,132 @@ const AmountScheme = ({
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: SIZES.lg,
+    marginBottom: SIZES.margin.lg,
   },
   header: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: SIZES.xs,
+    marginBottom: SIZES.margin.xs,
   },
   label: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.lg,
+    ...FONTS.h6,
     color: COLORS.textPrimary,
-    letterSpacing: 0.3,
-    marginRight: SIZES.xs,
-    lineHeight: SIZES.font.lg * 1.4,
+    marginRight: SIZES.margin.xs,
   },
   asterisk: {
-    fontSize: SIZES.font.lg,
-    color: COLORS.danger,
-    fontFamily: FONTS.family.bodyBold,
-    lineHeight: SIZES.font.lg,
+    ...FONTS.h6,
+    color: COLORS.error,
   },
   subLabel: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.bodySmall,
     color: COLORS.textSecondary,
-    marginBottom: SIZES.md,
-    lineHeight: SIZES.font.sm * 1.6,
+    marginBottom: SIZES.margin.md,
   },
   pickerContainer: {
-    marginBottom: SIZES.xs,
+    marginBottom: SIZES.margin.md,
   },
   selectedAmountInfo: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    marginTop: SIZES.sm,
-    paddingVertical: SIZES.xs,
-    paddingHorizontal: SIZES.sm,
+    marginTop: SIZES.margin.sm,
+    paddingVertical: SIZES.padding.xs,
+    paddingHorizontal: SIZES.padding.sm,
     borderLeftWidth: 2,
     borderLeftColor: COLORS.success,
+    backgroundColor: COLORS.successLight + '20',
+    borderRadius: SIZES.radius.sm,
   },
   amountInfoText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.bodySmall,
     color: COLORS.textSecondary,
-    lineHeight: SIZES.font.sm * 1.4,
     flex: 1,
   },
   amountHighlight: {
     color: COLORS.primary,
-    fontFamily: FONTS.family.bodyBold,
+    ...FONTS.bodyMedium,
   },
   successIndicator: {
-    width: 20,
-    height: 20,
-    borderRadius: 10,
+    width: SIZES.icon.sm,
+    height: SIZES.icon.sm,
+    borderRadius: SIZES.radius.full,
     backgroundColor: COLORS.success,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: SIZES.xs,
+    marginLeft: SIZES.margin.xs,
   },
   successIndicatorText: {
+    ...FONTS.caption,
     color: COLORS.white,
-    fontSize: SIZES.font.xs,
-    fontFamily: FONTS.family.bodyBold,
-    lineHeight: SIZES.font.xs,
   },
   loadingContainer: {
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'center',
-    paddingVertical: SIZES.xl,
+    paddingVertical: SIZES.padding.xl,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
     borderStyle: 'dashed',
     borderRadius: SIZES.radius.md,
+    backgroundColor: COLORS.backgroundSecondary,
   },
   loader: {
-    marginRight: SIZES.sm,
+    marginRight: SIZES.margin.sm,
   },
   loadingText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.bodySmall,
     color: COLORS.textTertiary,
-    lineHeight: SIZES.font.sm * 1.4,
   },
   noDataContainer: {
     alignItems: 'center',
-    paddingVertical: SIZES.xl,
+    paddingVertical: SIZES.padding.xl,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
     borderStyle: 'dashed',
     borderRadius: SIZES.radius.md,
+    backgroundColor: COLORS.backgroundSecondary,
   },
   noDataIcon: {
-    fontSize: SIZES.font.xl,
-    marginBottom: SIZES.sm,
+    fontSize: SIZES.icon.xxl,
+    marginBottom: SIZES.margin.sm,
   },
   noDataTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.md,
+    ...FONTS.bodyMedium,
     color: COLORS.textPrimary,
     textAlign: 'center',
-    marginBottom: SIZES.xs,
-    lineHeight: SIZES.font.md * 1.4,
+    marginBottom: SIZES.margin.xs,
   },
   noDataText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.bodySmall,
     color: COLORS.textTertiary,
     textAlign: 'center',
-    marginBottom: SIZES.lg,
-    lineHeight: SIZES.font.sm * 1.6,
-    paddingHorizontal: SIZES.md,
+    marginBottom: SIZES.margin.lg,
+    paddingHorizontal: SIZES.padding.md,
   },
   retryButton: {
-    paddingVertical: SIZES.sm,
-    paddingHorizontal: SIZES.lg,
-    borderRadius: SIZES.radius.sm,
-    borderWidth: 1,
+    paddingVertical: SIZES.padding.sm,
+    paddingHorizontal: SIZES.padding.lg,
+    borderRadius: SIZES.radius.md,
+    borderWidth: 1.5,
     borderColor: COLORS.primary,
-    backgroundColor: 'transparent',
+    backgroundColor: COLORS.transparent,
   },
   retryText: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.sm,
+    ...FONTS.bodyMedium,
     color: COLORS.primary,
-    letterSpacing: 0.3,
-    lineHeight: SIZES.font.sm * 1.4,
   },
   errorContainer: {
-    marginTop: SIZES.sm,
-    paddingVertical: SIZES.sm,
-    paddingHorizontal: SIZES.md,
+    marginTop: SIZES.margin.sm,
+    paddingVertical: SIZES.padding.sm,
+    paddingHorizontal: SIZES.padding.md,
     borderLeftWidth: 3,
     borderLeftColor: COLORS.error,
+    backgroundColor: COLORS.errorLight + '20',
+    borderRadius: SIZES.radius.sm,
   },
   errorText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.caption,
     color: COLORS.error,
-    lineHeight: SIZES.font.sm * 1.4,
   },
 });
 

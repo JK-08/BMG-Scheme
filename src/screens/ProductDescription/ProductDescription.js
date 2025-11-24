@@ -14,7 +14,13 @@ import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { BottomTab } from "../../components";
 import PaymentReceiptPDF from "../PaymentHistory/PaymentReceipt";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
-import { COLORS, SIZES, FONTS, moderateScale } from "../../utils/MainTheme";
+import {
+  COLORS,
+  SIZES,
+  FONTS,
+  moderateScale,
+  SHADOWS,
+} from "../../utils/AppTheme";
 
 const SchemePassbook = ({ navigation, route }) => {
   const { productData } = route.params;
@@ -60,17 +66,23 @@ const SchemePassbook = ({ navigation, route }) => {
     const weightLedgerFlag =
       schemeData.WeightLedger || schemeData.weightLedger || "N";
     const fixedInsFlag = schemeData.FixedIns || schemeData.fixedIns || "N";
+    const installmentFixed =
+      schemeData.Instalment || schemeData.instalment || 0;
 
     const isWeightLedger = weightLedgerFlag === "Y";
     const isFixedIns = fixedInsFlag === "Y";
+    const isInstallmentFixed = parseInt(installmentFixed) === 1;
 
     // Rules:
-    // (N,Y) -> Amount Scheme
-    // (Y,N) -> Digi Silver (weight scheme)
-    // (N,N) -> Fixed Deposit
+    // WeightLedger = N, FixedIns = Y            → AMOUNT_SCHEME
+    // WeightLedger = N, FixedIns = N, Installment != 1 → DIGI_SILVER
+    // WeightLedger = N, FixedIns = N, Installment = 1  → FIXED_DEPOSIT
+
     if (!isWeightLedger && isFixedIns) return "AMOUNT_SCHEME"; // N + Y
-    if (isWeightLedger && !isFixedIns) return "DIGI_SILVER"; // Y + N
-    if (!isWeightLedger && !isFixedIns) return "FIXED_DEPOSIT"; // N + N
+    if (!isWeightLedger && !isFixedIns && !isInstallmentFixed)
+      return "DIGI_SILVER"; // N + N + N
+    if (!isWeightLedger && !isFixedIns && isInstallmentFixed)
+      return "FIXED_DEPOSIT"; // N + N + Y
 
     return "OTHER";
   }, [productData]);
@@ -108,30 +120,29 @@ const SchemePassbook = ({ navigation, route }) => {
   }, [productData]);
 
   // Handle download receipt
-const handleDownloadReceipt = useCallback(
-  async (payment) => {
-    console.log("PDF Data:", {
-      payment,
-      schemeInfo,
-      customerInfo,
-      schemeData: productData,
-    });
+  const handleDownloadReceipt = useCallback(
+    async (payment) => {
+      // console.log("PDF Data:", {
+      //   payment,
+      //   schemeInfo,
+      //   customerInfo,
+      //   schemeData: productData,
+      // });
 
-    try {
-      await PaymentReceiptPDF.generatePDF({
-        payment,
-        schemeInfo,
-        customerInfo,
-        schemeData: productData,
-      });
-    } catch (error) {
-      console.error("PDF Generation Error:", error);
-      Alert.alert("Error", "Failed to create PDF");
-    }
-  },
-  [schemeInfo, customerInfo, productData]
-);
-
+      try {
+        await PaymentReceiptPDF.generatePDF({
+          payment,
+          schemeInfo,
+          customerInfo,
+          schemeData: productData,
+        });
+      } catch (error) {
+        console.error("PDF Generation Error:", error);
+        Alert.alert("Error", "Failed to create PDF");
+      }
+    },
+    [schemeInfo, customerInfo, productData]
+  );
 
   // Calculate scheme statistics
   const schemeStats = useMemo(() => {
@@ -141,6 +152,8 @@ const handleDownloadReceipt = useCallback(
     const silverSaved = parseFloat(
       productData?.schemeSummary?.totalWeight || 0
     );
+    const bonusPercent = parseFloat(productData?.bonusPercent || 0);
+
     const installmentsPaid = parseInt(
       productData?.schemeSummary?.schemaSummaryTransBalance?.insPaid || 0
     );
@@ -157,6 +170,7 @@ const handleDownloadReceipt = useCallback(
     return {
       totalPaid,
       silverSaved,
+      bonusPercent,
       installmentsPaid,
       totalInstallments,
       progressPercentage: Math.min(progressPercentage, 100),
@@ -284,31 +298,27 @@ const handleDownloadReceipt = useCallback(
                   </View>
                 ) : null}
 
-                {schemeType !== "AMOUNT_SCHEME" ? (
-                  <View style={[styles.dataRow, { alignItems: "flex-start" }]}>
-                    <Text style={styles.dataLabel}>
-                      {schemeType === "DIGI_SILVER"
-                        ? "Saved Weight"
-                        : "Amount Saved"}
-                    </Text>
-                    <Text style={styles.dataValue}>
-                      {schemeType === "DIGI_SILVER"
-                        ? `${schemeStats.silverSaved.toFixed(3)}g`
-                        : `₹${schemeStats.totalPaid.toLocaleString("en-IN")}`}
-                    </Text>
-                  </View>
-                ) : null}
+                <View style={[styles.dataRow, { alignItems: "flex-start" }]}>
+                  <Text style={styles.dataLabel}>Amount Saved</Text>
+                  <Text style={styles.dataValue}>
+                    ₹
+                    {Math.ceil(
+                      Number(schemeStats?.totalPaid || 0) +
+                        Number(productData?.bonusAmount || 0)
+                    ).toLocaleString("en-IN")}
+                  </Text>
+                </View>
               </View>
             ) : null}
 
             {/* Right Section */}
             {hasRightData ? (
               <View style={styles.rightSection}>
-                {schemeType === "DIGI_SILVER" && schemeStats?.averageRate ? (
+                {schemeType === "DIGI_SILVER" ? (
                   <View style={[styles.dataRow, { alignItems: "flex-end" }]}>
-                    <Text style={styles.dataLabel}>Average Rate / g</Text>
+                    <Text style={styles.dataLabel}>Installments Paid</Text>
                     <Text style={styles.dataValue}>
-                      ₹{schemeStats.averageRate.toFixed(2)}
+                      {schemeStats.installmentsPaid}
                     </Text>
                   </View>
                 ) : schemeStats?.installmentsPaid ? (
@@ -321,14 +331,14 @@ const handleDownloadReceipt = useCallback(
                   </View>
                 ) : null}
 
-                {schemeType !== "AMOUNT_SCHEME" && productData?.bonusAmount ? (
+                {productData?.bonusAmount ? (
                   <View style={[styles.dataRow, { alignItems: "flex-end" }]}>
                     <Text style={styles.dataLabel}>Benefit Amount</Text>
                     <Text style={styles.dataValue}>
                       ₹
-                      {parseFloat(productData.bonusAmount || 0).toLocaleString(
-                        "en-IN"
-                      )}
+                      {Math.ceil(
+                        Number(productData?.bonusAmount || 0)
+                      ).toLocaleString("en-IN")}
                     </Text>
                   </View>
                 ) : null}
@@ -471,190 +481,250 @@ const styles = StyleSheet.create({
   container: { flex: 1 },
   mainBackground: { flex: 1 },
   backgroundImageStyle: { opacity: 0.7 },
-  scrollViewContent: { flexGrow: 1, paddingBottom: moderateScale(20) },
+  scrollViewContent: {
+    flexGrow: 1,
+    paddingBottom: SIZES.padding.lg,
+  },
+
+  // Floating Card Styles
   floatingCard: {
-    backgroundColor: COLORS.accentLight1,
-    marginHorizontal: SIZES.padding.md,
-    marginTop: moderateScale(12),
-    padding: moderateScale(20),
+    backgroundColor: COLORS.white,
+    marginHorizontal: SIZES.padding.lg,
+    marginTop: SIZES.padding.md,
+    padding: SIZES.padding.lg,
     borderRadius: SIZES.radius.lg,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 8 },
-    shadowOpacity: 0.15,
-    shadowRadius: 16,
-    elevation: 8,
-    marginBottom: moderateScale(16),
+    ...SHADOWS.lg,
+    marginBottom: SIZES.padding.md,
   },
+
+  // Card Header
   cardHeader: {
-    backgroundColor: COLORS.error,
-    paddingVertical: moderateScale(10),
-    paddingHorizontal: moderateScale(14),
+    backgroundColor: COLORS.primary,
+    paddingVertical: SIZES.padding.sm,
+    paddingHorizontal: SIZES.padding.md,
     borderTopLeftRadius: SIZES.radius.lg,
     borderTopRightRadius: SIZES.radius.lg,
-    marginHorizontal: -moderateScale(20),
-    marginTop: -moderateScale(20),
-    marginBottom: moderateScale(12),
+    marginHorizontal: -SIZES.padding.lg,
+    marginTop: -SIZES.padding.lg,
+    marginBottom: SIZES.padding.md,
     flexDirection: "row",
     justifyContent: "space-between",
-    gap: moderateScale(8),
+    alignItems: "center",
+    gap: SIZES.padding.sm,
   },
   headerIconContainer: {
     flexDirection: "row",
     alignItems: "center",
-    gap: moderateScale(8),
+    gap: SIZES.padding.sm,
   },
-  headerTextContainer: { alignItems: "flex-end" },
+  headerTextContainer: {
+    alignItems: "flex-end",
+    flex: 1,
+  },
   schemeName: {
-    ...FONTS.h6,
+    ...FONTS.h5,
     color: COLORS.white,
-    fontWeight: "700",
-    letterSpacing: 0.5,
+    fontWeight: FONTS.weight.bold,
   },
   pname: {
-    ...FONTS.h6,
+    ...FONTS.bodyMedium,
     color: COLORS.white,
-    textAlign: "center",
-    letterSpacing: 0.5,
+    textAlign: "right",
   },
   groupCode: {
-    ...FONTS.h6,
+    ...FONTS.bodySmall,
     color: COLORS.white,
-    fontWeight: "700",
-    textAlign: "center",
-    letterSpacing: 0.5,
+    fontWeight: FONTS.weight.semiBold,
+    textAlign: "right",
   },
+
+  // Top Row Layout
   topRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    marginBottom: moderateScale(20),
+    marginBottom: SIZES.padding.lg,
   },
   leftSection: {
     flex: 1,
-    marginRight: moderateScale(10),
+    marginRight: SIZES.padding.sm,
     alignItems: "flex-start",
   },
   rightSection: {
     flex: 1,
-    marginLeft: moderateScale(10),
+    marginLeft: SIZES.padding.sm,
     alignItems: "flex-end",
   },
-  dataRow: { marginBottom: moderateScale(16), width: "100%" },
+
+  // Data Rows
+  dataRow: {
+    marginBottom: SIZES.padding.md,
+    width: "100%",
+  },
   dataLabel: {
     ...FONTS.caption,
     color: COLORS.textSecondary,
-    marginBottom: moderateScale(4),
+    marginBottom: SIZES.padding.xs,
   },
-  dataValue: { ...FONTS.h6, color: COLORS.textPrimary, fontWeight: "700" },
-  bottomRow: { flexDirection: "row", justifyContent: "space-between" },
+  dataValue: {
+    ...FONTS.h5,
+    color: COLORS.textPrimary,
+    fontWeight: FONTS.weight.bold,
+  },
+
+  // Bottom Row (Dates)
+  bottomRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+  },
   dateRow: { flex: 1 },
   dateLabel: {
     ...FONTS.caption,
     color: COLORS.textSecondary,
-    marginBottom: moderateScale(4),
+    marginBottom: SIZES.padding.xs,
   },
   dateValue: {
     ...FONTS.bodySmall,
     color: COLORS.textPrimary,
-    fontWeight: "600",
+    fontWeight: FONTS.weight.semiBold,
   },
+
+  // History Section
   historySection: {
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.lg,
-    padding: moderateScale(16),
-    marginHorizontal: SIZES.padding.md,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    padding: SIZES.padding.lg,
+    marginHorizontal: SIZES.padding.lg,
+    ...SHADOWS.md,
   },
   historyHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: moderateScale(16),
+    marginBottom: SIZES.padding.md,
   },
-  historyTitle: { ...FONTS.h5, color: COLORS.textPrimary },
+  historyTitle: {
+    ...FONTS.h4,
+    color: COLORS.textPrimary,
+  },
   viewAllButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.secondaryDark,
-    paddingHorizontal: moderateScale(12),
-    paddingVertical: moderateScale(6),
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.xs,
     borderRadius: SIZES.radius.full,
-    gap: moderateScale(4),
+    gap: SIZES.padding.xs,
   },
-  viewAllText: { ...FONTS.caption, color: COLORS.white, fontWeight: "600" },
+  viewAllText: {
+    ...FONTS.caption,
+    color: COLORS.white,
+    fontWeight: FONTS.weight.semiBold,
+  },
+
+  // Table Styles
   tableHeader: {
     flexDirection: "row",
-    backgroundColor: COLORS.surface,
-    padding: moderateScale(12),
+    backgroundColor: COLORS.gray50,
+    padding: SIZES.padding.md,
     borderRadius: SIZES.radius.sm,
-    marginBottom: moderateScale(8),
+    marginBottom: SIZES.padding.sm,
   },
-  tableColumn: { flex: 1, alignItems: "center" },
-  tableColumnAction: { flex: 0.6, alignItems: "center" },
+  tableColumn: {
+    flex: 1,
+    alignItems: "center",
+  },
+  tableColumnAction: {
+    flex: 0.6,
+    alignItems: "center",
+  },
   tableHeaderText: {
     ...FONTS.bodySmall,
     color: COLORS.textPrimary,
-    fontWeight: "700",
+    fontWeight: FONTS.weight.bold,
   },
+
+  // Transactions Container
   transactionsContainer: {
     borderRadius: SIZES.radius.sm,
     overflow: "hidden",
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.white,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
+
+  // Transaction Row
   transactionRow: {
     flexDirection: "row",
-    backgroundColor: COLORS.surface,
-    padding: moderateScale(12),
+    backgroundColor: COLORS.white,
+    padding: SIZES.padding.md,
     alignItems: "center",
   },
-  transactionLeft: { flex: 1, alignItems: "center" },
-  transactionMiddle: { flex: 1, alignItems: "center" },
-  transactionRight: { flex: 1, alignItems: "center" },
+  transactionLeft: {
+    flex: 1,
+    alignItems: "center",
+  },
+  transactionMiddle: {
+    flex: 1,
+    alignItems: "center",
+  },
+  transactionRight: {
+    flex: 1,
+    alignItems: "center",
+  },
   downloadButton: {
     flex: 0.6,
     alignItems: "center",
     justifyContent: "center",
-    padding: moderateScale(4),
+    padding: SIZES.padding.xs,
   },
-  transactionDate: { ...FONTS.bodySmall, color: COLORS.textPrimary },
+
+  // Transaction Text
+  transactionDate: {
+    ...FONTS.bodySmall,
+    color: COLORS.textPrimary,
+  },
   transactionAmount: {
     ...FONTS.bodySmall,
     color: COLORS.textPrimary,
-    fontWeight: "600",
+    fontWeight: FONTS.weight.semiBold,
   },
   transactionStatus: {
     ...FONTS.bodySmall,
     color: COLORS.success,
-    fontWeight: "600",
+    fontWeight: FONTS.weight.semiBold,
   },
-  rowDivider: { height: 1, backgroundColor: COLORS.borderLight },
-  emptyState: { alignItems: "center", paddingVertical: moderateScale(40) },
+
+  // Dividers
+  rowDivider: {
+    height: 1,
+    backgroundColor: COLORS.borderLight,
+  },
+
+  // Empty State
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: SIZES.padding.xl,
+  },
   emptyIconContainer: {
-    width: moderateScale(80),
-    height: moderateScale(80),
-    borderRadius: moderateScale(40),
-    backgroundColor: COLORS.surface,
+    width: SIZES.icon.xxxl,
+    height: SIZES.icon.xxxl,
+    borderRadius: SIZES.icon.xxxl / 2,
+    backgroundColor: COLORS.gray100,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: moderateScale(16),
+    marginBottom: SIZES.padding.md,
   },
   emptyStateText: {
-    ...FONTS.body,
-    fontWeight: "600",
+    ...FONTS.bodyMedium,
+    fontWeight: FONTS.weight.semiBold,
     color: COLORS.textSecondary,
-    marginBottom: moderateScale(4),
+    marginBottom: SIZES.padding.xs,
   },
   emptyStateSubtext: {
     ...FONTS.caption,
-    color: COLORS.textSecondary,
-    opacity: 0.7,
+    color: COLORS.textTertiary,
     textAlign: "center",
   },
 });

@@ -13,7 +13,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { bannerService, fallbackBanners } from "../../services/OnboardService";
-import appTheme from "../../utils/MainTheme";
+import theme from "../../utils/AppTheme"; // Changed from appTheme to theme
 
 const { width, height } = Dimensions.get("window");
 
@@ -41,7 +41,7 @@ const OnboardingScreen = ({ navigation }) => {
   const loadBanners = async () => {
     try {
       const data = await bannerService.getBanners();
-      setBanners([...data].reverse());
+      setBanners([...data].reverse()); // most recent first
     } catch (error) {
       console.log("Using fallback banners");
       setBanners([...fallbackBanners].reverse());
@@ -57,9 +57,11 @@ const OnboardingScreen = ({ navigation }) => {
   };
 
   const getImageUrl = (imagePath) => {
+    if (!imagePath) return null;
+
     return imagePath.startsWith("http")
       ? imagePath
-      : `https://app.bmgjewellers.com${imagePath}`;
+      : `https://scheme.bmgjewellers.com${imagePath}`;
   };
 
   const navigateSlide = (direction) => {
@@ -86,12 +88,12 @@ const OnboardingScreen = ({ navigation }) => {
         resizeMode="cover"
       />
 
-      <View style={styles.topContentContainer}>
+      {/* <View style={styles.topContentContainer}>
         <View style={styles.contentBackground}>
           <Text style={styles.title}>{item.title}</Text>
           <Text style={styles.subtitle}>{item.subtitle}</Text>
         </View>
-      </View>
+      </View> */}
 
       <View style={styles.bottomNavContainer}>
         <TouchableOpacity
@@ -192,35 +194,37 @@ const OnboardingScreen = ({ navigation }) => {
   );
 };
 
-// ------------------ Styles ------------------
+// ------------------ Updated Styles using new theme system ------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: appTheme.COLORS.background,
+    backgroundColor: theme.COLORS.background,
   },
   skipContainer: {
     position: "absolute",
-    top: appTheme.verticalScale(appTheme.SIZES.xl),
-    right: appTheme.SIZES.padding.md,
+    top: theme.verticalScale(theme.SIZES.xxl),
+    right: theme.SIZES.padding.lg,
     zIndex: 10,
-    backgroundColor: appTheme.COLORS.accentLight,
-    borderRadius: appTheme.SIZES.radius.sm,
-    paddingHorizontal: appTheme.SIZES.padding.sm,
-    paddingVertical: appTheme.SIZES.xs,
-    ...appTheme.SHADOWS.sm,
+    backgroundColor: theme.COLORS.primary,
+    borderRadius: theme.SIZES.radius.md,
+    paddingHorizontal: theme.SIZES.padding.md,
+    paddingVertical: theme.SIZES.padding.xs,
+    // ...theme.SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: theme.COLORS.whiteOpacity50,
   },
   skipButton: {
-    padding: appTheme.SIZES.xs,
+    padding: theme.SIZES.xs,
   },
   skipText: {
-    ...appTheme.FONTS.bodySmall,
-    fontSize: appTheme.SIZES.font.sm,
-    color: appTheme.COLORS.textPrimary,
-    fontWeight: "600",
+    ...theme.FONTS.bodyMedium,
+    fontSize: theme.SIZES.font.sm,
+    color: theme.COLORS.textInverse,
+    letterSpacing: 0.5,
   },
   slide: {
-    width: appTheme.SIZES.screen.width,
-    height: appTheme.SIZES.screen.height,
+    width: theme.SIZES.screen.width,
+    height: theme.SIZES.screen.height,
   },
   image: {
     width: "100%",
@@ -228,109 +232,124 @@ const styles = StyleSheet.create({
   },
   topContentContainer: {
     position: "absolute",
-    top: appTheme.verticalScale(appTheme.SIZES.xxl * 3),
+    top: theme.verticalScale(theme.SIZES.xxxl * 2),
     left: 0,
     right: 0,
-    paddingHorizontal: appTheme.SIZES.padding.md,
+    paddingHorizontal: theme.SIZES.padding.xl,
   },
   contentBackground: {
-    paddingHorizontal: appTheme.SIZES.lg,
-    paddingVertical: appTheme.SIZES.md,
-    // backgroundColor: appTheme.COLORS.overlay,
-    borderRadius: appTheme.SIZES.radius.lg,
+    paddingHorizontal: theme.SIZES.padding.xl,
+    paddingVertical: theme.SIZES.padding.lg,
+    // backgroundColor: theme.COLORS.blackOpacity30,
+    borderRadius: theme.SIZES.radius.lg,
+    // ...theme.SHADOWS.md,
   },
   title: {
-    ...appTheme.FONTS.h3,
-    fontSize: appTheme.SIZES.heading.h3,
-    color: appTheme.COLORS.textInverse,
+    ...theme.FONTS.h2,
+    fontSize: theme.SIZES.heading.h2,
+    color: theme.COLORS.textInverse,
     textAlign: "center",
-    marginBottom: appTheme.SIZES.sm,
-    lineHeight: appTheme.SIZES.heading.h3 * 1.3,
+    marginBottom: theme.SIZES.sm,
+    textShadowColor: theme.COLORS.blackOpacity50,
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
   subtitle: {
-    ...appTheme.FONTS.bodyLarge,
-    fontSize: appTheme.SIZES.font.lg,
-    color: appTheme.COLORS.textInverse,
+    ...theme.FONTS.bodyLarge,
+    fontSize: theme.SIZES.font.lg,
+    color: theme.COLORS.textInverse,
     textAlign: "center",
+    textShadowColor: theme.COLORS.blackOpacity50,
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
   bottomNavContainer: {
     position: "absolute",
-    bottom: appTheme.verticalScale(appTheme.SIZES.xxl),
+    bottom: theme.verticalScale(theme.SIZES.xxl * 2),
     left: 0,
     right: 0,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingHorizontal: appTheme.SIZES.padding.md * 2,
+    paddingHorizontal: theme.SIZES.padding.xl,
   },
   arrowButton: {
-    width: appTheme.SIZES.button.md,
-    height: appTheme.SIZES.button.md,
-    borderRadius: appTheme.SIZES.radius.full,
-    backgroundColor: appTheme.COLORS.white,
+    width: theme.SIZES.button.lg,
+    height: theme.SIZES.button.lg,
+    borderRadius: theme.SIZES.radius.full,
+    backgroundColor: theme.COLORS.white,
     justifyContent: "center",
     alignItems: "center",
-    ...appTheme.SHADOWS.md,
-    marginBottom: 45,
+    ...theme.SHADOWS.lg,
   },
   arrowDisabled: {
-    backgroundColor: appTheme.COLORS.textDisabled,
+    backgroundColor: theme.COLORS.textDisabled,
+    ...theme.SHADOWS.none,
   },
   arrowText: {
-    fontSize: appTheme.SIZES.heading.h4,
-    color: appTheme.COLORS.primary,
+    fontSize: theme.SIZES.heading.h3,
+    color: theme.COLORS.primary,
     fontWeight: "bold",
+    marginTop: -2, // Visual adjustment for arrow alignment
   },
   arrowTextDisabled: {
-    color: appTheme.COLORS.textDisabled,
+    color: theme.COLORS.textDisabled,
   },
   dotsContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    backgroundColor: theme.COLORS.blackOpacity20,
+    borderRadius: theme.SIZES.radius.full,
+    paddingHorizontal: theme.SIZES.padding.sm,
+    paddingVertical: theme.SIZES.padding.xs,
   },
   dot: {
-    width: appTheme.SIZES.xs,
-    height: appTheme.SIZES.xs,
-    borderRadius: appTheme.SIZES.radius.full,
-    backgroundColor: appTheme.COLORS.borderLight,
-    marginHorizontal: appTheme.SIZES.xs,
+    width: theme.SIZES.xs,
+    height: theme.SIZES.xs,
+    borderRadius: theme.SIZES.radius.full,
+    backgroundColor: theme.COLORS.whiteOpacity50,
+    marginHorizontal: theme.SIZES.xs,
   },
   activeDot: {
-    backgroundColor: appTheme.COLORS.white,
-    width: appTheme.SIZES.sm,
+    backgroundColor: theme.COLORS.white,
+    width: theme.SIZES.sm,
+    height: theme.SIZES.sm,
+    ...theme.SHADOWS.xs,
   },
   buttonContainer: {
     position: "absolute",
-    bottom: appTheme.verticalScale(appTheme.SIZES.xxl * 3),
+    bottom: theme.verticalScale(theme.SIZES.xxl * 2.4),
     alignSelf: "center",
-    width: appTheme.moderateScale(200),
-    height: appTheme.SIZES.button.lg,
+    width: theme.moderateScale(200),
   },
   button: {
-    backgroundColor: appTheme.COLORS.secondary,
-    paddingVertical: appTheme.SIZES.sm,
-    borderRadius: appTheme.SIZES.radius.md,
+    backgroundColor: theme.COLORS.secondary,
+    paddingVertical: theme.SIZES.padding.lg,
+    paddingHorizontal: theme.SIZES.padding.xxl,
+    borderRadius: theme.SIZES.radius.lg,
     alignItems: "center",
     justifyContent: "center",
-    ...appTheme.SHADOWS.lg,
+    ...theme.SHADOWS.lg,
+    borderWidth: 2,
+    borderColor: theme.COLORS.white,
   },
   buttonText: {
-    ...appTheme.FONTS.h5,
-    fontSize: appTheme.SIZES.font.xl,
-    color: appTheme.COLORS.textInverse,
-    fontWeight: "600",
+    ...theme.FONTS.button,
+    fontSize: theme.SIZES.font.xl,
+    color: theme.COLORS.textPrimary,
+    fontWeight: "700",
   },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: appTheme.COLORS.background,
+    backgroundColor: theme.COLORS.background,
   },
   loadingText: {
-    ...appTheme.FONTS.body,
-    fontSize: appTheme.SIZES.font.md,
-    color: appTheme.COLORS.textPrimary,
+    ...theme.FONTS.body,
+    fontSize: theme.SIZES.font.lg,
+    color: theme.COLORS.textSecondary,
   },
 });
 

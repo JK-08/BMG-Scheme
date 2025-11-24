@@ -1,47 +1,42 @@
 import { Dimensions, StyleSheet } from 'react-native';
-import { verticalScale, scale } from '../../utils/scaling';
-import { colors } from '../../utils';
-import { colors1 } from '../../utils/colors';
+import { moderateScale, COLORS, FONTS, SIZES, SHADOWS } from '../../utils/AppTheme';
 
 const { height, width } = Dimensions.get('window');
 
 const styles = StyleSheet.create({
   footerContainer: {
     width,
-    height: height * 0.08,
+    height: SIZES.button.lg,
     flexDirection: 'row',
-    backgroundColor: colors.white,
+    backgroundColor: COLORS.white,
     justifyContent: 'space-between',
     alignItems: 'center',
-    // borderTopWidth: 1,
-    // borderTopColor: colors.lightGray,
-    // paddingHorizontal: scale(10),
-    
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    ...SHADOWS.sm,
   },
   footerBtnContainer: {
     width: '25%',
     height: '100%',
     justifyContent: 'center',
     alignItems: 'center',
-  
+    paddingVertical: SIZES.padding.sm,
   },
   imgContainer: {
     justifyContent: 'center',
     alignItems: 'center',
   },
   activeText: {
-    marginTop: verticalScale(4),
-    color: colors1.primaryText,
-    fontSize: 14,
-
-    fontWeight: 'bold',
+    marginTop: SIZES.margin.xs,
+    color: COLORS.primary,
+    ...FONTS.caption,
+    fontWeight: FONTS.weight.semiBold,
   },
   inactiveText: {
-    marginTop: verticalScale(4),
-    color: colors.darkGrayText,
-    fontSize: 12,
-  
-    fontWeight: 'bold',
+    marginTop: SIZES.margin.xs,
+    color: COLORS.textSecondary,
+    ...FONTS.caption,
+    fontWeight: FONTS.weight.regular,
   },
   profileContainer: {
     width: '100%',
@@ -50,37 +45,37 @@ const styles = StyleSheet.create({
     position: 'relative',
   },
   profileBadge: {
-    width: verticalScale(8),
-    height: verticalScale(8),
+    width: SIZES.xs,
+    height: SIZES.xs,
     position: 'absolute',
     right: '25%',
     top: 0,
-    backgroundColor: colors.greenColor,
-    borderRadius: verticalScale(4),
+    backgroundColor: COLORS.success,
+    borderRadius: SIZES.radius.full,
   },
   badgeContainer: {
     position: 'absolute',
-    top: -scale(5),
-    right: -scale(10),
-    backgroundColor: colors.redColor,
-    borderRadius: scale(10),
-    height: scale(16),
-    width: scale(16),
+    top: -SIZES.padding.xs,
+    right: -SIZES.padding.sm,
+    backgroundColor: COLORS.error,
+    borderRadius: SIZES.radius.sm,
+    height: moderateScale(18),
+    width: moderateScale(18),
     justifyContent: 'center',
     alignItems: 'center',
+    ...SHADOWS.xs,
   },
   badgeText: {
-    color: colors.white,
-    fontSize: scale(10),
-    fontWeight: 'bold',
+    color: COLORS.white,
+    fontSize: SIZES.font.xxs,
+    fontWeight: FONTS.weight.bold,
   },
   iconContainer: {
-    width: 50,
-    height: 50,
+    width: SIZES.icon.xxl,
+    height: SIZES.icon.xxl,
     justifyContent: 'center',
     alignItems: 'center',
-    borderRadius: 25, // Rounded container for the icons.
-   
+    borderRadius: SIZES.radius.full,
   },
 });
 

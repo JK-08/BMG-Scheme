@@ -11,9 +11,9 @@ import {
 import { Ionicons } from '@expo/vector-icons';
 import { useNavigation } from '@react-navigation/native';
 import { SafeAreaView } from 'react-native-safe-area-context';
-import appTheme from '../../utils/MainTheme';
+import theme from '../../utils/AppTheme';
 
-const { COLORS, FONTS, SIZES, scale, verticalScale, moderateScale } = appTheme;
+const { COLORS, FONTS, SIZES, moderateScale, verticalScale, SHADOWS } = theme;
 
 const CommonHeader = ({
   title,
@@ -101,7 +101,7 @@ const CommonHeader = ({
                 hitSlop={{ top: 10, bottom: 10, left: 10, right: 10 }}
               >
                 <View style={styles.iconContainer}>
-                  <Ionicons name={backIconName} size={moderateScale(22)} color={backIconColor} />
+                  <Ionicons name={backIconName} size={moderateScale(24)} color={backIconColor} />
                 </View>
               </TouchableOpacity>
             ) : (
@@ -151,7 +151,9 @@ export const SearchHeader = ({ title, onSearchPress, onFilterPress, ...props }) 
               onPress={onSearchPress}
               activeOpacity={0.7}
             >
-              <Ionicons name="search" size={moderateScale(22)} color={COLORS.secondary} />
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="search" size={moderateScale(22)} color={COLORS.white} />
+              </View>
             </TouchableOpacity>
           )}
           {onFilterPress && (
@@ -160,7 +162,9 @@ export const SearchHeader = ({ title, onSearchPress, onFilterPress, ...props }) 
               onPress={onFilterPress}
               activeOpacity={0.7}
             >
-              <Ionicons name="filter" size={moderateScale(22)} color={COLORS.secondary} />
+              <View style={styles.actionIconContainer}>
+                <Ionicons name="filter" size={moderateScale(22)} color={COLORS.white} />
+              </View>
             </TouchableOpacity>
           )}
         </View>
@@ -184,11 +188,13 @@ export const ActionHeader = ({ title, actions = [], ...props }) => {
               onPress={action.onPress}
               activeOpacity={0.7}
             >
-              <Ionicons
-                name={action.icon}
-                size={moderateScale(22)}
-                color={action.color || COLORS.secondary}
-              />
+              <View style={[styles.actionIconContainer, { backgroundColor: action.color || COLORS.primary }]}>
+                <Ionicons
+                  name={action.icon}
+                  size={moderateScale(22)}
+                  color={COLORS.white}
+                />
+              </View>
               {action.badge && (
                 <View style={styles.badge}>
                   <Text style={styles.badgeText}>{action.badge}</Text>
@@ -209,8 +215,9 @@ const styles = StyleSheet.create({
     flexDirection: 'row',
     alignItems: 'center',
     justifyContent: 'space-between',
-    paddingHorizontal: scale(16),
-    paddingVertical: verticalScale(12),
+    paddingHorizontal: SIZES.padding.lg,
+    paddingVertical: verticalScale(SIZES.padding.md),
+    minHeight: verticalScale(60),
   },
   transparentContainer: {
     backgroundColor: 'transparent',
@@ -225,7 +232,7 @@ const styles = StyleSheet.create({
     flex: 1,
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: scale(8),
+    paddingHorizontal: SIZES.padding.sm,
   },
   centerSectionLeft: {
     alignItems: 'flex-start',
@@ -236,60 +243,112 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   iconButton: {
+    width: moderateScale(44),
+    height: moderateScale(44),
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderRadius: SIZES.radius.full,
+  },
+  iconContainer: {
     width: moderateScale(40),
     height: moderateScale(40),
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: moderateScale(20),
+    borderRadius: SIZES.radius.full,
+    backgroundColor: COLORS.primary,
+    ...SHADOWS.sm,
   },
-  iconContainer: {
-    width: moderateScale(38),
-    height: moderateScale(38),
+  actionIconContainer: {
+    width: moderateScale(40),
+    height: moderateScale(40),
     alignItems: 'center',
     justifyContent: 'center',
-    borderRadius: moderateScale(19),
-    backgroundColor: COLORS.secondary,
+    borderRadius: SIZES.radius.full,
+    backgroundColor: COLORS.primary,
+    ...SHADOWS.sm,
   },
   leftPlaceholder: {
-    width: moderateScale(40),
+    width: moderateScale(44),
   },
   rightPlaceholder: {
-    width: moderateScale(40),
+    width: moderateScale(44),
   },
   title: {
-    ...FONTS.h5,
-    fontSize: moderateScale(18),
+    ...FONTS.h4,
+    fontSize: SIZES.font.xl,
     color: COLORS.textPrimary,
-    letterSpacing: 0.3,
+    textAlign: 'center',
   },
   subtitle: {
     ...FONTS.bodySmall,
-    fontSize: moderateScale(12),
+    fontSize: SIZES.font.sm,
     color: COLORS.textSecondary,
-    marginTop: verticalScale(2),
+    marginTop: verticalScale(SIZES.xs),
+    textAlign: 'center',
   },
   actionButtons: {
     flexDirection: 'row',
     alignItems: 'center',
-    gap: scale(4),
+    gap: SIZES.xs,
   },
   badge: {
     position: 'absolute',
-    top: moderateScale(4),
-    right: moderateScale(4),
+    top: moderateScale(6),
+    right: moderateScale(6),
     backgroundColor: COLORS.error,
-    borderRadius: moderateScale(10),
-    minWidth: moderateScale(16),
-    height: moderateScale(16),
+    borderRadius: SIZES.radius.full,
+    minWidth: moderateScale(18),
+    height: moderateScale(18),
     alignItems: 'center',
     justifyContent: 'center',
-    paddingHorizontal: scale(4),
+    paddingHorizontal: SIZES.xs,
+    borderWidth: 2,
+    borderColor: COLORS.background,
+    ...SHADOWS.xs,
   },
   badgeText: {
-    ...FONTS.fontXs,
-    fontSize: moderateScale(10),
+    ...FONTS.caption,
+    fontSize: SIZES.font.xs,
     color: COLORS.white,
+    fontWeight: 'bold',
   },
 });
+
+// Platform-specific adjustments
+if (Platform.OS === 'web') {
+  styles.iconButton = {
+    ...styles.iconButton,
+    cursor: 'pointer',
+  };
+}
+
+// Additional responsive adjustments for small screens
+if (SIZES.screen.width < 375) {
+  styles.container = {
+    ...styles.container,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: verticalScale(SIZES.padding.sm),
+    minHeight: verticalScale(56),
+  };
+  
+  styles.title = {
+    ...styles.title,
+    fontSize: SIZES.font.lg,
+  };
+}
+
+// For large screens
+if (SIZES.screen.width > 414) {
+  styles.container = {
+    ...styles.container,
+    paddingVertical: verticalScale(SIZES.padding.lg),
+    minHeight: verticalScale(64),
+  };
+  
+  styles.title = {
+    ...styles.title,
+    fontSize: SIZES.font.xxl,
+  };
+}
 
 export default CommonHeader;

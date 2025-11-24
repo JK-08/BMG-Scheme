@@ -1,7 +1,7 @@
-import { StyleSheet, Dimensions } from "react-native";
-import appTheme from "../../utils/MainTheme";
+import { StyleSheet, Dimensions, Platform } from "react-native";
+import theme from "../../utils/AppTheme";
 
-const { COLORS, SIZES, FONTS, moderateScale, verticalScale, SHADOWS } = appTheme;
+const { COLORS, SIZES, FONTS, moderateScale, verticalScale, SHADOWS } = theme;
 const { width, height } = Dimensions.get("window");
 
 export const mpinStyles = StyleSheet.create({
@@ -17,46 +17,46 @@ export const mpinStyles = StyleSheet.create({
   },
   scrollViewContent: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
+    paddingBottom: SIZES.xl,
   },
   container: {
     flex: 1,
     alignItems: "center",
-    paddingTop: verticalScale(SIZES.xs),
-    paddingBottom: SIZES.xl,
+    paddingTop: verticalScale(SIZES.xl),
   },
 
   // Logo Section
   logoContainer: {
     alignItems: "center",
-    marginBottom: SIZES.xss,
+    marginBottom: SIZES.sm,
   },
   logoRow: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: SIZES.xs,
+    marginBottom: SIZES.sm,
   },
   logoImage: {
-    width: moderateScale(360),
-    height: moderateScale(150),
-    marginRight: SIZES.sm,
-    borderRadius: SIZES.radius.sm,
+    width: moderateScale(220),
+    height: moderateScale(94),
+    resizeMode: "contain",
+    borderRadius: SIZES.radius.full,
   },
 
   // Content Section
   contentContainer: {
-    paddingHorizontal: SIZES.padding.lg,
-    paddingTop: SIZES.xl,
+    paddingHorizontal: SIZES.padding.xl,
+    paddingTop: SIZES.lg,
     alignItems: "center",
     width: "100%",
   },
   headerSection: {
     alignItems: "center",
-    marginBottom: SIZES.xl,
+    marginBottom: SIZES.lg,
   },
   title: {
     ...FONTS.h3,
-    color: COLORS.secondaryDark,
+    color: COLORS.textPrimary,
     marginBottom: SIZES.sm,
     textAlign: "center",
   },
@@ -64,20 +64,21 @@ export const mpinStyles = StyleSheet.create({
     ...FONTS.body,
     color: COLORS.textSecondary,
     textAlign: "center",
-    lineHeight: SIZES.font.md * 1.4,
+    lineHeight: SIZES.font.lg * 1.4,
   },
 
   // MPIN Section
   mpinSection: {
     alignItems: "center",
-    marginBottom: SIZES.xl,
+    marginBottom: SIZES.md,
     width: "100%",
   },
   mpinLabel: {
-    ...FONTS.body,
+    ...FONTS.bodyMedium,
     color: COLORS.textPrimary,
     marginBottom: SIZES.lg,
-    alignSelf: "flex-start",
+    textAlign: "center",
+    width: "100%",
   },
   mpinContainer: {
     flexDirection: "row",
@@ -88,36 +89,36 @@ export const mpinStyles = StyleSheet.create({
     maxWidth: moderateScale(280),
   },
   mpinInputWrapper: {
-    marginHorizontal: SIZES.xs,
+    marginHorizontal: SIZES.sm,
     position: "relative",
   },
   mpinInput: {
-    width: moderateScale(50),
-    height: moderateScale(50),
+    width: moderateScale(60),
+    height: moderateScale(60),
     borderWidth: 2,
     borderColor: COLORS.borderMedium,
-    borderRadius: SIZES.radius.md,
-    fontSize: SIZES.font.xl,
+    borderRadius: SIZES.radius.lg,
+    fontSize: SIZES.font.xxl,
     fontWeight: "bold",
     backgroundColor: COLORS.inputBackground,
     ...SHADOWS.sm,
     textAlign: "center",
     color: COLORS.textPrimary,
-    fontFamily: FONTS.family.bodyBold,
+    fontFamily: FONTS.family.bold,
   },
   mpinInputFilled: {
-    borderColor: COLORS.secondaryDark,
+    borderColor: COLORS.primary,
     backgroundColor: COLORS.white,
     ...SHADOWS.md,
   },
   filledIndicator: {
     position: "absolute",
-    bottom: -SIZES.xs,
+    bottom: -SIZES.sm,
     left: "50%",
     marginLeft: -SIZES.xs / 2,
     width: SIZES.xs,
     height: SIZES.xs,
-    borderRadius: SIZES.xs / 2,
+    borderRadius: SIZES.radius.full,
     backgroundColor: COLORS.primary,
   },
 
@@ -133,10 +134,11 @@ export const mpinStyles = StyleSheet.create({
     color: COLORS.error,
     fontWeight: "500",
     marginTop: SIZES.sm,
+    textAlign: "center",
   },
   weakMpinWarning: {
     ...FONTS.caption,
-    color: COLORS.error,
+    color: COLORS.warning,
     fontWeight: "500",
     marginTop: SIZES.sm,
     textAlign: "center",
@@ -156,12 +158,12 @@ export const mpinStyles = StyleSheet.create({
     width: "100%",
   },
   forgotButton: {
-    paddingVertical: SIZES.sm,
-    marginBottom: SIZES.lg,
+    paddingVertical: SIZES.padding.sm,
+    marginBottom: SIZES.sm,
   },
   forgotText: {
-    ...FONTS.body,
-    color: COLORS.error,
+    ...FONTS.bodyMedium,
+    color: COLORS.primary,
     fontWeight: "600",
   },
   buttonWrapper: {
@@ -171,7 +173,7 @@ export const mpinStyles = StyleSheet.create({
   createButton: {
     width: "100%",
     maxWidth: moderateScale(300),
-    height: moderateScale(55),
+    height: SIZES.button.lg,
     borderRadius: SIZES.radius.lg,
     justifyContent: "center",
     alignItems: "center",
@@ -185,9 +187,8 @@ export const mpinStyles = StyleSheet.create({
     opacity: 0.6,
   },
   createButtonText: {
-    ...FONTS.h6,
+    ...FONTS.button,
     color: COLORS.textInverse,
-    fontWeight: "600",
   },
 
   // Error State
@@ -195,4 +196,82 @@ export const mpinStyles = StyleSheet.create({
     borderColor: COLORS.error,
     backgroundColor: COLORS.errorLight + "20",
   },
+  // Add to your existing MpinStyles.js
+  existingMpinLink: {
+    marginTop: SIZES.lg,
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.xs,
+    padding: SIZES.padding.sm,
+  },
+  existingMpinText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    textAlign: "center",
+  },
+  existingMpinLinkText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.primary,
+    textAlign: "center",
+    fontWeight: "600",
+    textDecorationLine: "underline",
+    textDecorationColor: COLORS.primary,
+  },
 });
+
+// Platform-specific adjustments
+if (Platform.OS === "web") {
+  mpinStyles.scrollViewContent = {
+    ...mpinStyles.scrollViewContent,
+    minHeight: "100vh",
+  };
+
+  mpinStyles.mpinInput = {
+    ...mpinStyles.mpinInput,
+    outlineStyle: "none",
+  };
+
+  mpinStyles.createButton = {
+    ...mpinStyles.createButton,
+    cursor: "pointer",
+  };
+
+  mpinStyles.forgotButton = {
+    ...mpinStyles.forgotButton,
+    cursor: "pointer",
+  };
+}
+
+// Additional responsive adjustments for small screens
+if (SIZES.screen.height < 600) {
+  mpinStyles.container = {
+    ...mpinStyles.container,
+    paddingTop: verticalScale(SIZES.lg),
+  };
+
+  mpinStyles.contentContainer = {
+    ...mpinStyles.contentContainer,
+    paddingTop: SIZES.lg,
+  };
+
+  mpinStyles.logoImage = {
+    ...mpinStyles.logoImage,
+    width: moderateScale(300),
+    height: moderateScale(120),
+  };
+
+  mpinStyles.mpinInput = {
+    ...mpinStyles.mpinInput,
+    width: moderateScale(50),
+    height: moderateScale(50),
+  };
+}
+
+// For large screens
+if (SIZES.screen.height > 800) {
+  mpinStyles.contentContainer = {
+    ...mpinStyles.contentContainer,
+    maxWidth: moderateScale(400),
+    alignSelf: "center",
+  };
+}

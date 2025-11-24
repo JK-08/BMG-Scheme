@@ -11,9 +11,12 @@ import {
   Platform,
   ScrollView,
 } from "react-native";
-import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/MainTheme";
+import { LinearGradient } from "expo-linear-gradient";
+import theme from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { OTPService, UserService } from "../../services/OTPService";
+
+const { COLORS, SIZES, FONTS, SHADOWS, moderateScale } = theme;
 
 const EnterNumberScreen = ({ navigation, route }) => {
   const mode = route.params?.mode || "verify";
@@ -69,7 +72,6 @@ const EnterNumberScreen = ({ navigation, route }) => {
         });
       }
     } catch (error) {
-      // ✅ Clean alert without console logs
       const errorMessage =
         error?.message?.replace(/^Error:\s*/, "") ||
         "Failed to send OTP. Please try again.";
@@ -80,18 +82,25 @@ const EnterNumberScreen = ({ navigation, route }) => {
     }
   };
 
+  const handleContactNumberChange = (value) => {
+    // Allow only numbers and limit to 10 digits
+    const cleaned = value.replace(/\D/g, "").slice(0, 10);
+    setContactNumber(cleaned);
+  };
+
   return (
-    <View style={{ flex: 1, backgroundColor: COLORS.background }}>
+    <View style={styles.container}>
       <CommonHeader
         title={mode === "forgot" ? "Forgot Password" : "Update Phone Number"}
       />
       <KeyboardAvoidingView
-        style={{ flex: 1 }}
-        behavior={Platform.OS === "ios" ? "padding" : undefined}
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
       >
         <ScrollView
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
         >
           <Text style={styles.subtitle}>
             {mode === "forgot"
@@ -100,28 +109,41 @@ const EnterNumberScreen = ({ navigation, route }) => {
           </Text>
 
           <View style={styles.formSection}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter 10-digit mobile number"
-              placeholderTextColor={COLORS.inputPlaceholder}
-              keyboardType="number-pad"
-              maxLength={10}
-              value={contactNumber}
-              onChangeText={setContactNumber}
-            />
+            {/* Phone Input with Country Code */}
+            <View style={styles.phoneInputContainer}>
+              <View style={styles.countryCodeContainer}>
+                <Text style={styles.countryCode}>+91</Text>
+              </View>
+              <TextInput
+                style={styles.phoneInput}
+                placeholder="Enter 10-digit mobile number"
+                placeholderTextColor={COLORS.textTertiary}
+                keyboardType="number-pad"
+                maxLength={10}
+                value={contactNumber}
+                onChangeText={handleContactNumberChange}
+              />
+            </View>
 
             <TouchableOpacity
-              style={[styles.button, loading && { opacity: 0.6 }]}
+              style={[styles.primaryButton, loading && styles.disabledButton]}
               onPress={handleSendOtp}
               disabled={loading}
             >
-              {loading ? (
-                <ActivityIndicator color={COLORS.white} />
-              ) : (
-                <Text style={styles.buttonText}>
-                  {mode === "forgot" ? "Send OTP" : "Verify Number"}
-                </Text>
-              )}
+              <LinearGradient
+                colors={COLORS.gradient.brand}
+                style={styles.buttonGradient}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+              >
+                {loading ? (
+                  <ActivityIndicator color={COLORS.white} size="small" />
+                ) : (
+                  <Text style={styles.primaryButtonText}>
+                    {mode === "forgot" ? "Send OTP" : "Verify Number"}
+                  </Text>
+                )}
+              </LinearGradient>
             </TouchableOpacity>
           </View>
         </ScrollView>
@@ -133,37 +155,99 @@ const EnterNumberScreen = ({ navigation, route }) => {
 export default EnterNumberScreen;
 
 const styles = StyleSheet.create({
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
+  },
+  keyboardAvoidingView: {
+    flex: 1,
+  },
   scrollContent: {
-    paddingHorizontal: SIZES.padding.lg,
-    paddingTop: SIZES.padding.xl,
+    flexGrow: 1,
+    paddingHorizontal: SIZES.padding.xl,
+    paddingTop: SIZES.padding.xxl,
+    paddingBottom: SIZES.padding.xl,
   },
   subtitle: {
     ...FONTS.body,
     color: COLORS.textSecondary,
-    lineHeight: SIZES.font.md * 1.6,
-    marginBottom: SIZES.xl,
+    lineHeight: SIZES.font.lg * 1.5,
+    marginBottom: SIZES.xxl,
+    textAlign: "center",
   },
   formSection: {
-    backgroundColor: COLORS.white,
+    backgroundColor: COLORS.card,
     borderRadius: SIZES.radius.lg,
-    padding: SIZES.padding.xl,
+    paddingHorizontal: SIZES.padding.xl,
+    paddingVertical: SIZES.padding.xxl,
     ...SHADOWS.md,
-  },
-  input: {
     borderWidth: 1,
-    borderColor: COLORS.inputBorder,
+    borderColor: COLORS.borderLight,
+  },
+  phoneInputContainer: {
+    flexDirection: "row",
+    alignItems: "center",
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.md,
-    textAlign: "center",
+    borderWidth: 1,
+    borderColor: COLORS.inputBorder,
+    marginBottom: SIZES.xl,
+    overflow: "hidden",
+  },
+  countryCodeContainer: {
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.lg,
+    backgroundColor: COLORS.primaryLight,
+    borderRightWidth: 1,
+    borderRightColor: COLORS.borderMedium,
+  },
+  countryCode: {
+    ...FONTS.bodyMedium,
+    color: COLORS.textInverse,
+    fontWeight: "600",
+  },
+  phoneInput: {
+    flex: 1,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.lg,
     fontSize: SIZES.font.md,
-    marginBottom: SIZES.md,
     color: COLORS.textPrimary,
+    fontFamily: FONTS.family.regular,
   },
-  button: {
-    backgroundColor: COLORS.secondary,
+  primaryButton: {
     borderRadius: SIZES.radius.md,
-    paddingVertical: SIZES.padding.md,
+    overflow: "hidden",
+    ...SHADOWS.md,
+    height: SIZES.button.lg,
   },
-  buttonText: { color: COLORS.white, ...FONTS.h5, textAlign: "center" },
+  buttonGradient: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  primaryButtonText: {
+    ...FONTS.button,
+    color: COLORS.textInverse,
+  },
+  disabledButton: {
+    opacity: 0.6,
+  },
 });
+
+// Platform-specific adjustments
+if (Platform.OS === "web") {
+  styles.phoneInput = {
+    ...styles.phoneInput,
+    outlineStyle: "none",
+  };
+  
+  styles.primaryButton = {
+    ...styles.primaryButton,
+    cursor: "pointer",
+  };
+  
+  styles.scrollContent = {
+    ...styles.scrollContent,
+    minHeight: "100vh",
+  };
+}

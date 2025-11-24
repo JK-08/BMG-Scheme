@@ -9,7 +9,7 @@ import {
   StatusBar,
   ImageBackground,
 } from "react-native";
-import { COLORS, SIZES, FONTS, moderateScale } from "../../utils/MainTheme";
+import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 import { LinearGradient } from "expo-linear-gradient";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { Ionicons } from "@expo/vector-icons";
@@ -71,33 +71,20 @@ const PaymentHistoryScreen = ({ navigation, route }) => {
     return sortOrder === "desc" ? db - da : da - db;
   });
 
-  // Navigate to details
-const handlePaymentPress = (item) => {
-  const params = {
-    payment: item,
-    accountDetails: schemeData,
-    schemeName: schemeSummary.schemeName,
-    productdata: productdata,
-    schemeType
-  };
-  
-  console.log("Navigating to PaymentDetailScreen with payment:", params);
-  navigation.navigate("PaymentDetailScreen", params);
-};
 
   const renderItem = ({ item }) => (
     <TouchableOpacity
       style={styles.transactionCard}
       activeOpacity={0.8}
-     
+
     >
       <LinearGradient
-        colors={COLORS.gradient.brand}
+        colors={COLORS.gradient.primary}
         style={styles.iconWrap}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <MaterialIcons name="payment" size={20} color={COLORS.white} />
+        <MaterialIcons name="payment" size={SIZES.icon.md} color={COLORS.white} />
       </LinearGradient>
 
       <View style={styles.transactionInfo}>
@@ -148,7 +135,7 @@ const handlePaymentPress = (item) => {
             >
               <Ionicons
                 name={sortOrder === "desc" ? "arrow-down" : "arrow-up"}
-                size={22}
+                size={SIZES.icon.md}
                 color={COLORS.white}
               />
             </TouchableOpacity>
@@ -167,7 +154,7 @@ const handlePaymentPress = (item) => {
                     ? "schedule"
                     : "account-balance"
                 }
-                size={22}
+                size={SIZES.icon.md}
                 color={COLORS.white}
               />
             </View>
@@ -193,12 +180,10 @@ const handlePaymentPress = (item) => {
 
             <View style={styles.stat}>
               <Text style={styles.statValue}>
-                {schemeType === "DIGI_SILVER"
-                  ? `${summary.totalWeight.toFixed(3)}g`
-                  : summary.count}
+                {summary.count}
               </Text>
               <Text style={styles.statLabel}>
-                {schemeType === "DIGI_SILVER" ? "Silver Saved" : "Payments"}
+                {"Payments"}
               </Text>
             </View>
           </View>
@@ -211,10 +196,10 @@ const handlePaymentPress = (item) => {
           keyExtractor={(item, i) =>
             item.receiptNo || `payment-${i}-${item.installment}`
           }
-          contentContainerStyle={{ paddingBottom: 20 }}
+          contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialIcons name="receipt" size={48} color={COLORS.border} />
+              <MaterialIcons name="receipt" size={SIZES.icon.xxxl} color={COLORS.border} />
               <Text style={styles.emptyText}>No transactions yet</Text>
               <Text style={styles.emptySubtext}>
                 Payment history will appear here
@@ -229,56 +214,72 @@ const handlePaymentPress = (item) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  bg: { flex: 1 },
-  bgImage: { opacity: 0.3 },
+  container: { 
+    flex: 1 
+  },
+  bg: { 
+    flex: 1 
+  },
+  bgImage: { 
+    opacity: 0.3 
+  },
   sortButton: {
-    padding: 6,
+    padding: SIZES.padding.xs,
     backgroundColor: COLORS.primary,
-    borderRadius: 8,
+    borderRadius: SIZES.radius.sm,
   },
 
   summaryCard: {
     backgroundColor: COLORS.white,
-    borderRadius: 16,
-    padding: 16,
-    margin: 16,
-    shadowColor: COLORS.shadow,
-    shadowOpacity: 0.1,
-    shadowRadius: 8,
-    elevation: 4,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.lg,
+    margin: SIZES.padding.lg,
+    ...SHADOWS.md,
   },
   summaryHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 16,
+    marginBottom: SIZES.padding.md,
   },
   schemeIcon: {
-    width: 46,
-    height: 46,
-    borderRadius: 10,
-    backgroundColor: COLORS.secondaryDark,
+    width: SIZES.icon.xxxl,
+    height: SIZES.icon.xxxl,
+    borderRadius: SIZES.radius.md,
+    backgroundColor: COLORS.primary,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: SIZES.padding.md,
   },
-  customerName: { ...FONTS.h5, color: COLORS.textPrimary, fontWeight: "600" },
-  schemeName: { ...FONTS.caption, color: COLORS.textSecondary },
+  customerName: { 
+    ...FONTS.h5, 
+    color: COLORS.textPrimary, 
+    fontWeight: FONTS.weight.semiBold 
+  },
+  schemeName: { 
+    ...FONTS.caption, 
+    color: COLORS.textSecondary 
+  },
   summaryStats: {
     flexDirection: "row",
     justifyContent: "space-between",
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
-    paddingTop: 12,
+    paddingTop: SIZES.padding.md,
   },
-  stat: { flex: 1, alignItems: "center" },
+  stat: { 
+    flex: 1, 
+    alignItems: "center" 
+  },
   statValue: {
     ...FONTS.h6,
     color: COLORS.primary,
-    fontWeight: "700",
-    marginBottom: 4,
+    fontWeight: FONTS.weight.bold,
+    marginBottom: SIZES.padding.xs,
   },
-  statLabel: { ...FONTS.caption, color: COLORS.textSecondary },
+  statLabel: { 
+    ...FONTS.caption, 
+    color: COLORS.textSecondary 
+  },
   divider: {
     width: 1,
     height: "100%",
@@ -289,39 +290,68 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: COLORS.white,
-    padding: 14,
-    borderRadius: 12,
-    marginHorizontal: 16,
-    marginBottom: 12,
-    elevation: 2,
+    padding: SIZES.padding.md,
+    borderRadius: SIZES.radius.md,
+    marginHorizontal: SIZES.padding.lg,
+    marginBottom: SIZES.padding.md,
+    ...SHADOWS.sm,
   },
   iconWrap: {
-    width: 40,
-    height: 40,
-    borderRadius: 8,
+    width: SIZES.icon.xl,
+    height: SIZES.icon.xl,
+    borderRadius: SIZES.radius.sm,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: SIZES.padding.md,
   },
-  transactionInfo: { flex: 1 },
+  transactionInfo: { 
+    flex: 1 
+  },
   transactionTitle: {
     ...FONTS.body,
     color: COLORS.textPrimary,
-    fontWeight: "600",
+    fontWeight: FONTS.weight.semiBold,
   },
-  transactionDate: { ...FONTS.caption, color: COLORS.textSecondary },
-  silverText: { ...FONTS.caption, color: COLORS.success, marginTop: 2 },
-  amountSection: { alignItems: "flex-end" },
-  amountText: { ...FONTS.body, color: COLORS.primary, fontWeight: "700" },
-  receiptText: { ...FONTS.caption, color: COLORS.textSecondary },
+  transactionDate: { 
+    ...FONTS.caption, 
+    color: COLORS.textSecondary 
+  },
+  silverText: { 
+    ...FONTS.caption, 
+    color: COLORS.success, 
+    marginTop: SIZES.padding.xs 
+  },
+  amountSection: { 
+    alignItems: "flex-end" 
+  },
+  amountText: { 
+    ...FONTS.body, 
+    color: COLORS.primary, 
+    fontWeight: FONTS.weight.bold 
+  },
+  receiptText: { 
+    ...FONTS.caption, 
+    color: COLORS.textSecondary 
+  },
+
+  listContent: {
+    paddingBottom: SIZES.padding.lg,
+  },
 
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
-    paddingVertical: 60,
+    paddingVertical: SIZES.padding.xxxl,
   },
-  emptyText: { ...FONTS.h6, color: COLORS.textSecondary, marginTop: 12 },
-  emptySubtext: { ...FONTS.caption, color: COLORS.textSecondary, opacity: 0.7 },
+  emptyText: { 
+    ...FONTS.h6, 
+    color: COLORS.textSecondary, 
+    marginTop: SIZES.padding.md 
+  },
+  emptySubtext: { 
+    ...FONTS.caption, 
+    color: COLORS.textTertiary 
+  },
 });
 
 export default PaymentHistoryScreen;

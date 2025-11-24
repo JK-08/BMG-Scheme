@@ -47,16 +47,32 @@ export const createMpinApi = async (mpin) => {
       { method: "POST", headers }
     );
 
-    const result = await parseResponse(response);
+    const resultText = await response.text();
+    let result;
+    try {
+      result = JSON.parse(resultText);
+    } catch {
+      result = resultText;
+    }
     console.log("📩 Create MPIN Response:", result);
 
-    if (!response.ok) throw new Error(result?.message || result || "Error saving MPIN");
+    // ✅ Handle 409 Conflict
+    if (response.status === 409) {
+      return { alreadyExists: true, message: result?.message || result };
+    }
+
+    if (!response.ok) {
+      throw new Error(result?.message || result || "Error creating MPIN");
+    }
+
     return result;
   } catch (error) {
     console.error("❌ Create MPIN API Error:", error);
     throw error;
   }
 };
+
+
 
 /**
  * 🔹 Verify MPIN

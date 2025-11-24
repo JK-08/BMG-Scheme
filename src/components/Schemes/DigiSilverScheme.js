@@ -106,37 +106,44 @@ const DigiSilverScheme = ({
   };
 
   // Validate fields
-  useEffect(() => {
-    const errors = { ...validationErrors };
+  const MINIMUM_DIGISILVER_AMOUNT = 100;
+// Validate fields
+useEffect(() => {
+  const errors = { ...validationErrors };
 
-    if (
-      !formData?.amount ||
-      isNaN(formData.amount) ||
-      parseFloat(formData.amount) <= 0
-    ) {
-      errors.amount = "Enter a valid amount greater than 0";
-    } else if (parseFloat(formData.amount) < 1) {
-      errors.amount = "Minimum amount is ₹1";
-    } else delete errors.amount;
+  if (
+    !formData?.amount ||
+    isNaN(formData.amount) ||
+    parseFloat(formData.amount) <= 0
+  ) {
+    errors.amount = "Enter a valid amount greater than 100";
+  } 
+  else if (parseFloat(formData.amount) < MINIMUM_DIGISILVER_AMOUNT) {
+    errors.amount = `Minimum amount is ₹${MINIMUM_DIGISILVER_AMOUNT}`;
+  } 
+  else {
+    delete errors.amount;
+  }
 
-    if (!silverRate && !loadingSilverRate) {
-      errors.silverRate = "Silver rate unavailable. Retry fetching.";
-    } else delete errors.silverRate;
+  if (!silverRate && !loadingSilverRate) {
+    errors.silverRate = "Silver rate unavailable. Retry fetching.";
+  } else delete errors.silverRate;
 
-    if (
-      formData?.calculatedWeight &&
-      parseFloat(formData.calculatedWeight) <= 0
-    ) {
-      errors.calculatedWeight = "Calculated weight is invalid.";
-    } else delete errors.calculatedWeight;
+  if (
+    formData?.calculatedWeight &&
+    parseFloat(formData.calculatedWeight) <= 0
+  ) {
+    errors.calculatedWeight = "Calculated weight is invalid.";
+  } else delete errors.calculatedWeight;
 
-    setValidationErrors(errors);
-  }, [
-    formData?.amount,
-    formData?.calculatedWeight,
-    silverRate,
-    loadingSilverRate,
-  ]);
+  setValidationErrors(errors);
+}, [
+  formData?.amount,
+  formData?.calculatedWeight,
+  silverRate,
+  loadingSilverRate,
+]);
+
 
   return (
     <>
@@ -198,7 +205,7 @@ const DigiSilverScheme = ({
       </View>
 
       {/* Calculated Weight */}
-      <View style={styles.inputContainer}>
+      {/* <View style={styles.inputContainer}>
         <Text style={styles.label}>Calculated Silver Weight</Text>
         <View
           style={[
@@ -229,7 +236,7 @@ const DigiSilverScheme = ({
               You will purchase {formData.calculatedWeight} grams of silver
             </Text>
           )}
-      </View>
+      </View> */}
     </>
   );
 };

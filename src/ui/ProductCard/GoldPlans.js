@@ -12,6 +12,7 @@ import appTheme from "../../utils/MainTheme";
 import scheme1 from "../../assets/image/2.jpg";
 import scheme2 from "../../assets/image/3.jpg";
 import scheme3 from "../../assets/image/4.jpg";
+import defaultImage from "../../assets/image/1.jpg"; // ← Add fallback image
 
 const { COLORS, SIZES, FONTS, moderateScale, SHADOWS } = appTheme;
 
@@ -19,34 +20,34 @@ function GoldPlan({
   schemeId = 0,
   schemeName = "Unnamed Scheme",
   description = "",
+  schemeImage,            // ✅ receive dynamic API image
   styles: customStyles,
 }) {
   const navigation = useNavigation();
 
-  // Map images by schemeId (instead of hardcoding names)
+  // Map local fallback images (useful if no API image)
   const schemeImagesById = {
     1: scheme1,
     2: scheme3,
     3: scheme2,
   };
 
-  const schemeImage = schemeImagesById[schemeId] || null;
+  // FINAL IMAGE LOGIC
+  const finalImage = schemeImage        // 1️⃣ API URL
+    ? { uri: schemeImage }
+    : schemeImagesById[schemeId]        // 2️⃣ local fallback (if matching id)
+      ? schemeImagesById[schemeId]
+      : defaultImage;                   // 3️⃣ final fallback image
 
-  // Navigate to AddNewMember page
+      // console.log("Final image source:", finalImage);
+      
   const handleJoinScheme = () => {
     navigation.navigate("AddNewMember", {
       schemeId,
       schemeName,
     });
-    console.log(
-      "Navigating to AddNewMember with scheme ID:",
-      schemeId,
-      "Name:",
-      schemeName
-    );
   };
 
-  // Navigate to KnowMore page
   const handleKnowMore = () => {
     navigation.navigate("KnowMore", {
       schemeId,
@@ -57,7 +58,7 @@ function GoldPlan({
   return (
     <View style={[styles.cardContainer, customStyles]}>
       <ImageBackground
-        source={schemeImage}
+        source={finalImage}                 // ✅ Correct image applied
         style={styles.imageBackground}
         imageStyle={{
           borderTopLeftRadius: SIZES.radius.lg,
@@ -89,7 +90,7 @@ const styles = StyleSheet.create({
   cardContainer: {
     borderRadius: SIZES.radius.lg,
     overflow: "hidden",
-    width: "95%",
+    width: "100%",
     alignSelf: "center",
     marginVertical: moderateScale(10),
     backgroundColor: COLORS.surface,

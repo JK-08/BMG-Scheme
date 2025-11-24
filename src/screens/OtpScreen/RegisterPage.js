@@ -22,7 +22,7 @@ import {
   statusCodes,
 } from "@react-native-google-signin/google-signin";
 import { showToast } from "../../utils/toast";
-import appTheme from "../../utils/MainTheme";
+import theme from "../../utils/AppTheme"; // Changed from appTheme to theme
 import styles from "./RegisterStyles";
 import userService from "../../services/UserService";
 import {
@@ -31,7 +31,7 @@ import {
 } from "../../utils/Notification";
 import { saveUserData } from "../../utils/AsynchStorageHelper";
 
-const { COLORS, SIZES, FONTS } = appTheme;
+const { COLORS, SIZES, FONTS } = theme;
 
 function RegisterPage({ navigation }) {
   const [username, setUsername] = useState("");
@@ -87,7 +87,7 @@ function RegisterPage({ navigation }) {
     }
   };
 
-  // Validation functions (keep your existing validation logic)
+  // Validation functions
   const validateField = (fieldName, value) => {
     const newErrors = { ...errors };
 
@@ -141,7 +141,6 @@ function RegisterPage({ navigation }) {
   };
 
   const handleFieldChange = (fieldName, value) => {
-    // Update field value
     switch (fieldName) {
       case "username":
         setUsername(value);
@@ -162,7 +161,6 @@ function RegisterPage({ navigation }) {
         break;
     }
 
-    // Validate field if it's been touched
     if (touched[fieldName]) {
       validateField(
         fieldName,
@@ -230,55 +228,51 @@ function RegisterPage({ navigation }) {
   };
 
   // ✅ Google Auth to backend
-const handleGoogleAuthentication = async (idToken, userInfo = null) => {
-  try {
-    const payload = { idToken, userInfo };
-    const response = await userService.googleLogin(payload);
+  const handleGoogleAuthentication = async (idToken, userInfo = null) => {
+    try {
+      const payload = { idToken, userInfo };
+      const response = await userService.googleLogin(payload);
 
-    if (response.success && response.data) {
-      const {
-        id,
-        email,
-        username,
-        message,
-        status,
-        contactNumber,
-      } = response.data;
-
-      console.log("Google Login Response:", response.data);
-
-      // ✅ Save using helper
-      await saveUserData(response.data);
-
-      // ✅ Register for push notifications
-      const expoToken = await registerForPushNotificationsAsync();
-      if (expoToken) await sendPushTokenToServer(expoToken, id);
-
-      showToast(message || "Logged in successfully with Google");
-
-      // ✅ Navigate based on contact number
-      if (!contactNumber || contactNumber.trim() === "") {
-        console.log("⚠️ No contact number found. Navigating to EnterNumber...");
-        navigation.navigate("EnterNumber", {
-          userId: id,
+      if (response.success && response.data) {
+        const {
+          id,
           email,
           username,
-        });
+          message,
+          status,
+          contactNumber,
+        } = response.data;
+
+        console.log("Google Login Response:", response.data);
+
+        await saveUserData(response.data);
+
+        const expoToken = await registerForPushNotificationsAsync();
+        if (expoToken) await sendPushTokenToServer(expoToken, id);
+
+        showToast(message || "Logged in successfully with Google");
+
+        if (!contactNumber || contactNumber.trim() === "") {
+          console.log("⚠️ No contact number found. Navigating to EnterNumber...");
+          navigation.navigate("EnterNumber", {
+            userId: id,
+            email,
+            username,
+          });
+        } else {
+          console.log("✅ Contact number found. Navigating to MpinScreen...");
+          navigation.navigate("MpinScreen", { step: 3 });
+        }
       } else {
-        console.log("✅ Contact number found. Navigating to MpinScreen...");
-        navigation.navigate("MpinScreen", { step: 3 });
+        showToast(response.error || "Google authentication failed");
       }
-    } else {
-      showToast(response.error || "Google authentication failed");
+    } catch (error) {
+      console.error("Google authentication error:", error);
+      showToast("Authentication failed. Please try again.");
     }
-  } catch (error) {
-    console.error("Google authentication error:", error);
-    showToast("Authentication failed. Please try again.");
-  }
-};
-  // Your existing handleRegister function
+  };
+
   const handleRegister = async () => {
-    // Mark all fields as touched to show all errors
     const allTouched = {
       username: true,
       email: true,
@@ -287,13 +281,11 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
     };
     setTouched(allTouched);
 
-    // Validate all fields
     validateField("username", username);
     validateField("email", email);
     validateField("phone", phone);
     validateField("password", password);
 
-    // Check if any errors exist
     const hasErrors =
       Object.values(errors).some((error) => error !== "") ||
       !username ||
@@ -320,7 +312,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
       console.log("Registration response:", res);
 
       if (res.success) {
-        // Save full user data for resend OTP and OTP verification
         await AsyncStorage.setItem(
           "tempUserData",
           JSON.stringify({
@@ -334,7 +325,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
 
         showToast("Registration successful! OTP sent.");
 
-        // Navigate to OTP page with phone number and hash
         navigation.navigate("OTP", {
           phoneNumber: phone,
           appHash: appHash,
@@ -350,7 +340,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
     }
   };
 
-  // Your existing handleRegistrationError function
   const handleRegistrationError = (error, details = {}) => {
     console.log("Registration Error Details:", details);
 
@@ -359,14 +348,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
     const detailsMessage = details?.message?.toString() || "";
     const detailsLower = detailsMessage.toLowerCase();
 
-    console.log("Error analysis:", {
-      errorMessage,
-      errorLower,
-      detailsMessage,
-      detailsLower,
-    });
-
-    // Check for email already exists
     if (
       errorLower.includes("email already exists") ||
       detailsLower.includes("email already exists") ||
@@ -380,7 +361,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
         ...prev,
         email: "This email is already registered",
       }));
-      // Auto-navigate to login after a brief delay
       setTimeout(() => {
         Alert.alert(
           "Email Already Exists",
@@ -398,7 +378,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
       return;
     }
 
-    // Check for phone number already exists
     if (
       errorLower.includes("contact number already exists") ||
       errorLower.includes("phone already exists") ||
@@ -426,7 +405,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
       return;
     }
 
-    // Check for username already exists
     if (
       errorLower.includes("username already exists") ||
       detailsLower.includes("username already exists")
@@ -439,7 +417,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
         ...prev,
         username: "This username is already taken",
       }));
-      // Auto-navigate to login after a brief delay
       setTimeout(() => {
         Alert.alert(
           "Username Already Exists",
@@ -456,12 +433,10 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
       return;
     }
 
-    // Check for generic "already exists" messages
     if (
       errorLower.includes("already exists") ||
       detailsLower.includes("already exists")
     ) {
-      // Try to extract which field already exists
       if (errorLower.includes("email") || detailsLower.includes("email")) {
         showToast(
           "This email is already registered. Please use another email or login."
@@ -532,7 +507,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
           );
         }, 1500);
       } else {
-        // Generic already exists message
         showToast("This user already exists. Redirecting to login...");
         setTimeout(() => {
           navigation.navigate("LoginPage");
@@ -541,7 +515,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
       return;
     }
 
-    // Default error handling
     showToast(error || detailsMessage || "Registration failed");
   };
 
@@ -553,7 +526,6 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
     Keyboard.dismiss();
   };
 
-  // Helper component for required field label with asterisk
   const RequiredLabel = ({ children }) => (
     <Text style={styles.label}>
       {children}
@@ -580,14 +552,14 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
             <View style={styles.container}>
               <View style={styles.logoContainer}>
                 <Image
-                  source={require("../../assets/image/logo2.png")}
+                  source={require("../../assets/image/final-logo.jpg")}
                   style={styles.logoImage}
                 />
               </View>
 
               <View style={styles.card}>
                 <Text style={styles.title}>Create Account</Text>
-                <Text style={styles.subtitle}>Join us today</Text>
+
 
                 {/* Username Field */}
                 <RequiredLabel>Username</RequiredLabel>
@@ -675,8 +647,8 @@ const handleGoogleAuthentication = async (idToken, userInfo = null) => {
                     <Image
                       source={
                         showPassword
-                          ? require("../../assets/icons/eyeopen.png") // Eye open icon
-                          : require("../../assets/icons/eyeclose.png") // Eye closed icon
+                          ? require("../../assets/icons/eyeopen.png")
+                          : require("../../assets/icons/eyeclose.png")
                       }
                       style={styles.eyeIconImage}
                     />

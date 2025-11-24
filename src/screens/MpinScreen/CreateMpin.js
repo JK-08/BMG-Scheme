@@ -16,28 +16,25 @@ import {
   ScrollView,
   ToastAndroid,
 } from "react-native";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 import { LinearGradient } from "expo-linear-gradient";
 import { mpinStyles as styles } from "./MpinStyles";
 import { createMpinApi } from "../../services/MpinService";
-import { COLORS } from "../../utils/MainTheme";
+import theme from "../../utils/AppTheme";
+
+const { COLORS } = theme;
 
 const MpinScreen = ({ navigation }) => {
   const [mpin, setMpin] = useState(["", "", "", ""]);
   const [isLoading, setIsLoading] = useState(false);
   const [isWeakMpin, setIsWeakMpin] = useState(false);
+  const [mpinExists, setMpinExists] = useState(false);
 
   const inputRefs = useRef([]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
-  // Animate + Check if MPIN already exists
   useEffect(() => {
-    const initialize = async () => {
-      await checkIfMpinCreated();
-      animateIn();
-    };
-    initialize();
+    animateIn();
   }, []);
 
   const animateIn = () => {
@@ -56,30 +53,12 @@ const MpinScreen = ({ navigation }) => {
     ]).start();
   };
 
-const checkIfMpinCreated = async () => {
-  try {
-    const isMpinCreated = await AsyncStorage.getItem("isMpinCreated");
-
-    if (JSON.parse(isMpinCreated) === true) {
-      navigation.replace("VerifyMpinScreen");
-    }
-  } catch (error) {
-    console.error("Error checking MPIN creation:", error);
-  }
-};
-
-
-  // Local helper: simple MPIN validation (e.g. 1111, 1234)
   const isWeak = (pin) => {
     const sequential = "0123456789";
     return (
-      /^(\d)\1{3}$/.test(pin) || // repeated digits
-      sequential.includes(pin) || // sequential
-      sequential
-        .split("")
-        .reverse()
-        .join("")
-        .includes(pin)
+      /^(\d)\1{3}$/.test(pin) ||
+      sequential.includes(pin) ||
+      sequential.split("").reverse().join("").includes(pin)
     );
   };
 
@@ -94,11 +73,8 @@ const checkIfMpinCreated = async () => {
     newMpin[index] = value;
     setMpin(newMpin);
 
-    if (value && index < 3) {
-      inputRefs.current[index + 1]?.focus();
-    } else if (!value && index > 0) {
-      inputRefs.current[index - 1]?.focus();
-    }
+    if (value && index < 3) inputRefs.current[index + 1]?.focus();
+    else if (!value && index > 0) inputRefs.current[index - 1]?.focus();
 
     if (newMpin.every((digit) => digit !== "")) {
       const entered = newMpin.join("");
@@ -132,30 +108,35 @@ const checkIfMpinCreated = async () => {
 
     setIsLoading(true);
     try {
-      await createMpinApi(enteredMpin);
+      const response = await createMpinApi(enteredMpin);
 
-      await AsyncStorage.setItem("mpin", enteredMpin);
-      await AsyncStorage.setItem("isMpinCreated", JSON.stringify(true));
-
+      if (response?.alreadyExists) {
+        setMpinExists(true);
+        Alert.alert(
+          "MPIN Already Exists",
+          "You already have an MPIN. Please enter your existing MPIN.",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Enter MPIN",
+              onPress: () => navigation.navigate("VerifyMpinScreen"),
+            },
+          ],
+          { cancelable: false }
+        );
+        return;
+      }
 
       showToast("MPIN created successfully!");
       setTimeout(() => {
-        navigation.replace("Drawer"); // ✅ Navigate directly to Drawer
+        navigation.replace("Drawer");
       }, 1000);
     } catch (error) {
       console.error("MPIN creation error:", error);
-      showToast("Failed to create MPIN. Please try again.");
+      showToast(error?.message || "Failed to create MPIN. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  };
-
-  const handleForgotMpin = () => {
-    Alert.alert(
-      "Forgot MPIN?",
-      "You will need to reset your MPIN using your registered mobile number.",
-      [{ text: "OK" }]
-    );
   };
 
   return (
@@ -180,17 +161,15 @@ const checkIfMpinCreated = async () => {
                 { opacity: fadeAnim, transform: [{ translateY: slideAnim }] },
               ]}
             >
-              {/* Logo */}
               <View style={styles.logoContainer}>
                 <View style={styles.logoRow}>
                   <Image
-                    source={require("../../assets/image/logo2.png")}
+                    source={require("../../assets/image/final-logo.jpg")}
                     style={styles.logoImage}
                   />
                 </View>
               </View>
 
-              {/* Content */}
               <View style={styles.contentContainer}>
                 <View style={styles.headerSection}>
                   <Text style={styles.title}>Create MPIN</Text>
@@ -201,7 +180,6 @@ const checkIfMpinCreated = async () => {
 
                 <View style={styles.mpinSection}>
                   <Text style={styles.mpinLabel}>Enter 4-Digit MPIN</Text>
-
                   <View style={styles.mpinContainer}>
                     {mpin.map((digit, index) => (
                       <View key={index} style={styles.mpinInputWrapper}>
@@ -241,13 +219,6 @@ const checkIfMpinCreated = async () => {
                 </View>
 
                 <View style={styles.actionSection}>
-                  {/* <TouchableOpacity
-                    onPress={handleForgotMpin}
-                    style={styles.forgotButton}
-                  >
-                    <Text style={styles.forgotText}>Forgot MPIN?</Text>
-                  </TouchableOpacity> */}
-
                   {mpin.join("").length === 4 && !isLoading && !isWeakMpin ? (
                     <TouchableOpacity
                       onPress={handleCreateMpin}
@@ -256,7 +227,7 @@ const checkIfMpinCreated = async () => {
                       style={styles.buttonWrapper}
                     >
                       <LinearGradient
-                        colors={[COLORS.secondary, COLORS.secondary]}
+                        colors={COLORS.gradient.brand}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={[styles.createButton, styles.gradientButton]}
@@ -273,6 +244,20 @@ const checkIfMpinCreated = async () => {
                       </Text>
                     </View>
                   )}
+
+                  <TouchableOpacity
+                    style={styles.existingMpinLink}
+                    onPress={() => {
+                      navigation.navigate("VerifyMpinScreen")
+                    }}
+                  >
+                    <Text style={styles.existingMpinText}>
+                      Already have an MPIN?
+                    </Text>
+                    <Text style={styles.existingMpinLinkText}>
+                      Verify MPIN
+                    </Text>
+                  </TouchableOpacity>
                 </View>
               </View>
             </Animated.View>

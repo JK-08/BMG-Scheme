@@ -9,7 +9,7 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
-
+import { useNavigation } from "@react-navigation/native";
 import styles from "./styles";
 import BottomTab from "../../components/BottomTab/BottomTab";
 import { TextDefault } from "../../components";
@@ -17,94 +17,174 @@ import ProductCard from "../../ui/ProductCard/ProductCard";
 import ProductCardSkeleton from "../../components/SkeletonLoader/ProductCardSkeleton";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { getPhoneDetails } from "../../services/SchemeDetailsService";
+import { getAllSchemes } from "../../services/SchemeNameService";
 import { COLORS } from "../../utils/Theme";
+
+
+      
 
 function DiscoverPlace({ navigation }) {
   const [productData, setProductData] = useState([]);
+  const [schemeRules, setSchemeRules] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [refreshing, setRefreshing] = useState(false);
+  const [initialLoad, setInitialLoad] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
-  const fetchPhoneSearchData = async () => {
+
+  const handlePayNow = (item) => {
+        navigation.navigate("Buy", {
+          productData: item,
+          paymentData: {
+            regNo: item.regno,
+            groupCode: item.groupcode,
+            customerName: item.pname,
+            amount: item.schemeSummary?.amount || 0,
+            schemeName: item.schemeSummary?.schemeName,
+            schemes: productData, // or other relevant schemes list
+          },
+        });
+      };
+
+  // Fetch all scheme rules once
+  const fetchSchemeRules = async () => {
     try {
+      const allSchemes = await getAllSchemes();
+      const rulesMap = {};
+
+      allSchemes.forEach((scheme) => {
+        rulesMap[scheme.schemeName?.trim()] = {
+          WeightLedger: scheme.WeightLedger,
+          FixedIns: scheme.FixedIns,
+          Instalment: scheme.Instalment,
+        };
+      });
+
+      setSchemeRules(rulesMap);
+      return rulesMap;
+    } catch (err) {
+      console.log("Error fetching scheme rules:", err);
+      return {};
+    }
+  };
+
+  const fetchPhoneSearchData = async (isRefresh = false) => {
+    try {
+      if (isRefresh) setIsRefreshing(true);
+      else setLoading(true);
+
       const storedPhoneNumber = await AsyncStorage.getItem("userPhoneNumber");
       if (!storedPhoneNumber) {
         setError("Phone number not found");
-        setLoading(false);
         return;
       }
 
-      console.log("Fetching data for phone:", storedPhoneNumber);
+      // Fetch scheme rules first
+      const rules = await fetchSchemeRules();
 
-      // Use the service to get phone details
+      // Then fetch account details
       const accounts = await getPhoneDetails(storedPhoneNumber);
-      // console.log("Raw API response accounts:", accounts.length);
-      console.log("Number of accounts found:", accounts.length);
 
       if (!accounts || accounts.length === 0) {
-        setError(
-          "No schemes available for this account, So please join the scheme and enjoy our benefits"
-        );
+        setError("No schemes available for this account");
         setProductData([]);
-        setLoading(false);
         return;
       }
 
-      // Process accounts and determine status
+
+
       const processedProducts = accounts.map((item) => {
         const currentDate = new Date();
         const maturityDate = item.maturityDate
           ? new Date(item.maturityDate)
           : null;
+
         const isActive = !maturityDate || currentDate < maturityDate;
         const status = isActive ? "Active" : "Deactive";
+
+        const schemeName = item.schemeSummary?.schemeName?.trim();
+        const schemeRule = rules[schemeName] || {};
+
+        // Determine scheme type based on API rules
+        const isWeightScheme = schemeRule.WeightLedger === "Y";
+        const isAmountScheme =
+          schemeRule.FixedIns === "Y" && schemeRule.WeightLedger !== "Y";
+        const isFixedDeposit =
+          schemeRule.FixedIns !== "Y" &&
+          schemeRule.WeightLedger !== "Y" &&
+          parseInt(schemeRule.Instalment) === 1;
+        const isDigitalScheme =
+          schemeRule.FixedIns !== "Y" &&
+          schemeRule.WeightLedger !== "Y" &&
+          parseInt(schemeRule.Instalment) > 1;
 
         return {
           ...item,
           status,
-          // Map old property names for compatibility
           regno: item.regNo,
           groupcode: item.groupCode,
           pname: item.pname || item.personalInfo?.pName,
           maturitydate: item.maturityDate,
-          accountDetails: {
-            schemeSummary: item.schemeSummary,
-            personalInfo: item.personalInfo,
+
+          /* 🔥 SCHEME SUMMARY WITH API RULES */
+          schemeSummary: {
+            ...item.schemeSummary,
+            WeightLedger:
+              schemeRule.WeightLedger || item.schemeSummary?.WeightLedger,
+            FixedIns: schemeRule.FixedIns || item.schemeSummary?.FixedIns,
+            Instalment: schemeRule.Instalment || item.schemeSummary?.instalment,
+            schemeType: {
+              isWeightScheme,
+              isAmountScheme,
+              isFixedDeposit,
+              isDigitalScheme,
+            },
+          },
+
+          /* 🔥 TRANS BALANCE */
+          schemaSummaryTransBalance: {
+            insPaid:
+              item.schemeSummary?.schemaSummaryTransBalance?.insPaid ??
+              item.trans?.insPaid ??
+              0,
+            amtrecd:
+              item.schemeSummary?.schemaSummaryTransBalance?.amtrecd ??
+              item.trans?.amtrecd ??
+              0,
           },
         };
       });
 
-      console.log("Processed products:", processedProducts.length);
       setProductData(processedProducts);
-
-      if (processedProducts.length === 0) {
-        setError("No valid product data found");
-      }
+      setError(null);
     } catch (err) {
-      console.error("Fetch error:", err);
       setError(`Failed to fetch data: ${err.message}`);
-      Alert.alert("Fetch Error", `Failed to load data: ${err.message}`);
     } finally {
-      setLoading(false);
-      setRefreshing(false);
+      if (isRefresh) setIsRefreshing(false);
+      else {
+        setLoading(false);
+        setInitialLoad(false);
+      }
     }
   };
 
   useEffect(() => {
-    fetchPhoneSearchData();
+    fetchPhoneSearchData(false);
   }, []);
 
-  const onRefresh = () => {
-    setRefreshing(true);
-    fetchPhoneSearchData();
-  };
+  const onRefresh = () => fetchPhoneSearchData(true);
 
   const renderProductCard = ({ item }) => (
-    <ProductCard productData={item} navigation={navigation} />
+    <ProductCard
+      productData={item}
+      navigation={navigation}
+      onPayNow={() => handlePayNow(item)}
+    />
   );
 
   const renderContent = () => {
-    if (loading) {
+    if (initialLoad && loading) {
       return (
         <View style={localStyles.loadingContainer}>
           <ProductCardSkeleton />
@@ -133,13 +213,12 @@ function DiscoverPlace({ navigation }) {
         showsVerticalScrollIndicator={false}
         refreshControl={
           <RefreshControl
-            refreshing={refreshing}
+            refreshing={isRefreshing}
             onRefresh={onRefresh}
             colors={[COLORS.primary]}
-            tintColor={COLORS.primary}
           />
         }
-        ItemSeparatorComponent={() => <View style={{ height: 16 }} />} // 👈 spacing between cards
+        ItemSeparatorComponent={() => <View style={{ height: 16 }} />}
         ListEmptyComponent={
           <View style={localStyles.emptyContainer}>
             <TextDefault style={localStyles.emptyText}>
@@ -171,34 +250,23 @@ function DiscoverPlace({ navigation }) {
 }
 
 const localStyles = StyleSheet.create({
-  contentContainer: {
-    flex: 1,
+  contentContainer: { flex: 1 },
+  loadingContainer: { flex: 1, padding: 16 },
+  listContainer: {
+    paddingVertical: 20,
+    paddingHorizontal: 16,
   },
-  loadingContainer: {
-    flex: 1,
-    padding: 16,
-  },
-  cardContainer: {
-  marginBottom: 16,
-},
-listContainer: {
-  paddingVertical: 20, // top & bottom spacing
-  paddingHorizontal: 16, // optional side padding
-},
-
   errorContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 20,
-    marginBottom: 10, // Added bottom margin
   },
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
     padding: 40,
-    marginBottom: 10, // Added bottom margin
   },
   errorText: {
     color: COLORS.danger,

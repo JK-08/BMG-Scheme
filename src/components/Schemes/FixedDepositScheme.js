@@ -1,8 +1,6 @@
 import React, { useEffect, useRef } from "react";
 import { View, Text, TextInput, StyleSheet } from "react-native";
-import appTheme from "../../utils/MainTheme";
-
-const { COLORS, SIZES, FONTS } = appTheme;
+import { COLORS, SIZES, FONTS } from "../../utils/AppTheme";
 
 const FixedDepositScheme = ({
   formData,
@@ -12,7 +10,7 @@ const FixedDepositScheme = ({
   isSubmitting,
   inputRefs,
   setActiveInput,
-  minAmount = 5000, // default minimum amount
+  minAmount = 10000, // Updated minimum amount to ₹10,000
 }) => {
   const amountRef = useRef(null);
 
@@ -68,74 +66,98 @@ const FixedDepositScheme = ({
         editable={!isSubmitting}
         onChangeText={handleAmountChange}
         placeholder="Enter fixed deposit amount"
-        placeholderTextColor={COLORS.textTertiary}
+        placeholderTextColor={COLORS.inputPlaceholder}
         maxLength={12}
         onFocus={() => setActiveInput?.("amount")}
       />
 
       {/* Error Message */}
       {validationErrors?.amount && (
-        <Text style={styles.errorText}>{validationErrors.amount}</Text>
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorText}>{validationErrors.amount}</Text>
+        </View>
       )}
 
       {/* Hint */}
       <Text style={styles.hintText}>
         Minimum fixed deposit amount is ₹{minAmount.toLocaleString()}
       </Text>
+
+      {/* Amount Validation Warning */}
+      {formData?.amount && parseFloat(formData.amount) < minAmount && (
+        <View style={styles.warningContainer}>
+          <Text style={styles.warningText}>
+            Amount below minimum requirement. Please enter at least ₹{minAmount.toLocaleString()} to proceed.
+          </Text>
+        </View>
+      )}
     </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
-    marginBottom: SIZES.lg,
+    marginBottom: SIZES.margin.lg,
   },
   header: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: SIZES.xs,
+    marginBottom: SIZES.margin.xs,
   },
   label: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.md,
+    ...FONTS.bodyMedium,
     color: COLORS.textPrimary,
-    marginRight: SIZES.xs,
-    lineHeight: SIZES.font.md * 1.4,
+    marginRight: SIZES.margin.xs,
   },
   asterisk: {
-    fontSize: SIZES.font.md,
+    ...FONTS.bodyMedium,
     color: COLORS.error,
-    fontFamily: FONTS.family.bodyBold,
   },
   input: {
     height: SIZES.input.height,
     borderWidth: 1.5,
-    borderColor: COLORS.borderMedium,
+    borderColor: COLORS.border,
     borderRadius: SIZES.radius.md,
     paddingHorizontal: SIZES.padding.md,
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.md,
+    ...FONTS.body,
     color: COLORS.textPrimary,
-    backgroundColor: "transparent",
+    backgroundColor: COLORS.inputBackground,
   },
   inputError: {
     borderColor: COLORS.error,
     borderWidth: 1.5,
   },
+  errorContainer: {
+    marginTop: SIZES.margin.xs,
+    paddingVertical: SIZES.padding.sm,
+    paddingHorizontal: SIZES.padding.md,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.error,
+    backgroundColor: COLORS.errorLight + '20',
+    borderRadius: SIZES.radius.sm,
+  },
   errorText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.caption,
     color: COLORS.error,
-    marginTop: SIZES.xs,
-    lineHeight: SIZES.font.sm * 1.4,
   },
   hintText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.xs,
+    ...FONTS.caption,
     color: COLORS.textTertiary,
-    marginTop: SIZES.xs,
+    marginTop: SIZES.margin.xs,
     fontStyle: "italic",
-    lineHeight: SIZES.font.xs * 1.4,
+  },
+  warningContainer: {
+    marginTop: SIZES.margin.md,
+    padding: SIZES.padding.md,
+    backgroundColor: COLORS.warningLight + '20',
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.warning,
+    borderRadius: SIZES.radius.sm,
+  },
+  warningText: {
+    ...FONTS.bodySmall,
+    color: COLORS.warning,
+    textAlign: "center",
   },
 });
 

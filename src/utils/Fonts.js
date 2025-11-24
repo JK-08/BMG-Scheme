@@ -3,28 +3,17 @@ import * as Font from 'expo-font';
 
 const useFonts = async () => {
   await Font.loadAsync({
-    // 🎨 Core Fonts
-    DancingScript: require('../assets/font/DancingScript.ttf'),
-    DMSerif: require('../assets/font/DMSerif.ttf'),
-    DomineBold: require('../assets/font/Domine-Bold.ttf'),
-    Fancy: require('../assets/font/Fancy.ttf'),
-    Lato: require('../assets/font/Lato-Regular.ttf'), 
+    // 🖋️ Poppins Family (7 fonts as per your theme)
 
-    // 🖋️ InterDisplay Family
-    InterDisplayMedium: require('../assets/font/InterDisplay-Medium.otf'),
-  
 
-    // 🖋️ PlayfairDisplay Family
-
-    PlayfairDisplayMedium: require('../assets/font/PlayfairDisplay-Medium.ttf'),
-
-    // 🖋️ Poppins Family
-    PoppinsBold: require('../assets/font/Poppins-Bold.ttf'),
-    PoppinsRegular: require('../assets/font/Poppins-Regular.ttf'),
-
-    // 🖋️ Times & Trajan Fonts
-    TrajanProBold: require('../assets/font/TrajanPro-Bold.otf'),
-    TrajanProRegular: require('../assets/font/TrajanPro-Regular.ttf'),
+    'Poppins-Thin': require('../assets/font/Poppins/Poppins-Thin.ttf'),
+    'Poppins-Light': require('../assets/font/Poppins/Poppins-Light.ttf'),
+    'Poppins-Regular': require('../assets/font/Poppins/Poppins-Regular.ttf'),
+    'Poppins-Medium': require('../assets/font/Poppins/Poppins-Medium.ttf'),
+    'Poppins-SemiBold': require('../assets/font/Poppins/Poppins-SemiBold.ttf'),
+    'Poppins-Bold': require('../assets/font/Poppins/Poppins-Bold.ttf'),
+    'Poppins-ExtraBold': require('../assets/font/Poppins/Poppins-ExtraBold.ttf'),
+    
   });
 };
 

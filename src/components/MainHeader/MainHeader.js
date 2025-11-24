@@ -15,15 +15,18 @@ import {
   Alert,
   ToastAndroid,
   Platform,
+  Linking,
 } from "react-native";
+import { MaterialIcons } from '@expo/vector-icons';
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import DrawerMenu from "../../screens/ProfileDashboard/ProfileContainer/ProfileSidebar";
-import { COLORS } from "../../utils/Theme";
-import { colors1 } from "../../utils/colors";
+import theme from "../../utils/AppTheme";
 import styles from "./Styles";
 import { API_BASE_URL_OLD } from "../../Config/API";
+
+const { COLORS } = theme;
 
 // ========== Constants ==========
 const ANIMATION_DURATION = 2000;
@@ -47,6 +50,8 @@ const getFormattedUpdateTime = () => {
   const ampm = hours >= 12 ? "PM" : "AM";
   const formattedHour = hours % 12 === 0 ? 12 : hours % 12;
 
+  const time = `${formattedHour}:${minutes} ${ampm}`;
+
   const day = now.getDate().toString().padStart(2, "0");
   const monthNames = [
     "JAN",
@@ -65,11 +70,13 @@ const getFormattedUpdateTime = () => {
   const month = monthNames[now.getMonth()];
   const year = now.getFullYear();
 
-  return `Rate updated on ${formattedHour}:${minutes} ${ampm} ${day}-${month}-${year}`;
+  const date = `${day}-${month}-${year}`;
+
+  return `${date}  ${time}`;
 };
 
-// ========== Custom Hook: Coin Animation ==========
-const useCoinAnimation = (delay = 0) => {
+// ========== Custom Hook: Icon Animation ==========
+const useIconAnimation = (delay = 0) => {
   const animationValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
@@ -97,11 +104,11 @@ const useCoinAnimation = (delay = 0) => {
     });
     const scale = animationValue.interpolate({
       inputRange: [0, 0.5, 1],
-      outputRange: [1, 0.6, 1],
+      outputRange: [1, 0.8, 1],
     });
     const opacity = animationValue.interpolate({
       inputRange: [0, 0.5, 1],
-      outputRange: [1, 0.3, 1],
+      outputRange: [1, 0.6, 1],
     });
     return {
       transform: [{ perspective: 1000 }, { rotateY }, { scale }],
@@ -118,8 +125,10 @@ function Header() {
   const [rateUpdated, setRateUpdated] = useState("");
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
 
-  const goldAnimatedStyle = useCoinAnimation(0);
-  const silverAnimatedStyle = useCoinAnimation(SILVER_ANIMATION_DELAY);
+  const dateAnimatedStyle = useIconAnimation(0);
+  const silverAnimatedStyle = useIconAnimation(SILVER_ANIMATION_DELAY);
+
+
 
   const toggleDrawer = useCallback(() => {
     setIsDrawerVisible((prev) => !prev);
@@ -134,7 +143,7 @@ function Header() {
       const data = await res.json();
       setGoldRate(data.GOLDRATE);
       setSilverRate(data.SILVERRATE);
-      setRateUpdated(getFormattedUpdateTime(new Date()));
+      setRateUpdated(getFormattedUpdateTime());
     } catch (err) {
       console.error("❌ Error fetching rates:", err);
       showToast("Failed to fetch rates");
@@ -147,19 +156,19 @@ function Header() {
 
   return (
     <LinearGradient
-      colors={[COLORS.primary1, COLORS.primary2, COLORS.primary3]}
+      colors={COLORS.gradient.brand}
       start={{ x: 0, y: 0 }}
       end={{ x: 0, y: 1 }}
-      style={styles.headerContainer1}
+      style={styles.headerContainer}
     >
       {/* Top Section */}
       <View style={styles.topHeaderSection}>
         {/* FAQ */}
         <TouchableOpacity
           style={styles.faqIconContainer}
-          onPress={() => navigation.navigate("HelpCenter")}
+          onPress={() => navigation.navigate("NotificationsPage")}
         >
-          <Icon name="help" size={22} color={colors1.primaryText} />
+          <MaterialIcons name="notifications" size={28} color={COLORS.textWhite} />
         </TouchableOpacity>
 
         {/* Drawer Menu */}
@@ -169,15 +178,15 @@ function Header() {
         <View style={styles.mainHeaderSection}>
           <View style={styles.logoContainer}>
             <Image
-              source={require("../../assets/image/logo4.png")}
+              source={require("../../assets/BMG-LOGO.png")}
               style={styles.headerLogo}
               resizeMode="contain"
             />
           </View>
-          <View style={styles.companyNameContainer}>
+          {/* <View style={styles.companyNameContainer}>
             <Text style={styles.companyName}>BMG JEWELLERS</Text>
             <Text style={styles.companySubtitle}>Pvt Ltd</Text>
-          </View>
+          </View> */}
         </View>
 
         {/* Menu */}
@@ -185,69 +194,68 @@ function Header() {
           style={styles.menuIconContainer}
           onPress={toggleDrawer}
         >
-          <Icon name="menu" size={26} color={colors1.primaryText} />
+          <Icon name="menu" size={26} color={COLORS.textInverse} />
         </TouchableOpacity>
       </View>
+      
+      <View>
+        <View style={styles.rateCardContainer}>
+            <View style={styles.rateTextContainer} onPress={() =>openURL()}>
+                <Icon name="event" size={20} color={COLORS.textWhite} />
+                <Text style={styles.rateLabel}>Rate Updated on {rateUpdated || "---"} </Text>
+            </View>
 
-      {/* Rate Update Timestamp */}
-      <View style={styles.rateUpdateContainer}>
-        <Text style={styles.updateText}>{getFormattedUpdateTime()}</Text>
+            {/* <View style={styles.rateIconContainer}>
+              <View style={styles.animatedIconContainer}>
+                <Icon name="event" size={30} color={COLORS.primary} />
+              </View>
+            </View> */}
+          </View>
       </View>
 
-      {/* Rate Cards */}
+      {/* === Rate Cards === */}
       <View style={styles.rateCardsOverlayContainer}>
-        {/* Gold */}
+        {/* Silver Rate Card */}
         <LinearGradient
-          colors={["#fff", "#fff", "#fff"]}
+          colors={[COLORS.white, COLORS.white, COLORS.white]}
           style={styles.rateCardOverlay}
         >
           <View style={styles.rateCardContent}>
-            <View style={styles.rateIconContainer}>
-              <Animated.View
-                style={[styles.animatedCoinContainer, goldAnimatedStyle]}
-              >
-                <Image
-                  source={require("../../assets/gold.png")}
-                  style={styles.rateCoinIcon}
-                  resizeMode="contain"
-                />
-              </Animated.View>
-            </View>
-            <View style={styles.rateTextContainer}>
-              <Text style={[styles.rateLabel, styles.goldText]}>Gold Rate</Text>
-              <Text style={[styles.rateValue, styles.goldText]}>
-                ₹{goldRate || "---"}
-              </Text>
+            {/* LEFT — Silver Coin */}
+            <Animated.View
+              style={[styles.animatedCoinContainer, silverAnimatedStyle]}
+            >
+              <Image
+                source={require("../../assets/silver.png")}
+                style={styles.rateCoinIcon}
+                resizeMode="contain"
+              />
+            </Animated.View>
+
+            {/* RIGHT — Text (Right Aligned) */}
+            <View style={styles.rateTextRightAligned}>
+              <Text style={styles.rateLabelRight}>Silver Rate</Text>
+              <Text style={styles.rateValueRight}>₹{silverRate || "---"}</Text>
+              <Text style={styles.rateUnitRight}>per gram</Text>
             </View>
           </View>
         </LinearGradient>
 
-        {/* Silver */}
+        {/* Date Card */}
         <LinearGradient
-          colors={["#fff", "#fff", "#fff"]}
+          colors={[COLORS.white, COLORS.white, COLORS.white]}
           style={styles.rateCardOverlay}
         >
-          <View style={styles.rateCardContent}>
+          <TouchableOpacity style={styles.rateCardContent}  onPress={() => Linking.openURL("https://app.bmgjewellers.com")}>
+            
+
             <View style={styles.rateIconContainer}>
-              <Animated.View
-                style={[styles.animatedCoinContainer, silverAnimatedStyle]}
-              >
-                <Image
-                  source={require("../../assets/silver.png")}
-                  style={styles.rateCoinIcon}
-                  resizeMode="contain"
-                />
-              </Animated.View>
+               <MaterialIcons name="shopping-cart" size={25} color={COLORS.primary} />
             </View>
-            <View style={styles.rateTextContainer}>
-              <Text style={[styles.rateLabel, styles.silverText]}>
-                Silver Rate
-              </Text>
-              <Text style={[styles.rateValue, styles.silverText]}>
-                ₹{silverRate || "---"}
-              </Text>
+            <View>
+               <Text style={styles.shopTitle}>Online Shopping </Text>
             </View>
-          </View>
+          </TouchableOpacity>
         </LinearGradient>
       </View>
     </LinearGradient>

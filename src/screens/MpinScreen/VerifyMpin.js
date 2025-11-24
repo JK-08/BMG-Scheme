@@ -18,8 +18,10 @@ import { LinearGradient } from "expo-linear-gradient";
 import { mpinStyles as styles } from "./MpinStyles";
 import { showToast } from "../../utils/MpinHelper";
 import { verifyMpinApi } from "../../services/MpinService";
-import { COLORS } from "../../utils/MainTheme";
+import theme from "../../utils/AppTheme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+
+const { COLORS } = theme;
 
 function VerifyMpinScreen({ navigation }) {
   const [mpin, setMpin] = useState(["", "", "", ""]);
@@ -119,7 +121,6 @@ function VerifyMpinScreen({ navigation }) {
       if (isNotFoundString || isNotFoundObject) {
         showToast("No MPIN found. Please create a new one.");
 
-        // 🔥 FIX: Prevent AppContainer from redirecting back to VerifyMpinScreen
         await AsyncStorage.setItem("isMpinCreated", "false");
 
         setTimeout(() => {
@@ -130,9 +131,6 @@ function VerifyMpinScreen({ navigation }) {
         return;
       }
 
-      // -------------------------------------------------------
-      // SUCCESS FLOW
-      // -------------------------------------------------------
       showToast("MPIN verified successfully!");
 
       await AsyncStorage.setItem("isMpinCreated", "true");
@@ -190,7 +188,7 @@ function VerifyMpinScreen({ navigation }) {
               <View style={styles.logoContainer}>
                 <View style={styles.logoRow}>
                   <Image
-                    source={require("../../assets/image/logo2.png")}
+                    source={require("../../assets/image/final-logo.jpg")}
                     style={styles.logoImage}
                   />
                 </View>
@@ -256,7 +254,7 @@ function VerifyMpinScreen({ navigation }) {
                       style={styles.buttonWrapper}
                     >
                       <LinearGradient
-                        colors={[COLORS.secondary, COLORS.secondary]}
+                        colors={COLORS.gradient.brand}
                         start={{ x: 0, y: 0 }}
                         end={{ x: 1, y: 0 }}
                         style={[styles.createButton, styles.gradientButton]}

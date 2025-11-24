@@ -31,6 +31,8 @@ import OnboardingScreen from './Onboard/Onboard'
 import EnterNumberScreen from './UpdatePhone/EnterNumberScreen'
 import VerifyOtpScreen from './VerifyOTP/VerifyOTP'
 import FAQPage from './FAQ/FAQ'
+import NotificationsPage from './Notification/NotificationScreen'
+import RewardsPage from './Reward/Reward'
 
 export {
   MainLanding,
@@ -64,5 +66,7 @@ export {
   OnboardingScreen,
   EnterNumberScreen,
   VerifyOtpScreen,
-  FAQPage
+  FAQPage,
+  NotificationsPage,
+  RewardsPage,
 }

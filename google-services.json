@@ -1,13 +1,13 @@
 {
   "project_info": {
-    "project_number": "236619852139",
-    "project_id": "bmg-scheme-new",
-    "storage_bucket": "bmg-scheme-new.firebasestorage.app"
+    "project_number": "528029482910",
+    "project_id": "bmg-sche",
+    "storage_bucket": "bmg-sche.firebasestorage.app"
   },
   "client": [
     {
       "client_info": {
-        "mobilesdk_app_id": "1:236619852139:android:6a75761cde001c4fb3442e",
+        "mobilesdk_app_id": "1:528029482910:android:df268dc1f587663feee08f",
         "android_client_info": {
           "package_name": "com.bmg.bmgscheme"
         }
@@ -15,7 +15,7 @@
       "oauth_client": [],
       "api_key": [
         {
-          "current_key": "AIzaSyB7ZUsIYRhfOe2IyAdFGRbRuj9xdBTpHS8"
+          "current_key": "AIzaSyCNNghW8PcDir3ig2F2q2MkH2xSLYngpBw"
         }
       ],
       "services": {

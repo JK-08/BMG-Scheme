@@ -17,21 +17,19 @@ import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getHash, useOtpVerify, removeListener } from "react-native-otp-verify";
 import { showToast } from "../../utils/toast";
-import appTheme from "../../utils/MainTheme";
+import theme from "../../utils/AppTheme"; // Changed from appTheme to theme
 import styles from "./OtpStyles.js";
 import userService from "../../services/UserService";
 import { saveUserData } from "../../utils/AsynchStorageHelper";
 
-const { COLORS, SIZES, FONTS } = appTheme;
+const { COLORS, SIZES, FONTS } = theme;
 
 function OtpPage({ navigation, route }) {
   const [otp, setOtp] = useState(["", "", "", "", "", ""]);
   const [verifying, setVerifying] = useState(false);
-const [resendTimer, setResendTimer] = useState(20);
-
+  const [resendTimer, setResendTimer] = useState(20);
   const [autoCompleteOtp, setAutoCompleteOtp] = useState("");
   const [autoVerifyTimer, setAutoVerifyTimer] = useState(20);
-
   const [appHash, setAppHash] = useState([]);
   const [waitingForOtp, setWaitingForOtp] = useState(true);
   const [smsListenerReady, setSmsListenerReady] = useState(false);
@@ -97,7 +95,7 @@ const [resendTimer, setResendTimer] = useState(20);
     }
   }, [message, smsListenerReady]);
 
-  // -------------------- WAITING LOADER (15 seconds) --------------------
+  // -------------------- WAITING LOADER (20 seconds) --------------------
   useEffect(() => {
     if (smsListenerReady && Platform.OS === "android") {
       setShowFullScreenLoader(true);
@@ -106,7 +104,7 @@ const [resendTimer, setResendTimer] = useState(20);
         setWaitingForOtp(false);
         setShowFullScreenLoader(false);
         showToast("You can enter OTP manually");
-      }, 20000); // 20 seconds
+      }, 20000);
 
       return () => clearTimeout(timer);
     }
@@ -217,58 +215,52 @@ const [resendTimer, setResendTimer] = useState(20);
     inputRefs.current[0]?.focus();
   };
 
-const handleVerifyOtp = async () => {
-  const otpValue = otp.join("");
-  if (otpValue.length !== 6) {
-    showToast("Please enter 6-digit OTP");
-    return;
-  }
-
-  console.log("✅ Verifying OTP:", otpValue);
-  setVerifying(true);
-  setShowFullScreenLoader(true);
-
-  try {
-    const tempUserData = await AsyncStorage.getItem("tempUserData");
-    if (!tempUserData) {
-      showToast("User data not found. Please try again.");
-      setVerifying(false);
-      setShowFullScreenLoader(false);
+  const handleVerifyOtp = async () => {
+    const otpValue = otp.join("");
+    if (otpValue.length !== 6) {
+      showToast("Please enter 6-digit OTP");
       return;
     }
 
-    const { phone } = JSON.parse(tempUserData);
-    const res = await userService.verifyOtp(phone, otpValue);
+    console.log("✅ Verifying OTP:", otpValue);
+    setVerifying(true);
+    setShowFullScreenLoader(true);
 
-    if (res.success && res.data) {
-      showToast("OTP verified successfully!");
+    try {
+      const tempUserData = await AsyncStorage.getItem("tempUserData");
+      if (!tempUserData) {
+        showToast("User data not found. Please try again.");
+        setVerifying(false);
+        setShowFullScreenLoader(false);
+        return;
+      }
 
-      // ✅ Save user data using helper
-      await saveUserData(res.data);
+      const { phone } = JSON.parse(tempUserData);
+      const res = await userService.verifyOtp(phone, otpValue);
 
-      // ✅ Clear temp registration data
-      await AsyncStorage.removeItem("tempUserData");
+      if (res.success && res.data) {
+        showToast("OTP verified successfully!");
 
-      // ✅ Stop SMS listener and hide loader
-      stopListener && stopListener();
+        await saveUserData(res.data);
+        await AsyncStorage.removeItem("tempUserData");
+
+        stopListener && stopListener();
+        setShowFullScreenLoader(false);
+
+        navigation.navigate("MpinScreen", { step: 3 });
+      } else {
+        showToast(res.error || "OTP verification failed");
+        clearOtp();
+        setShowFullScreenLoader(false);
+      }
+    } catch (error) {
+      console.error("❌ OTP verification error:", error);
+      showToast("Verification failed. Please try again.");
       setShowFullScreenLoader(false);
-
-      // ✅ Navigate next
-      navigation.navigate("MpinScreen", { step: 3 });
-    } else {
-      showToast(res.error || "OTP verification failed");
-      clearOtp();
-      setShowFullScreenLoader(false);
+    } finally {
+      setVerifying(false);
     }
-  } catch (error) {
-    console.error("❌ OTP verification error:", error);
-    showToast("Verification failed. Please try again.");
-    setShowFullScreenLoader(false);
-  } finally {
-    setVerifying(false);
-  }
-};
-
+  };
 
   const handleResendOtp = async () => {
     if (resendTimer > 0) return;
@@ -346,7 +338,7 @@ const handleVerifyOtp = async () => {
                       key={index}
                       colors={
                         digit
-                          ? COLORS.gradient.primary // Using theme gradient
+                          ? COLORS.gradient.primary
                           : [COLORS.inputBackground, COLORS.inputBackground]
                       }
                       style={styles.otpInputWrapper}

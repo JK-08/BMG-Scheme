@@ -1,8 +1,8 @@
-import { API_BASE_URL_1 } from "../Config/API";
+import { API_BASE_URL } from "../Config/API";
 
 export async function getAppBanners() {
   try {
-    const response = await fetch(`${API_BASE_URL_1}/App_banner1/list`, {
+    const response = await fetch(`${API_BASE_URL}/schemeslider/all`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -13,10 +13,12 @@ export async function getAppBanners() {
       throw new Error("Failed to fetch banners");
     }
 
-    const data = await response.json();
-    console.log("Fetched banners:", data.length);
-    return data; // returns array of banners
-    console
+    const json = await response.json();
+
+    // NEW API returns → { sliders: [ ... ] }
+    console.log("Fetched sliders:", json.sliders?.length);
+
+    return json.sliders || [];
   } catch (error) {
     console.error("Banner API Error:", error);
     return []; // return empty to avoid crashes

@@ -11,19 +11,16 @@ import {
   Platform,
   Keyboard,
   StyleSheet,
-  ImageBackground
+  ImageBackground,
 } from "react-native";
-import appTheme from "../../utils/MainTheme";
+import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { API_BASE_URL_OLD } from "../../Config/API";
 import CustomPicker from "./CustomPicker";
 
-// Import separate scheme pages
 import DigiSilverScheme from "../../components/Schemes/DigiSilverScheme";
 import AmountScheme from "../../components/Schemes/AmountScheme";
 import FixedDepositScheme from "../../components/Schemes/FixedDepositScheme";
-
-const { COLORS, SIZES, FONTS } = appTheme;
 
 const SchemeDetailsPage = ({
   schemeData,
@@ -37,17 +34,14 @@ const SchemeDetailsPage = ({
   selectedSchemeId,
   schemeName,
 }) => {
-  console.log("Scheme Details Page Loaded");
-  console.log("Selected Scheme ID:", selectedSchemeId, "Type:", typeof selectedSchemeId);
-  console.log("Scheme Name:", schemeName);
-
   const scrollViewRef = useRef(null);
   const inputRefs = useRef({});
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [activeInput, setActiveInput] = useState(null);
 
-  // Convert selectedSchemeId to number to ensure consistent type comparison
   const numericSchemeId = Number(selectedSchemeId);
+
+  const [isAgreed, setIsAgreed] = useState(false);
 
   const [formData, setFormData] = useState({
     selectedSchemeId: numericSchemeId,
@@ -61,28 +55,41 @@ const SchemeDetailsPage = ({
   });
 
   const [transactionTypes, setTransactionTypes] = useState([]);
+  const MINIMUM_AMOUNT_MAP = {
+    1: 1, // Amount Scheme
+    2: 100, // Digi Silver
+    3: 10000, // Fixed Deposit
+  };
+
+  const minAmount = MINIMUM_AMOUNT_MAP[numericSchemeId] || 0;
 
   useEffect(() => {
-    const keyboardDidShowListener = Keyboard.addListener('keyboardDidShow', (event) => {
-      setKeyboardHeight(event.endCoordinates.height);
-      if (activeInput && inputRefs.current[activeInput]) {
-        inputRefs.current[activeInput].measureLayout(
-          scrollViewRef.current.getScrollableNode(),
-          (x, y) => {
-            scrollViewRef.current.scrollTo({
-              y: y + 20,
-              animated: true,
-            });
-          },
-          () => console.log('Error measuring input layout')
-        );
+    const keyboardDidShowListener = Keyboard.addListener(
+      "keyboardDidShow",
+      (event) => {
+        setKeyboardHeight(event.endCoordinates.height);
+        if (activeInput && inputRefs.current[activeInput]) {
+          inputRefs.current[activeInput].measureLayout(
+            scrollViewRef.current.getScrollableNode(),
+            (x, y) => {
+              scrollViewRef.current.scrollTo({
+                y: y + 20,
+                animated: true,
+              });
+            },
+            () => console.log("Error measuring input layout")
+          );
+        }
       }
-    });
+    );
 
-    const keyboardDidHideListener = Keyboard.addListener('keyboardDidHide', () => {
-      setKeyboardHeight(0);
-      setActiveInput(null);
-    });
+    const keyboardDidHideListener = Keyboard.addListener(
+      "keyboardDidHide",
+      () => {
+        setKeyboardHeight(0);
+        setActiveInput(null);
+      }
+    );
 
     return () => {
       keyboardDidShowListener.remove();
@@ -105,21 +112,20 @@ const SchemeDetailsPage = ({
   }, [API_BASE_URL_OLD]);
 
   const updateFormData = (field, value) => {
-    setFormData(prev => ({ ...prev, [field]: value }));
-    
+    setFormData((prev) => ({ ...prev, [field]: value }));
+
     if (validationErrors[field]) {
-      setValidationErrors(prev => ({ ...prev, [field]: "" }));
+      setValidationErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
   const validateStep = () => {
     const errors = {};
-    
+
     if (!numericSchemeId) {
       errors.scheme = "Please select a scheme";
     }
 
-    // Common validation for all schemes
     if (!formData?.amount) {
       errors.amount = "Please enter a valid amount";
     }
@@ -127,12 +133,20 @@ const SchemeDetailsPage = ({
     if (!formData?.accCode) {
       errors.accCode = "Please select a payment mode";
     }
-    
+
     setValidationErrors(errors);
     return Object.keys(errors).length === 0;
   };
 
   const handleSubmit = () => {
+    if (!isAgreed) {
+      Alert.alert(
+        "Agreement Required",
+        "Please agree to the Terms & Conditions and Privacy Policy."
+      );
+      return;
+    }
+
     if (validateStep()) {
       onSubmit(formData);
     } else {
@@ -143,7 +157,6 @@ const SchemeDetailsPage = ({
     }
   };
 
-  // Render the appropriate scheme component
   const renderSchemeComponent = () => {
     switch (numericSchemeId) {
       case 1:
@@ -201,67 +214,89 @@ const SchemeDetailsPage = ({
 
   return (
     <KeyboardAvoidingView
-      behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
+      behavior={Platform.OS === "ios" ? "padding" : "height"}
       keyboardVerticalOffset={Platform.select({ ios: 60, android: 80 })}
       style={styles.container}
     >
-      <ImageBackground 
-        source={require("../../assets/image.png")} 
+      <ImageBackground
+        source={require("../../assets/image.png")}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
         <ScrollView
           ref={scrollViewRef}
-          contentContainerStyle={[styles.scrollContent, { paddingBottom: keyboardHeight + 50 }]}
+          contentContainerStyle={[
+            styles.scrollContent,
+            { paddingBottom: keyboardHeight + 50 },
+          ]}
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
           <CommonHeader title={"Scheme Details"} />
-          <View style={styles.card}>
 
-            {/* Scheme Display (Read-only) */}
+          <View style={styles.card}>
+            {/* Read-only Scheme */}
             <View style={styles.inputContainer}>
-              <Text style={styles.label}>
-                Selected Scheme
-              </Text>
+              <Text style={styles.label}>Selected Scheme</Text>
               <View style={styles.staticValueContainer}>
                 <Text style={styles.staticValueText}>
-                  {schemeName || 'No Scheme Selected'}
+                  {schemeName || "No Scheme Selected"}
                 </Text>
               </View>
             </View>
 
-            {/* Render the specific scheme component */}
+            {/* RENDER SCHEME UI */}
             {renderSchemeComponent()}
 
-            {/* Payment Mode (Common for all schemes) */}
+            {/* Payment Mode */}
             <View style={styles.inputContainer}>
               <View style={styles.labelContainer}>
-                <Text style={styles.label}>
-                  Payment Mode
-                </Text>
+                <Text style={styles.label}>Payment Mode</Text>
                 <Text style={styles.asterisk}>*</Text>
               </View>
               <CustomPicker
-                selectedValue={formData?.accCode || ''}
+                selectedValue={formData?.accCode || ""}
                 onValueChange={(itemValue) => {
-                  updateFormData('accCode', itemValue);
-                  const selectedType = transactionTypes.find((type) => type.ACCOUNT === itemValue);
+                  updateFormData("accCode", itemValue);
+
+                  const selectedType = transactionTypes.find(
+                    (type) => type.ACCOUNT === itemValue
+                  );
+
                   if (selectedType?.CARDTYPE) {
-                    updateFormData('modePay', selectedType.CARDTYPE);
+                    updateFormData("modePay", selectedType.CARDTYPE);
                   }
                 }}
                 items={[
-                  { label: 'Select Payment Mode', value: '' },
-                  ...transactionTypes.map((type) => ({ label: type.NAME, value: type.ACCOUNT }))
+                  { label: "Select Payment Mode", value: "" },
+                  ...transactionTypes.map((type) => ({
+                    label: type.NAME,
+                    value: type.ACCOUNT,
+                  })),
                 ]}
-                placeholder="Select Payment Mode"
-                enabled={!isSubmitting}
               />
+
               {validationErrors?.accCode && (
                 <Text style={styles.errorText}>{validationErrors.accCode}</Text>
               )}
             </View>
+
+            {/* AGREEMENT CHECKBOX */}
+            <TouchableOpacity
+              style={styles.checkboxRow}
+              onPress={() => setIsAgreed(!isAgreed)}
+              activeOpacity={0.7}
+            >
+              <View
+                style={[styles.checkbox, isAgreed && styles.checkboxChecked]}
+              >
+                {isAgreed && <Text style={styles.checkboxTick}>✔</Text>}
+              </View>
+
+              <Text style={styles.checkboxText}>
+                I agree to the Terms & Conditions and Privacy Policy
+              </Text>
+            </TouchableOpacity>
 
             {/* Buttons */}
             <View style={styles.buttonRow}>
@@ -269,18 +304,19 @@ const SchemeDetailsPage = ({
                 style={[
                   styles.button,
                   styles.submitButton,
-                  isSubmitting && styles.buttonDisabled,
+                  (isSubmitting ||
+                    !isAgreed ||
+                    Number(formData.amount) < minAmount) &&
+                    styles.buttonDisabled,
                 ]}
                 onPress={handleSubmit}
-                disabled={isSubmitting}
+                disabled={isSubmitting || Number(formData.amount) < minAmount}
                 activeOpacity={0.7}
               >
                 {isSubmitting ? (
                   <View style={styles.loadingContainer}>
                     <ActivityIndicator color={COLORS.white} />
-                    <Text style={styles.loadingText}>
-                      Submitting...
-                    </Text>
+                    <Text style={styles.loadingText}>Submitting...</Text>
                   </View>
                 ) : (
                   <Text style={styles.buttonText}>Submit</Text>
@@ -297,7 +333,7 @@ const SchemeDetailsPage = ({
                 disabled={isSubmitting}
                 activeOpacity={0.7}
               >
-                <Text style={styles.buttonText}>Back</Text>
+                <Text style={styles.backButtonText}>Back</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -313,8 +349,8 @@ const styles = StyleSheet.create({
   },
   backgroundImage: {
     flex: 1,
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
   },
   scrollContent: {
     flexGrow: 1,
@@ -324,113 +360,133 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.lg,
     padding: SIZES.padding.lg,
-    marginBottom: SIZES.lg,
+    marginBottom: SIZES.margin.lg,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
-    ...appTheme.SHADOWS.md,
+    ...SHADOWS.md,
   },
   inputContainer: {
-    marginBottom: SIZES.lg,
+    marginBottom: SIZES.margin.lg,
   },
   labelContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SIZES.xs,
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: SIZES.margin.xs,
   },
   label: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.md,
+    ...FONTS.bodyMedium,
     color: COLORS.textPrimary,
-    marginRight: SIZES.xs,
-    lineHeight: SIZES.font.md * 1.4,
+    marginRight: SIZES.margin.xs,
   },
   asterisk: {
-    fontSize: SIZES.font.md,
+    ...FONTS.bodyMedium,
     color: COLORS.error,
-    fontFamily: FONTS.family.bodyBold,
-    lineHeight: SIZES.font.md,
   },
   staticValueContainer: {
     height: SIZES.input.height,
     borderWidth: 1.5,
-    borderColor: COLORS.borderMedium,
+    borderColor: COLORS.border,
     borderRadius: SIZES.radius.md,
     paddingHorizontal: SIZES.padding.md,
-    justifyContent: 'center',
-    backgroundColor: 'transparent',
+    justifyContent: "center",
+    backgroundColor: COLORS.inputBackground,
   },
   staticValueText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.md,
+    ...FONTS.body,
     color: COLORS.textPrimary,
-    lineHeight: SIZES.font.md * 1.4,
   },
   errorText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.caption,
     color: COLORS.error,
-    marginTop: SIZES.xs,
-    lineHeight: SIZES.font.sm * 1.4,
+    marginTop: SIZES.margin.xs,
   },
   buttonRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    marginTop: SIZES.xl,
-    gap: SIZES.md,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: SIZES.margin.xl,
+    gap: SIZES.margin.md,
   },
   button: {
     flex: 1,
-    borderRadius: SIZES.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    height: SIZES.button.md,
-    ...appTheme.SHADOWS.sm,
+    borderRadius: SIZES.radius.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    height: SIZES.button.lg,
+    ...SHADOWS.sm,
   },
   submitButton: {
     backgroundColor: COLORS.primary,
   },
   backButton: {
-    backgroundColor: COLORS.textSecondary,
-    borderWidth: 1.5,
-    borderColor: COLORS.borderMedium,
+    backgroundColor: COLORS.white,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
   buttonText: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.md,
+    ...FONTS.button,
     color: COLORS.white,
-    lineHeight: SIZES.font.md * 1.4,
+  },
+  backButtonText: {
+    ...FONTS.button,
+    color: COLORS.primary,
   },
   buttonDisabled: {
     opacity: 0.6,
   },
   loadingContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
   },
   loadingText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.bodySmall,
     color: COLORS.white,
-    marginLeft: SIZES.sm,
-    lineHeight: SIZES.font.sm * 1.4,
+    marginLeft: SIZES.margin.sm,
   },
   noSchemeContainer: {
     padding: SIZES.padding.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: COLORS.borderLight,
-    borderStyle: 'dashed',
+    borderStyle: "dashed",
     borderRadius: SIZES.radius.md,
-    marginBottom: SIZES.lg,
+    marginBottom: SIZES.margin.lg,
   },
   noSchemeText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.md,
+    ...FONTS.body,
     color: COLORS.textTertiary,
-    textAlign: 'center',
-    lineHeight: SIZES.font.md * 1.4,
+    textAlign: "center",
+  },
+  checkboxRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: SIZES.margin.md,
+    marginBottom: SIZES.margin.lg,
+  },
+  checkbox: {
+    width: SIZES.icon.sm,
+    height: SIZES.icon.sm,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    borderRadius: SIZES.radius.xs,
+    marginRight: SIZES.margin.sm,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+  },
+  checkboxTick: {
+    color: COLORS.white,
+    fontSize: SIZES.font.sm,
+    fontWeight: FONTS.weight.bold,
+  },
+  checkboxText: {
+    flex: 1,
+    ...FONTS.body,
+    color: COLORS.textPrimary,
   },
 });
 

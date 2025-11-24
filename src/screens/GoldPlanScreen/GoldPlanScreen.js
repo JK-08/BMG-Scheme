@@ -15,6 +15,7 @@ import { getAllSchemes } from "../../services/SchemeNameService";
 import appTheme from "../../utils/MainTheme";
 
 const { COLORS, moderateScale } = appTheme;
+const IMAGE_BASE_URL = "https://scheme.bmgjewellers.com";
 
 function GoldPlanScreen() {
   const [schemes, setSchemes] = useState([]);
@@ -30,6 +31,7 @@ function GoldPlanScreen() {
           schemeId: s.SchemeId ?? 0,
           schemeName: s.schemeName || s.SchemeName || "Unnamed Scheme",
           description: s.SchemeSName || s.schemeSName || "No description",
+          schemeImage: s.image_path ? IMAGE_BASE_URL + s.image_path : null,
         }));
 
         setSchemes(formattedSchemes);
@@ -57,16 +59,17 @@ function GoldPlanScreen() {
       return <Text style={styles.noDataText}>No Gold Plans available.</Text>;
     }
 
-    return schemes.map((scheme) => (
-      <GoldPlan
-        key={scheme.schemeId}
-        schemeId={scheme.schemeId}
-        schemeName={scheme.schemeName}
-        description={scheme.description}
-        styles={styles.itemCardContainer}
-      />
-    ));
-  };
+   return schemes.map((scheme) => (
+  <GoldPlan
+    key={scheme.schemeId}
+    schemeId={scheme.schemeId}
+    schemeName={scheme.schemeName}
+    description={scheme.description}
+    schemeImage={scheme.schemeImage}  // <-- important
+    styles={styles.itemCardContainer}
+  />
+));
+};
 
   return (
     <View style={styles.container}>

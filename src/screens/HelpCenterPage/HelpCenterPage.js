@@ -1,4 +1,4 @@
-import React from 'react'
+import React, { useEffect } from 'react'
 import {
   View,
   Text,
@@ -11,12 +11,32 @@ import {
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialIcons'
 import { LinearGradient } from 'expo-linear-gradient'
-import { COLORS, SIZES, FONTS, verticalScale, moderateScale,SHADOWS} from '../../utils/MainTheme'
+import theme from '../../utils/AppTheme'
 import CommonHeader from '../../components/CommonHeader/CommonHeader'
+import { BottomTab } from '../../components'
+import { useNavigation } from '@react-navigation/native';
+import { companyDetails } from '../../services/CompanyDetails';
 
-const SUPPORT_NUMBER = '919514333601'
+const { COLORS, SIZES, FONTS, verticalScale, moderateScale, SHADOWS } = theme
+const SUPPORT_NUMBER = '70946 70946'
 
 function HelpCenterPage() {
+  const navigation = useNavigation();
+
+  const [companyInfo, setCompanyInfo] = React.useState(null);
+  console.log(companyInfo ,'companyInfo') ;
+
+  useEffect(()=>{
+    (async () => {
+      try {
+        const data = await companyDetails.getCompanyDetails();
+        setCompanyInfo(data?.message?.[0]);
+      } catch (error) {
+        console.error("Error fetching company details:", error);
+      }
+    })();
+  }, []);
+
   const handlePhoneCall = (phoneNumber) => {
     Linking.openURL(`tel:${phoneNumber}`)
   }
@@ -40,14 +60,14 @@ function HelpCenterPage() {
 
   const ContactCard = ({ icon, title, children, iconBg }) => (
     <LinearGradient
-      colors={[COLORS.background, COLORS.surface]}
+      colors={[COLORS.background, COLORS.backgroundSecondary]}
       style={styles.card}
       start={{ x: 0, y: 0 }}
       end={{ x: 1, y: 1 }}
     >
       <View style={styles.cardHeader}>
         <View style={[styles.iconContainer, { backgroundColor: iconBg }]}>
-          <Icon name={icon} size={20} color={COLORS.white} />
+          <Icon name={icon} size={moderateScale(20)} color={COLORS.white} />
         </View>
         <Text style={styles.cardTitle}>{title}</Text>
       </View>
@@ -59,19 +79,20 @@ function HelpCenterPage() {
     <TouchableOpacity style={styles.contactItem} onPress={onPress}>
       {isAddress ? (
         <View style={styles.addressContainer}>
-          <Text style={styles.contactText}>M/s. BMG Jewellers Pvt Ltd</Text>
-          <Text style={styles.contactText}>160, Melamasi St, Madurai-625001</Text>
+          <Text style={styles.contactText}>{companyInfo?.cAddress1}</Text>
+           <Text style={styles.contactText}>{companyInfo?.cAddress2}</Text> 
+           <Text style={styles.contactText}>{companyInfo?.cPincode}</Text> 
         </View>
       ) : (
         <Text style={styles.contactText}>{text}</Text>
       )}
-      <Icon name={icon} size={18} color={COLORS.secondary} />
+      <Icon name={icon} size={moderateScale(18)} color={COLORS.primary} />
     </TouchableOpacity>
   )
 
   const QuickAction = ({ icon, text, onPress }) => (
     <TouchableOpacity style={styles.actionButton} onPress={onPress}>
-      <Icon name={icon} size={20} color={COLORS.secondary} />
+      <Icon name={icon} size={moderateScale(20)} color={COLORS.white} />
       <Text style={styles.actionText}>{text}</Text>
     </TouchableOpacity>
   )
@@ -94,36 +115,36 @@ function HelpCenterPage() {
             <ContactCard 
               icon="phone" 
               title="Phone Numbers" 
-              iconBg={COLORS.secondary}
+              iconBg={COLORS.primary}
             >
               <ContactItem
-                text="+91-95143 33601"
+                text={companyInfo?.cPhone}
                 icon="call"
-                onPress={() => handlePhoneCall('919514333601')}
+                onPress={() => handlePhoneCall(companyInfo?.cPhone)}
               />
               <ContactItem
-                text="+91-95143 33609"
+                text={companyInfo?.cPhone}
                 icon="call"
-                onPress={() => handlePhoneCall('919514333609')}
+                onPress={() => handlePhoneCall(companyInfo?.cPhone)}
               />
             </ContactCard>
 
             <ContactCard 
               icon="email" 
               title="Email Address" 
-              iconBg={COLORS.secondary}
+              iconBg={COLORS.primary}
             >
               <ContactItem
-                text="Contact@bmgjewellers.in"
+                text={companyInfo?.cEmail}
                 icon="mail-outline"
-                onPress={() => handleEmail('Contact@bmgjewellers.in')}
+                onPress={() => handleEmail(companyInfo?.cEmail)}
               />
             </ContactCard>
 
             <ContactCard 
               icon="location-on" 
               title="Office Address" 
-              iconBg={COLORS.secondary}
+              iconBg={COLORS.primary}
             >
               <ContactItem
                 icon="place"
@@ -158,16 +179,17 @@ function HelpCenterPage() {
               <QuickAction
                 icon="help-outline"
                 text="FAQs"
-                onPress={() => handleWhatsApp('I would like to see the FAQs.')}
+                onPress={() => navigation.navigate('FAQPage')}
               />
               <QuickAction
                 icon="description"
-                text="Support"
+                text="Contact Support"
                 onPress={() => handlePhoneCall('919514333601')}
               />
             </View>
           </View>
         </ScrollView>
+        <BottomTab screen="HelpCenter" />
       </ImageBackground>
     </View>
   )
@@ -176,131 +198,126 @@ function HelpCenterPage() {
 const styles = StyleSheet.create({
   container: { 
     flex: 1,
+    backgroundColor: COLORS.background,
   },
   backgroundImage: {
     flex: 1,
   },
   scrollContainer: { 
     flexGrow: 1,
-    paddingBottom: verticalScale(16),
+    paddingTop: SIZES.padding.md,
+    paddingBottom: verticalScale(SIZES.padding.xl),
   },
   cardsContainer: {
-    paddingHorizontal: SIZES.padding.md,
-    marginBottom: verticalScale(20),
+    paddingHorizontal: SIZES.padding.lg,
+    marginBottom: verticalScale(SIZES.padding.xl),
   },
   card: {
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.md,
-    marginBottom: verticalScale(12),
-    // ...SHADOWS.sm,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.lg,
+    marginBottom: verticalScale(SIZES.padding.md),
+    ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
   cardHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: verticalScale(12),
+    marginBottom: verticalScale(SIZES.padding.md),
   },
   iconContainer: {
-    width: moderateScale(36),
-    height: moderateScale(36),
-    borderRadius: SIZES.radius.sm,
+    width: moderateScale(40),
+    height: moderateScale(40),
+    borderRadius: SIZES.radius.md,
     alignItems: 'center',
     justifyContent: 'center',
-    marginRight: moderateScale(10),
+    marginRight: SIZES.padding.md,
+    ...SHADOWS.sm,
   },
   cardTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.lg,
+    ...FONTS.h5,
     color: COLORS.textPrimary,
   },
   contactItem: {
     flexDirection: 'row',
     justifyContent: 'space-between',
     alignItems: 'center',
-    paddingVertical: verticalScale(10),
+    paddingVertical: verticalScale(SIZES.padding.sm),
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
   },
   contactText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.md,
+    ...FONTS.body,
     color: COLORS.textPrimary,
     flex: 1,
-    marginRight: moderateScale(8),
+    marginRight: SIZES.padding.sm,
   },
   addressContainer: { 
     flex: 1,
   },
   hoursContainer: {
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.md,
-    marginHorizontal: SIZES.padding.md,
-    marginBottom: verticalScale(20),
-    ...SHADOWS.sm,
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.xl,
+    marginHorizontal: SIZES.padding.lg,
+    marginBottom: verticalScale(SIZES.padding.xl),
+    ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
   hoursTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.lg,
+    ...FONTS.h5,
     color: COLORS.textPrimary,
-    marginBottom: verticalScale(12),
+    marginBottom: verticalScale(SIZES.padding.md),
     textAlign: 'center',
   },
   hoursRow: {
     flexDirection: 'row',
     justifyContent: 'space-between',
-    paddingVertical: verticalScale(8),
+    paddingVertical: verticalScale(SIZES.padding.sm),
   },
   hoursDay: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.md,
+    ...FONTS.body,
     color: COLORS.textPrimary,
   },
   hoursTime: { 
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.md,
+    ...FONTS.bodyMedium,
     color: COLORS.textPrimary, 
   },
   actionsContainer: {
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.md,
-    marginHorizontal: SIZES.padding.md,
-    // ...SHADOWS.sm,
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.xl,
+    marginHorizontal: SIZES.padding.lg,
+    ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
   actionsTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.lg,
+    ...FONTS.h5,
     color: COLORS.textPrimary,
-    marginBottom: verticalScale(12),
+    marginBottom: verticalScale(SIZES.padding.md),
     textAlign: 'center',
   },
   actionsRow: { 
     flexDirection: 'row', 
     justifyContent: 'space-between',
-    gap: moderateScale(8),
+    gap: SIZES.padding.sm,
   },
   actionButton: {
     alignItems: 'center',
-    padding: SIZES.padding.sm,
-    backgroundColor: COLORS.secondaryLight + '30',
-    borderRadius: SIZES.radius.sm,
+    padding: SIZES.padding.md,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius.md,
     flex: 1,
-    minHeight: verticalScale(70),
+    minHeight: verticalScale(80),
     justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.primaryLight,
+    ...SHADOWS.sm,
   },
   actionText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
-    color: COLORS.primary,
-    marginTop: verticalScale(6),
+    ...FONTS.bodyMedium,
+    color: COLORS.white,
+    marginTop: verticalScale(SIZES.xs),
     textAlign: 'center',
   }
 })

@@ -1,4 +1,3 @@
-// screens/BuyPage.js
 import React, { useState, useEffect, useCallback, useMemo } from "react";
 import {
   View,
@@ -9,26 +8,33 @@ import {
   Alert,
   ActivityIndicator,
   ScrollView,
-  ImageBackground,
   KeyboardAvoidingView,
   Platform,
+  Modal,
 } from "react-native";
 import { useRoute, useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
 import { API_BASE_URL, API_BASE_URL_OLD } from "../../Config/API";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import appTheme from "../../utils/MainTheme";
-import CommonHeader from '../../components/CommonHeader/CommonHeader'
-import {BottomTab} from '../../components'
+import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
+import CommonHeader from "../../components/CommonHeader/CommonHeader";
+import { insertSchemeCollection } from "../../services/InstallmentUpdateService";
+
+// -----------------------------
+// Generate cash payment details
+// -----------------------------
+const generateCashPaymentDetails = () => {
+  const cardNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+  const rtnNumber = Math.floor(100000 + Math.random() * 900000).toString();
+  const rtnReason = `CASH-${rtnNumber}`;
+  return { cardNumber, rtnReason };
+};
 
 const BuyPage = () => {
   const route = useRoute();
   const navigation = useNavigation();
-  const { COLORS, SIZES, FONTS } = appTheme;
-
   const { productData } = route.params || {};
 
-  // Memoized extracted values
   const productInfo = useMemo(() => ({
     weightLedger: productData?.schemeSummary?.weightLedger || "N",
     defaultAmount: productData?.amount || "",
@@ -44,69 +50,99 @@ const BuyPage = () => {
 
   const [token, setToken] = useState(null);
   const [amount, setAmount] = useState(
-    productInfo.weightLedger === "Y" ? "" : productInfo.defaultAmount?.toString()
+    productInfo.weightLedger === "Y"
+      ? ""
+      : productInfo.defaultAmount?.toString()
   );
   const [loading, setLoading] = useState(false);
-  const [payType, setPayType] = useState(null);
+  const [payType, setPayType] = useState("CASH");
   const [inputFocused, setInputFocused] = useState(false);
   const [amountError, setAmountError] = useState("");
+  const [fetchingPaymentType, setFetchingPaymentType] = useState(true);
+  const [payTypeResponse, setPayTypeResponse] = useState(null);
+  const [showPaymentDropdown, setShowPaymentDropdown] = useState(false);
 
-  // Validate amount input
+  const payTypeObj = useMemo(() => {
+    if (!payTypeResponse) return null;
+    return payTypeResponse.find((item) => item.NAME === payType) || null;
+  }, [payType, payTypeResponse]);
+
+  const getPaymentTypeStyle = (type) => {
+    switch (type) {
+      case "CASH":
+        return {
+          icon: "💵",
+          gradient: COLORS.gradient.success,
+          bgColor: COLORS.successLight,
+          borderColor: COLORS.success,
+          textColor: COLORS.textPrimary,
+        };
+      case "ONLINE":
+        return {
+          icon: "💳",
+          gradient: COLORS.gradient.info,
+          bgColor: COLORS.infoLight,
+          borderColor: COLORS.info,
+          textColor: COLORS.textPrimary,
+        };
+      case "UPI":
+        return {
+          icon: "📱",
+          gradient: COLORS.gradient.warm,
+          bgColor: COLORS.primaryOpacity10,
+          borderColor: COLORS.primary,
+          textColor: COLORS.primary,
+        };
+      default:
+        return {
+          icon: "💰",
+          gradient: COLORS.gradient.primary,
+          bgColor: COLORS.primaryOpacity10,
+          borderColor: COLORS.primary,
+          textColor: COLORS.primary,
+        };
+    }
+  };
+
+  const currentPaymentStyle = getPaymentTypeStyle(payType);
+
   const validateAmount = useCallback((value) => {
     if (!value || value.trim() === "") {
       setAmountError("Amount is required");
       return false;
     }
-    
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue <= 0) {
       setAmountError("Please enter a valid amount greater than 0");
       return false;
     }
-    
     if (numValue > 10000000) {
       setAmountError("Amount cannot exceed ₹1,00,00,000");
       return false;
     }
-    
     setAmountError("");
     return true;
   }, []);
 
-  // Handle amount change with validation
   const handleAmountChange = useCallback((value) => {
-    // Allow only numbers and decimal point
     const sanitized = value.replace(/[^0-9.]/g, "");
-    
-    // Prevent multiple decimal points
     const parts = sanitized.split(".");
     if (parts.length > 2) return;
-    
-    // Limit decimal places to 2
     if (parts[1] && parts[1].length > 2) return;
-    
+
     setAmount(sanitized);
-    if (sanitized) {
-      validateAmount(sanitized);
-    } else {
-      setAmountError("");
-    }
+    if (sanitized) validateAmount(sanitized);
+    else setAmountError("");
   }, [validateAmount]);
 
-  // Get token with error handling
   useEffect(() => {
     const getToken = async () => {
       try {
         const savedToken = await AsyncStorage.getItem("authToken");
-        if (savedToken) {
-          setToken(savedToken);
-        } else {
-          Alert.alert(
-            "Authentication Required",
-            "Please login to continue",
-            [{ text: "OK", onPress: () => navigation.goBack() }]
-          );
-        }
+        if (savedToken) setToken(savedToken);
+        else Alert.alert("Authentication Required", "Please login", [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]);
       } catch (error) {
         console.error("Error fetching token:", error);
         Alert.alert("Error", "Failed to authenticate. Please try again.");
@@ -115,200 +151,175 @@ const BuyPage = () => {
     getToken();
   }, [navigation]);
 
-  // Fetch payment type with retry logic
   useEffect(() => {
-    const fetchPaymentType = async (retries = 3) => {
+    const fetchPaymentType = async () => {
       try {
-        const res = await fetch(`${API_BASE_URL_OLD}/account/getTranType`, {
-          timeout: 10000,
-        });
-        
-        if (!res.ok) throw new Error("Failed to fetch payment type");
-        
-        const data = await res.json();
-        setPayType(data?.[0]?.NAME || "CASH");
+        const url = `${API_BASE_URL_OLD}/account/getTranType`;
+        const res = await fetch(url);
+        const json = await res.json();
+        if (!Array.isArray(json) || json.length === 0) throw new Error("Invalid API data");
+        setPayTypeResponse(json);
+        setPayType(json[0].NAME);
+        setFetchingPaymentType(false);
       } catch (error) {
-        console.error("Error fetching payment type:", error);
-        if (retries > 0) {
-          setTimeout(() => fetchPaymentType(retries - 1), 2000);
-        } else {
-          setPayType("CASH"); // Fallback
-        }
+        console.log("❌ Error fetching payment type:", error);
+        setFetchingPaymentType(false);
       }
     };
     fetchPaymentType();
   }, []);
 
-  // Create order with better error handling
-  const createOrder = async () => {
-    try {
-      const payload = {
-        amount: parseFloat(amount),
-        customer: {
-          name: productInfo.defaultName,
-          contact: productInfo.defaultContact,
-          REGNO: productInfo.defaultRegNo,
-          GROUPCODE: productInfo.defaultGroupCode,
-        },
-      };
+  // -----------------------------
+  // Build scheme collection payload
+  // -----------------------------
+  const buildSchemeData = () => {
+    const schemeInfo = productData?.schemeSummary || {};
+    const cashDetails = generateCashPaymentDetails();
 
-      const res = await fetch(
-        "https://scheme.bmgjewellers.com/api/orders/create",
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify(payload),
-          timeout: 15000,
-        }
-      );
-
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.message || `Server error: ${res.status}`);
-      }
-      
-      if (!data.order_id) {
-        throw new Error("Order ID not received from server");
-      }
-
-      return data.order_id;
-    } catch (error) {
-      console.error("Create order error:", error);
-      throw new Error(error.message || "Failed to create order");
-    }
+    return {
+      groupCode: productInfo.defaultGroupCode || "BMA",
+      regNo: productInfo.defaultRegNo?.toString() || "41",
+      rDate: new Date().toISOString().split("T")[0],
+      amount: amount || productInfo.defaultAmount?.toString() || "1000",
+      modePay: payTypeObj?.CARDTYPE || "",
+      accCode: payTypeObj?.ACCOUNT || "",
+      updateTime: new Date().toISOString().split("T")[0],
+      installment:
+        parseInt(schemeInfo?.schemaSummaryTransBalance?.insPaid?.toString() || "0") + 1 || 1,
+      userID: "999",
+      chqBankCode: "2",
+      chqCardNo: cashDetails.cardNumber,
+      chqBranch: "RECEIVED",
+      chkBank: "CASH",
+      chqRtnReason: cashDetails.rtnReason,
+    };
   };
 
-  // Build payload
-  const buildPayload = useCallback((orderId) => ({
-    merchantTxnNo: orderId,
-    amount: parseFloat(amount),
-    currencyCode: "356",
-    transactionType: "SALE",
-    payType: "ONLINE",
-    addlParam1: productInfo.defaultRegNo,
-    addlParam2: productInfo.defaultGroupCode,
-    returnURL: "https://app.bmgjewellers.com/api/v1/payment/success",
-  }), [amount, productInfo]);
-
-  // Get redirect URL
-  const getRedirectUrl = async (tranCtx) => {
+  // -----------------------------
+  // Insert cash payment immediately
+  // -----------------------------
+  const insertCashPayment = async () => {
     try {
-      const res = await fetch(`${API_BASE_URL}/payment/redirect-url`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+      const schemeData = buildSchemeData();
+      await insertSchemeCollection(schemeData);
+
+      navigation.navigate("PaymentSuccess", {
+        status: "SUCCESS",
+        orderDetails: {
+          amount: parseFloat(amount || productInfo.defaultAmount),
+          customer: {
+            name: productInfo.defaultName,
+            contact: productInfo.defaultContact,
+            regNo: productInfo.defaultRegNo,
+            groupCode: productInfo.defaultGroupCode,
+          },
+          payType: payType,
+          schemeInfo: productData?.schemeSummary || {},
         },
-        body: JSON.stringify({ tranCtx }),
-        timeout: 15000,
+        schemeData,
+        paymentStatus: {
+          orderStatus: "PAID",
+          message: "Cash payment processed successfully",
+        },
+        productData,
+        isCashPayment: true,
       });
-
-      if (!res.ok) {
-        const errorText = await res.text();
-        throw new Error(errorText || `HTTP error ${res.status}`);
-      }
-
-      const text = await res.text();
-      const cleanUrl = text.replace(/^"+|"+$/g, "").trim();
-      
-      if (!cleanUrl.startsWith("http")) {
-        throw new Error("Invalid redirect URL received");
-      }
-
-      return cleanUrl;
     } catch (error) {
-      console.error("Redirect URL error:", error);
-      throw new Error(error.message || "Failed to get payment URL");
+      console.error("❌ Cash payment failed:", error);
+      Alert.alert("Error", "Failed to process cash payment. Please try again.");
     }
   };
 
-  // Handle Buy with comprehensive error handling
+  // -----------------------------
+  // Handle Buy
+  // -----------------------------
   const handleBuy = async () => {
-    // Validate amount
-    if (!validateAmount(amount)) {
+    if (productInfo.weightLedger === "Y" && !validateAmount(amount)) {
       Alert.alert("Invalid Amount", amountError || "Please enter a valid amount.");
-      return;
-    }
-
-    // Check token
-    if (!token) {
-      Alert.alert(
-        "Authentication Required",
-        "Please login to continue",
-        [{ text: "OK", onPress: () => navigation.goBack() }]
-      );
       return;
     }
 
     setLoading(true);
 
     try {
-      // Step 1: Create order
-      const orderId = await createOrder();
-      
-      // Step 2: Build payload
-      const payload = buildPayload(orderId);
+      if (payType === "CASH") {
+        await insertCashPayment();
+      } else {
+        // Proceed with online payment as before
+        if (!token) {
+          Alert.alert("Authentication Required", "Please login to continue", [
+            { text: "OK", onPress: () => navigation.goBack() },
+          ]);
+          setLoading(false);
+          return;
+        }
 
-      // Step 3: Initiate payment
-      const initiate = await fetch(`${API_BASE_URL}/payment/initiate-sale`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
-        },
-        body: JSON.stringify(payload),
-        timeout: 15000,
-      });
+        const orderId = await createOrder();
+        const payload = buildPayload(orderId);
 
-      if (!initiate.ok) {
-        const errorData = await initiate.json();
-        throw new Error(errorData.message || `Payment initiation failed: ${initiate.status}`);
+        const initiate = await fetch(`${API_BASE_URL}/payment/initiate-sale`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${token}`,
+          },
+          body: JSON.stringify(payload),
+        });
+
+        if (!initiate.ok) {
+          const errorData = await initiate.json().catch(() => ({}));
+          throw new Error(
+            errorData.message || `Payment initiation failed: ${initiate.status}`
+          );
+        }
+
+        const data = await initiate.json();
+
+        if (!data.tranCtx) {
+          throw new Error("Transaction context not received");
+        }
+
+        const redirectUrl = await getRedirectUrl(data.tranCtx);
+
+        const orderDetails = {
+          orderId,
+          merchantTxnNo: orderId,
+          amount: parseFloat(amount || productInfo.defaultAmount),
+          payType: payType || "ONLINE",
+          customer: {
+            name: productInfo.defaultName,
+            contact: productInfo.defaultContact,
+            regNo: productInfo.defaultRegNo,
+            groupCode: productInfo.defaultGroupCode,
+          },
+          schemeInfo: productData?.schemeSummary || {},
+          accountInfo: productData?.accountDetails || {},
+          personalInfo: productData?.personalInfo || {},
+          paymentUrl: redirectUrl,
+          timestamp: new Date().toISOString(),
+        };
+
+        navigation.navigate("PaymentWebView", {
+          paymentUrl: redirectUrl,
+          orderDetails,
+          productData,
+          payTypeResponse,
+        });
       }
-
-      const data = await initiate.json();
-      
-      if (!data.tranCtx) {
-        throw new Error("Transaction context not received");
-      }
-
-      // Step 4: Get redirect URL
-      const redirectUrl = await getRedirectUrl(data.tranCtx);
-
-      // Step 5: Build complete order details
-      const orderDetails = {
-        orderId,
-        merchantTxnNo: orderId,
-        amount: parseFloat(amount),
-        payType: payType || "ONLINE",
-        customer: {
-          name: productInfo.defaultName,
-          contact: productInfo.defaultContact,
-          regNo: productInfo.defaultRegNo,
-          groupCode: productInfo.defaultGroupCode,
-        },
-        schemeInfo: productData?.schemeSummary || {},
-        accountInfo: productData?.accountDetails || {},
-        personalInfo: productData?.personalInfo || {},
-        paymentUrl: redirectUrl,
-        timestamp: new Date().toISOString(),
-      };
-
-      // Navigate to payment webview
-      navigation.navigate("PaymentWebView", {
-        paymentUrl: redirectUrl,
-        orderDetails,
-        productData,
-      });
     } catch (error) {
-      console.error("Payment initiation failed:", error);
-      
+      console.error("Payment processing failed:", error);
       Alert.alert(
         "Payment Error",
         error.message || "Unable to process payment. Please try again.",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "Retry", onPress: handleBuy }
+          {
+            text: "Retry",
+            onPress: () => {
+              setLoading(false);
+              handleBuy();
+            },
+          },
         ]
       );
     } finally {
@@ -316,19 +327,36 @@ const BuyPage = () => {
     }
   };
 
-  // Format currency for display
+  // Format currency
   const formatCurrency = (value) => {
     if (!value) return "0.00";
-    return parseFloat(value).toLocaleString("en-IN", {
+    const numValue = parseFloat(value);
+    if (isNaN(numValue)) return "0.00";
+    return numValue.toLocaleString("en-IN", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     });
   };
 
+  const getButtonText = () => {
+    if (loading) return "Processing...";
+    if (payType === "CASH") return "Confirm Payment";
+    return "Proceed to Pay";
+  };
+
+  const isButtonDisabled = () => {
+    if (loading) return true;
+    if (fetchingPaymentType) return true;
+    if (productInfo.weightLedger === "Y" && !!amountError) return true;
+    if (productInfo.weightLedger === "Y" && !amount) return true;
+    return false;
+  };
+
+  // Styles using only the theme data
   const styles = StyleSheet.create({
     background: {
       flex: 1,
-      backgroundColor: COLORS.white,
+      backgroundColor: COLORS.background,
     },
     container: {
       flex: 1,
@@ -336,300 +364,312 @@ const BuyPage = () => {
     scrollContent: {
       flexGrow: 1,
       padding: SIZES.padding.lg,
-      paddingBottom: SIZES.padding.xl,
-    },
-    headerContainer: {
-      marginBottom: SIZES.lg,
-      alignItems: "center",
-    },
-    title: {
-      ...FONTS.h4,
-      textAlign: "center",
-      marginBottom: SIZES.sm,
-      color: COLORS.textPrimary,
-      fontFamily: FONTS.family.bodyBold,
+      paddingBottom: SIZES.padding.xxl,
     },
     mainCard: {
       backgroundColor: COLORS.white,
       borderRadius: SIZES.radius.lg,
       padding: SIZES.padding.lg,
-      marginBottom: SIZES.lg,
-      ...appTheme.SHADOWS.md,
+      marginBottom: SIZES.margin.lg,
+      ...SHADOWS.sm,
       borderWidth: 1,
       borderColor: COLORS.borderLight,
     },
-    cardHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: SIZES.md,
-      paddingBottom: SIZES.sm,
+    sectionHeader: {
+      flexDirection: "row",
+      alignItems: "center",
+      marginBottom: SIZES.margin.md,
+      paddingBottom: SIZES.padding.sm,
       borderBottomWidth: 1,
       borderBottomColor: COLORS.borderLight,
     },
-    cardIcon: {
-      width: SIZES.icon.md,
-      height: SIZES.icon.md,
-      borderRadius: SIZES.radius.sm,
-      backgroundColor: COLORS.primaryLight,
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginRight: SIZES.sm,
+    sectionIcon: {
+      fontSize: SIZES.icon.md,
+      marginRight: SIZES.margin.sm,
     },
-    cardTitle: {
+    sectionTitle: {
       ...FONTS.h5,
       color: COLORS.textPrimary,
-      fontFamily: FONTS.family.bodyBold,
-    },
-    infoGrid: {
-      marginBottom: SIZES.md,
     },
     infoRow: {
       flexDirection: "row",
       justifyContent: "space-between",
       alignItems: "center",
-      paddingVertical: SIZES.sm,
+      paddingVertical: SIZES.padding.sm,
       borderBottomWidth: 1,
-      borderBottomColor: COLORS.borderLight,
+      borderBottomColor: COLORS.backgroundSecondary,
     },
     infoLabel: {
       ...FONTS.bodySmall,
       color: COLORS.textSecondary,
-      fontFamily: FONTS.family.body,
       flex: 1,
     },
     infoValue: {
-      ...FONTS.body,
+      ...FONTS.bodyMedium,
       color: COLORS.textPrimary,
-      fontFamily: FONTS.family.bodyBold,
+      flex: 1.2,
+      textAlign: "right",
+    },
+    paymentDropdownContainer: {
+      marginTop: SIZES.margin.md,
+    },
+    dropdownLabel: {
+      ...FONTS.bodyMedium,
+      color: COLORS.textSecondary,
+      marginBottom: SIZES.margin.xs,
+    },
+    dropdownButton: {
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "space-between",
+      backgroundColor: currentPaymentStyle.bgColor,
+      borderRadius: SIZES.radius.md,
+      paddingHorizontal: SIZES.padding.md,
+      borderWidth: 1.5,
+      borderColor: currentPaymentStyle.borderColor,
+      height: SIZES.input.height,
+    },
+    dropdownButtonContent: {
+      flexDirection: "row",
+      alignItems: "center",
       flex: 1,
-      textAlign: 'right',
     },
-    paymentTypeBadge: {
+    dropdownIcon: {
+      fontSize: SIZES.icon.md,
+      marginRight: SIZES.margin.sm,
+    },
+    dropdownText: {
+      ...FONTS.bodyMedium,
+      color: currentPaymentStyle.textColor,
+      fontSize: SIZES.font.md,
+    },
+    dropdownArrow: {
+      fontSize: SIZES.font.md,
+      color: currentPaymentStyle.textColor,
+    },
+    modalOverlay: {
+      flex: 1,
+      backgroundColor: COLORS.overlay,
+      justifyContent: "center",
+      alignItems: "center",
+    },
+    modalContent: {
       backgroundColor: COLORS.white,
-      borderRadius: SIZES.radius.sm,
-      paddingHorizontal: SIZES.md,
-      paddingVertical: SIZES.xs,
-      marginTop: SIZES.sm,
-      alignSelf: 'center',
-      borderWidth: 1,
-      borderColor: COLORS.primary,
+      borderRadius: SIZES.radius.lg,
+      padding: SIZES.padding.lg,
+      width: "85%",
+      maxHeight: "70%",
+      ...SHADOWS.lg,
     },
-    paymentTypeText: {
-      ...FONTS.bodySmall,
-      color: COLORS.primary,
-      fontFamily: FONTS.family.bodyBold,
+    modalHeader: {
+      ...FONTS.h5,
+      color: COLORS.textPrimary,
+      marginBottom: SIZES.margin.md,
       textAlign: "center",
+    },
+    paymentOption: {
+      flexDirection: "row",
+      alignItems: "center",
+      padding: SIZES.padding.md,
+      borderRadius: SIZES.radius.md,
+      marginBottom: SIZES.margin.sm,
+      borderWidth: 1.5,
+      height: SIZES.button.lg,
+    },
+    paymentOptionIcon: {
+      fontSize: SIZES.icon.lg,
+      marginRight: SIZES.margin.md,
+    },
+    paymentOptionText: {
+      ...FONTS.bodyMedium,
     },
     amountSection: {
       backgroundColor: COLORS.white,
       borderRadius: SIZES.radius.lg,
       padding: SIZES.padding.lg,
-      marginBottom: SIZES.lg,
-      ...appTheme.SHADOWS.md,
+      marginBottom: SIZES.margin.lg,
+      ...SHADOWS.sm,
       borderWidth: 1,
       borderColor: COLORS.borderLight,
     },
-    amountHeader: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      marginBottom: SIZES.md,
-    },
-    amountTitle: {
-      ...FONTS.h5,
-      color: COLORS.textPrimary,
-      fontFamily: FONTS.family.bodyBold,
-      marginLeft: SIZES.sm,
-    },
     inputContainer: {
-      marginBottom: SIZES.xs,
+      marginTop: SIZES.margin.sm,
     },
     inputLabel: {
-      ...FONTS.body,
+      ...FONTS.bodyMedium,
       color: COLORS.textPrimary,
-      marginBottom: SIZES.xs,
-      fontFamily: FONTS.family.bodyBold,
+      marginBottom: SIZES.margin.xs,
     },
     inputWrapper: {
-      position: 'relative',
+      position: "relative",
     },
     currencySymbol: {
-      position: 'absolute',
+      position: "absolute",
       left: SIZES.padding.md,
-      top: SIZES.padding.md,
-      ...FONTS.bodyLarge,
+      top: "50%",
+      transform: [{ translateY: -10 }],
+      // ...FONTS.h4,
       color: COLORS.textPrimary,
-      fontFamily: FONTS.family.bodyBold,
       zIndex: 1,
+      fontSize: SIZES.heading.h4,
+      lineHeight: SIZES.heading.h4 * 1.4,
+      color: COLORS.textPrimary,
     },
     input: {
       backgroundColor: COLORS.inputBackground,
       borderRadius: SIZES.radius.md,
-      padding: SIZES.padding.xs,
-      paddingLeft: SIZES.padding.xl * 2,
-      ...FONTS.bodyLarge,
+      paddingLeft: SIZES.padding.xxl,
+      ...FONTS.h4,
       color: COLORS.textPrimary,
-      borderWidth: 2,
-      borderColor: COLORS.inputBorder,
-      fontFamily: FONTS.family.body,
+      borderWidth: 1.5,
+      borderColor: COLORS.border,
       height: SIZES.input.height,
     },
     inputFocused: {
       borderColor: COLORS.primary,
       backgroundColor: COLORS.white,
-      ...appTheme.SHADOWS.sm,
     },
     inputError: {
       borderColor: COLORS.error,
     },
     errorText: {
       color: COLORS.error,
-      ...FONTS.bodySmall,
-      marginTop: SIZES.xs,
-      marginLeft: SIZES.xs,
-      fontFamily: FONTS.family.body,
+      ...FONTS.caption,
+      marginTop: SIZES.margin.xs,
+      marginLeft: SIZES.margin.xs,
     },
     fixedAmountDisplay: {
-      backgroundColor: COLORS.accentLight1,
+      backgroundColor: COLORS.warningLight,
       borderRadius: SIZES.radius.md,
-      padding: SIZES.padding.lg,
-      alignItems: "center",
+      padding: SIZES.padding.md,
+      borderWidth: 1.5,
+      borderColor: COLORS.warning,
+      height: SIZES.input.lg,
       justifyContent: "center",
-      borderWidth: 2,
-      borderColor: COLORS.accentLight,
-      ...appTheme.SHADOWS.sm,
-    },
-    amountLabel: {
-      ...FONTS.bodySmall,
-      color: COLORS.textSecondary,
-      marginBottom: SIZES.xs,
-      fontFamily: FONTS.family.body,
     },
     amountValue: {
       ...FONTS.h3,
-      color: COLORS.primary,
-      fontFamily: FONTS.family.bodyBold,
+      color: COLORS.warningDark,
+      textAlign: "center",
     },
     buttonContainer: {
-      marginTop: SIZES.lg,
-    },
-    button: {
-      borderRadius: SIZES.radius.lg,
-      padding: SIZES.padding.md,
-      alignItems: "center",
-      justifyContent: "center",
-      minHeight: SIZES.button.lg,
-      ...appTheme.SHADOWS.lg,
-      width: "100%",
+      marginTop: SIZES.margin.lg,
     },
     buttonGradient: {
       borderRadius: SIZES.radius.lg,
-      padding: SIZES.padding.md,
       alignItems: "center",
       justifyContent: "center",
-      minHeight: SIZES.button.lg,
-      width: "100%",
+      height: SIZES.button.lg,
+      ...SHADOWS.md,
     },
     buttonText: {
-      ...FONTS.h5,
+      ...FONTS.button,
       color: COLORS.white,
-      fontFamily: FONTS.family.bodyBold,
-      letterSpacing: 0.5,
     },
     disabledButton: {
       opacity: 0.6,
     },
     loadingContainer: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
     },
     loadingText: {
-      ...FONTS.body,
+      ...FONTS.bodyMedium,
       color: COLORS.white,
-      marginLeft: SIZES.sm,
-      fontFamily: FONTS.family.body,
+      marginLeft: SIZES.margin.sm,
     },
     securityBadge: {
-      flexDirection: 'row',
-      alignItems: 'center',
-      justifyContent: 'center',
-      marginTop: SIZES.lg,
-      padding: SIZES.sm,
-      backgroundColor: COLORS.surface,
+      flexDirection: "row",
+      alignItems: "center",
+      justifyContent: "center",
+      marginTop: SIZES.margin.md,
+      padding: SIZES.padding.sm,
+      backgroundColor: COLORS.successLight,
       borderRadius: SIZES.radius.md,
       borderWidth: 1,
-      borderColor: COLORS.borderLight,
+      borderColor: COLORS.success,
     },
     securityText: {
-      ...FONTS.bodySmall,
-      color: COLORS.textSecondary,
-      marginLeft: SIZES.xs,
-      fontFamily: FONTS.family.body,
+      ...FONTS.caption,
+      color: COLORS.success,
+      marginLeft: SIZES.margin.xs,
     },
   });
 
   return (
-    <ImageBackground
-      source={require("../../assets/bg.jpg")}
-      style={styles.background}
-      resizeMode="cover"
-    >
+    <View style={styles.background}>
+      <CommonHeader title="Payment Details" />
       <KeyboardAvoidingView
         behavior={Platform.OS === "ios" ? "padding" : "height"}
         style={styles.container}
       >
-        <ScrollView 
+        <ScrollView
           style={styles.container}
           keyboardShouldPersistTaps="handled"
           showsVerticalScrollIndicator={false}
           contentContainerStyle={styles.scrollContent}
         >
-          <CommonHeader title="Payment Details" />
-
           {/* Customer Information Card */}
           <View style={styles.mainCard}>
-            <View style={styles.cardHeader}>
-              <View style={styles.cardIcon}>
-                <Text style={{ color: COLORS.primary, fontFamily: FONTS.family.bodyBold }}>👤</Text>
-              </View>
-              <Text style={styles.cardTitle}>Customer Information</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionIcon}>👤</Text>
+              <Text style={styles.sectionTitle}>Customer Details</Text>
             </View>
-            
-            <View style={styles.infoGrid}>
+
+            <View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Customer Name</Text>
+                <Text style={styles.infoLabel}>Name</Text>
                 <Text style={styles.infoValue}>{productInfo.defaultName}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Registration No</Text>
+                <Text style={styles.infoLabel}>Reg No.</Text>
                 <Text style={styles.infoValue}>{productInfo.defaultRegNo}</Text>
               </View>
               <View style={styles.infoRow}>
-                <Text style={styles.infoLabel}>Group Code</Text>
-                <Text style={styles.infoValue}>{productInfo.defaultGroupCode}</Text>
+                <Text style={styles.infoLabel}>Group</Text>
+                <Text style={styles.infoValue}>
+                  {productInfo.defaultGroupCode}
+                </Text>
               </View>
-              <View style={styles.infoRow}>
+              <View style={[styles.infoRow, { borderBottomWidth: 0 }]}>
                 <Text style={styles.infoLabel}>Contact</Text>
-                <Text style={styles.infoValue}>{productInfo.defaultContact}</Text>
+                <Text style={styles.infoValue}>
+                  {productInfo.defaultContact}
+                </Text>
               </View>
             </View>
 
-            {/* Payment Type Badge */}
-            <View style={styles.paymentTypeBadge}>
-              <Text style={styles.paymentTypeText}>
-                {payType ? `${payType} PAYMENT` : "Loading Payment Type..."}
-              </Text>
+            {/* Payment Type Dropdown */}
+            <View style={styles.paymentDropdownContainer}>
+              <Text style={styles.dropdownLabel}>Payment Method</Text>
+              <TouchableOpacity
+                style={styles.dropdownButton}
+                onPress={() => setShowPaymentDropdown(true)}
+                disabled={fetchingPaymentType || loading}
+                activeOpacity={0.7}
+              >
+                <View style={styles.dropdownButtonContent}>
+                  <Text style={styles.dropdownIcon}>
+                    {currentPaymentStyle.icon}
+                  </Text>
+                  <Text style={styles.dropdownText}>
+                    {fetchingPaymentType ? "Loading..." : payType}
+                  </Text>
+                </View>
+                <Text style={styles.dropdownArrow}>▼</Text>
+              </TouchableOpacity>
             </View>
           </View>
 
           {/* Amount Section */}
           <View style={styles.amountSection}>
-            <View style={styles.amountHeader}>
-              <View style={styles.cardIcon}>
-                <Text style={{ color: COLORS.primary, fontFamily: FONTS.family.bodyBold }}>💰</Text>
-              </View>
-              <Text style={styles.amountTitle}>
-                {productInfo.weightLedger === "Y" ? "Enter Payment Amount" : "Payment Amount"}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionIcon}>💰</Text>
+              <Text style={styles.sectionTitle}>
+                {productInfo.weightLedger === "Y"
+                  ? "Enter Amount"
+                  : "Payment Amount"}
               </Text>
             </View>
 
@@ -640,7 +680,7 @@ const BuyPage = () => {
                   <Text style={styles.currencySymbol}>₹</Text>
                   <TextInput
                     placeholder="0.00"
-                    placeholderTextColor={COLORS.textTertiary}
+                    placeholderTextColor={COLORS.inputPlaceholder}
                     value={amount}
                     onChangeText={handleAmountChange}
                     onFocus={() => setInputFocused(true)}
@@ -662,16 +702,17 @@ const BuyPage = () => {
                 {amountError ? (
                   <Text style={styles.errorText}>{amountError}</Text>
                 ) : (
-                  <Text style={[styles.errorText, { color: COLORS.textTertiary }]}>
+                  <Text
+                    style={[styles.errorText, { color: COLORS.textTertiary }]}
+                  >
                     Enter amount between ₹1 - ₹1,00,00,000
                   </Text>
                 )}
               </View>
             ) : (
               <View style={styles.fixedAmountDisplay}>
-                <Text style={styles.amountLabel}>Total Amount to Pay</Text>
                 <Text style={styles.amountValue}>
-                  ₹{formatCurrency(productInfo.defaultAmount)}
+                  ₹ {formatCurrency(productInfo.defaultAmount)}
                 </Text>
               </View>
             )}
@@ -681,17 +722,16 @@ const BuyPage = () => {
           <View style={styles.buttonContainer}>
             <TouchableOpacity
               onPress={handleBuy}
-              disabled={loading || !token || (productInfo.weightLedger === "Y" && !!amountError)}
+              disabled={isButtonDisabled()}
               activeOpacity={0.8}
             >
               <LinearGradient
-                colors={COLORS.gradient.brand1}
+                colors={currentPaymentStyle.gradient}
                 start={{ x: 0, y: 0 }}
                 end={{ x: 1, y: 0 }}
                 style={[
                   styles.buttonGradient,
-                  (loading || !token || (productInfo.weightLedger === "Y" && !!amountError)) && 
-                    styles.disabledButton
+                  isButtonDisabled() && styles.disabledButton,
                 ]}
               >
                 {loading ? (
@@ -700,21 +740,82 @@ const BuyPage = () => {
                     <Text style={styles.loadingText}>Processing...</Text>
                   </View>
                 ) : (
-                  <Text style={styles.buttonText}>PROCEED TO PAYMENT</Text>
+                  <Text style={styles.buttonText}>{getButtonText()}</Text>
                 )}
               </LinearGradient>
             </TouchableOpacity>
           </View>
 
           {/* Security Badge */}
-          <View style={styles.securityBadge}>
-            <Text style={{ color: COLORS.success, fontFamily: FONTS.family.bodyBold }}>🔒</Text>
-            <Text style={styles.securityText}>Secure & Encrypted Payment</Text>
-          </View>
+          {payType !== "CASH" && !fetchingPaymentType && (
+            <View style={styles.securityBadge}>
+              <Text style={{ fontSize: SIZES.icon.sm }}>🔒</Text>
+              <Text style={styles.securityText}>
+                Secure & Encrypted Payment Gateway
+              </Text>
+            </View>
+          )}
         </ScrollView>
       </KeyboardAvoidingView>
-      <BottomTab />
-    </ImageBackground>
+
+      {/* Payment Type Selection Modal */}
+      <Modal
+        visible={showPaymentDropdown}
+        transparent={true}
+        animationType="fade"
+        onRequestClose={() => setShowPaymentDropdown(false)}
+      >
+        <TouchableOpacity
+          style={styles.modalOverlay}
+          activeOpacity={1}
+          onPress={() => setShowPaymentDropdown(false)}
+        >
+          <View style={styles.modalContent}>
+            <Text style={styles.modalHeader}>Select Payment Method</Text>
+            {payTypeResponse &&
+              payTypeResponse.map((item) => {
+                const style = getPaymentTypeStyle(item.NAME);
+                const isSelected = payType === item.NAME;
+                return (
+                  <TouchableOpacity
+                    key={item.NAME}
+                    style={[
+                      styles.paymentOption,
+                      {
+                        backgroundColor: isSelected
+                          ? style.bgColor
+                          : COLORS.backgroundSecondary,
+                        borderColor: isSelected
+                          ? style.borderColor
+                          : COLORS.border,
+                      },
+                    ]}
+                    onPress={() => {
+                      setPayType(item.NAME);
+                      setShowPaymentDropdown(false);
+                    }}
+                    activeOpacity={0.7}
+                  >
+                    <Text style={styles.paymentOptionIcon}>{style.icon}</Text>
+                    <Text
+                      style={[
+                        styles.paymentOptionText,
+                        {
+                          color: isSelected
+                            ? style.textColor
+                            : COLORS.textPrimary,
+                        },
+                      ]}
+                    >
+                      {item.NAME}
+                    </Text>
+                  </TouchableOpacity>
+                );
+              })}
+          </View>
+        </TouchableOpacity>
+      </Modal>
+    </View>
   );
 };
 

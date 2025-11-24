@@ -7,9 +7,7 @@ import {
   FlatList,
   StyleSheet
 } from "react-native";
-import appTheme from "../../utils/MainTheme";
-
-const { COLORS, SIZES, FONTS } = appTheme;
+import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 
 const CustomPicker = ({
   selectedValue,
@@ -129,33 +127,30 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius.md,
     paddingHorizontal: SIZES.padding.md,
     borderWidth: 1.5,
-    borderColor: COLORS.borderMedium,
-    backgroundColor: 'transparent',
+    borderColor: COLORS.border,
+    backgroundColor: COLORS.inputBackground,
   },
   pickerDisabled: {
     opacity: 0.5,
+    backgroundColor: COLORS.disabled,
   },
   pickerText: {
     flex: 1,
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.md,
-    lineHeight: SIZES.font.md * 1.4,
+    ...FONTS.body,
+    color: COLORS.textPrimary,
   },
   selectedText: {
     color: COLORS.textPrimary,
-    fontFamily: FONTS.family.body,
   },
   placeholderText: {
-    color: COLORS.textTertiary,
-    fontFamily: FONTS.family.body,
+    color: COLORS.inputPlaceholder,
   },
   pickerIcon: {
-    marginLeft: SIZES.sm,
+    marginLeft: SIZES.margin.sm,
   },
   pickerIconText: {
-    fontSize: SIZES.font.md,
+    ...FONTS.body,
     color: COLORS.textSecondary,
-    fontFamily: FONTS.family.body,
   },
 
   // Modal Overlay
@@ -176,7 +171,7 @@ const styles = StyleSheet.create({
     overflow: 'hidden',
     borderWidth: 1,
     borderColor: COLORS.borderLight,
-    ...appTheme.SHADOWS.lg,
+    ...SHADOWS.lg,
   },
 
   // Modal Header
@@ -187,10 +182,10 @@ const styles = StyleSheet.create({
     padding: SIZES.padding.lg,
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
+    backgroundColor: COLORS.backgroundSecondary,
   },
   modalTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.lg,
+    ...FONTS.h5,
     color: COLORS.textPrimary,
     flex: 1,
   },
@@ -200,13 +195,12 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius.full,
     justifyContent: 'center',
     alignItems: 'center',
-    marginLeft: SIZES.sm,
+    backgroundColor: COLORS.primaryOpacity10,
+    marginLeft: SIZES.margin.sm,
   },
   closeButtonText: {
-    fontSize: SIZES.font.md,
-    color: COLORS.textSecondary,
-    fontFamily: FONTS.family.bodyBold,
-    lineHeight: SIZES.font.md,
+    ...FONTS.bodyBold,
+    color: COLORS.primary,
   },
 
   // Option Items
@@ -220,20 +214,20 @@ const styles = StyleSheet.create({
     borderBottomColor: COLORS.borderLight,
   },
   selectedOption: {
+    backgroundColor: COLORS.primaryOpacity10,
     borderLeftWidth: 3,
     borderLeftColor: COLORS.primary,
   },
   optionText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.md,
+    ...FONTS.body,
     color: COLORS.textPrimary,
     flex: 1,
-    marginRight: SIZES.sm,
-    lineHeight: SIZES.font.md * 1.4,
+    marginRight: SIZES.margin.sm,
+    marginBottom: SIZES.margin.sm,
   },
   selectedOptionText: {
-    color: COLORS.textPrimary,
-    fontFamily: FONTS.family.bodyBold,
+    color: COLORS.primary,
+    ...FONTS.bodyMedium,
   },
   selectedIndicator: {
     width: SIZES.icon.sm,
@@ -244,10 +238,8 @@ const styles = StyleSheet.create({
     alignItems: 'center',
   },
   selectedIndicatorText: {
-    fontSize: SIZES.font.xs,
+    ...FONTS.caption,
     color: COLORS.white,
-    fontFamily: FONTS.family.bodyBold,
-    lineHeight: SIZES.font.xs,
   },
 
   // Empty State
@@ -257,12 +249,10 @@ const styles = StyleSheet.create({
     justifyContent: 'center',
   },
   emptyText: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.body,
     color: COLORS.textTertiary,
     fontStyle: 'italic',
     textAlign: 'center',
-    lineHeight: SIZES.font.sm * 1.4,
   },
 });
 

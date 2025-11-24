@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -13,8 +13,17 @@ import {
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BottomTab } from "../../components";
-import { SHADOWS, COLORS, SIZES, FONTS } from "../../utils/MainTheme";
+import { SHADOWS, COLORS, SIZES, FONTS } from "../../utils/AppTheme";
 import { MaterialIcons } from "@expo/vector-icons";
+
+// <-- import your validators (adjust path if needed) -->
+import {
+  validateAadhaar,
+  validatePAN,
+  validateMobile,
+  validateEmail,
+  validatePincode,
+} from "./Validations";
 
 const INITIAL_FORM = {
   name: "",
@@ -41,9 +50,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [validationErrors, setValidationErrors] = useState({});
 
-  // -------------------------------------------------------------------
   // LOAD SAVED FORM + USER PROFILE
-  // -------------------------------------------------------------------
   useEffect(() => {
     (async () => {
       try {
@@ -69,30 +76,29 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     })();
   }, []);
 
-  // -------------------------------------------------------------------
   // SAVE FORM ON CHANGE
-  // -------------------------------------------------------------------
   useEffect(() => {
     AsyncStorage.setItem("digigoldMemberForm", JSON.stringify(formData)).catch(
       (err) => console.error("Save error:", err)
     );
   }, [formData]);
 
-  // -------------------------------------------------------------------
   // KEYBOARD HANDLING
-  // -------------------------------------------------------------------
   useEffect(() => {
     const show = Keyboard.addListener("keyboardDidShow", (e) => {
       setKeyboardHeight(e.endCoordinates.height);
 
       if (activeInput && inputRefs.current[activeInput]) {
         setTimeout(() => {
-          inputRefs.current[activeInput].measure((x, y, w, h, px, py) => {
-            scrollViewRef.current?.scrollTo({
-              y: py - 120,
-              animated: true,
-            });
-          });
+          inputRefs.current[activeInput].measureLayout(
+            scrollViewRef.current,
+            (x, y, w, h) => {
+              scrollViewRef.current?.scrollTo({
+                y: y - 80,
+                animated: true,
+              });
+            }
+          );
         }, 100);
       }
     });
@@ -107,51 +113,41 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     };
   }, [activeInput]);
 
-  // -------------------------------------------------------------------
   // FETCH PINCODE -> DISTRICT & STATE
-  // -------------------------------------------------------------------
   useEffect(() => {
-    const fetchLocation = async () => {
-      if (formData.pincode.length !== 6) {
-        setFormData((prev) => ({ ...prev, city: "", state: "" }));
-        return;
-      }
+    if (formData.pincode.length !== 6) {
+      setFormData((prev) => ({ ...prev, city: "", state: "" }));
+      return;
+    }
 
+    const fetchLocation = async () => {
       try {
-        const res = await fetch(
+        const response = await fetch(
           `https://api.postalpincode.in/pincode/${formData.pincode}`
         );
-        const data = await res.json();
+        const data = await response.json();
 
-        if (data[0]?.Status === "Success" && data[0]?.PostOffice?.length > 0) {
-          const district = data[0].PostOffice[0].District;
-          const state = data[0].PostOffice[0].State;
+        if (data[0]?.Status === "Success") {
+          const district = data[0].PostOffice[0].District || "";
+          const state = data[0].PostOffice[0].State || "";
 
           setFormData((prev) => ({
             ...prev,
             city: district,
-            state,
+            state: state,
           }));
-
-          setValidationErrors((prev) => ({ ...prev, pincode: "" }));
         } else {
           setFormData((prev) => ({ ...prev, city: "", state: "" }));
-          setValidationErrors((prev) => ({
-            ...prev,
-            pincode: "Invalid PIN Code",
-          }));
         }
-      } catch (err) {
-        console.error("PIN fetch error:", err);
+      } catch (e) {
+        console.error("Pincode fetch error:", e);
       }
     };
 
     fetchLocation();
   }, [formData.pincode]);
 
-  // -------------------------------------------------------------------
   // FIELD UPDATE HANDLER
-  // -------------------------------------------------------------------
   const updateField = (field, value) => {
     setFormData((p) => ({ ...p, [field]: value }));
     if (validationErrors[field]) {
@@ -181,63 +177,74 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   const handleAadhar = (t) =>
     updateField("aadharNumber", t.replace(/\D/g, "").slice(0, 12));
 
-  // -------------------------------------------------------------------
-  // VALIDATION
-  // -------------------------------------------------------------------
+  // VALIDATION: now using centralized validators
   const validate = (d) => {
     const errors = {};
-    const required = (field, msg) => {
-      if (!d[field]?.trim()) errors[field] = msg;
-    };
 
-    required("name", "Name is required");
-    if (!/^\d{10}$/.test(d.mobile))
-      errors.mobile = "Enter valid 10-digit mobile";
-    if (!/^\S+@\S+\.\S+$/.test(d.email)) errors.email = "Enter valid email";
+    // required checks
+    if (!d.name?.trim()) errors.name = "Name is required";
 
-    required("doorNo", "Door No. is required");
-    required("street", "Street is required"); // This is now address1
-    required("area", "Area/Locality is required"); // This is now address2
+    // mobile (use validator) — even if field is readOnly, validate presence/format
+    const mobileErr = validateMobile(d.mobile || "");
+    if (mobileErr) errors.mobile = mobileErr;
 
-    if (!/^\d{6}$/.test(d.pincode)) errors.pincode = "Enter 6-digit PIN";
+    // email
+    const emailErr = validateEmail(d.email || "");
+    if (emailErr) errors.email = emailErr;
 
-    required("city", "City is required");
-    required("state", "State is required"); // This is now selectedState
+    // address required fields
+    if (!d.doorNo?.trim()) errors.doorNo = "Door No. is required";
+    if (!d.street?.trim()) errors.street = "Street is required";
+    if (!d.area?.trim()) errors.area = "Area/Locality is required";
 
-    required("nomeni", "Nominee Name is required");
-    if (!/^\d{10}$/.test(d.mobile2))
-      errors.mobile2 = "Enter valid 10-digit nominee mobile";
+    // pincode
+    const pinErr = validatePincode(d.pincode || "");
+    if (pinErr) errors.pincode = pinErr;
 
-    if (d.panNumber && !/^[A-Z]{5}[0-9]{4}[A-Z]$/.test(d.panNumber))
-      errors.panNumber = "Enter valid PAN number";
+    // city/state (auto filled but still required)
+    if (!d.city?.trim()) errors.city = "City is required";
+    if (!d.state?.trim()) errors.state = "State is required";
 
-    if (d.aadharNumber && !/^\d{12}$/.test(d.aadharNumber))
-      errors.aadharNumber = "Enter valid 12-digit Aadhar number";
+    // nominee
+    if (!d.nomeni?.trim()) errors.nomeni = "Nominee Name is required";
+    const nomMobileErr = validateMobile(d.mobile2 || "");
+    if (nomMobileErr) errors.mobile2 = nomMobileErr;
+
+    // PAN (optional — only validate when provided)
+    if (d.panNumber?.trim()) {
+      const panErr = validatePAN(d.panNumber);
+      if (panErr) errors.panNumber = panErr;
+    } else {
+      // if you want PAN required, remove this else-block
+    }
+
+    // Aadhaar (optional — only validate when provided)
+    if (d.aadharNumber?.trim()) {
+      const aErr = validateAadhaar(d.aadharNumber);
+      if (aErr) errors.aadharNumber = aErr;
+    }
 
     setValidationErrors(errors);
     return errors;
   };
 
-  // -------------------------------------------------------------------
   // NEXT BUTTON
-  // -------------------------------------------------------------------
   const handleNext = () => {
     const errors = validate(formData);
 
     if (Object.keys(errors).length === 0) {
-      // Transform data to match AddNewMember's expected structure
       const transformedData = {
         name: formData.name,
         mobile: formData.mobile,
         email: formData.email,
         doorNo: formData.doorNo,
-        address1: formData.street, // Map street to address1
-        address2: formData.area, // Map area to address2
+        address1: formData.street,
+        address2: formData.area,
         area: formData.area,
         city: formData.city,
         pincode: formData.pincode,
-        selectedState: formData.state, // Map state to selectedState
-        country: "India", // Hardcode as India
+        selectedState: formData.state,
+        country: "India",
         panNumber: formData.panNumber,
         aadharNumber: formData.aadharNumber,
         nomeni: formData.nomeni,
@@ -249,28 +256,31 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
       return;
     }
 
+    // focus the first error field
     const firstError = Object.keys(errors)[0];
     if (firstError && inputRefs.current[firstError]) {
-      inputRefs.current[firstError]?.measure((x, y, w, h, px, py) => {
-        scrollViewRef.current?.scrollTo({ y: py - 100, animated: true });
-        inputRefs.current[firstError]?.focus?.();
-      });
+      try {
+        inputRefs.current[firstError].measure((x, y, w, h, px, py) => {
+          scrollViewRef.current?.scrollTo({ y: py - 100, animated: true });
+          inputRefs.current[firstError]?.focus?.();
+        });
+      } catch (e) {
+        // some readOnly fields may not support focus/measure — ignore
+      }
     }
 
-    Alert.alert("Incomplete Form", "Please fill all required fields.");
+    Alert.alert("Incomplete Form", "Please fix the highlighted fields.");
   };
-  // -------------------------------------------------------------------
+
   // CLEAR DATA
-  // -------------------------------------------------------------------
   const clearSavedData = async () => {
     await AsyncStorage.removeItem("digigoldMemberForm");
     setFormData(INITIAL_FORM);
+    setValidationErrors({});
     Alert.alert("Cleared", "Form data reset.");
   };
 
-  // -------------------------------------------------------------------
-  // UI
-  // -------------------------------------------------------------------
+  // UI render (unchanged)
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -306,36 +316,69 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Name *</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: COLORS.disabled }]}
+              style={[styles.input, validationErrors.name && styles.errorInput]}
               value={formData.name}
-              editable={false}
+              editable={true}
+              onChangeText={(t) => updateField("name", t)}
+              placeholder="Enter Name"
+              placeholderTextColor={COLORS.inputPlaceholder}
+              onFocus={() => setActiveInput("name")}
+              ref={(ref) => (inputRefs.current.name = ref)}
             />
+            {validationErrors.name && (
+              <Text style={styles.errorText}>{validationErrors.name}</Text>
+            )}
           </View>
 
           {/* Mobile */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Mobile Number *</Text>
+
             <View style={styles.mobileInput}>
               <Text style={styles.countryCode}>+91</Text>
+
               <TextInput
                 style={[
                   styles.mobileField,
-                  { backgroundColor: COLORS.disabled },
+                  validationErrors.mobile && styles.errorInput,
                 ]}
                 value={formData.mobile}
-                editable={false}
+                editable={true}
+                maxLength={10}
+                keyboardType="numeric"
+                onChangeText={handleMobile}
+                placeholder="Enter Mobile Number"
+                placeholderTextColor={COLORS.inputPlaceholder}
+                onFocus={() => setActiveInput("mobile")}
+                ref={(ref) => (inputRefs.current.mobile = ref)}
               />
             </View>
+
+            {validationErrors.mobile && (
+              <Text style={styles.errorText}>{validationErrors.mobile}</Text>
+            )}
           </View>
 
           {/* Email */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Email *</Text>
             <TextInput
-              style={[styles.input, { backgroundColor: COLORS.disabled }]}
+              style={[
+                styles.input,
+                validationErrors.email && styles.errorInput,
+              ]}
               value={formData.email}
-              editable={false}
+              editable={true}
+              onChangeText={(t) => updateField("email", t)}
+              keyboardType="email-address"
+              placeholder="Enter Email"
+              placeholderTextColor={COLORS.inputPlaceholder}
+              onFocus={() => setActiveInput("email")}
+              ref={(ref) => (inputRefs.current.email = ref)}
             />
+            {validationErrors.email && (
+              <Text style={styles.errorText}>{validationErrors.email}</Text>
+            )}
           </View>
         </View>
 
@@ -376,7 +419,13 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
               style={styles.input}
               value={formData.city}
               editable={false}
+              selectTextOnFocus={false}
+              placeholder="Auto-filled"
+              placeholderTextColor={COLORS.inputPlaceholder}
             />
+            {validationErrors.city && (
+              <Text style={styles.errorText}>{validationErrors.city}</Text>
+            )}
           </View>
 
           {/* STATE */}
@@ -386,7 +435,13 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
               style={styles.input}
               value={formData.state}
               editable={false}
+              selectTextOnFocus={false}
+              placeholder="Auto-filled"
+              placeholderTextColor={COLORS.inputPlaceholder}
             />
+            {validationErrors.state && (
+              <Text style={styles.errorText}>{validationErrors.state}</Text>
+            )}
           </View>
         </View>
 
@@ -394,7 +449,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Nominee Details</Text>
 
-          {/* Nominee Name */}
           {renderInput("nomeni", "Nominee Name *")}
 
           {/* Nominee Mobile */}
@@ -464,9 +518,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     </KeyboardAvoidingView>
   );
 
-  // -------------------------------------------------------------------
   // SMALL REUSABLE INPUT COMPONENT
-  // -------------------------------------------------------------------
   function renderInput(field, label, handler) {
     return (
       <View style={styles.inputGroup}>
@@ -489,73 +541,82 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: COLORS.background },
-  scrollContent: { padding: SIZES.md },
+  container: { 
+    flex: 1, 
+    backgroundColor: COLORS.background 
+  },
+  scrollContent: { 
+    padding: SIZES.padding.lg 
+  },
   header: {
-    backgroundColor: COLORS.secondary,
-    padding: SIZES.lg,
+    backgroundColor: COLORS.primary,
+    padding: SIZES.padding.lg,
     borderRadius: SIZES.radius.lg,
     alignItems: "center",
-    marginBottom: SIZES.lg,
+    marginBottom: SIZES.margin.lg,
     position: "relative",
+    ...SHADOWS.md,
   },
   backBtn: {
     position: "absolute",
-    left: SIZES.md,
-    top: SIZES.md,
+    left: SIZES.padding.lg,
+    top: SIZES.padding.lg,
   },
   clearBtn: {
     position: "absolute",
-    right: SIZES.md,
-    top: SIZES.md,
-    backgroundColor: COLORS.primary,
-    padding: 6,
-    borderRadius: 20,
+    right: SIZES.padding.lg,
+    top: SIZES.padding.lg,
+    backgroundColor: COLORS.primaryDark,
+    padding: SIZES.padding.xs,
+    borderRadius: SIZES.radius.full,
   },
   headerTitle: {
-    ...FONTS.h5,
+    ...FONTS.h4,
     color: COLORS.white,
-    fontFamily: "PoppinsBold",
+    marginTop: SIZES.margin.sm,
   },
   headerSubtitle: {
     ...FONTS.bodySmall,
     color: COLORS.white,
-    marginTop: 4,
+    marginTop: SIZES.margin.xs,
   },
   section: {
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.lg,
-    padding: SIZES.md,
-    marginBottom: SIZES.md,
-    ...SHADOWS.md,
+    padding: SIZES.padding.lg,
+    marginBottom: SIZES.margin.lg,
+    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
   sectionTitle: {
-    ...FONTS.h6,
+    ...FONTS.h5,
     color: COLORS.textPrimary,
-    marginBottom: SIZES.sm,
-    fontFamily: "PoppinsBold",
+    marginBottom: SIZES.margin.md,
   },
   optionalNote: {
     ...FONTS.caption,
     color: COLORS.textSecondary,
     fontStyle: "italic",
-    marginBottom: SIZES.md,
+    marginBottom: SIZES.margin.md,
   },
-  inputGroup: { marginBottom: SIZES.md },
+  inputGroup: { 
+    marginBottom: SIZES.margin.md 
+  },
   label: {
     ...FONTS.label,
     color: COLORS.textPrimary,
-    marginBottom: 6,
+    marginBottom: SIZES.margin.xs,
   },
   input: {
     height: SIZES.input.height,
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.radius.md,
-    paddingHorizontal: SIZES.md,
+    paddingHorizontal: SIZES.padding.md,
     ...FONTS.body,
     color: COLORS.textPrimary,
     borderWidth: 1.5,
-    borderColor: COLORS.borderLight,
+    borderColor: COLORS.border,
   },
   errorInput: {
     borderColor: COLORS.error,
@@ -568,32 +629,36 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.radius.md,
     borderWidth: 1.5,
-    borderColor: COLORS.borderLight,
-    paddingHorizontal: SIZES.md,
+    borderColor: COLORS.border,
+    paddingHorizontal: SIZES.padding.md,
   },
   countryCode: {
     ...FONTS.h6,
     color: COLORS.primary,
-    marginRight: 8,
+    marginRight: SIZES.margin.sm,
   },
-  mobileField: { flex: 1, ...FONTS.body, color: COLORS.textPrimary },
+  mobileField: { 
+    flex: 1, 
+    ...FONTS.body, 
+    color: COLORS.textPrimary 
+  },
   errorText: {
     ...FONTS.caption,
     color: COLORS.error,
-    marginTop: 4,
+    marginTop: SIZES.margin.xs,
   },
   confirmBtn: {
-    backgroundColor: COLORS.secondary,
-    height: 50,
+    backgroundColor: COLORS.primary,
+    height: SIZES.button.lg,
     borderRadius: SIZES.radius.lg,
     justifyContent: "center",
     alignItems: "center",
-    marginVertical: SIZES.lg,
+    marginVertical: SIZES.margin.xl,
+    ...SHADOWS.md,
   },
   confirmText: {
-    ...FONTS.h6,
+    ...FONTS.button,
     color: COLORS.white,
-    fontFamily: "PoppinsBold",
   },
 });
 

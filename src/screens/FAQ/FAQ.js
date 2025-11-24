@@ -11,10 +11,10 @@ import {
   ImageBackground,
 } from "react-native";
 import Icon from "react-native-vector-icons/MaterialIcons";
-import appTheme from "../../utils/MainTheme";
+import theme from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 
-const { COLORS, SIZES, FONTS, moderateScale, verticalScale } = appTheme;
+const { COLORS, SIZES, FONTS, moderateScale, verticalScale, SHADOWS } = theme;
 
 // Enable LayoutAnimation on Android
 if (Platform.OS === "android" && UIManager.setLayoutAnimationEnabledExperimental) {
@@ -29,8 +29,8 @@ const faqSections = [
     iconColor: COLORS.primary,
     faqs: [
       { q: "What plans can I join?", a: "Choose from 3 easy saving options — Lumpsum, Bright, or Smart Pay." },
-      { q: "What’s the scheme period?", a: "All plans run for 330 days. Redeem between Day 331–345." },
-      { q: "What’s the minimum amount to join?", a: "• Lumpsum – ₹10,000\n• Bright – ₹1,000 (multiples of ₹500)\n• Smart Pay – ₹100 per payment" },
+      { q: "What's the scheme period?", a: "All plans run for 330 days. Redeem between Day 331–345." },
+      { q: "What's the minimum amount to join?", a: "• Lumpsum – ₹10,000\n• Bright – ₹1,000 (multiples of ₹500)\n• Smart Pay – ₹100 per payment" },
       { q: "Can I pay more than once?", a: "Yes! You can add more anytime (as per your scheme)." },
       { q: "Can I join more than one scheme?", a: "Yes! You can enrol in multiple schemes anytime." },
       { q: "How can I make payments?", a: "Pay directly at BMG Jewellers – via cash, UPI, card, or bank transfer." },
@@ -43,8 +43,8 @@ const faqSections = [
     iconColor: COLORS.success,
     faqs: [
       { q: "Can I redeem early?", a: "❌ No early redemption. Redeem only after 330 days." },
-      { q: "What will I get at maturity?", a: "You’ll get jewellery worth your total payment + bonus value." },
-      { q: "What are the bonus benefits?", a: "• Lumpsum: upto 16% Bonus\n• Bright: 1 Month’s Instalment\n• Smart Pay: Up to 10% based on payment period" },
+      { q: "What will I get at maturity?", a: "You'll get jewellery worth your total payment + bonus value." },
+      { q: "What are the bonus benefits?", a: "• Lumpsum: upto 16% Bonus\n• Bright: 1 Month's Instalment\n• Smart Pay: Up to 10% based on payment period" },
       { q: "What if I stop paying?", a: "Bonus and gifts will be forfeited, and gift value will be deducted." },
       { q: "Can I switch between schemes?", a: "No. Each scheme is independent." },
       { q: "When is the bonus applied?", a: "Your bonus is added at the time of redemption." },
@@ -56,12 +56,12 @@ const faqSections = [
     icon: "verified",
     iconColor: COLORS.secondary,
     faqs: [
-      { q: "Is my amount based on silver weight?", a: "No, it’s treated as advance value (₹), not metal weight." },
+      { q: "Is my amount based on silver weight?", a: "No, it's treated as advance value (₹), not metal weight." },
       { q: "What if my card/passbook is lost?", a: "You can get a replacement with a small charge." },
       { q: "Are taxes included?", a: "No. GST, making & stone charges apply at redemption." },
       { q: "Can I take cash instead of jewellery?", a: "No. Redemption is only in jewellery purchase." },
       { q: "Who can join the scheme?", a: "Any Indian citizen aged 18 years and above with valid ID proof." },
-      { q: "What assurance do I get on jewellery?", a: "All items are 92.5 Hallmark Certified Silver from ✨ BMG Jewellers – India’s Largest Hallmark Silver Showroom." },
+      { q: "What assurance do I get on jewellery?", a: "All items are 92.5 Hallmark Certified Silver from ✨ BMG Jewellers – India's Largest Hallmark Silver Showroom." },
     ],
   },
 ];
@@ -81,7 +81,7 @@ const FAQItem = ({ question, answer, defaultOpen = true }) => {
         <Icon
           name={expanded ? "keyboard-arrow-up" : "keyboard-arrow-down"}
           size={moderateScale(24)}
-          color={COLORS.secondary}
+          color={COLORS.primary}
         />
       </TouchableOpacity>
       {expanded && <Text style={styles.answerText}>{answer}</Text>}
@@ -103,7 +103,7 @@ const FAQPage = () => {
           {faqSections.map((section, index) => (
             <View key={index} style={styles.sectionCard}>
               <View style={styles.sectionHeader}>
-                <Icon name={section.icon} size={22} color={section.iconColor} style={{ marginRight: moderateScale(8) }} />
+                <Icon name={section.icon} size={moderateScale(22)} color={section.iconColor} style={{ marginRight: SIZES.padding.sm }} />
                 <Text style={styles.sectionTitle}>{section.title}</Text>
               </View>
               {section.faqs.map((faq, idx) => (
@@ -126,29 +126,37 @@ const FAQPage = () => {
 const styles = StyleSheet.create({
   container: { flex: 1 },
   backgroundImage: { flex: 1 },
-  scrollContent: { padding: SIZES.padding.md, paddingBottom: verticalScale(20) },
+  scrollContent: { 
+    padding: SIZES.padding.lg, 
+    paddingBottom: verticalScale(SIZES.padding.xl) 
+  },
   sectionCard: {
-    marginBottom: verticalScale(15),
-    padding: SIZES.padding.md,
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius.md,
+    marginBottom: verticalScale(SIZES.padding.lg),
+    padding: SIZES.padding.lg,
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
-  sectionHeader: { flexDirection: "row", alignItems: "center", marginBottom: verticalScale(10) },
+  sectionHeader: { 
+    flexDirection: "row", 
+    alignItems: "center", 
+    marginBottom: verticalScale(SIZES.padding.md) 
+  },
   sectionTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.lg,
+    ...FONTS.h5,
     color: COLORS.primary,
     flex: 1,
   },
   faqItem: {
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius.sm,
-    padding: SIZES.padding.sm,
-    marginBottom: verticalScale(8),
+    backgroundColor: COLORS.background,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginBottom: verticalScale(SIZES.padding.sm),
     borderWidth: 1,
     borderColor: COLORS.borderLight,
+    ...SHADOWS.sm,
   },
   questionRow: {
     flexDirection: "row",
@@ -156,21 +164,25 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   questionText: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.md,
+    ...FONTS.bodyMedium,
     color: COLORS.textPrimary,
     flex: 1,
-    paddingRight: moderateScale(10),
+    paddingRight: SIZES.padding.md,
   },
   answerText: {
-    marginTop: verticalScale(6),
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    marginTop: verticalScale(SIZES.padding.sm),
+    ...FONTS.body,
     color: COLORS.textSecondary,
-    lineHeight: verticalScale(20),
+    lineHeight: SIZES.font.md * 1.4,
   },
-  footer: { marginTop: verticalScale(20), alignItems: "center" },
-  footerText: { fontFamily: FONTS.family.body, fontSize: SIZES.font.sm, color: COLORS.textSecondary },
+  footer: { 
+    marginTop: verticalScale(SIZES.padding.xl), 
+    alignItems: "center" 
+  },
+  footerText: { 
+    ...FONTS.bodySmall, 
+    color: COLORS.textSecondary 
+  },
 });
 
 export default FAQPage;

@@ -14,22 +14,15 @@ import {
   Keyboard,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import {
-  GoogleSignin,
-  statusCodes,
-} from "@react-native-google-signin/google-signin";
+import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
 import { showToast } from "../../utils/toast";
-import theme from "../../utils/MainTheme";
+import theme from "../../utils/AppTheme";
 import styles from "./LoginStyles";
 import userService from "../../services/UserService";
 import { useNavigation } from "@react-navigation/native";
-import {
-  registerForPushNotificationsAsync,
-  sendPushTokenToServer,
-} from "../../utils/Notification";
 import { saveUserData } from "../../utils/AsynchStorageHelper";
 
-const { COLORS, SIZES } = theme;
+const { COLORS, SIZES, FONTS } = theme;
 
 function LoginPage() {
   const [contactOrEmailOrUsername, setContactOrEmailOrUsername] = useState("");
@@ -43,9 +36,9 @@ function LoginPage() {
     contactOrEmailOrUsername: false,
     password: false,
   });
-
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+
   const navigation = useNavigation();
 
   // ✅ Google Sign-In Config
@@ -66,11 +59,9 @@ function LoginPage() {
     switch (fieldName) {
       case "contactOrEmailOrUsername":
         if (!value.trim()) {
-          newErrors.contactOrEmailOrUsername =
-            "Please enter email or phone number";
+          newErrors.contactOrEmailOrUsername = "Please enter email or phone number";
         } else if (!isValidEmailOrPhone(value)) {
-          newErrors.contactOrEmailOrUsername =
-            "Please enter a valid email or phone number";
+          newErrors.contactOrEmailOrUsername = "Please enter a valid email or phone number";
         } else {
           newErrors.contactOrEmailOrUsername = "";
         }
@@ -115,9 +106,7 @@ function LoginPage() {
     setTouched((prev) => ({ ...prev, [fieldName]: true }));
     validateField(
       fieldName,
-      fieldName === "contactOrEmailOrUsername"
-        ? contactOrEmailOrUsername
-        : password
+      fieldName === "contactOrEmailOrUsername" ? contactOrEmailOrUsername : password
     );
   };
 
@@ -167,24 +156,16 @@ function LoginPage() {
       const response = await userService.googleLogin(payload);
 
       if (response.success && response.data) {
-        // ✅ Log only the final successful response
         console.log("✅ Google Login Success:", response.data);
 
         const { id, email, username, message, contactNumber } = response.data;
 
         await saveUserData(response.data);
 
-        const expoToken = await registerForPushNotificationsAsync();
-        if (expoToken) await sendPushTokenToServer(expoToken, id);
-
         showToast(message || "Logged in successfully with Google");
 
         if (!contactNumber || contactNumber.trim() === "") {
-          navigation.navigate("EnterNumber", {
-            userId: id,
-            email,
-            username,
-          });
+          navigation.navigate("EnterNumber", { userId: id, email, username });
         } else {
           navigation.navigate("VerifyMpinScreen", { step: 3 });
         }
@@ -222,19 +203,14 @@ function LoginPage() {
       });
 
       if (res.success && res.data?.token) {
-        // ✅ Log only final successful response
         console.log("✅ Login Success:", res.data);
 
-        const { id } = res.data;
         const normalizedData = {
           ...res.data,
           contactNumber: res.data.contactNumber || res.data.contact || "",
         };
 
         await saveUserData(normalizedData);
-
-        const token = await registerForPushNotificationsAsync();
-        if (token) await sendPushTokenToServer(token, id);
 
         showToast("Login successful!");
         navigation.navigate("VerifyMpinScreen", { step: 3 });
@@ -265,7 +241,6 @@ function LoginPage() {
     </Text>
   );
 
-
   return (
     <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
       <ImageBackground
@@ -285,7 +260,7 @@ function LoginPage() {
             <View style={styles.container}>
               <View style={styles.logoContainer}>
                 <Image
-                  source={require("../../assets/image/logo2.png")}
+                  source={require("../../assets/image/final-logo.jpg")}
                   style={styles.logoImage}
                 />
               </View>
@@ -297,10 +272,7 @@ function LoginPage() {
                 {/* Email/Phone Field */}
                 <RequiredLabel>Email or Phone</RequiredLabel>
                 <TextInput
-                  style={[
-                    styles.input,
-                    errors.contactOrEmailOrUsername && styles.inputError,
-                  ]}
+                  style={[styles.input, errors.contactOrEmailOrUsername && styles.inputError]}
                   value={contactOrEmailOrUsername}
                   onChangeText={(value) =>
                     handleFieldChange("contactOrEmailOrUsername", value)
@@ -311,25 +283,16 @@ function LoginPage() {
                   autoCapitalize="none"
                 />
                 {errors.contactOrEmailOrUsername ? (
-                  <Text style={styles.errorText}>
-                    {errors.contactOrEmailOrUsername}
-                  </Text>
+                  <Text style={styles.errorText}>{errors.contactOrEmailOrUsername}</Text>
                 ) : null}
 
                 {/* Password Field */}
                 <RequiredLabel>Password</RequiredLabel>
-                <View
-                  style={[
-                    styles.passwordContainer,
-                    errors.password && styles.inputError,
-                  ]}
-                >
+                <View style={[styles.passwordContainer, errors.password && styles.inputError]}>
                   <TextInput
                     style={styles.passwordInput}
                     value={password}
-                    onChangeText={(value) =>
-                      handleFieldChange("password", value)
-                    }
+                    onChangeText={(value) => handleFieldChange("password", value)}
                     onBlur={() => handleFieldBlur("password")}
                     placeholder="Enter password"
                     placeholderTextColor={COLORS.textTertiary}
@@ -343,16 +306,15 @@ function LoginPage() {
                     <Image
                       source={
                         showPassword
-                          ? require("../../assets/icons/eyeopen.png") // 👁️ when visible
-                          : require("../../assets/icons/eyeclose.png") // 🚫 when hidden
+                          ? require("../../assets/icons/eyeopen.png")
+                          : require("../../assets/icons/eyeclose.png")
                       }
                       style={styles.eyeIcon}
                     />
                   </TouchableOpacity>
                 </View>
-                {errors.password ? (
-                  <Text style={styles.errorText}>{errors.password}</Text>
-                ) : null}
+                {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+
                 {/* Forgot Password */}
                 <TouchableOpacity
                   onPress={() =>
@@ -360,17 +322,12 @@ function LoginPage() {
                   }
                   style={styles.forgotPasswordContainer}
                 >
-                  <Text style={styles.forgotPasswordText}>
-                    Forgot Password?
-                  </Text>
+                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
                 </TouchableOpacity>
 
-                {/* ✅ Login Button */}
+                {/* Login Button */}
                 <TouchableOpacity
-                  style={[
-                    styles.primaryButton,
-                    loading && styles.disabledButton,
-                  ]}
+                  style={[styles.primaryButton, loading && styles.disabledButton]}
                   onPress={handleLogin}
                   disabled={loading}
                 >
@@ -397,13 +354,11 @@ function LoginPage() {
 
                 {/* Google Button */}
                 <TouchableOpacity
-                  style={[
-                    styles.googleButton,
-                    googleLoading && styles.disabledButton,
-                  ]}
+                  style={[styles.googleButton, googleLoading && styles.disabledButton]}
                   onPress={handleGoogleSignIn}
                   disabled={googleLoading}
                 >
+                  
                   {googleLoading ? (
                     <ActivityIndicator color={COLORS.primary} />
                   ) : (
@@ -412,18 +367,14 @@ function LoginPage() {
                         source={require("../../assets/icons/google.png")}
                         style={styles.googleIcon}
                       />
-                      <Text style={styles.googleButtonText}>
-                        Continue with Google
-                      </Text>
+                      <Text style={styles.googleButtonText}>Continue with Google</Text>
                     </View>
                   )}
                 </TouchableOpacity>
 
                 {/* Register */}
                 <View style={styles.registerContainer}>
-                  <Text style={styles.registerText}>
-                    Don't have an account?
-                  </Text>
+                  <Text style={styles.registerText}>Don't have an account?</Text>
                   <TouchableOpacity onPress={navigateToRegister}>
                     <Text style={styles.registerLink}> Register</Text>
                   </TouchableOpacity>

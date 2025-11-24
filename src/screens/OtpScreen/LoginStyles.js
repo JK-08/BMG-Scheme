@@ -1,181 +1,233 @@
-// screens/Login/LoginStyles.js
 import { StyleSheet, Platform } from "react-native";
-import theme from "../../utils/MainTheme";
+import theme from "../../utils/AppTheme";
 
 const { COLORS, SIZES, FONTS, moderateScale, verticalScale, SHADOWS } = theme;
 
 const styles = StyleSheet.create({
+  // Background & Container
   backgroundImage: {
     flex: 1,
     width: "100%",
     height: "100%",
     resizeMode: "cover",
   },
-  keyboardAvoidingView: { flex: 1 },
+  keyboardAvoidingView: { 
+    flex: 1 
+  },
   scrollContainer: {
     flexGrow: 1,
+    justifyContent: "center",
     paddingTop: verticalScale(SIZES.xs),
-    paddingBottom: verticalScale(SIZES.xl + 14),
+    paddingBottom: SIZES.xxl,
   },
   container: {
     flex: 1,
     alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: SIZES.padding.lg,
-    paddingBottom: SIZES.xl + 14,
   },
 
-  // Logo
+  // Logo Section
   logoContainer: {
     alignItems: "center",
-    marginBottom: SIZES.xs,
-    marginTop: -10,
+    marginBottom: SIZES.md,
   },
   logoImage: {
-    width: moderateScale(SIZES.icon.xl * 40),
-    height: moderateScale(SIZES.icon.xl * 3.5),
+    width: moderateScale(220),
+    height: moderateScale(94),
     resizeMode: "contain",
-    borderRadius: SIZES.radius.md,
+    borderRadius: SIZES.radius.full,
   },
 
-  // Card
+  // Card Container
   card: {
-    width: "100%",
-    maxWidth: moderateScale(400),
-    // backgroundColor: COLORS.card,
+    width: "90%",
+    backgroundColor: COLORS.card,
     borderRadius: SIZES.radius.lg,
-    paddingHorizontal: SIZES.padding.lg,
-    paddingVertical: SIZES.xs,
+    paddingHorizontal: SIZES.padding.xl,
+    paddingVertical: SIZES.padding.xl,
+    ...SHADOWS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
   },
 
-  // Texts
+  // Typography
   title: {
     ...FONTS.h3,
     textAlign: "center",
-    color: COLORS.secondaryDark,
     marginBottom: SIZES.sm,
+    color: COLORS.textPrimary,
   },
   subtitle: {
     ...FONTS.body,
     textAlign: "center",
+    marginBottom: SIZES.xl,
     color: COLORS.textSecondary,
-    marginBottom: SIZES.xs,
   },
   label: {
-    ...FONTS.body,
-    fontWeight: "600",
+    ...FONTS.bodyMedium,
+    marginBottom: SIZES.xs,
     color: COLORS.textPrimary,
-    marginTop: SIZES.lg,
-    marginBottom: SIZES.sm,
+    marginTop: SIZES.md,
+  },
+  errorText: {
+    ...FONTS.caption,
+    color: COLORS.error,
+    marginTop: SIZES.xs,
+    marginLeft: SIZES.xs,
   },
 
-  // Inputs
+  // Input Fields
   input: {
-    // backgroundColor: COLORS.inputBackground,
-    borderRadius: SIZES.radius.sm,
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.md,
     paddingHorizontal: SIZES.padding.md,
-    paddingVertical:
-      Platform.OS === "ios" ? verticalScale(SIZES.md) : verticalScale(SIZES.sm),
+    paddingVertical: Platform.OS === "ios" ? SIZES.padding.md : SIZES.padding.sm,
     borderWidth: 1,
     borderColor: COLORS.borderMedium,
-    color: COLORS.textPrimary,
     fontSize: SIZES.font.md,
-    fontFamily: FONTS.family.body,
-    // ...SHADOWS.sm,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.regular,
+    minHeight: SIZES.input.height,
   },
-forgotPasswordContainer: {
-  alignSelf: "flex-end",
-  marginTop: 10,
-  marginBottom: 6,
-},
 
-forgotPasswordText: {
-  color: theme.COLORS.error,
-  fontSize: 14,
-  fontWeight: "500",
-},
+  // Password Container
+  passwordContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.md,
+    borderWidth: 1,
+    borderColor: COLORS.inputBorder,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: Platform.OS === "ios" ? SIZES.padding.sm : SIZES.padding.xs,
+    minHeight: SIZES.input.height,
+  },
+  passwordInput: {
+    flex: 1,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.regular,
+    paddingVertical: 0,
+  },
+  eyeIconContainer: {
+    padding: SIZES.xs,
+    marginLeft: SIZES.xs,
+  },
+  eyeIcon: {
+    width: SIZES.icon.md,
+    height: SIZES.icon.md,
+    tintColor: COLORS.textTertiary,
+  },
+
+  // Required field star
+  requiredStar: {
+    color: COLORS.error,
+    fontSize: SIZES.font.md,
+  },
+
+  // Input error state
+  inputError: {
+    borderColor: COLORS.error,
+    borderWidth: 1.5,
+  },
+
+  // Forgot Password
+  forgotPasswordContainer: {
+    alignSelf: "flex-end",
+    marginTop: SIZES.md,
+    marginBottom: SIZES.sm,
+  },
+  forgotPasswordText: {
+    ...FONTS.bodySmall,
+    color: COLORS.primary,
+    fontWeight: "500",
+  },
 
   // Buttons
   primaryButton: {
     borderRadius: SIZES.radius.md,
-    marginTop: SIZES.lg,
+    marginTop: SIZES.xl,
     overflow: "hidden",
     ...SHADOWS.md,
     height: SIZES.button.lg,
-    width: "70%",
-    alignSelf: "center",
   },
   buttonGradient: {
+    flex: 1,
     alignItems: "center",
     justifyContent: "center",
-    height: "100%",
   },
   primaryButtonText: {
-    ...FONTS.h5,
-    color: COLORS.white,
-    fontWeight: "600",
+    ...FONTS.button,
+    color: COLORS.textInverse,
   },
-  disabledButton: { opacity: 0.7 },
+  disabledButton: { 
+    opacity: 0.6 
+  },
 
   // Divider
   dividerContainer: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: SIZES.padding.md,
+    marginVertical: SIZES.lg,
   },
-  divider: { flex: 1, height: 1, backgroundColor: COLORS.borderLight },
+  divider: { 
+    flex: 1, 
+    height: 1, 
+    backgroundColor: COLORS.border 
+  },
   dividerText: {
     ...FONTS.bodySmall,
+    marginHorizontal: SIZES.md,
     color: COLORS.textSecondary,
-    paddingHorizontal: SIZES.padding.sm,
   },
 
   // Google Button
   googleButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
     backgroundColor: COLORS.white,
-    padding: SIZES.sm,
-    borderRadius: SIZES.radius.sm,
     borderWidth: 1,
-    borderColor: COLORS.borderMedium,
-    width: "100%",
-    marginBottom: SIZES.lg,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius.md,
+    paddingVertical: SIZES.padding.lg,
+    paddingHorizontal: SIZES.padding.xl,
+    marginBottom: SIZES.md,
     ...SHADOWS.sm,
-    alignSelf: "center",
   },
   googleButtonContent: {
     flexDirection: "row",
     alignItems: "center",
-    justifyContent: "center",
   },
   googleIcon: {
     width: SIZES.icon.md,
     height: SIZES.icon.md,
-    marginRight: SIZES.sm,
+    marginRight: SIZES.md,
   },
   googleButtonText: {
-    ...FONTS.body,
+    ...FONTS.bodyMedium,
     color: COLORS.textPrimary,
-    fontWeight: "600",
   },
 
-  // Register
+  // Register Section
   registerContainer: {
     flexDirection: "row",
     justifyContent: "center",
     alignItems: "center",
+    marginTop: SIZES.lg,
   },
   registerText: {
     ...FONTS.body,
     color: COLORS.textSecondary,
   },
   registerLink: {
-    ...FONTS.body,
-    color: COLORS.secondaryDark,
-    textDecorationLine: "underline",
-    fontWeight: "600",
+    ...FONTS.bodyMedium,
+    color: COLORS.primary,
+    marginLeft: SIZES.xs,
   },
 
-  // Loader
+  // Loading Overlay
   loadingOverlay: {
     ...StyleSheet.absoluteFillObject,
     backgroundColor: COLORS.overlay,
@@ -186,67 +238,53 @@ forgotPasswordText: {
   loadingText: {
     ...FONTS.body,
     color: COLORS.white,
-    marginTop: SIZES.lg,
+    marginTop: SIZES.md,
   },
-  // Password Container
-  passwordContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    // backgroundColor: COLORS.inputBackground,
-    borderRadius: SIZES.radius.md,
-    borderWidth: 1,
-    borderColor: COLORS.inputBorder,
-    paddingHorizontal: SIZES.padding.md,
-    paddingVertical: Platform.OS === "ios" ? SIZES.sm : SIZES.xss,
-    // ...SHADOWS.sm,
-    minHeight: SIZES.input.height,
-  },
-  passwordInput: {
-    flex: 1,
-    fontSize: SIZES.font.md,
-    color: COLORS.textPrimary,
-    fontFamily: FONTS.family.body,
-  },
-  eyeIconContainer: {
-    padding: SIZES.xs,
-    marginLeft: SIZES.xs,
-  },
-  eyeIcon: {
-    width: SIZES.icon.sm,
-    height: SIZES.icon.sm,
-    tintColor: COLORS.textTertiary,
-  },
-  requiredStar: {
-  color: COLORS.error,
-  fontSize: SIZES.font.md,
-},
-
-// Error text
-errorText: {
-  ...FONTS.caption,
-  color: COLORS.error,
-  marginTop: SIZES.xs,
-  marginLeft: SIZES.xs,
-},
-
-// Input error state
-inputError: {
-  borderColor: COLORS.error,
-  borderWidth: 1.5,
-},
 });
 
-// ✅ Web Adjustments
+// Platform-specific adjustments
 if (Platform.OS === "web") {
-  Object.assign(styles.card, { cursor: "default" });
-  Object.assign(styles.input, { outlineStyle: "none" });
-  Object.assign(styles.primaryButton, { cursor: "pointer" });
-  Object.assign(styles.googleButton, { cursor: "pointer" });
-  Object.assign(styles.registerLink, { cursor: "pointer" });
-
   styles.scrollContainer = {
     ...styles.scrollContainer,
-    paddingTop: verticalScale(SIZES.xxl * 2),
+    paddingTop: verticalScale(SIZES.xxl * 1.5),
+    minHeight: "100vh",
+  };
+  
+  styles.card = {
+    ...styles.card,
+    cursor: "default",
+    maxWidth: moderateScale(420),
+  };
+  
+  styles.input = {
+    ...styles.input,
+    outlineStyle: "none",
+    paddingVertical: SIZES.padding.md,
+  };
+  
+  styles.passwordInput = {
+    ...styles.passwordInput,
+    outlineStyle: "none",
+  };
+  
+  styles.primaryButton = {
+    ...styles.primaryButton,
+    cursor: "pointer",
+  };
+  
+  styles.googleButton = {
+    ...styles.googleButton,
+    cursor: "pointer",
+  };
+  
+  styles.registerLink = {
+    ...styles.registerLink,
+    cursor: "pointer",
+  };
+  
+  styles.forgotPasswordText = {
+    ...styles.forgotPasswordText,
+    cursor: "pointer",
   };
 }
 

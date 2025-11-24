@@ -1,17 +1,22 @@
-import React, { useContext } from 'react';
-import { View, Text, TouchableOpacity } from 'react-native';
-import { useNavigation } from '@react-navigation/native';
-import { MaterialCommunityIcons } from '@expo/vector-icons'; // Remove SimpleLineIcons as it's no longer needed for these icons
-import styles from './styles';
+import React from "react";
+import { View, Text, TouchableOpacity, Dimensions } from "react-native";
+import { useNavigation } from "@react-navigation/native";
+import { MaterialCommunityIcons } from "@expo/vector-icons";
+import {
+  scale,
+  moderateScale,
+  COLORS,
+  FONTS,
+  SIZES,
+} from "../../utils/AppTheme";
+import styles from "./styles";
+import { MaterialIcons } from "@expo/vector-icons";
 
-import { scale, colors } from '../../utils';
-import { colors1 } from '../../utils/colors';
-import SimpleLineIcons from 'react-native-vector-icons/SimpleLineIcons';
 function BottomTab({ screen }) {
   const navigation = useNavigation();
- 
+
   const getIconColor = (currentScreen) => {
-    return screen === currentScreen ? colors1.primaryText : colors.darkGrayText;
+    return screen === currentScreen ? COLORS.primary : COLORS.textSecondary;
   };
 
   const getTextStyle = (currentScreen) => {
@@ -22,67 +27,60 @@ function BottomTab({ screen }) {
     <View style={styles.footerContainer}>
       {/* Home Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('MainLanding')}
+        onPress={() => navigation.navigate("MainLanding")}
         style={styles.footerBtnContainer}
+        activeOpacity={0.7}
       >
         <MaterialCommunityIcons
-          name="home" // Solid green icon
-          size={scale(20)}
-          color={getIconColor('HOME')}
+          name="home"
+          size={SIZES.icon.md}
+          color={getIconColor("HOME")}
         />
-        <Text style={getTextStyle('HOME')}>Home</Text>
+        <Text style={getTextStyle("HOME")}>Home</Text>
       </TouchableOpacity>
 
-      {/* Cart Icon */}
+      {/* Schemes Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('MyScheme')}
+        onPress={() => navigation.navigate("MyScheme")}
         style={styles.footerBtnContainer}
+        activeOpacity={0.7}
       >
-        <View style={styles.imgContainer}>
-          <SimpleLineIcons
-            name="badge" // Solid green icon
-            size={scale(20)}
-            color={getIconColor('SCHEMES')}
-          />
+        <MaterialIcons
+          name="savings"
+          size={SIZES.icon.md}
+          color={getIconColor("SCHEMES")}
+        />
 
-        </View>
-        <Text style={getTextStyle('SCHEMES')}>Schemes</Text>
+        <Text style={getTextStyle("SCHEMES")}>Schemes</Text>
       </TouchableOpacity>
 
-      {/* Favourites Icon */}
+      {/* Notifications Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate('GoldPlanScreen')}
+        onPress={() => navigation.navigate("Rewards")}
         style={styles.footerBtnContainer}
+        activeOpacity={0.7}
       >
         <MaterialCommunityIcons
-          name="star"
-          size={scale(20)}
-          color={getIconColor('GOLDPLANS')}
+          name="trophy"
+          size={SIZES.icon.md}
+          color={getIconColor("Notification")}
         />
-        <Text style={getTextStyle('GOLDPLANS')}>Scheme Plans</Text>
+        <Text style={getTextStyle("Notification")}>Rewards</Text>
       </TouchableOpacity>
-      
-     
 
-      {/* Profile Icon */}
-      {/* <TouchableOpacity
-        onPress={() => {
-         
-            navigation.navigate('ProfileDashboard');
-         
-        }}
+      {/* Support Icon */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate("HelpCenter")}
         style={styles.footerBtnContainer}
+        activeOpacity={0.7}
       >
-        <View style={styles.profileContainer}>
-          <MaterialCommunityIcons
-            name="menu"
-            size={scale(20)}
-            color={getIconColor('PROFILE')}
-          />
-          
-        </View>
-        <Text style={getTextStyle('PROFILE')}>Menu</Text>
-      </TouchableOpacity> */}
+        <MaterialCommunityIcons
+          name="headset"
+          size={SIZES.icon.md}
+          color={getIconColor("HelpCenter")}
+        />
+        <Text style={getTextStyle("HelpCenter")}>Support</Text>
+      </TouchableOpacity>
     </View>
   );
 }

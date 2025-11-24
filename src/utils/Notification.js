@@ -1,4 +1,3 @@
-// utils/pushNotifications.js
 import * as Notifications from 'expo-notifications';
 import * as Device from 'expo-device';
 import { Platform, Alert } from 'react-native';
@@ -6,177 +5,99 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { API_BASE_URL } from '../Config/API';
 
-// Configure notifications when app is in foreground
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
-/**
- * Register device for push notifications and get Expo Push Token
- */
+// REGISTER PUSH TOKEN
 export async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) {
-    Alert.alert(
-      'Physical Device Required',
-      'Push notifications only work on physical devices.'
-    );
+    Alert.alert("Use Real Device", "Push notifications do not work on emulators.");
     return null;
   }
 
   try {
-    const { status: existingStatus } = await Notifications.getPermissionsAsync();
-    let finalStatus = existingStatus;
+    let { status } = await Notifications.getPermissionsAsync();
 
-    if (existingStatus !== 'granted') {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
+    if (status !== "granted") {
+      const res = await Notifications.requestPermissionsAsync();
+      status = res.status;
     }
 
-    if (finalStatus !== 'granted') {
-      Alert.alert(
-        'Permission Denied',
-        'Push notification permissions are required.'
-      );
+    if (status !== "granted") {
+      Alert.alert("Permission Denied", "Please allow notifications.");
       return null;
     }
 
+    // GET PROJECT ID
     const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ??
-      Constants.easConfig?.projectId ??
-      Constants.expoConfig?.extra?.projectId;
+      Constants.expoConfig?.extra?.eas?.projectId ||
+      Constants.easConfig?.projectId;
 
-    if (!projectId) {
-      console.error('❌ Project ID not found in app configuration');
-      Alert.alert(
-        'Configuration Error',
-        'Push notifications are not properly configured.'
-      );
-      return null;
-    }
+    const token = (await Notifications.getExpoPushTokenAsync({ projectId })).data;
 
-    console.log('🔧 Using Project ID:', projectId);
-
-    const tokenData = await Notifications.getExpoPushTokenAsync({ projectId });
-    const token = tokenData.data;
-
-    console.log('✅ Expo Push Token:', token);
-
-    if (Platform.OS === 'android') {
-      await Notifications.setNotificationChannelAsync('default', {
-        name: 'Default',
-        importance: Notifications.AndroidImportance.MAX,
-        vibrationPattern: [0, 250, 250, 250],
-        lightColor: '#FF231F7C',
-        sound: 'default',
-      });
-    }
+    console.log("📌 Expo Push Token:", token);
 
     return token;
-  } catch (error) {
-    console.error('❌ Error registering for push notifications:', error);
-    Alert.alert('Error', 'Failed to register for push notifications');
+
+  } catch (e) {
+    console.log("❌ Notification Error:", e);
     return null;
   }
 }
 
-/**
- * Generate a unique device ID
- */
+// GENERATE DEVICE ID
 async function generateDeviceId() {
-  try {
-    const storedDeviceId = await AsyncStorage.getItem('deviceId');
-    if (storedDeviceId) return storedDeviceId;
+  const saved = await AsyncStorage.getItem("deviceId");
+  if (saved) return saved;
 
-    const newDeviceId = `mobile-${Date.now()}${Math.random().toString(36).substr(2, 9)}`;
-    await AsyncStorage.setItem('deviceId', newDeviceId);
-    return newDeviceId;
-  } catch (error) {
-    console.error('Error generating device ID:', error);
-    return `mobile-${Date.now()}-fallback`;
-  }
+  const newId = `dev-${Date.now()}-${Math.random().toString(36).substring(2, 8)}`;
+  await AsyncStorage.setItem("deviceId", newId);
+  return newId;
 }
 
-/**
- * Send a welcome notification after registration
- */
-async function sendWelcomeNotification(userId) {
+// SEND WELCOME NOTIFICATION
+async function sendWelcome(userId) {
   try {
-    console.log('🎉 Sending welcome notification for user:', userId);
-
-    // Make API call with only userId in the URL, no body data
-    const response = await fetch(`${API_BASE_URL}/notifications/sendMessage/6/user/${userId}`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      // No body data sent
+    await fetch(`${API_BASE_URL}/notifications/sendMessage/6/user/${userId}`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
     });
-
-    const result = await response.text();
-    console.log('🔔 Welcome notification response:', result);
-    
-    if (response.ok) {
-      console.log('✅ Welcome notification sent successfully');
-    } else {
-      console.error('❌ Failed to send welcome notification');
-    }
-  } catch (error) {
-    console.error('❌ Error sending welcome notification:', error);
+    console.log("🎉 Welcome notification sent!");
+  } catch (e) {
+    console.log("❌ Welcome error:", e);
   }
 }
 
-/**
- * Send Expo push token to server and trigger welcome notification
- */
+// SEND DEVICE TOKEN TO SERVER
 export async function sendPushTokenToServer(expoToken, userId) {
   try {
-    console.log('📤 Sending push token to server:', { expoToken, userId });
+    const deviceId = await generateDeviceId();
 
-    const authToken = await AsyncStorage.getItem('authToken');
-    if (!authToken) {
-      console.error('❌ No auth token found in AsyncStorage');
-      return false;
-    }
-
-    const deviceData = {
-      deviceId: await generateDeviceId(),
-      deviceType: 'mobile',
+    const data = {
+      deviceId,
+      deviceType: "mobile",
       expoToken,
-      fcmToken: '',
-      userId: userId,
+      fcmToken: "",
+      userId,
     };
 
-    console.log('📱 Device registration data:', deviceData);
-    console.log('🔑 Auth Token:', authToken);
+    console.log("📤 Sending device data:", data);
 
-    const response = await fetch(`${API_BASE_URL}/device/register`, {
-      method: 'POST',
+    const res = await fetch(`${API_BASE_URL}/device/register`, {
+      method: "POST",
       headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
+        "Content-Type": "application/json",
       },
-      body: JSON.stringify(deviceData),
+      body: JSON.stringify(data),
     });
 
-    const responseData = await response.text();
-    console.log('🔔 Device registration response:', responseData);
+    const text = await res.text();
+    console.log("📥 Server Response:", text);
 
-    if (response.ok && responseData.toLowerCase().includes('success')) {
-      console.log('✅ Device registered successfully with server');
-
-      // Send welcome notification after successful registration
-      await sendWelcomeNotification(userId);
-      return true;
-    } else {
-      console.error('❌ Failed to register device with server:', responseData);
-      return false;
+    if (res.ok) {
+      await sendWelcome(userId);
     }
-  } catch (error) {
-    console.error('❌ Error sending push token to server:', error);
+
+    return true;
+  } catch (err) {
+    console.log("❌ Server Error:", err);
     return false;
   }
 }

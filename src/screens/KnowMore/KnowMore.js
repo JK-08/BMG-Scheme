@@ -16,8 +16,8 @@ import {
   COLORS,
   FONTS,
   SIZES,
-  DIGIGOLD_COLORS,
-} from "../../utils/Theme";
+  SHADOWS,
+} from "../../utils/AppTheme";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 
@@ -39,7 +39,6 @@ const SCHEME_CONTENT = {
       "கொள்முதல்: திட்டத்தில் சேர்ந்த 331வது நாள் முதல் 345வது நாள் வரை மட்டுமே நகை வாங்க முடியும்.",
     ],
 
-    // Added Lumpsum (Tamil)
     lumpSum: [
       "ஒரே தடவையில் முதலீடு செய்யும் திட்டம்.",
       "குறைந்தபட்ச முதலீடு: ₹10,000.",
@@ -48,7 +47,6 @@ const SCHEME_CONTENT = {
       "கொள்முதல்: 331 முதல் 345 நாட்களில் மட்டுமே நகை வாங்க முடியும்.",
     ],
 
-    // Added Bright Plan (Tamil)
     bright: [
       "மாதாந்திர நிலையான கட்டணம் செலுத்தும் திட்டம்.",
       "குறைந்தபட்சம்: ₹1,000 (₹500 இன் மடங்காக).",
@@ -93,7 +91,6 @@ const SCHEME_CONTENT = {
       "Redemption allowed only between the 331st and 345th day.",
     ],
 
-    // Added LumpSum plan (English)
     lumpSum: [
       "One-time investment plan.",
       "Minimum Amount: ₹10,000.",
@@ -102,7 +99,6 @@ const SCHEME_CONTENT = {
       "Redemption: Jewellery purchase only between Day 331–345.",
     ],
 
-    // Added Bright plan (English)
     bright: [
       "Monthly fixed payment plan.",
       "Minimum Amount: ₹1,000 (in multiples of ₹500).",
@@ -147,7 +143,7 @@ const SchemeSection = React.memo(
           <Icon
             name={iconName}
             size={moderateScale(iconSize)}
-            color={DIGIGOLD_COLORS.primary}
+            color={COLORS.primary}
             style={styles.featureIcon}
           />
           <Text style={styles.featureText}>{item}</Text>
@@ -174,7 +170,9 @@ function KnowMore() {
     setLanguage((prev) => {
       const next = prev === "english" ? "tamil" : "english";
       AccessibilityInfo.announceForAccessibility(
-        next === "english" ? "Language changed to English" : "மொழி தமிழ் மாற்றப்பட்டது"
+        next === "english"
+          ? "Language changed to English"
+          : "மொழி தமிழ் மாற்றப்பட்டது"
       );
       return next;
     });
@@ -202,8 +200,9 @@ function KnowMore() {
           <TouchableOpacity
             style={styles.languageButton}
             onPress={toggleLanguage}
+            activeOpacity={0.8}
           >
-            <Icon name="translate" size={16} color={COLORS.white} />
+            <Icon name="translate" size={SIZES.icon.sm} color={COLORS.white} />
             <Text style={styles.languageButtonText}>
               {isEnglish ? "தமிழ்" : "English"}
             </Text>
@@ -222,8 +221,8 @@ function KnowMore() {
               <View key={`term-${index}`} style={styles.featureItem}>
                 <Icon
                   name="asterisk"
-                  size={12}
-                  color={DIGIGOLD_COLORS.primary}
+                  size={SIZES.icon.xs}
+                  color={COLORS.primary}
                 />
                 <Text style={styles.featureText}>{item}</Text>
               </View>
@@ -232,12 +231,24 @@ function KnowMore() {
 
           {/* Buttons */}
           <View style={styles.buttonContainer}>
-            <TouchableOpacity style={styles.button} onPress={handleJoinNow}>
-              <Icon name="account-plus" size={18} color={COLORS.white} />
+            <TouchableOpacity
+              style={styles.button}
+              onPress={handleJoinNow}
+              activeOpacity={0.8}
+            >
+              <Icon
+                name="account-plus"
+                size={SIZES.icon.sm}
+                color={COLORS.white}
+              />
               <Text style={styles.buttonText}>{content.joinNow}</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity style={styles.closeButton} onPress={handleClose}>
+            <TouchableOpacity
+              style={styles.closeButton}
+              onPress={handleClose}
+              activeOpacity={0.8}
+            >
               <Text style={styles.closeButtonText}>{content.close}</Text>
             </TouchableOpacity>
           </View>
@@ -248,7 +259,7 @@ function KnowMore() {
 }
 
 // ==========================================
-// STYLES
+// UPDATED STYLES WITH NEW THEME
 // ==========================================
 const styles = StyleSheet.create({
   backgroundImage: {
@@ -256,153 +267,116 @@ const styles = StyleSheet.create({
   },
   scrollContent: {
     flexGrow: 1,
+    paddingBottom: SIZES.padding.xl,
   },
   container: {
-    padding: 16,
-    backgroundColor: "rgba(255, 255, 255, 0.6)",
+    padding: SIZES.padding.lg,
+    backgroundColor: COLORS.whiteOpacity50,
+    flex: 1,
   },
   languageButton: {
     alignSelf: "flex-end",
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: DIGIGOLD_COLORS.primary,
-    paddingHorizontal: 15,
-    paddingVertical: 8,
-    borderRadius: 8,
-    marginBottom: 15,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.padding.lg,
+    paddingVertical: SIZES.padding.sm,
+    borderRadius: SIZES.radius.md,
+    marginBottom: SIZES.margin.lg,
+    ...SHADOWS.sm,
+    gap: SIZES.xs,
   },
   languageButtonText: {
+    ...FONTS.bodyMedium,
     color: COLORS.white,
-    fontWeight: "600",
-    marginLeft: 6,
+    fontSize: SIZES.font.sm,
   },
   schemeSection: {
-    marginBottom: 20,
+    marginBottom: SIZES.margin.xl,
+    backgroundColor: COLORS.white,
+    padding: SIZES.padding.lg,
+    borderRadius: SIZES.radius.lg,
+    ...SHADOWS.sm,
   },
   schemeTitle: {
-    fontSize: SIZES.font + 1,
-    fontWeight: "700",
-    color: DIGIGOLD_COLORS.primary,
-    marginVertical: 12,
-    textDecorationLine: "underline",
+    ...FONTS.h4,
+    color: COLORS.primary,
+    marginVertical: SIZES.margin.md,
+    textAlign: "center",
   },
   termsSection: {
-    marginTop: 10,
+    marginTop: SIZES.margin.md,
+    backgroundColor: COLORS.white,
+    padding: SIZES.padding.lg,
+    borderRadius: SIZES.radius.lg,
+    ...SHADOWS.sm,
   },
   sectionTitle: {
-    fontSize: SIZES.font + 1,
-    fontWeight: "700",
-    color: DIGIGOLD_COLORS.primary,
-    marginBottom: 15,
-    textDecorationLine: "underline",
+    ...FONTS.h4,
+    color: COLORS.primary,
+    marginBottom: SIZES.margin.lg,
     textAlign: "center",
   },
   featureItem: {
     flexDirection: "row",
     alignItems: "flex-start",
-    marginBottom: 10,
+    marginBottom: SIZES.margin.sm,
+    paddingHorizontal: SIZES.padding.xs,
+  },
+  featureIcon: {
+    marginTop: 2,
+    marginRight: SIZES.padding.sm,
   },
   featureText: {
     flex: 1,
-    color: DIGIGOLD_COLORS.textPrimary,
+    flexWrap: "wrap", // 🆕 ADD THIS
+    flexShrink: 1, // 🆕 ADD THIS
+    ...FONTS.body,
+    color: COLORS.textPrimary,
     textAlign: "justify",
-    paddingLeft: 5,
+    lineHeight: SIZES.font.md * 1.6,
   },
+
   buttonContainer: {
-    marginTop: 25,
+    marginTop: SIZES.margin.xl,
     flexDirection: "row",
     justifyContent: "center",
-    gap: 15,
+    gap: SIZES.margin.lg,
     flexWrap: "wrap",
   },
   button: {
-    backgroundColor: DIGIGOLD_COLORS.primary,
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
+    backgroundColor: COLORS.primary,
+    paddingVertical: SIZES.padding.lg,
+    paddingHorizontal: SIZES.padding.xxl,
+    borderRadius: SIZES.radius.lg,
     flexDirection: "row",
     alignItems: "center",
-    gap: 8,
+    gap: SIZES.padding.sm,
+    ...SHADOWS.md,
+    minWidth: moderateScale(140),
+    justifyContent: "center",
   },
   buttonText: {
+    ...FONTS.button,
     color: COLORS.white,
-    fontWeight: "600",
+    fontSize: SIZES.font.md,
   },
   closeButton: {
     backgroundColor: COLORS.white,
-    paddingVertical: 12,
-    paddingHorizontal: 30,
-    borderRadius: 8,
-    borderWidth: 1.5,
-    borderColor: DIGIGOLD_COLORS.primary,
+    paddingVertical: SIZES.padding.lg,
+    paddingHorizontal: SIZES.padding.xxl,
+    borderRadius: SIZES.radius.lg,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
+    ...SHADOWS.sm,
+    minWidth: moderateScale(140),
+    justifyContent: "center",
   },
   closeButtonText: {
-    color: DIGIGOLD_COLORS.primary,
-    fontWeight: "600",
-  },
-   sectionContainer: {
-    marginTop: 18,
-    padding: 12,
-    backgroundColor: "#FFF4EE",
-    borderRadius: 12,
-  },
-  sectionTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#CD865C",
-    marginBottom: 12,
-  },
-  row: {
-    flexDirection: "row",
-    paddingVertical: 8,
-    borderBottomColor: "#e5e5e5",
-    borderBottomWidth: 1,
-    alignItems: "center",
-  },
-  iconCircle: {
-    width: 34,
-    height: 34,
-    borderRadius: 17,
-    backgroundColor: "#FFE8DF",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  rowTitle: {
-    fontSize: 14,
-    color: "#666",
-  },
-  rowValue: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#333",
-  },
-
-  /*** TABLE STYLES ***/
-  tableHeader: {
-    flexDirection: "row",
-    backgroundColor: "#CD865C",
-    padding: 10,
-    borderRadius: 8,
-  },
-  tableHeadText: {
-    flex: 1,
-    color: "#fff",
-    fontWeight: "700",
-    fontSize: 14,
+    ...FONTS.bodyBold,
+    color: COLORS.primary,
     textAlign: "center",
-  },
-  tableRow: {
-    flexDirection: "row",
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E8D0C4",
-  },
-  tableCell: {
-    flex: 1,
-    fontSize: 14,
-    color: "#444",
-    textAlign: "center",
+    fontSize: SIZES.font.md,
   },
 });
 

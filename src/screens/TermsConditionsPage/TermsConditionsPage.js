@@ -7,11 +7,11 @@ import {
   TouchableOpacity,
 } from 'react-native';
 import { TextDefault } from '../../components';
-import appTheme from '../../utils/MainTheme';
+import theme from '../../utils/AppTheme';
 import CommonHeader from '../../components/CommonHeader/CommonHeader';
 import Icon from 'react-native-vector-icons/MaterialIcons';
 
-const { COLORS, SIZES, FONTS, verticalScale, moderateScale } = appTheme;
+const { COLORS, SIZES, FONTS, verticalScale, moderateScale, SHADOWS } = theme;
 
 const TermsFAQPage = () => {
   const termsData = [
@@ -185,99 +185,90 @@ const styles = StyleSheet.create({
   },
   scrollContent: { 
     flexGrow: 1,
-    paddingBottom: verticalScale(20),
+    paddingBottom: verticalScale(SIZES.padding.xl),
   },
   contentContainer: {
-    backgroundColor: COLORS.surface,
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.md,
-    marginHorizontal: SIZES.padding.md,
-    marginTop: verticalScale(10),
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.xl,
+    marginHorizontal: SIZES.padding.lg,
+    marginTop: verticalScale(SIZES.padding.md),
+    ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
-    shadowColor: COLORS.black,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 6,
-    elevation: 3,
   },
   section: {
-    marginBottom: verticalScale(16),
+    marginBottom: verticalScale(SIZES.padding.lg),
     borderLeftWidth: 3,
     borderLeftColor: COLORS.primaryLight,
-    paddingLeft: moderateScale(12),
+    paddingLeft: SIZES.padding.md,
   },
   sectionHeader: {
     flexDirection: 'row',
     alignItems: 'center',
-    marginBottom: verticalScale(8),
+    marginBottom: verticalScale(SIZES.padding.sm),
   },
   iconContainer: { 
-    marginRight: moderateScale(8),
+    marginRight: SIZES.padding.sm,
     width: moderateScale(24),
     alignItems: 'center',
   },
   sectionTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.lg,
+    ...FONTS.h5,
     color: COLORS.textPrimary,
     flex: 1,
-    lineHeight: verticalScale(24),
+    lineHeight: SIZES.font.lg * 1.3,
   },
   subtitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.md,
-    color: COLORS.secondary,
-    marginBottom: verticalScale(8),
-    marginTop: verticalScale(4),
+    ...FONTS.bodyMedium,
+    color: COLORS.primary,
+    marginBottom: verticalScale(SIZES.padding.sm),
+    marginTop: verticalScale(SIZES.xs),
   },
   sectionContent: {
-    marginTop: verticalScale(4),
+    marginTop: verticalScale(SIZES.xs),
   },
   subsection: {
-    marginLeft: moderateScale(8),
-    marginTop: verticalScale(12),
-    paddingLeft: moderateScale(8),
+    marginLeft: SIZES.padding.sm,
+    marginTop: verticalScale(SIZES.padding.md),
+    paddingLeft: SIZES.padding.sm,
     borderLeftWidth: 2,
     borderLeftColor: COLORS.borderMedium,
   },
   subsectionTitle: {
-    fontFamily: FONTS.family.bodyBold,
-    fontSize: SIZES.font.md,
+    ...FONTS.bodyMedium,
     color: COLORS.textPrimary,
-    marginBottom: verticalScale(8),
+    marginBottom: verticalScale(SIZES.padding.sm),
   },
   pointContainer: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    marginBottom: verticalScale(8),
-    paddingLeft: moderateScale(4),
+    marginBottom: verticalScale(SIZES.padding.sm),
+    paddingLeft: SIZES.xs,
   },
   bullet: {
-    width: moderateScale(5),
-    height: moderateScale(5),
-    borderRadius: moderateScale(2.5),
+    width: moderateScale(6),
+    height: moderateScale(6),
+    borderRadius: SIZES.radius.full,
     backgroundColor: COLORS.primary,
-    marginRight: moderateScale(10),
-    marginTop: verticalScale(8),
+    marginRight: SIZES.padding.sm,
+    marginTop: verticalScale(SIZES.padding.sm),
   },
   pointText: {
     flex: 1,
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.md,
+    ...FONTS.body,
     color: COLORS.textPrimary,
-    lineHeight: verticalScale(20),
+    lineHeight: SIZES.font.lg * 1.4,
   },
   footer: {
     borderTopWidth: 1,
     borderTopColor: COLORS.borderLight,
-    paddingTop: verticalScale(16),
-    marginTop: verticalScale(8),
+    paddingTop: verticalScale(SIZES.padding.lg),
+    marginTop: verticalScale(SIZES.padding.sm),
     alignItems: 'center',
   },
   lastUpdated: {
-    fontFamily: FONTS.family.body,
-    fontSize: SIZES.font.sm,
+    ...FONTS.bodySmall,
     color: COLORS.textSecondary,
     fontStyle: 'italic',
   },

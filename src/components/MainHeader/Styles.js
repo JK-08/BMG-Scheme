@@ -1,29 +1,22 @@
 // components/Header/Styles.js
-import { StyleSheet } from "react-native";
-import {
-  COLORS,
-  SIZES,
-  FONTS,
-  moderateScale,
-  verticalScale,
-  scale,
-} from "../../utils/Theme";
+import { StyleSheet, Platform } from "react-native";
+import theme from "../../utils/AppTheme";
+
+const { COLORS, SIZES, FONTS, moderateScale, verticalScale } = theme;
 
 export default StyleSheet.create({
   // ===== Container =====
-  headerContainer1: {
-    paddingHorizontal: SIZES.padding,
-    paddingTop: verticalScale(12),
-    marginBottom: verticalScale(35),
-    borderBottomLeftRadius: SIZES.radius,
-    borderBottomRightRadius: SIZES.radius,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.15,
-    shadowRadius: 3,
-    elevation: 3,
-    height: verticalScale(130),
+  headerContainer: {
+    paddingHorizontal: SIZES.padding.lg,
+    paddingTop: verticalScale(SIZES.padding.xs),
+    paddingBottom: verticalScale(SIZES.padding.xxl),
+    marginBottom: verticalScale(SIZES.padding.xl),
+    borderBottomLeftRadius: SIZES.radius.xl,
+    borderBottomRightRadius: SIZES.radius.xl,
+    ...theme.SHADOWS.lg,
     position: "relative",
+    minHeight: verticalScale(150),
+    gap: SIZES.padding.md,
   },
 
   // ===== Top Section =====
@@ -31,29 +24,31 @@ export default StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: verticalScale(10),
+    marginTop: verticalScale(SIZES.xs),
   },
 
   faqIconContainer: {
-    width: moderateScale(42),
-    height: moderateScale(42),
-    borderRadius: scale(21),
+    width: moderateScale(44),
+    height: moderateScale(44),
+    borderRadius: SIZES.radius.full,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.surface,
-    borderWidth: 1,
-    borderColor: COLORS.borderColor,
+    // backgroundColor: COLORS.whiteOpacity20,
+    // borderWidth: 1,
+    borderColor: COLORS.whiteOpacity50,
+    // ...theme.SHADOWS.sm,
   },
 
   menuIconContainer: {
-    width: moderateScale(42),
-    height: moderateScale(42),
-    borderRadius: scale(21),
+    width: moderateScale(44),
+    height: moderateScale(44),
+    borderRadius: SIZES.radius.full,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.surface,
+    backgroundColor: COLORS.whiteOpacity20,
     borderWidth: 1,
-    borderColor: COLORS.borderColor,
+    borderColor: COLORS.whiteOpacity50,
+    // ...theme.SHADOWS.sm,
   },
 
   // ===== Logo + Company =====
@@ -62,22 +57,18 @@ export default StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginHorizontal: SIZES.margin,
+    marginHorizontal: SIZES.padding.md,
   },
 
   logoContainer: {
-    marginRight: moderateScale(10),
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.2,
-    shadowRadius: 3,
-    elevation: 3,
+    marginRight: SIZES.padding.md,
+    ...theme.SHADOWS.md,
   },
 
   headerLogo: {
-    width: moderateScale(50),
-    height: moderateScale(50),
-    borderRadius: scale(25),
+    width: moderateScale(170),
+    height: moderateScale(65),
+    // borderRadius: SIZES.radius.full,
   },
 
   companyNameContainer: {
@@ -85,34 +76,23 @@ export default StyleSheet.create({
   },
 
   companyName: {
-    ...FONTS.h5,
-    color: COLORS.primary,
-    fontSize: moderateScale(18),
+    ...FONTS.h4,
+
+    color: COLORS.textInverse,
+    fontSize: SIZES.font.xl,
+    textShadowColor: COLORS.blackOpacity50,
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 3,
   },
 
   companySubtitle: {
-    ...FONTS.body3,
-    color: COLORS.primary,
-    fontSize: moderateScale(13),
-    marginTop: verticalScale(-2),
-  },
-
-  // ===== Rate Update Timestamp =====
-  rateUpdateContainer: {
-    alignItems: "center",
-    marginTop: verticalScale(8),
-  },
-
-  updateText: {
-    ...FONTS.fontXs,
-    color: COLORS.text,
-    fontSize: moderateScale(12),
-    // fontStyle: "italic",
-    textAlign: "center",
-    // color: "#555",
-    // fontSize: 13,
-    marginTop: 10,
-    // fontWeight: "500",
+    ...FONTS.bodySmall,
+    color: COLORS.textInverse,
+    fontSize: SIZES.font.sm,
+    marginTop: verticalScale(-SIZES.xs),
+    textShadowColor: COLORS.blackOpacity50,
+    textShadowOffset: { width: 1, height: 1 },
+    textShadowRadius: 2,
   },
 
   // ===== Rate Cards =====
@@ -120,69 +100,117 @@ export default StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     position: "absolute",
-    bottom: verticalScale(-25),
-    left: SIZES.padding,
-    right: SIZES.padding,
-    gap: moderateScale(12),
+    bottom: verticalScale(-SIZES.xl),
+    left: SIZES.padding.lg,
+    right: SIZES.padding.lg,
+    gap: SIZES.padding.md,
   },
 
   rateCardOverlay: {
     flex: 1,
+    alignContent:'center',
+    justifyContent:'center',
     backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius,
-    padding: moderateScale(8),
+    borderRadius: SIZES.radius.lg,
+    padding: verticalScale(8),
     borderWidth: 1,
-    borderColor: COLORS.borderColor,
-    shadowColor: COLORS.shadow,
-    shadowOffset: { width: 0, height: 4 },
-    shadowOpacity: 0.25,
-    shadowRadius: 8,
-    elevation: 8,
+    borderColor: COLORS.borderLight,
+    ...theme.SHADOWS.lg,
+    minHeight: verticalScale(55),
   },
 
   rateCardContent: {
     flexDirection: "row",
     alignItems: "center",
+    gap: SIZES.padding.md,
   },
-
-  rateIconContainer: {
-    marginRight: moderateScale(10),
-  },
-
+rateCardContainer:{
+alignItemsL:'center',
+display:'flex',
+justifyContent:'center'
+},
   animatedCoinContainer: {
-    width: moderateScale(46),
-    height: moderateScale(46),
+    width: moderateScale(48),
+    height: moderateScale(48),
     alignItems: "center",
     justifyContent: "center",
   },
 
+  animatedIconContainer: {
+  },
+
   rateCoinIcon: {
-    width: moderateScale(38),
-    height: moderateScale(38),
+    width: moderateScale(50),
+    height: moderateScale(50),
   },
 
-  rateTextContainer: {
+  // RIGHT-ALIGNED TEXT
+  rateTextRightAligned: {
     flex: 1,
+    alignItems: "flex-end",
+    justifyContent: "center",
   },
 
-  rateLabel: {
-    ...FONTS.body1,
-    color: COLORS.black,
-    fontSize: moderateScale(14),
+  rateLabelRight: {
+    ...FONTS.bodyMedium,
+    color: COLORS.textSecondary,
+    fontSize: SIZES.font.sm,
+    marginBottom: SIZES.xs,
+    textAlign: "right",
+    paddingRight: SIZES.padding.sm,
   },
 
-  rateValue: {
-    ...FONTS.heading,
-    color: COLORS.primary,
-    fontSize: moderateScale(18),
-    marginTop: verticalScale(2),
+  rateValueRight: {
+    fontSize: SIZES.font.xl,
+    marginBottom: SIZES.xs,
+    textAlign: "right",
+    paddingRight: SIZES.padding.sm,
+    lineHeight: SIZES.font.xl * 1.4,
+    color: COLORS.textPrimary,
   },
 
-  goldText: {
-    color: "#000000ff",
+  rateUnitRight: {
+    ...FONTS.caption,
+    color: COLORS.textTertiary,
+    fontSize: SIZES.font.xs,
+    textAlign: "right",
+    paddingRight: SIZES.padding.sm,
   },
 
-  silverText: {
-    color: "#000000ff",
+  // DEFAULT TEXT BLOCK (LEFT)
+  rateTextContainer: {
+    display: "flex",
+    flexDirection: "row",
+    gap: SIZES.padding.sm,
+    alignItems:'center',
+    justifyContent:'center',
+    color: COLORS.textWhite,
   },
+
+  rateIconContainer: {
+    display:'flex',
+    alignContent:'center',
+    justifyContent:'center',
+  },
+
+  dateUpdateText: {
+    ...FONTS.bodyMedium,
+    fontSize: SIZES.font.sm,
+    lineHeight: SIZES.font.sm * 1.7,
+  },
+  rateLabel:{
+    color: COLORS.textWhite,
+  },
+  shopTextContainer:{
+    display:'flex',
+  },
+  shopTitle:{
+    color: COLORS.primaryDark,
+  },
+  shopSubtitle:{
+    color: COLORS.primaryDark,
+  color: COLORS.primaryDark,
+  flexShrink: 1,
+  width: "100%",
+  }
 });
