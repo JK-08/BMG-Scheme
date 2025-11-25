@@ -38,7 +38,7 @@ const PaymentWebView = () => {
     const backHandler = BackHandler.addEventListener(
       "hardwareBackPress",
       () => {
-        console.log("🔙 Hardware back pressed");
+        console.log("[Payment] Back button pressed - showing confirmation");
         Alert.alert(
           "Cancel Payment?",
           "Are you sure you want to cancel this payment?",
@@ -46,12 +46,11 @@ const PaymentWebView = () => {
             {
               text: "No",
               style: "cancel",
-              onPress: () => console.log("❌ Payment not cancelled"),
             },
             {
               text: "Yes",
               onPress: () => {
-                console.log("✅ Payment cancelled by user");
+                console.log("[Payment] User cancelled payment");
                 navigation.replace("PaymentSuccess", {
                   status: "CANCELLED",
                   orderDetails,
@@ -74,7 +73,7 @@ const PaymentWebView = () => {
   // -------------------------------------------------------------
   const storePaymentData = async (paymentStatus) => {
     try {
-      console.log("💾 Storing payment data locally:", paymentStatus);
+      console.log("[Payment] Storing payment data locally");
       const paymentData = {
         payphiResponse: paymentStatus?.payphiResponse,
         orderStatus: paymentStatus?.orderStatus,
@@ -87,9 +86,9 @@ const PaymentWebView = () => {
         "paymentResponse",
         JSON.stringify(paymentData)
       );
-      console.log("✅ Payment data saved to AsyncStorage");
+      console.log("[Payment] Payment data saved successfully");
     } catch (error) {
-      console.error("❌ Error saving payment:", error);
+      console.error("[Payment] Error saving payment data:", error);
     }
   };
 
@@ -98,14 +97,13 @@ const PaymentWebView = () => {
   // -------------------------------------------------------------
   const buildSchemeData = (paymentStatus) => {
     if (!paymentStatus) {
-      console.warn("⚠️ Payment status not provided, using fallback values");
+      console.warn("[Payment] No payment status provided, using fallback values");
       paymentStatus = {};
     }
 
     const schemeInfo = orderDetails?.schemeInfo || {};
     const pay = paymentStatus?.payphiResponse || {};
 
-    // Use fallback values if anything is missing
     const groupCode =
       orderDetails?.customer?.groupCode || productData?.groupCode || "BMA";
 
@@ -137,16 +135,14 @@ const PaymentWebView = () => {
       updateTime: new Date().toISOString().split("T")[0],
       installment,
       userID: "9999",
-
-      // ⭐ Dynamic values from payment response
-      chqBankCode: pay.paymentMode || "", // e.g., "NB"
-      chqCardNo: pay.txnID || "", // e.g., "7700202588422"
-      chqBranch: pay.paymentSubInstType || "", // e.g., "Phicom Test bank"
-      chkBank: pay.paymentMode || "", // e.g., "NB"
-      CHQRTNREASON: pay.merchantTxnNo || "", // e.g., "ORDER-13AE67CB76"
+      chqBankCode: "2" || "",
+      chqCardNo: pay.txnID || "",
+      chqBranch: pay.paymentSubInstType || "",
+      chkBank: pay.paymentMode || "",
+      chqRtnReason: pay.merchantTxnNo || "",
     };
 
-    console.log("📦 FINAL INSERT PAYLOAD:\n", payload);
+    console.log("[Payment] Scheme data payload built");
     return payload;
   };
 
@@ -155,16 +151,16 @@ const PaymentWebView = () => {
   // -------------------------------------------------------------
   const checkPaymentStatus = async (merchantTxnNo) => {
     if (!merchantTxnNo) {
-      console.log("⚠️ No merchant transaction number available");
+      console.warn("[Payment] No merchant transaction number available");
       return;
     }
     if (paymentStatusChecked) {
-      console.log("ℹ️ Payment status already checked, skipping");
+      console.log("[Payment] Payment status already checked, skipping");
       return;
     }
 
     setPaymentStatusChecked(true);
-    console.log("⏳ Checking payment status for txn:", merchantTxnNo);
+    console.log(`[Payment] Checking payment status for: ${merchantTxnNo}`);
 
     try {
       const statusPayload = {
@@ -187,25 +183,28 @@ const PaymentWebView = () => {
       );
 
       const data = await response.json();
-      console.log("📩 Payment status response:", data);
+      console.log(`[Payment] Status response received: ${data?.orderStatus || data?.status}`);
 
       await storePaymentData(data);
+
+      const pay = data?.payphiResponse;
 
       const isSuccess =
         data?.orderStatus === "PAID" ||
         data?.status === "SUCCESS" ||
-        data?.payphiResponse?.transactionStatus === "SUCCESS" ||
+        (pay?.txnStatus && ["SUC", "SUCCESS"].includes(pay?.txnStatus)) ||
+        (pay?.txnResponseCode &&
+          ["00", "000", "0000"].includes(pay?.txnResponseCode)) ||
+        pay?.txnRespDescription?.toLowerCase()?.includes("success") ||
         data?.message?.toLowerCase()?.includes("success");
 
       if (isSuccess) {
-        console.log("🎉 Payment successful");
-
-        const schemeData = buildSchemeData(data); // <-- pass 'data' here
+        console.log("[Payment] Payment successful - inserting scheme data");
+        const schemeData = buildSchemeData(data);
 
         try {
           await insertSchemeCollection(schemeData);
-          console.log("✅ Scheme collection inserted successfully");
-
+          console.log("[Payment] Scheme collection inserted successfully");
           navigation.replace("PaymentSuccess", {
             status: "SUCCESS",
             schemeData,
@@ -215,7 +214,7 @@ const PaymentWebView = () => {
             isCashPayment: false,
           });
         } catch (insertErr) {
-          console.warn("⚠️ Failed to insert scheme collection:", insertErr);
+          console.warn("[Payment] Failed to insert scheme collection:", insertErr.message);
           navigation.replace("PaymentSuccess", {
             status: "SUCCESS",
             paymentStatus: data,
@@ -225,7 +224,7 @@ const PaymentWebView = () => {
           });
         }
       } else {
-        console.log("❌ Payment failed");
+        console.log("[Payment] Payment failed or pending");
         navigation.replace("PaymentSuccess", {
           status: "FAILED",
           paymentStatus: data,
@@ -235,7 +234,7 @@ const PaymentWebView = () => {
         });
       }
     } catch (error) {
-      console.error("⚠️ Error checking payment status:", error);
+      console.error("[Payment] Error checking payment status:", error);
       navigation.replace("PaymentSuccess", {
         status: "PENDING",
         orderDetails,
@@ -250,10 +249,10 @@ const PaymentWebView = () => {
   // -------------------------------------------------------------
   const handleRequest = (request) => {
     const url = request.url;
-    console.log("🌐 Request URL:", url);
+    console.log(`[WebView] Loading: ${url.substring(0, 100)}...`);
 
     if (paymentProcessed) {
-      console.log("ℹ️ Payment already processed, blocking request");
+      console.log("[WebView] Payment already processed, blocking request");
       return false;
     }
 
@@ -263,13 +262,12 @@ const PaymentWebView = () => {
       url.includes("/payment-success") ||
       url.includes("/success")
     ) {
-      console.log("⚡ SUCCESS URL BLOCKED");
+      console.log("[WebView] Success URL detected - blocking redirect");
       setPaymentProcessed(true);
       setProcessing(true);
 
       const txn = orderDetails?.merchantTxnNo || orderDetails?.orderId;
       setTimeout(() => checkPaymentStatus(txn), 1000);
-
       return false;
     }
 
@@ -279,7 +277,7 @@ const PaymentWebView = () => {
       url.includes("/payment-failure") ||
       url.includes("/failure")
     ) {
-      console.log("⚡ FAILURE URL BLOCKED");
+      console.log("[WebView] Failure URL detected - blocking redirect");
       setPaymentProcessed(true);
       setProcessing(true);
 
@@ -294,7 +292,7 @@ const PaymentWebView = () => {
 
     // CANCEL
     if (url.includes("/cancel") || url.includes("/cancelled")) {
-      console.log("⚡ CANCEL URL BLOCKED");
+      console.log("[WebView] Cancel URL detected - blocking redirect");
       setPaymentProcessed(true);
       setProcessing(true);
 
@@ -333,15 +331,15 @@ const PaymentWebView = () => {
             source={{ uri: paymentUrl }}
             onShouldStartLoadWithRequest={handleRequest}
             onLoadStart={() => {
-              console.log("🔄 WebView load started");
+              console.log("[WebView] Page load started");
               setLoading(true);
             }}
             onLoadEnd={() => {
-              console.log("✅ WebView load ended");
+              console.log("[WebView] Page load completed");
               setLoading(false);
             }}
             onError={(err) => {
-              console.error("❌ WebView load error:", err);
+              console.error("[WebView] Load error:", err);
               Alert.alert(
                 "Connection Error",
                 "Unable to load payment page. Please try again.",
@@ -374,7 +372,7 @@ const PaymentWebView = () => {
             <TouchableOpacity
               style={styles.retryButton}
               onPress={() => {
-                console.log("🔙 User pressed Go Back due to missing URL");
+                console.log("[Payment] User navigating back due to missing URL");
                 navigation.goBack();
               }}
             >

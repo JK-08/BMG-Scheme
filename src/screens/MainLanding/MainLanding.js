@@ -529,7 +529,7 @@ const MainLandingHeader = React.memo(function MainLandingHeader({
           emptyMessage="No saving schemes available"
           renderItem={renderSchemeItem}
           renderSkeleton={(index) => <GoldPlansSkeleton key={index} />}
-          cardWidth={SCREEN_WIDTH * 0.85}
+          cardWidth={SCREEN_WIDTH * 1}
         />
       </View>
 

@@ -32,7 +32,7 @@ const PaymentSuccess = () => {
     paymentType,
   } = route.params || {};
 
-  console.log("📦 PaymentSuccess params:", route.params);
+  console.log("[PaymentSuccess] Screen loaded with status:", status);
 
   const isSuccess = status === "SUCCESS";
 
@@ -44,23 +44,23 @@ const PaymentSuccess = () => {
       !route.params?.isInstallmentPayment;
 
     setIsJoiningPayment(joiningPayment);
-    console.log("ℹ️ Is joining payment:", joiningPayment);
+    console.log("[PaymentSuccess] Payment type - Joining:", joiningPayment);
   }, [route.params, isInstallmentPayment, paymentType]);
 
   // Load stored payment data from AsyncStorage
   useEffect(() => {
     const loadStoredPaymentData = async () => {
-      console.log("⏳ Loading stored payment data...");
+      console.log("[PaymentSuccess] Loading stored payment data");
       try {
         const storedData = await AsyncStorage.getItem("paymentResponse");
         if (storedData) {
           setStoredPaymentData(JSON.parse(storedData));
-          console.log("✅ Stored payment data loaded:", storedData);
+          console.log("[PaymentSuccess] Stored payment data loaded");
         } else {
-          console.log("ℹ️ No stored payment data found");
+          console.log("[PaymentSuccess] No stored payment data found");
         }
       } catch (error) {
-        console.error("❌ Error loading stored payment data:", error);
+        console.error("[PaymentSuccess] Error loading stored payment data:", error);
       } finally {
         setLoading(false);
       }
@@ -73,14 +73,12 @@ const PaymentSuccess = () => {
   // ======================================================
   useEffect(() => {
     if (!isSuccess || smsSent) {
-      console.log(
-        `ℹ️ SMS sending skipped. Success: ${isSuccess}, SMS sent: ${smsSent}`
-      );
+      console.log("[PaymentSuccess] SMS sending skipped - already sent or not successful");
       return;
     }
 
     const sendSMS = async () => {
-      console.log("📩 Sending payment success SMS...");
+      console.log("[PaymentSuccess] Sending payment success SMS");
       try {
         const mobile =
           productData?.personalInfo?.mobile ||
@@ -88,7 +86,7 @@ const PaymentSuccess = () => {
           null;
 
         if (!mobile) {
-          console.warn("⚠️ No mobile number found for SMS sending.");
+          console.warn("[PaymentSuccess] No mobile number found for SMS");
           return;
         }
 
@@ -128,14 +126,11 @@ const PaymentSuccess = () => {
           year: "numeric",
         });
 
-        console.log("ℹ️ SMS Details ->", {
-          mobile,
+        console.log("[PaymentSuccess] SMS details prepared", {
+          mobile: mobile.substring(0, 4) + '****', // Mask mobile for privacy
           name,
           schemeName,
           amount,
-          monthYear,
-          paidDate,
-          nextDueDate,
         });
 
         await smsService.sendPaymentSuccessSMS(
@@ -148,19 +143,10 @@ const PaymentSuccess = () => {
           nextDueDate
         );
 
-        console.log("Installment SMS data", {
-          mobile,
-          name,
-          schemeName,
-          amount,
-          monthYear,
-          paidDate,
-          nextDueDate,
-        });
-        console.log("✅ Installment Payment SMS Sent Successfully");
+        console.log("[PaymentSuccess] Payment SMS sent successfully");
         setSmsSent(true);
       } catch (err) {
-        console.error("❌ SMS Error:", err);
+        console.error("[PaymentSuccess] SMS sending failed:", err);
       }
     };
 
@@ -169,9 +155,9 @@ const PaymentSuccess = () => {
 
   // Auto navigate after 20 seconds
   useEffect(() => {
-    console.log("⏳ Auto-navigation timer set for 20 seconds");
+    console.log("[PaymentSuccess] Auto-navigation timer started (20s)");
     const timer = setTimeout(() => {
-      console.log("➡️ Navigating to MainLanding");
+      console.log("[PaymentSuccess] Auto-navigating to MainLanding");
       navigation.reset({
         index: 0,
         routes: [{ name: "MainLanding" }],
@@ -181,7 +167,7 @@ const PaymentSuccess = () => {
   }, []);
 
   const handleContinue = () => {
-    console.log("➡️ User pressed OK, navigating to MainLanding");
+    console.log("[PaymentSuccess] User pressed OK - navigating to MainLanding");
     navigation.reset({
       index: 0,
       routes: [{ name: "MainLanding" }],
@@ -189,7 +175,6 @@ const PaymentSuccess = () => {
   };
 
   const finalPaymentStatus = paymentStatus || storedPaymentData;
-  console.log("ℹ️ Final payment status:", finalPaymentStatus);
 
   const groupCode =
     productData?.groupCode ||

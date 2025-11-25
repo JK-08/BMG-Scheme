@@ -1,4 +1,11 @@
-import React, { useState, useEffect, useCallback, useMemo } from "react";
+// screens/BuyPage.js
+import React, {
+  useState,
+  useEffect,
+  useCallback,
+  useMemo,
+  useRef,
+} from "react";
 import {
   View,
   Text,
@@ -20,34 +27,91 @@ import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { insertSchemeCollection } from "../../services/InstallmentUpdateService";
 
+/*
+  Notes:
+  - Helper functions that DON'T use hooks are defined outside or as plain functions inside component.
+  - All hooks (useState, useEffect, useMemo, useCallback) are used only at component top level.
+  - retryPaymentRef allows safe retries from Alert buttons without violating hook rules.
+*/
+
 // -----------------------------
-// Generate cash payment details
+// Utility helpers (pure functions)
 // -----------------------------
 const generateCashPaymentDetails = () => {
-  const cardNumber = Math.floor(1000000000 + Math.random() * 9000000000).toString();
+  const cardNumber = Math.floor(
+    1000000000 + Math.random() * 9000000000
+  ).toString();
   const rtnNumber = Math.floor(100000 + Math.random() * 900000).toString();
   const rtnReason = `CASH-${rtnNumber}`;
   return { cardNumber, rtnReason };
 };
 
+const createOrder = async () => {
+  const timestamp = new Date().getTime();
+  const random = Math.floor(Math.random() * 10000);
+  return `ORD-${timestamp}-${random}`;
+};
+
+const getRedirectUrlApi = async (tranCtx) => {
+  const url = `${API_BASE_URL}/payment/redirect-url`;
+  console.log("[Payment] Getting redirect URL for transaction context");
+
+  const response = await fetch(url, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ tranCtx }),
+  });
+
+  if (!response.ok) {
+    console.error(`[Payment] Redirect URL API failed: ${response.status}`);
+    throw new Error(`Failed to get URL: ${response.status}`);
+  }
+
+  const raw = await response.text();
+  
+  let data = null;
+  try {
+    data = JSON.parse(raw);
+  } catch (err) {
+    console.log("[Payment] Response is not JSON, returning raw text");
+    
+    // If server already returned URL directly
+    if (raw.startsWith("http")) {
+      return raw.trim();
+    }
+
+    throw new Error("Invalid JSON from redirect URL API");
+  }
+
+  return data.redirectUrl || data.url;
+};
+
+// -----------------------------
+// BuyPage component
+// -----------------------------
 const BuyPage = () => {
   const route = useRoute();
   const navigation = useNavigation();
   const { productData } = route.params || {};
 
-  const productInfo = useMemo(() => ({
-    weightLedger: productData?.schemeSummary?.weightLedger || "N",
-    defaultAmount: productData?.amount || "",
-    defaultName:
-      productData?.personalInfo?.pName ||
-      productData?.personalInfo?.pname ||
-      productData?.accountDetails?.personalInfo?.pName ||
-      "Customer",
-    defaultContact: productData?.personalInfo?.mobile || "9876543210",
-    defaultGroupCode: productData?.groupCode || "",
-    defaultRegNo: productData?.regNo || "",
-  }), [productData]);
+  // ---------- memoized product info ----------
+  const productInfo = useMemo(
+    () => ({
+      weightLedger: productData?.schemeSummary?.weightLedger || "N",
+      defaultAmount: productData?.amount || "",
+      defaultName:
+        productData?.personalInfo?.pName ||
+        productData?.personalInfo?.pname ||
+        productData?.accountDetails?.personalInfo?.pName ||
+        "Customer",
+      defaultContact: productData?.personalInfo?.mobile || "9876543210",
+      defaultGroupCode: productData?.groupCode || "",
+      defaultRegNo: productData?.regNo || "",
+    }),
+    [productData]
+  );
 
+  // ---------- state ----------
   const [token, setToken] = useState(null);
   const [amount, setAmount] = useState(
     productInfo.weightLedger === "Y"
@@ -62,6 +126,18 @@ const BuyPage = () => {
   const [payTypeResponse, setPayTypeResponse] = useState(null);
   const [showPaymentDropdown, setShowPaymentDropdown] = useState(false);
 
+  // refs
+  const isMountedRef = useRef(true);
+  const retryPaymentRef = useRef(() => {}); // will be set to a safe retry fn
+  const handleBuyRef = useRef(null); // to hold current handleBuy function
+
+  useEffect(() => {
+    return () => {
+      isMountedRef.current = false;
+    };
+  }, []);
+
+  // ---------- derived ----------
   const payTypeObj = useMemo(() => {
     if (!payTypeResponse) return null;
     return payTypeResponse.find((item) => item.NAME === payType) || null;
@@ -106,6 +182,7 @@ const BuyPage = () => {
 
   const currentPaymentStyle = getPaymentTypeStyle(payType);
 
+  // ---------- validation ----------
   const validateAmount = useCallback((value) => {
     if (!value || value.trim() === "") {
       setAmountError("Amount is required");
@@ -124,55 +201,78 @@ const BuyPage = () => {
     return true;
   }, []);
 
-  const handleAmountChange = useCallback((value) => {
-    const sanitized = value.replace(/[^0-9.]/g, "");
-    const parts = sanitized.split(".");
-    if (parts.length > 2) return;
-    if (parts[1] && parts[1].length > 2) return;
+  const handleAmountChange = useCallback(
+    (value) => {
+      const sanitized = value.replace(/[^0-9.]/g, "");
+      const parts = sanitized.split(".");
+      if (parts.length > 2) return;
+      if (parts[1] && parts[1].length > 2) return;
+      setAmount(sanitized);
+      if (sanitized) validateAmount(sanitized);
+      else setAmountError("");
+    },
+    [validateAmount]
+  );
 
-    setAmount(sanitized);
-    if (sanitized) validateAmount(sanitized);
-    else setAmountError("");
-  }, [validateAmount]);
-
+  // ---------- token loader ----------
   useEffect(() => {
     const getToken = async () => {
       try {
         const savedToken = await AsyncStorage.getItem("authToken");
-        if (savedToken) setToken(savedToken);
-        else Alert.alert("Authentication Required", "Please login", [
-          { text: "OK", onPress: () => navigation.goBack() },
-        ]);
+        if (!isMountedRef.current) return;
+        if (savedToken) {
+          setToken(savedToken);
+          console.log("[Auth] Token loaded successfully");
+        } else {
+          console.warn("[Auth] No token found, redirecting to login");
+          Alert.alert("Authentication Required", "Please login", [
+            { text: "OK", onPress: () => navigation.goBack() },
+          ]);
+        }
       } catch (error) {
-        console.error("Error fetching token:", error);
+        console.error("[Auth] Error fetching token:", error);
+        if (!isMountedRef.current) return;
         Alert.alert("Error", "Failed to authenticate. Please try again.");
       }
     };
     getToken();
   }, [navigation]);
 
+  // ---------- fetch payment types ----------
   useEffect(() => {
+    let active = true;
     const fetchPaymentType = async () => {
       try {
         const url = `${API_BASE_URL_OLD}/account/getTranType`;
+        console.log("[Payment] Fetching payment types...");
         const res = await fetch(url);
         const json = await res.json();
-        if (!Array.isArray(json) || json.length === 0) throw new Error("Invalid API data");
+        
+        if (!Array.isArray(json) || json.length === 0) {
+          throw new Error("Invalid payment types data");
+        }
+        
+        if (!active) return;
+        
         setPayTypeResponse(json);
         setPayType(json[0].NAME);
-        setFetchingPaymentType(false);
+        console.log(`[Payment] Loaded ${json.length} payment types`);
       } catch (error) {
-        console.log("❌ Error fetching payment type:", error);
-        setFetchingPaymentType(false);
+        console.error("[Payment] Error fetching payment types:", error);
+      } finally {
+        if (active) setFetchingPaymentType(false);
       }
     };
     fetchPaymentType();
+    return () => {
+      active = false;
+    };
   }, []);
 
   // -----------------------------
   // Build scheme collection payload
   // -----------------------------
-  const buildSchemeData = () => {
+  const buildSchemeData = useCallback(() => {
     const schemeInfo = productData?.schemeSummary || {};
     const cashDetails = generateCashPaymentDetails();
 
@@ -185,7 +285,9 @@ const BuyPage = () => {
       accCode: payTypeObj?.ACCOUNT || "",
       updateTime: new Date().toISOString().split("T")[0],
       installment:
-        parseInt(schemeInfo?.schemaSummaryTransBalance?.insPaid?.toString() || "0") + 1 || 1,
+        parseInt(
+          schemeInfo?.schemaSummaryTransBalance?.insPaid?.toString() || "0"
+        ) + 1 || 1,
       userID: "999",
       chqBankCode: "2",
       chqCardNo: cashDetails.cardNumber,
@@ -193,16 +295,25 @@ const BuyPage = () => {
       chkBank: "CASH",
       chqRtnReason: cashDetails.rtnReason,
     };
-  };
+  }, [
+    amount,
+    payTypeObj,
+    productData,
+    productInfo.defaultGroupCode,
+    productInfo.defaultRegNo,
+    productInfo.defaultAmount,
+  ]);
 
   // -----------------------------
   // Insert cash payment immediately
   // -----------------------------
-  const insertCashPayment = async () => {
+  const insertCashPayment = useCallback(async () => {
     try {
+      console.log("[Payment] Processing cash payment...");
       const schemeData = buildSchemeData();
       await insertSchemeCollection(schemeData);
 
+      console.log("[Payment] Cash payment processed successfully");
       navigation.navigate("PaymentSuccess", {
         status: "SUCCESS",
         orderDetails: {
@@ -225,89 +336,142 @@ const BuyPage = () => {
         isCashPayment: true,
       });
     } catch (error) {
-      console.error("❌ Cash payment failed:", error);
-      Alert.alert("Error", "Failed to process cash payment. Please try again.");
+      console.error("[Payment] Cash payment failed:", error);
+      throw error;
     }
-  };
+  }, [
+    amount,
+    buildSchemeData,
+    navigation,
+    productData,
+    productInfo.defaultAmount,
+    productInfo.defaultContact,
+    productInfo.defaultGroupCode,
+    productInfo.defaultName,
+    productInfo.defaultRegNo,
+    payType,
+  ]);
 
   // -----------------------------
-  // Handle Buy
+  // Handle Buy (main)
   // -----------------------------
-  const handleBuy = async () => {
+  const handleBuy = useCallback(async () => {
+    // Validate
     if (productInfo.weightLedger === "Y" && !validateAmount(amount)) {
-      Alert.alert("Invalid Amount", amountError || "Please enter a valid amount.");
+      Alert.alert(
+        "Invalid Amount",
+        amountError || "Please enter a valid amount."
+      );
       return;
     }
 
+    console.log(`[Payment] Starting ${payType} payment process`);
     setLoading(true);
-
+    
     try {
       if (payType === "CASH") {
         await insertCashPayment();
-      } else {
-        // Proceed with online payment as before
-        if (!token) {
-          Alert.alert("Authentication Required", "Please login to continue", [
-            { text: "OK", onPress: () => navigation.goBack() },
-          ]);
-          setLoading(false);
-          return;
-        }
-
-        const orderId = await createOrder();
-        const payload = buildPayload(orderId);
-
-        const initiate = await fetch(`${API_BASE_URL}/payment/initiate-sale`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${token}`,
-          },
-          body: JSON.stringify(payload),
-        });
-
-        if (!initiate.ok) {
-          const errorData = await initiate.json().catch(() => ({}));
-          throw new Error(
-            errorData.message || `Payment initiation failed: ${initiate.status}`
-          );
-        }
-
-        const data = await initiate.json();
-
-        if (!data.tranCtx) {
-          throw new Error("Transaction context not received");
-        }
-
-        const redirectUrl = await getRedirectUrl(data.tranCtx);
-
-        const orderDetails = {
-          orderId,
-          merchantTxnNo: orderId,
-          amount: parseFloat(amount || productInfo.defaultAmount),
-          payType: payType || "ONLINE",
-          customer: {
-            name: productInfo.defaultName,
-            contact: productInfo.defaultContact,
-            regNo: productInfo.defaultRegNo,
-            groupCode: productInfo.defaultGroupCode,
-          },
-          schemeInfo: productData?.schemeSummary || {},
-          accountInfo: productData?.accountDetails || {},
-          personalInfo: productData?.personalInfo || {},
-          paymentUrl: redirectUrl,
-          timestamp: new Date().toISOString(),
-        };
-
-        navigation.navigate("PaymentWebView", {
-          paymentUrl: redirectUrl,
-          orderDetails,
-          productData,
-          payTypeResponse,
-        });
+        return;
       }
+
+      // ONLINE/UPI flow
+      if (!token) {
+        console.warn("[Payment] No authentication token available");
+        Alert.alert("Authentication Required", "Please login to continue", [
+          { text: "OK", onPress: () => navigation.goBack() },
+        ]);
+        return;
+      }
+
+      const orderId = await createOrder();
+      const payload = {
+        merchantTxnNo: orderId,
+        amount: parseFloat(amount || productInfo.defaultAmount),
+        currencyCode: "356",
+        transactionType: "SALE",
+        payType: "ONLINE",
+        addlParam1: productInfo.defaultRegNo,
+        addlParam2: productInfo.defaultGroupCode,
+        returnURL: "https://app.bmgjewellers.com/api/v1/payment/success",
+      };
+
+      console.log(`[Payment] Initiating sale for order: ${orderId}`);
+      const initiate = await fetch(`${API_BASE_URL}/payment/initiate-sale`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${token}`,
+        },
+        body: JSON.stringify(payload),
+      });
+
+      if (!initiate.ok) {
+        const errorData = await initiate.json().catch(() => ({}));
+        console.error(`[Payment] Initiation failed: ${initiate.status}`, errorData);
+        throw new Error(
+          errorData.message || `Payment initiation failed: ${initiate.status}`
+        );
+      }
+
+      const data = await initiate.json();
+      if (!data.tranCtx) {
+        throw new Error("Transaction context not received");
+      }
+
+      console.log("[Payment] Getting redirect URL...");
+      let redirectUrl;
+      try {
+        redirectUrl = await getRedirectUrlApi(data.tranCtx);
+        console.log("[Payment] Redirect URL obtained successfully");
+      } catch (err) {
+        console.error("[Payment] Failed to get redirect URL:", err);
+        Alert.alert(
+          "Payment Error",
+          "Failed to obtain payment redirect URL. Would you like to retry?",
+          [
+            { text: "Cancel", style: "cancel" },
+            {
+              text: "Retry",
+              onPress: () => {
+                try {
+                  (handleBuyRef.current || (() => {}))();
+                } catch (e) {
+                  console.error("[Payment] Retry call failed:", e);
+                }
+              },
+            },
+          ]
+        );
+        return;
+      }
+
+      const orderDetails = {
+        orderId,
+        merchantTxnNo: orderId,
+        amount: parseFloat(amount || productInfo.defaultAmount),
+        payType: payType || "ONLINE",
+        customer: {
+          name: productInfo.defaultName,
+          contact: productInfo.defaultContact,
+          regNo: productInfo.defaultRegNo,
+          groupCode: productInfo.defaultGroupCode,
+        },
+        schemeInfo: productData?.schemeSummary || {},
+        accountInfo: productData?.accountDetails || {},
+        personalInfo: productData?.personalInfo || {},
+        paymentUrl: redirectUrl,
+        timestamp: new Date().toISOString(),
+      };
+
+      console.log("[Payment] Navigating to payment webview");
+      navigation.navigate("PaymentWebView", {
+        paymentUrl: redirectUrl,
+        orderDetails,
+        productData,
+        payTypeResponse,
+      });
     } catch (error) {
-      console.error("Payment processing failed:", error);
+      console.error("[Payment] Processing failed:", error);
       Alert.alert(
         "Payment Error",
         error.message || "Unable to process payment. Please try again.",
@@ -316,18 +480,49 @@ const BuyPage = () => {
           {
             text: "Retry",
             onPress: () => {
-              setLoading(false);
-              handleBuy();
+              try {
+                (handleBuyRef.current || (() => {}))();
+              } catch (e) {
+                console.error("[Payment] Retry call failed:", e);
+              }
             },
           },
         ]
       );
     } finally {
-      setLoading(false);
+      if (isMountedRef.current) setLoading(false);
     }
-  };
+  }, [
+    amount,
+    amountError,
+    insertCashPayment,
+    navigation,
+    payType,
+    payTypeResponse,
+    productData,
+    productInfo.defaultAmount,
+    productInfo.defaultContact,
+    productInfo.defaultGroupCode,
+    productInfo.defaultName,
+    productInfo.defaultRegNo,
+    productInfo.weightLedger,
+    token,
+    validateAmount,
+  ]);
 
-  // Format currency
+  // keep a stable ref to handleBuy so that Alert retry can call it safely
+  useEffect(() => {
+    handleBuyRef.current = handleBuy;
+    retryPaymentRef.current = () => {
+      try {
+        handleBuyRef.current && handleBuyRef.current();
+      } catch (e) {
+        console.error("[Payment] Retry payment ref failed:", e);
+      }
+    };
+  }, [handleBuy]);
+
+  // ---------- helpers for UI ----------
   const formatCurrency = (value) => {
     if (!value) return "0.00";
     const numValue = parseFloat(value);
@@ -352,15 +547,10 @@ const BuyPage = () => {
     return false;
   };
 
-  // Styles using only the theme data
+  // ---------- styles (kept same as your original) ----------
   const styles = StyleSheet.create({
-    background: {
-      flex: 1,
-      backgroundColor: COLORS.background,
-    },
-    container: {
-      flex: 1,
-    },
+    background: { flex: 1, backgroundColor: COLORS.background },
+    container: { flex: 1 },
     scrollContent: {
       flexGrow: 1,
       padding: SIZES.padding.lg,
@@ -383,14 +573,8 @@ const BuyPage = () => {
       borderBottomWidth: 1,
       borderBottomColor: COLORS.borderLight,
     },
-    sectionIcon: {
-      fontSize: SIZES.icon.md,
-      marginRight: SIZES.margin.sm,
-    },
-    sectionTitle: {
-      ...FONTS.h5,
-      color: COLORS.textPrimary,
-    },
+    sectionIcon: { fontSize: SIZES.icon.md, marginRight: SIZES.margin.sm },
+    sectionTitle: { ...FONTS.h5, color: COLORS.textPrimary },
     infoRow: {
       flexDirection: "row",
       justifyContent: "space-between",
@@ -399,20 +583,14 @@ const BuyPage = () => {
       borderBottomWidth: 1,
       borderBottomColor: COLORS.backgroundSecondary,
     },
-    infoLabel: {
-      ...FONTS.bodySmall,
-      color: COLORS.textSecondary,
-      flex: 1,
-    },
+    infoLabel: { ...FONTS.bodySmall, color: COLORS.textSecondary, flex: 1 },
     infoValue: {
       ...FONTS.bodyMedium,
       color: COLORS.textPrimary,
       flex: 1.2,
       textAlign: "right",
     },
-    paymentDropdownContainer: {
-      marginTop: SIZES.margin.md,
-    },
+    paymentDropdownContainer: { marginTop: SIZES.margin.md },
     dropdownLabel: {
       ...FONTS.bodyMedium,
       color: COLORS.textSecondary,
@@ -434,10 +612,7 @@ const BuyPage = () => {
       alignItems: "center",
       flex: 1,
     },
-    dropdownIcon: {
-      fontSize: SIZES.icon.md,
-      marginRight: SIZES.margin.sm,
-    },
+    dropdownIcon: { fontSize: SIZES.icon.md, marginRight: SIZES.margin.sm },
     dropdownText: {
       ...FONTS.bodyMedium,
       color: currentPaymentStyle.textColor,
@@ -480,9 +655,7 @@ const BuyPage = () => {
       fontSize: SIZES.icon.lg,
       marginRight: SIZES.margin.md,
     },
-    paymentOptionText: {
-      ...FONTS.bodyMedium,
-    },
+    paymentOptionText: { ...FONTS.bodyMedium },
     amountSection: {
       backgroundColor: COLORS.white,
       borderRadius: SIZES.radius.lg,
@@ -492,28 +665,22 @@ const BuyPage = () => {
       borderWidth: 1,
       borderColor: COLORS.borderLight,
     },
-    inputContainer: {
-      marginTop: SIZES.margin.sm,
-    },
+    inputContainer: { marginTop: SIZES.margin.sm },
     inputLabel: {
       ...FONTS.bodyMedium,
       color: COLORS.textPrimary,
       marginBottom: SIZES.margin.xs,
     },
-    inputWrapper: {
-      position: "relative",
-    },
+    inputWrapper: { position: "relative" },
     currencySymbol: {
       position: "absolute",
       left: SIZES.padding.md,
       top: "50%",
       transform: [{ translateY: -10 }],
-      // ...FONTS.h4,
-      color: COLORS.textPrimary,
-      zIndex: 1,
       fontSize: SIZES.heading.h4,
       lineHeight: SIZES.heading.h4 * 1.4,
       color: COLORS.textPrimary,
+      zIndex: 1,
     },
     input: {
       backgroundColor: COLORS.inputBackground,
@@ -529,9 +696,7 @@ const BuyPage = () => {
       borderColor: COLORS.primary,
       backgroundColor: COLORS.white,
     },
-    inputError: {
-      borderColor: COLORS.error,
-    },
+    inputError: { borderColor: COLORS.error },
     errorText: {
       color: COLORS.error,
       ...FONTS.caption,
@@ -552,9 +717,7 @@ const BuyPage = () => {
       color: COLORS.warningDark,
       textAlign: "center",
     },
-    buttonContainer: {
-      marginTop: SIZES.margin.lg,
-    },
+    buttonContainer: { marginTop: SIZES.margin.lg },
     buttonGradient: {
       borderRadius: SIZES.radius.lg,
       alignItems: "center",
@@ -562,13 +725,8 @@ const BuyPage = () => {
       height: SIZES.button.lg,
       ...SHADOWS.md,
     },
-    buttonText: {
-      ...FONTS.button,
-      color: COLORS.white,
-    },
-    disabledButton: {
-      opacity: 0.6,
-    },
+    buttonText: { ...FONTS.button, color: COLORS.white },
+    disabledButton: { opacity: 0.6 },
     loadingContainer: {
       flexDirection: "row",
       alignItems: "center",
@@ -597,6 +755,7 @@ const BuyPage = () => {
     },
   });
 
+  // ---------- render ----------
   return (
     <View style={styles.background}>
       <CommonHeader title="Payment Details" />
@@ -721,7 +880,7 @@ const BuyPage = () => {
           {/* Proceed Button */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity
-              onPress={handleBuy}
+              onPress={() => handleBuy()}
               disabled={isButtonDisabled()}
               activeOpacity={0.8}
             >

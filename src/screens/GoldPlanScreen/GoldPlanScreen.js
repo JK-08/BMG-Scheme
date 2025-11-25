@@ -59,17 +59,17 @@ function GoldPlanScreen() {
       return <Text style={styles.noDataText}>No Gold Plans available.</Text>;
     }
 
-   return schemes.map((scheme) => (
-  <GoldPlan
-    key={scheme.schemeId}
-    schemeId={scheme.schemeId}
-    schemeName={scheme.schemeName}
-    description={scheme.description}
-    schemeImage={scheme.schemeImage}  // <-- important
-    styles={styles.itemCardContainer}
-  />
-));
-};
+    return schemes.map((scheme) => (
+      <GoldPlan
+        key={scheme.schemeId}
+        schemeId={scheme.schemeId}
+        schemeName={scheme.schemeName}
+        description={scheme.description}
+        schemeImage={scheme.schemeImage} // <-- important
+        styles={styles.itemCardContainer}
+      />
+    ));
+  };
 
   return (
     <View style={styles.container}>
@@ -100,7 +100,7 @@ const styles = StyleSheet.create({
   mainBackground: { flex: 1, width: "100%", height: "100%" },
   backgroundImageStyle: { opacity: 0.9 },
   safeArea: { flex: 1 },
-  scrollContent: { flexGrow: 1, paddingHorizontal: 15, paddingBottom: 20 },
+  scrollContent: { flexGrow: 1, paddingHorizontal: 5, paddingBottom: 20 },
   itemCardContainer: { marginBottom: 15 },
   noDataText: { color: COLORS.danger, textAlign: "center", padding: 20 },
 });

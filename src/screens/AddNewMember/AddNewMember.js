@@ -438,7 +438,7 @@ const AddNewMember = () => {
         "paymentResponse",
         JSON.stringify(paymentData)
       );
-      console.log("💾 Payment data ", paymentData);
+      console.log("💾 Payment data ", JSON.stringify(paymentData).length);
     } catch (error) {
       console.error("❌ Error storing payment data:", error);
     }

@@ -1,5 +1,4 @@
 export const API_BASE_URL = 'https://scheme.bmgjewellers.com/api/v1';
-export const API_BASE_URL_1 = 'https://app.bmgjewellers.com/api/v1';
 export const API_BASE_URL_2 = 'https://scheme.bmgjewellers.com/api/v1/mpin';
 
 
