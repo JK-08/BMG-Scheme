@@ -68,13 +68,13 @@ const getRedirectUrlApi = async (tranCtx) => {
   }
 
   const raw = await response.text();
-  
+
   let data = null;
   try {
     data = JSON.parse(raw);
   } catch (err) {
     console.log("[Payment] Response is not JSON, returning raw text");
-    
+
     // If server already returned URL directly
     if (raw.startsWith("http")) {
       return raw.trim();
@@ -148,18 +148,18 @@ const BuyPage = () => {
       case "CASH":
         return {
           icon: "💵",
-          gradient: COLORS.gradient.success,
-          bgColor: COLORS.successLight,
-          borderColor: COLORS.success,
-          textColor: COLORS.textPrimary,
+          gradient: COLORS.gradient.primary,
+          bgColor: COLORS.primaryLight,
+          borderColor: COLORS.primary,
+          textColor: COLORS.white,
         };
       case "ONLINE":
         return {
           icon: "💳",
-          gradient: COLORS.gradient.info,
-          bgColor: COLORS.infoLight,
-          borderColor: COLORS.info,
-          textColor: COLORS.textPrimary,
+          gradient: COLORS.gradient.primary,
+          bgColor: COLORS.primaryLight,
+          borderColor: COLORS.primary,
+          textColor: COLORS.white,
         };
       case "UPI":
         return {
@@ -247,13 +247,13 @@ const BuyPage = () => {
         console.log("[Payment] Fetching payment types...");
         const res = await fetch(url);
         const json = await res.json();
-        
+
         if (!Array.isArray(json) || json.length === 0) {
           throw new Error("Invalid payment types data");
         }
-        
+
         if (!active) return;
-        
+
         setPayTypeResponse(json);
         setPayType(json[0].NAME);
         console.log(`[Payment] Loaded ${json.length} payment types`);
@@ -294,6 +294,7 @@ const BuyPage = () => {
       chqBranch: "RECEIVED",
       chkBank: "CASH",
       chqRtnReason: cashDetails.rtnReason,
+      schemeId: schemeInfo.schemeId,
     };
   }, [
     amount,
@@ -307,50 +308,62 @@ const BuyPage = () => {
   // -----------------------------
   // Insert cash payment immediately
   // -----------------------------
-  const insertCashPayment = useCallback(async () => {
-    try {
-      console.log("[Payment] Processing cash payment...");
-      const schemeData = buildSchemeData();
-      await insertSchemeCollection(schemeData);
+  // In BuyPage.js - update the insertCashPayment function catch block
+  const insertCashPayment = useCallback(
+    async () => {
+      try {
+        console.log("[Payment] Processing cash payment...", buildSchemeData());
+        const schemeData = buildSchemeData();
+        await insertSchemeCollection(schemeData);
 
-      console.log("[Payment] Cash payment processed successfully");
-      navigation.navigate("PaymentSuccess", {
-        status: "SUCCESS",
-        orderDetails: {
-          amount: parseFloat(amount || productInfo.defaultAmount),
-          customer: {
-            name: productInfo.defaultName,
-            contact: productInfo.defaultContact,
-            regNo: productInfo.defaultRegNo,
-            groupCode: productInfo.defaultGroupCode,
+        console.log("[Payment] Cash payment processed successfully");
+        navigation.navigate("PaymentSuccess", {
+          status: "SUCCESS",
+          orderDetails: {
+            amount: parseFloat(amount || productInfo.defaultAmount),
+            customer: {
+              name: productInfo.defaultName,
+              contact: productInfo.defaultContact,
+              regNo: productInfo.defaultRegNo,
+              groupCode: productInfo.defaultGroupCode,
+            },
+            payType: payType,
+            schemeInfo: productData?.schemeSummary || {},
           },
-          payType: payType,
-          schemeInfo: productData?.schemeSummary || {},
-        },
-        schemeData,
-        paymentStatus: {
-          orderStatus: "PAID",
-          message: "Cash payment processed successfully",
-        },
-        productData,
-        isCashPayment: true,
-      });
-    } catch (error) {
-      console.error("[Payment] Cash payment failed:", error);
-      throw error;
-    }
-  }, [
-    amount,
-    buildSchemeData,
-    navigation,
-    productData,
-    productInfo.defaultAmount,
-    productInfo.defaultContact,
-    productInfo.defaultGroupCode,
-    productInfo.defaultName,
-    productInfo.defaultRegNo,
-    payType,
-  ]);
+          schemeData,
+          paymentStatus: {
+            orderStatus: "PAID",
+            message: "Cash payment processed successfully",
+          },
+          productData,
+          isCashPayment: true,
+        });
+      } catch (error) {
+        console.error("[Payment] Cash payment failed:", error);
+        // Navigate to PaymentFailure for cash payment errors too
+        navigation.navigate("PaymentFailure", {
+          orderDetails: {
+            amount: parseFloat(amount || productInfo.defaultAmount),
+            customer: {
+              name: productInfo.defaultName,
+              contact: productInfo.defaultContact,
+              regNo: productInfo.defaultRegNo,
+              groupCode: productInfo.defaultGroupCode,
+            },
+            payType: payType,
+          },
+          productData,
+          paymentStatus: {
+            message: error.message || "Cash payment processing failed",
+          },
+          isCashPayment: true,
+        });
+      }
+    },
+    [
+      /* dependencies */
+    ]
+  );
 
   // -----------------------------
   // Handle Buy (main)
@@ -367,7 +380,7 @@ const BuyPage = () => {
 
     console.log(`[Payment] Starting ${payType} payment process`);
     setLoading(true);
-    
+
     try {
       if (payType === "CASH") {
         await insertCashPayment();
@@ -407,7 +420,10 @@ const BuyPage = () => {
 
       if (!initiate.ok) {
         const errorData = await initiate.json().catch(() => ({}));
-        console.error(`[Payment] Initiation failed: ${initiate.status}`, errorData);
+        console.error(
+          `[Payment] Initiation failed: ${initiate.status}`,
+          errorData
+        );
         throw new Error(
           errorData.message || `Payment initiation failed: ${initiate.status}`
         );
@@ -714,7 +730,7 @@ const BuyPage = () => {
     },
     amountValue: {
       ...FONTS.h3,
-      color: COLORS.warningDark,
+      color: COLORS.textPrimary,
       textAlign: "center",
     },
     buttonContainer: { marginTop: SIZES.margin.lg },

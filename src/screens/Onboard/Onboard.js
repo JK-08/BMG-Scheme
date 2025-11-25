@@ -1,5 +1,5 @@
 // screens/OnboardingScreen.js
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
@@ -7,15 +7,12 @@ import {
   FlatList,
   TouchableOpacity,
   StatusBar,
-  Dimensions,
   Animated,
   StyleSheet,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { bannerService, fallbackBanners } from "../../services/OnboardService";
-import theme from "../../utils/AppTheme"; // Changed from appTheme to theme
-
-const { width, height } = Dimensions.get("window");
+import theme from "../../utils/AppTheme";
 
 const OnboardingScreen = ({ navigation }) => {
   const [banners, setBanners] = useState([]);
@@ -36,12 +33,12 @@ const OnboardingScreen = ({ navigation }) => {
         useNativeDriver: true,
       }).start();
     }
-  }, [loading]);
+  }, [loading, fadeAnim]);
 
   const loadBanners = async () => {
     try {
       const data = await bannerService.getBanners();
-      setBanners([...data].reverse()); // most recent first
+      setBanners([...data].reverse());
     } catch (error) {
       console.log("Using fallback banners");
       setBanners([...fallbackBanners].reverse());
@@ -50,50 +47,42 @@ const OnboardingScreen = ({ navigation }) => {
     }
   };
 
-  const onScroll = (event) => {
+  const onScroll = useCallback((event) => {
     const slideSize = event.nativeEvent.layoutMeasurement.width;
-    const index = event.nativeEvent.contentOffset.x / slideSize;
-    setCurrentIndex(Math.round(index));
-  };
+    const index = Math.round(event.nativeEvent.contentOffset.x / slideSize);
+    setCurrentIndex(index);
+  }, []);
 
-  const getImageUrl = (imagePath) => {
+  const getImageUrl = useCallback((imagePath) => {
     if (!imagePath) return null;
-
     return imagePath.startsWith("http")
       ? imagePath
       : `https://scheme.bmgjewellers.com${imagePath}`;
-  };
+  }, []);
 
-  const navigateSlide = (direction) => {
+  const navigateSlide = useCallback((direction) => {
     const newIndex = direction === "next" ? currentIndex + 1 : currentIndex - 1;
     if (newIndex >= 0 && newIndex < banners.length) {
       flatListRef.current?.scrollToIndex({ index: newIndex, animated: true });
     }
-  };
+  }, [currentIndex, banners.length]);
 
-  const handleFinishOnboarding = async () => {
+  const handleFinishOnboarding = useCallback(async () => {
     try {
       await AsyncStorage.setItem("hasSeenOnboarding", "true");
     } catch (error) {
       console.error("Error saving onboarding status:", error);
     }
     navigation.replace("LoginPage");
-  };
+  }, [navigation]);
 
-  const renderItem = ({ item }) => (
+  const renderItem = useCallback(({ item }) => (
     <Animated.View style={[styles.slide, { opacity: fadeAnim }]}>
       <Image
         source={{ uri: getImageUrl(item.image_path) }}
         style={styles.image}
         resizeMode="cover"
       />
-
-      {/* <View style={styles.topContentContainer}>
-        <View style={styles.contentBackground}>
-          <Text style={styles.title}>{item.title}</Text>
-          <Text style={styles.subtitle}>{item.subtitle}</Text>
-        </View>
-      </View> */}
 
       <View style={styles.bottomNavContainer}>
         <TouchableOpacity
@@ -104,12 +93,10 @@ const OnboardingScreen = ({ navigation }) => {
           onPress={() => navigateSlide("prev")}
           disabled={currentIndex === 0}
         >
-          <Text
-            style={[
-              styles.arrowText,
-              currentIndex === 0 && styles.arrowTextDisabled,
-            ]}
-          >
+          <Text style={[
+            styles.arrowText,
+            currentIndex === 0 && styles.arrowTextDisabled,
+          ]}>
             ‹
           </Text>
         </TouchableOpacity>
@@ -131,18 +118,18 @@ const OnboardingScreen = ({ navigation }) => {
           onPress={() => navigateSlide("next")}
           disabled={currentIndex === banners.length - 1}
         >
-          <Text
-            style={[
-              styles.arrowText,
-              currentIndex === banners.length - 1 && styles.arrowTextDisabled,
-            ]}
-          >
+          <Text style={[
+            styles.arrowText,
+            currentIndex === banners.length - 1 && styles.arrowTextDisabled,
+          ]}>
             ›
           </Text>
         </TouchableOpacity>
       </View>
     </Animated.View>
-  );
+  ), [fadeAnim, getImageUrl, currentIndex, banners.length, navigateSlide]);
+
+  const keyExtractor = useCallback((item) => item.id.toString(), []);
 
   if (loading) {
     return (
@@ -156,7 +143,6 @@ const OnboardingScreen = ({ navigation }) => {
     <View style={styles.container}>
       <StatusBar translucent backgroundColor="transparent" />
 
-      {/* Skip Button */}
       <View style={styles.skipContainer}>
         <TouchableOpacity
           style={styles.skipButton}
@@ -166,12 +152,11 @@ const OnboardingScreen = ({ navigation }) => {
         </TouchableOpacity>
       </View>
 
-      {/* Banner Slides */}
       <FlatList
         ref={flatListRef}
         data={banners}
         renderItem={renderItem}
-        keyExtractor={(item) => item.id.toString()}
+        keyExtractor={keyExtractor}
         horizontal
         pagingEnabled
         showsHorizontalScrollIndicator={false}
@@ -179,7 +164,6 @@ const OnboardingScreen = ({ navigation }) => {
         scrollEventThrottle={16}
       />
 
-      {/* Get Started Button (only on last slide) */}
       {currentIndex === banners.length - 1 && (
         <Animated.View style={[styles.buttonContainer, { opacity: fadeAnim }]}>
           <TouchableOpacity
@@ -194,7 +178,6 @@ const OnboardingScreen = ({ navigation }) => {
   );
 };
 
-// ------------------ Updated Styles using new theme system ------------------
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -209,7 +192,6 @@ const styles = StyleSheet.create({
     borderRadius: theme.SIZES.radius.md,
     paddingHorizontal: theme.SIZES.padding.md,
     paddingVertical: theme.SIZES.padding.xs,
-    // ...theme.SHADOWS.sm,
     borderWidth: 1,
     borderColor: theme.COLORS.whiteOpacity50,
   },
@@ -229,39 +211,6 @@ const styles = StyleSheet.create({
   image: {
     width: "100%",
     height: "100%",
-  },
-  topContentContainer: {
-    position: "absolute",
-    top: theme.verticalScale(theme.SIZES.xxxl * 2),
-    left: 0,
-    right: 0,
-    paddingHorizontal: theme.SIZES.padding.xl,
-  },
-  contentBackground: {
-    paddingHorizontal: theme.SIZES.padding.xl,
-    paddingVertical: theme.SIZES.padding.lg,
-    // backgroundColor: theme.COLORS.blackOpacity30,
-    borderRadius: theme.SIZES.radius.lg,
-    // ...theme.SHADOWS.md,
-  },
-  title: {
-    ...theme.FONTS.h2,
-    fontSize: theme.SIZES.heading.h2,
-    color: theme.COLORS.textInverse,
-    textAlign: "center",
-    marginBottom: theme.SIZES.sm,
-    textShadowColor: theme.COLORS.blackOpacity50,
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
-  },
-  subtitle: {
-    ...theme.FONTS.bodyLarge,
-    fontSize: theme.SIZES.font.lg,
-    color: theme.COLORS.textInverse,
-    textAlign: "center",
-    textShadowColor: theme.COLORS.blackOpacity50,
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
   },
   bottomNavContainer: {
     position: "absolute",
@@ -290,7 +239,7 @@ const styles = StyleSheet.create({
     fontSize: theme.SIZES.heading.h3,
     color: theme.COLORS.primary,
     fontWeight: "bold",
-    marginTop: -2, // Visual adjustment for arrow alignment
+    marginTop: -2,
   },
   arrowTextDisabled: {
     color: theme.COLORS.textDisabled,

@@ -6,7 +6,8 @@ import {
   ScrollView,
   TouchableOpacity,
   Linking,
-  ImageBackground
+  ImageBackground,
+  Alert
 } from 'react-native'
 import { SafeAreaView } from 'react-native-safe-area-context'
 import Icon from 'react-native-vector-icons/MaterialIcons'
@@ -18,13 +19,17 @@ import { useNavigation } from '@react-navigation/native';
 import { companyDetails } from '../../services/CompanyDetails';
 
 const { COLORS, SIZES, FONTS, verticalScale, moderateScale, SHADOWS } = theme
-const SUPPORT_NUMBER = '70946 70946'
+// const SUPPORT_NUMBER = '70946 70946'
 
 function HelpCenterPage() {
   const navigation = useNavigation();
 
   const [companyInfo, setCompanyInfo] = React.useState(null);
   console.log(companyInfo ,'companyInfo') ;
+
+  // const [clickOpen , setClickOpen] = React.useState(false);
+  // const [openedType, setOpenedType] = React.useState(null);
+
 
   useEffect(()=>{
     (async () => {
@@ -36,23 +41,29 @@ function HelpCenterPage() {
       }
     })();
   }, []);
+const cleanPhoneNumber = (phoneNumber) => {
+  return phoneNumber.replace(/\D/g, "");
+};
 
-  const handlePhoneCall = (phoneNumber) => {
-    Linking.openURL(`tel:${phoneNumber}`)
-  }
+const handlePhoneCall = async (phoneNumber) => {
+  const cleaned = cleanPhoneNumber(phoneNumber);
+  const url = `tel:${cleaned}`;
+  console.log("Calling URL:", url);
+  await Linking.openURL(url);
+
+};
 
   const handleEmail = (email) => {
     Linking.openURL(`mailto:${email}`)
   }
 
-  const handleOpenMap = () => {
-    const address = 'M/s. BMG Jewellers Pvt Ltd, 160, Melamasi St, Madurai-625001'
+  const handleOpenMap = (address) => {
     const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
     Linking.openURL(url)
   }
 
   const handleWhatsApp = (message) => {
-    const url = `https://wa.me/${SUPPORT_NUMBER}?text=${encodeURIComponent(message)}`
+    const url = `https://wa.me/${companyInfo?.cPhone}?text=${encodeURIComponent(message)}`
     Linking.openURL(url).catch(() => {
       alert('Make sure WhatsApp is installed')
     })
@@ -96,6 +107,13 @@ function HelpCenterPage() {
       <Text style={styles.actionText}>{text}</Text>
     </TouchableOpacity>
   )
+const getFullAddress = (info) => {
+  const line1 = companyInfo?.cAddress1 || "";
+  const line2 = companyInfo?.cAddress2 || "";
+  const pin  = companyInfo?.cPincode || "";
+
+  return `${line1}, ${line2}, ${pin}`;
+};
 
   return (
     <View style={styles.container}>
@@ -105,18 +123,44 @@ function HelpCenterPage() {
         resizeMode="cover"
       >
         <CommonHeader title="Help Center" subtitle="We're here to help you" />
-        
+
+          
+
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
         >
           {/* Contact Cards */}
-          <View style={styles.cardsContainer}>
+         <View style={styles.quickContainer}>
+
+  {/* Row 1 */}
+  <View style={styles.quickContainerRow}>
+    <QuickAction icon="chat" text="Live Chat" onPress={() => handleWhatsApp('Hello! I need help via Live Chat.')} />
+    <QuickAction icon="description" text="Leave a message" onPress={() => handlePhoneCall(companyInfo.cPhone)} />
+  </View>
+
+  {/* Row 2 */}
+  <View style={styles.quickContainerRow}>
+    <QuickAction icon="mail" text="Send Email" onPress={() => handleEmail(companyInfo?.cEmail)} />
+    <QuickAction icon="call" text="Call Support" onPress={() => handlePhoneCall(companyInfo?.cPhone)} />
+  </View>
+
+  {/* Row 3 */}
+  <View style={styles.quickContainerRow}>
+    <QuickAction icon="location-on" text="Location" onPress={() => handleOpenMap(getFullAddress())} />
+    <QuickAction icon="help-outline" text="FAQs" onPress={() => navigation.navigate('FAQPage')} />
+  </View>
+
+</View>
+
+
+          {/* <View style={styles.cardsContainer}>
             <ContactCard 
               icon="phone" 
               title="Phone Numbers" 
               iconBg={COLORS.primary}
             >
+              
               <ContactItem
                 text={companyInfo?.cPhone}
                 icon="call"
@@ -152,7 +196,7 @@ function HelpCenterPage() {
                 isAddress={true}
               />
             </ContactCard>
-          </View>
+          </View> */}
 
           {/* Support Hours */}
           <View style={styles.hoursContainer}>
@@ -168,7 +212,7 @@ function HelpCenterPage() {
           </View>
 
           {/* Quick Actions */}
-          <View style={styles.actionsContainer}>
+          {/* <View style={styles.actionsContainer}>
             <Text style={styles.actionsTitle}>Quick Actions</Text>
             <View style={styles.actionsRow}>
               <QuickAction
@@ -184,10 +228,11 @@ function HelpCenterPage() {
               <QuickAction
                 icon="description"
                 text="Contact Support"
-                onPress={() => handlePhoneCall('919514333601')}
+                onPress={() => handlePhoneCall(companyInfo.cPhone)}
               />
+              
             </View>
-          </View>
+          </View> */}
         </ScrollView>
         <BottomTab screen="HelpCenter" />
       </ImageBackground>
@@ -261,7 +306,7 @@ const styles = StyleSheet.create({
     padding: SIZES.padding.xl,
     marginHorizontal: SIZES.padding.lg,
     marginBottom: verticalScale(SIZES.padding.xl),
-    ...SHADOWS.md,
+    ...SHADOWS.xs,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
@@ -307,7 +352,7 @@ const styles = StyleSheet.create({
   actionButton: {
     alignItems: 'center',
     padding: SIZES.padding.md,
-    backgroundColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
     borderRadius: SIZES.radius.md,
     flex: 1,
     minHeight: verticalScale(80),
@@ -319,7 +364,16 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginTop: verticalScale(SIZES.xs),
     textAlign: 'center',
-  }
+  },
+   quickContainer: {
+    padding: 15,
+  },
+  quickContainerRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 20,
+    gap: 15,
+  },
 })
 
 export default HelpCenterPage

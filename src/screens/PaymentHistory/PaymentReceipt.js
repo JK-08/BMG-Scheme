@@ -7,13 +7,91 @@ import { Alert, Platform } from "react-native";
 class PaymentReceiptPDF {
   // Constants
   static STORAGE_KEYS = {
-    DOWNLOAD_DIR: "BMG_DOWNLOAD_DIR"
+    DOWNLOAD_DIR: "BMG_DOWNLOAD_DIR",
+    COMPANY_DATA: "BMG_COMPANY_DATA"
   };
 
   static ASSETS = {
     BACKGROUND: require("../../assets/bg12.jpg"),
     LOGO: require("../../assets/image/final-logo.jpg")
   };
+
+  static API_ENDPOINTS = {
+    COMPANY: "https://scheme.bmgjewellers.com/v1/api/company"
+  };
+
+  // ---------------------------------------------------------------------------
+  // COMPANY DATA MANAGEMENT
+  // ---------------------------------------------------------------------------
+  static async getCompanyData() {
+    try {
+      // Try to get cached company data first
+      const cachedData = await AsyncStorage.getItem(this.STORAGE_KEYS.COMPANY_DATA);
+      if (cachedData) {
+        const parsedData = JSON.parse(cachedData);
+        if (this.isCompanyDataValid(parsedData)) {
+          return parsedData;
+        }
+      }
+
+      // Fetch fresh data from API
+      const response = await fetch(this.API_ENDPOINTS.COMPANY);
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const apiResponse = await response.json();
+      
+      if (!apiResponse.success || !apiResponse.message || !apiResponse.message[0]) {
+        throw new Error("Invalid API response structure");
+      }
+
+      const companyData = apiResponse.message[0];
+      
+      // Cache the company data
+      await AsyncStorage.setItem(
+        this.STORAGE_KEYS.COMPANY_DATA, 
+        JSON.stringify(companyData)
+      );
+
+      return companyData;
+    } catch (error) {
+      console.error("getCompanyData Error:", error);
+      
+      // Return default company data as fallback
+      return this.getDefaultCompanyData();
+    }
+  }
+
+  static isCompanyDataValid(companyData) {
+    return companyData && 
+           companyData.cname && 
+           companyData.cAddress1 && 
+           typeof companyData.cname === 'string';
+  }
+
+  static getDefaultCompanyData() {
+    return {
+      companyId: "BMG",
+      cname: "BMG Jewellers pvt. ltd.,",
+      cAddress1: "160, West Masi Street, Near Pothys",
+      cAddress2: "Madurai",
+      cAddress3: "",
+      cAddress4: "",
+      cPhone: "70946 70946",
+      cPincode: "625001",
+      cEmail: "contact@bmgjewellers.in",
+      cFax: "9514333609",
+      companyLogo: "",
+      gstNo: "",
+      stateId: 24
+    };
+  }
+
+  static async clearCachedCompanyData() {
+    await AsyncStorage.removeItem(this.STORAGE_KEYS.COMPANY_DATA);
+  }
 
   // ---------------------------------------------------------------------------
   // SAVE DIRECTORY FOR ANDROID
@@ -201,9 +279,18 @@ class PaymentReceiptPDF {
   }
 
   // ---------------------------------------------------------------------------
-  // HTML TEMPLATE (Styles preserved)
+  // HTML TEMPLATE (Updated with dynamic company data)
   // ---------------------------------------------------------------------------
-  static generateReceiptHTML({ payment, customerInfo, schemeInfo, bgBase64, logoBase64 }) {
+  static generateReceiptHTML({ payment, customerInfo, schemeInfo, companyData, bgBase64, logoBase64 }) {
+    // Build company address dynamically
+    const companyAddress = [
+      companyData.cAddress1,
+      companyData.cAddress2,
+      companyData.cAddress3,
+      companyData.cAddress4,
+      companyData.cPincode ? `PIN: ${companyData.cPincode}` : ""
+    ].filter(Boolean).join(", ");
+
     return `
 <!DOCTYPE html>
 <html>
@@ -391,12 +478,12 @@ class PaymentReceiptPDF {
         <div><span class="label">Receipt Date :</span> ${this.formatDate(payment.updateTime)}</div>
       </div>
       <div class="company-section">
-        <div class="company-name">BMG Jewellers pvt. ltd.,</div>
+        <div class="company-name">${companyData.cname}</div>
         <div class="company-details">
-          <div>160, West Masi Street, Near Pothys, Madurai - 625 001</div>
-          <div>contact@bmgjewellers.in</div>
-          <div>70946 70946</div>
-          <div>GSTIN :</div>
+          <div>${companyAddress}</div>
+          <div>${companyData.cEmail}</div>
+          <div>${companyData.cPhone}</div>
+          ${companyData.gstNo ? `<div>GSTIN : ${companyData.gstNo}</div>` : '<div>GSTIN :</div>'}
         </div>
       </div>
     </div>
@@ -448,16 +535,18 @@ class PaymentReceiptPDF {
     try {
       const { payment, customerInfo, schemeInfo } = this.extractDataFromResponse(responseData);
 
-      // Load assets in parallel
-      const [bgBase64, logoBase64] = await Promise.all([
+      // Load assets and company data in parallel
+      const [bgBase64, logoBase64, companyData] = await Promise.all([
         this.assetToBase64(this.ASSETS.BACKGROUND),
-        this.assetToBase64(this.ASSETS.LOGO)
+        this.assetToBase64(this.ASSETS.LOGO),
+        this.getCompanyData()
       ]);
 
       const html = this.generateReceiptHTML({
         payment,
         customerInfo,
         schemeInfo,
+        companyData,
         bgBase64,
         logoBase64,
       });
@@ -518,6 +607,15 @@ class PaymentReceiptPDF {
       console.error("Share PDF Error:", error);
       return { success: false, error: error.message };
     }
+  }
+
+  // ---------------------------------------------------------------------------
+  // REFRESH COMPANY DATA (Optional - if you want to force refresh)
+  // ---------------------------------------------------------------------------
+  static async refreshCompanyData() {
+    await this.clearCachedCompanyData();
+    return await this.getCompanyData();
+    console.log("Company data refreshed");
   }
 }
 

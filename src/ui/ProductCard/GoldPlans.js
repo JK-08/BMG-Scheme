@@ -64,7 +64,7 @@ function GoldPlan({
           borderTopLeftRadius: SIZES.radius.lg,
           borderTopRightRadius: SIZES.radius.lg,
         }}
-        resizeMode="cover"
+        resizeMode="contain"
       />
 
       <View style={styles.buttonRow}>
@@ -88,13 +88,13 @@ function GoldPlan({
 
 const styles = StyleSheet.create({
   cardContainer: {
-    borderRadius: SIZES.radius.lg,
+    // borderRadius: SIZES.radius.lg,
     overflow: "hidden",
     width: "100%",
     alignSelf: "center",
     marginVertical: moderateScale(10),
-    backgroundColor: COLORS.surface,
-    ...SHADOWS.sm,
+    // backgroundColor: COLORS.surface,
+    // ...SHADOWS.sm,
   },
   imageBackground: {
     width: "100%",

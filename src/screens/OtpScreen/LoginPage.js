@@ -21,6 +21,8 @@ import styles from "./LoginStyles";
 import userService from "../../services/UserService";
 import { useNavigation } from "@react-navigation/native";
 import { saveUserData } from "../../utils/AsynchStorageHelper";
+import * as Notifications from "expo-notifications";
+
 
 const { COLORS, SIZES, FONTS } = theme;
 

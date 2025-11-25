@@ -1,30 +1,25 @@
 // components/Header/Styles.js
-import { StyleSheet, Platform } from "react-native";
+import { StyleSheet } from "react-native";
 import theme from "../../utils/AppTheme";
 
 const { COLORS, SIZES, FONTS, moderateScale, verticalScale } = theme;
 
 export default StyleSheet.create({
-  // ===== Container =====
   headerContainer: {
     paddingHorizontal: SIZES.padding.lg,
-    paddingTop: verticalScale(SIZES.padding.xs),
-    paddingBottom: verticalScale(SIZES.padding.xxl),
-    marginBottom: verticalScale(SIZES.padding.xl),
+    paddingTop: verticalScale(12),
+    paddingBottom: verticalScale(35),
     borderBottomLeftRadius: SIZES.radius.xl,
     borderBottomRightRadius: SIZES.radius.xl,
     ...theme.SHADOWS.lg,
-    position: "relative",
-    minHeight: verticalScale(150),
-    gap: SIZES.padding.md,
+    minHeight: verticalScale(160),
   },
 
-  // ===== Top Section =====
   topHeaderSection: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    marginTop: verticalScale(SIZES.xs),
+    marginTop: verticalScale(5),
   },
 
   faqIconContainer: {
@@ -33,10 +28,9 @@ export default StyleSheet.create({
     borderRadius: SIZES.radius.full,
     alignItems: "center",
     justifyContent: "center",
-    // backgroundColor: COLORS.whiteOpacity20,
-    // borderWidth: 1,
+    backgroundColor: COLORS.whiteOpacity20,
+    borderWidth: 1,
     borderColor: COLORS.whiteOpacity50,
-    // ...theme.SHADOWS.sm,
   },
 
   menuIconContainer: {
@@ -48,59 +42,66 @@ export default StyleSheet.create({
     backgroundColor: COLORS.whiteOpacity20,
     borderWidth: 1,
     borderColor: COLORS.whiteOpacity50,
-    // ...theme.SHADOWS.sm,
   },
 
-  // ===== Logo + Company =====
+  notificationBadge: {
+    position: "absolute",
+    right: -5,
+    top: -5,
+    backgroundColor: "red",
+    borderRadius: 10,
+    paddingHorizontal: 5,
+    paddingVertical: 1,
+    minWidth: 18,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+
+  notificationText: {
+    color: "white",
+    fontSize: 10,
+    fontWeight: "bold",
+  },
+
   mainHeaderSection: {
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
-    marginHorizontal: SIZES.padding.md,
   },
 
   logoContainer: {
-    marginRight: SIZES.padding.md,
     ...theme.SHADOWS.md,
   },
 
   headerLogo: {
     width: moderateScale(170),
     height: moderateScale(65),
-    // borderRadius: SIZES.radius.full,
   },
 
-  companyNameContainer: {
+  /* Rate updated line */
+  rateCardContainer: {
     alignItems: "center",
+    justifyContent: "center",
+    marginTop: verticalScale(8),
   },
 
-  companyName: {
-    ...FONTS.h4,
-
-    color: COLORS.textInverse,
-    fontSize: SIZES.font.xl,
-    textShadowColor: COLORS.blackOpacity50,
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 3,
+  rateTextContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: SIZES.padding.sm,
   },
 
-  companySubtitle: {
-    ...FONTS.bodySmall,
-    color: COLORS.textInverse,
-    fontSize: SIZES.font.sm,
-    marginTop: verticalScale(-SIZES.xs),
-    textShadowColor: COLORS.blackOpacity50,
-    textShadowOffset: { width: 1, height: 1 },
-    textShadowRadius: 2,
+  rateLabel: {
+    color: COLORS.textWhite,
   },
 
-  // ===== Rate Cards =====
+  /* Floating cards */
   rateCardsOverlayContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     position: "absolute",
-    bottom: verticalScale(-SIZES.xl),
+    bottom: -verticalScale(40),
     left: SIZES.padding.lg,
     right: SIZES.padding.lg,
     gap: SIZES.padding.md,
@@ -108,27 +109,23 @@ export default StyleSheet.create({
 
   rateCardOverlay: {
     flex: 1,
-    alignContent:'center',
-    justifyContent:'center',
     backgroundColor: COLORS.card,
     borderRadius: SIZES.radius.lg,
     padding: verticalScale(8),
     borderWidth: 1,
     borderColor: COLORS.borderLight,
     ...theme.SHADOWS.lg,
-    minHeight: verticalScale(55),
+    minHeight: verticalScale(60),
   },
 
   rateCardContent: {
     flexDirection: "row",
     alignItems: "center",
     gap: SIZES.padding.md,
+    justifyContent: "center",
+   
   },
-rateCardContainer:{
-alignItemsL:'center',
-display:'flex',
-justifyContent:'center'
-},
+
   animatedCoinContainer: {
     width: moderateScale(48),
     height: moderateScale(48),
@@ -136,81 +133,48 @@ justifyContent:'center'
     justifyContent: "center",
   },
 
-  animatedIconContainer: {
-  },
-
   rateCoinIcon: {
     width: moderateScale(50),
     height: moderateScale(50),
   },
 
-  // RIGHT-ALIGNED TEXT
   rateTextRightAligned: {
     flex: 1,
     alignItems: "flex-end",
     justifyContent: "center",
+    
   },
 
   rateLabelRight: {
     ...FONTS.bodyMedium,
     color: COLORS.textSecondary,
     fontSize: SIZES.font.sm,
-    marginBottom: SIZES.xs,
-    textAlign: "right",
-    paddingRight: SIZES.padding.sm,
   },
 
   rateValueRight: {
     fontSize: SIZES.font.xl,
-    marginBottom: SIZES.xs,
-    textAlign: "right",
-    paddingRight: SIZES.padding.sm,
-    lineHeight: SIZES.font.xl * 1.4,
     color: COLORS.textPrimary,
+    marginVertical: 2,
   },
 
   rateUnitRight: {
     ...FONTS.caption,
     color: COLORS.textTertiary,
     fontSize: SIZES.font.xs,
-    textAlign: "right",
-    paddingRight: SIZES.padding.sm,
-  },
-
-  // DEFAULT TEXT BLOCK (LEFT)
-  rateTextContainer: {
-    display: "flex",
-    flexDirection: "row",
-    gap: SIZES.padding.sm,
-    alignItems:'center',
-    justifyContent:'center',
-    color: COLORS.textWhite,
   },
 
   rateIconContainer: {
-    display:'flex',
-    alignContent:'center',
-    justifyContent:'center',
+    justifyContent: "center",
+    alignItems: "center",
+    alignSelf: "center",
+    //  top: verticalScale(20),
+
   },
 
-  dateUpdateText: {
-    ...FONTS.bodyMedium,
-    fontSize: SIZES.font.sm,
-    lineHeight: SIZES.font.sm * 1.7,
-  },
-  rateLabel:{
-    color: COLORS.textWhite,
-  },
-  shopTextContainer:{
-    display:'flex',
-  },
-  shopTitle:{
+  shopTitle: {
     color: COLORS.primaryDark,
+    fontSize:SIZES.font.xxl,
+      // top: verticalScale(20),
+    
   },
-  shopSubtitle:{
-    color: COLORS.primaryDark,
-  color: COLORS.primaryDark,
-  flexShrink: 1,
-  width: "100%",
-  }
 });

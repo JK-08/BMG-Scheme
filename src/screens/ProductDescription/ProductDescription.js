@@ -187,6 +187,9 @@ const SchemePassbook = ({ navigation, route }) => {
         fetchCurrentRates(),
         new Promise((r) => setTimeout(r, 700)),
       ]);
+
+      await PaymentReceiptPDF.refreshCompanyData();
+      console.log("Company data refreshed");
     } catch (error) {
       Alert.alert("Error", "Failed to refresh data. Please try again.");
     } finally {
@@ -299,12 +302,11 @@ const SchemePassbook = ({ navigation, route }) => {
                 ) : null}
 
                 <View style={[styles.dataRow, { alignItems: "flex-start" }]}>
-                  <Text style={styles.dataLabel}>Amount Saved</Text>
+                  <Text style={styles.dataLabel}>Benefit Amount</Text>
                   <Text style={styles.dataValue}>
                     ₹
                     {Math.ceil(
-                      Number(schemeStats?.totalPaid || 0) +
-                        Number(productData?.bonusAmount || 0)
+                      Number(productData?.bonusAmount || 0)
                     ).toLocaleString("en-IN")}
                   </Text>
                 </View>
@@ -333,11 +335,12 @@ const SchemePassbook = ({ navigation, route }) => {
 
                 {productData?.bonusAmount ? (
                   <View style={[styles.dataRow, { alignItems: "flex-end" }]}>
-                    <Text style={styles.dataLabel}>Benefit Amount</Text>
+                    <Text style={styles.dataLabel}>Eligible Amount</Text>
                     <Text style={styles.dataValue}>
                       ₹
                       {Math.ceil(
-                        Number(productData?.bonusAmount || 0)
+                        Number(schemeStats?.totalPaid || 0) +
+                          Number(productData?.bonusAmount || 0)
                       ).toLocaleString("en-IN")}
                     </Text>
                   </View>

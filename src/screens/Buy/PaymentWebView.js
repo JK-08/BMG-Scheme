@@ -51,8 +51,8 @@ const PaymentWebView = () => {
               text: "Yes",
               onPress: () => {
                 console.log("[Payment] User cancelled payment");
-                navigation.replace("PaymentSuccess", {
-                  status: "CANCELLED",
+                navigation.replace("PaymentCancelled", {
+                  // Changed to PaymentCancelled
                   orderDetails,
                   productData,
                   isCashPayment: false,
@@ -97,7 +97,9 @@ const PaymentWebView = () => {
   // -------------------------------------------------------------
   const buildSchemeData = (paymentStatus) => {
     if (!paymentStatus) {
-      console.warn("[Payment] No payment status provided, using fallback values");
+      console.warn(
+        "[Payment] No payment status provided, using fallback values"
+      );
       paymentStatus = {};
     }
 
@@ -117,6 +119,7 @@ const PaymentWebView = () => {
       productData?.amount?.toString() ||
       pay?.amount?.toString() ||
       "1000";
+    const SchemeId = schemeInfo.SchemeId;
 
     const installment =
       (parseInt(
@@ -140,15 +143,18 @@ const PaymentWebView = () => {
       chqBranch: pay.paymentSubInstType || "",
       chkBank: pay.paymentMode || "",
       chqRtnReason: pay.merchantTxnNo || "",
+      schemeId: SchemeId,
     };
 
-    console.log("[Payment] Scheme data payload built");
+    console.log("[Payment] Scheme data payload built", payload);
     return payload;
   };
 
   // -------------------------------------------------------------
   //  CHECK PAYMENT STATUS (AFTER REDIRECT BLOCKED)
   // -------------------------------------------------------------
+  // In PaymentWebView.js - Update the checkPaymentStatus function and handleRequest function
+
   const checkPaymentStatus = async (merchantTxnNo) => {
     if (!merchantTxnNo) {
       console.warn("[Payment] No merchant transaction number available");
@@ -183,11 +189,22 @@ const PaymentWebView = () => {
       );
 
       const data = await response.json();
-      console.log(`[Payment] Status response received: ${data?.orderStatus || data?.status}`);
+      console.log(
+        `[Payment] Status response received: ${
+          data?.orderStatus || data?.status
+        }`
+      );
 
       await storePaymentData(data);
 
       const pay = data?.payphiResponse;
+
+      // Check for cancellation status
+      const isCancelled =
+        data?.orderStatus === "CANCELLED" ||
+        data?.status === "CANCELLED" ||
+        (pay?.txnStatus && ["CANC", "CANCELLED"].includes(pay?.txnStatus)) ||
+        data?.message?.toLowerCase()?.includes("cancel");
 
       const isSuccess =
         data?.orderStatus === "PAID" ||
@@ -198,7 +215,16 @@ const PaymentWebView = () => {
         pay?.txnRespDescription?.toLowerCase()?.includes("success") ||
         data?.message?.toLowerCase()?.includes("success");
 
-      if (isSuccess) {
+      if (isCancelled) {
+        console.log(
+          "[Payment] Payment cancelled - navigating to PaymentCancelled"
+        );
+        navigation.replace("PaymentCancelled", {
+          orderDetails,
+          productData,
+          isCashPayment: false,
+        });
+      } else if (isSuccess) {
         console.log("[Payment] Payment successful - inserting scheme data");
         const schemeData = buildSchemeData(data);
 
@@ -214,7 +240,10 @@ const PaymentWebView = () => {
             isCashPayment: false,
           });
         } catch (insertErr) {
-          console.warn("[Payment] Failed to insert scheme collection:", insertErr.message);
+          console.warn(
+            "[Payment] Failed to insert scheme collection:",
+            insertErr.message
+          );
           navigation.replace("PaymentSuccess", {
             status: "SUCCESS",
             paymentStatus: data,
@@ -224,29 +253,25 @@ const PaymentWebView = () => {
           });
         }
       } else {
-        console.log("[Payment] Payment failed or pending");
-        navigation.replace("PaymentSuccess", {
-          status: "FAILED",
-          paymentStatus: data,
+        console.log("[Payment] Payment failed - navigating to PaymentFailure");
+        navigation.replace("PaymentFailure", {
           orderDetails,
           productData,
+          paymentStatus: data,
           isCashPayment: false,
         });
       }
     } catch (error) {
       console.error("[Payment] Error checking payment status:", error);
-      navigation.replace("PaymentSuccess", {
-        status: "PENDING",
+      navigation.replace("PaymentFailure", {
         orderDetails,
         productData,
+        paymentStatus: { message: "Network error or timeout" },
         isCashPayment: false,
       });
     }
   };
-
-  // -------------------------------------------------------------
-  //  BLOCK REDIRECT USING onShouldStartLoadWithRequest
-  // -------------------------------------------------------------
+  // Also update the handleRequest function for failure URLs:
   const handleRequest = (request) => {
     const url = request.url;
     console.log(`[WebView] Loading: ${url.substring(0, 100)}...`);
@@ -281,23 +306,28 @@ const PaymentWebView = () => {
       setPaymentProcessed(true);
       setProcessing(true);
 
-      navigation.replace("PaymentSuccess", {
-        status: "FAILED",
+      navigation.replace("PaymentFailure", {
         orderDetails,
         productData,
+        paymentStatus: { message: "Payment was declined or failed" },
         isCashPayment: false,
       });
       return false;
     }
 
-    // CANCEL
-    if (url.includes("/cancel") || url.includes("/cancelled")) {
+    // CANCELLATION - Updated to use PaymentCancelled
+    if (
+      url.includes("/cancel") ||
+      url.includes("/cancelled") ||
+      url.includes("/payment-cancel") ||
+      url.includes("/payment-cancelled")
+    ) {
       console.log("[WebView] Cancel URL detected - blocking redirect");
       setPaymentProcessed(true);
       setProcessing(true);
 
-      navigation.replace("PaymentSuccess", {
-        status: "CANCELLED",
+      navigation.replace("PaymentCancelled", {
+        // Changed to PaymentCancelled
         orderDetails,
         productData,
         isCashPayment: false,
@@ -372,7 +402,9 @@ const PaymentWebView = () => {
             <TouchableOpacity
               style={styles.retryButton}
               onPress={() => {
-                console.log("[Payment] User navigating back due to missing URL");
+                console.log(
+                  "[Payment] User navigating back due to missing URL"
+                );
                 navigation.goBack();
               }}
             >

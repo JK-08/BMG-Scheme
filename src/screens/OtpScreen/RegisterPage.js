@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
 import {
   View,
   TextInput,
@@ -22,7 +22,7 @@ import {
   statusCodes,
 } from "@react-native-google-signin/google-signin";
 import { showToast } from "../../utils/toast";
-import theme from "../../utils/AppTheme"; // Changed from appTheme to theme
+import theme from "../../utils/AppTheme";
 import styles from "./RegisterStyles";
 import userService from "../../services/UserService";
 import {
@@ -31,13 +31,15 @@ import {
 } from "../../utils/Notification";
 import { saveUserData } from "../../utils/AsynchStorageHelper";
 
-const { COLORS, SIZES, FONTS } = theme;
+const { COLORS, SIZES } = theme;
 
 function RegisterPage({ navigation }) {
-  const [username, setUsername] = useState("");
-  const [email, setEmail] = useState("");
-  const [phone, setPhone] = useState("");
-  const [password, setPassword] = useState("");
+  const [formData, setFormData] = useState({
+    username: "",
+    email: "",
+    phone: "",
+    password: ""
+  });
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState({
     username: "",
@@ -55,140 +57,89 @@ function RegisterPage({ navigation }) {
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appHash, setAppHash] = useState("");
 
+  // Validation rules
+  const validationRules = {
+    username: (value) => {
+      if (!value.trim()) return "Please enter username";
+      if (value.trim().length < 3) return "Username must be at least 3 characters";
+      return "";
+    },
+    email: (value) => {
+      if (!value.trim()) return "Please enter email address";
+      if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) return "Please enter a valid email address";
+      return "";
+    },
+    phone: (value) => {
+      if (!value.trim()) return "Please enter mobile number";
+      if (!/^[6-9]\d{9}$/.test(value)) return "Please enter a valid 10-digit Indian mobile number";
+      return "";
+    },
+    password: (value) => {
+      if (!value.trim()) return "Please enter password";
+      if (value.length < 6) return "Password must be at least 6 characters";
+      return "";
+    }
+  };
+
   // ✅ Google Sign-In Config & App Hash
   useEffect(() => {
     initializeGoogleSignIn();
     initializeAppHash();
   }, []);
 
-  const initializeGoogleSignIn = () => {
+  const initializeGoogleSignIn = useCallback(() => {
     GoogleSignin.configure({
-      webClientId:
-        "657047091285-hetgcscq8hvli59d0c6oqvg9aoat8850.apps.googleusercontent.com",
-      iosClientId:
-        "657047091285-57kkictc0pkfjldtf0u133m82huit6rg.apps.googleusercontent.com",
+      webClientId: "657047091285-hetgcscq8hvli59d0c6oqvg9aoat8850.apps.googleusercontent.com",
+      iosClientId: "657047091285-57kkictc0pkfjldtf0u133m82huit6rg.apps.googleusercontent.com",
       scopes: ["profile", "email"],
       offlineAccess: true,
     });
-  };
+  }, []);
 
-  const initializeAppHash = async () => {
+  const initializeAppHash = useCallback(async () => {
     try {
       if (Platform.OS === "android") {
         const hashCodes = await getHash();
-        console.log("App Hash Codes:", hashCodes);
-        if (hashCodes && hashCodes.length > 0) {
+        if (hashCodes?.[0]) {
           setAppHash(hashCodes[0]);
-          console.log("Using App Hash:", hashCodes[0]);
         }
       }
     } catch (error) {
       console.error("Error getting app hash:", error);
     }
-  };
+  }, []);
 
   // Validation functions
-  const validateField = (fieldName, value) => {
-    const newErrors = { ...errors };
+  const validateField = useCallback((fieldName, value) => {
+    const error = validationRules[fieldName](value);
+    setErrors(prev => ({ ...prev, [fieldName]: error }));
+  }, []);
 
-    switch (fieldName) {
-      case "username":
-        if (!value.trim()) {
-          newErrors.username = "Please enter username";
-        } else if (value.trim().length < 3) {
-          newErrors.username = "Username must be at least 3 characters";
-        } else {
-          newErrors.username = "";
-        }
-        break;
-
-      case "email":
-        if (!value.trim()) {
-          newErrors.email = "Please enter email address";
-        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
-          newErrors.email = "Please enter a valid email address";
-        } else {
-          newErrors.email = "";
-        }
-        break;
-
-      case "phone":
-        if (!value.trim()) {
-          newErrors.phone = "Please enter mobile number";
-        } else if (!/^[6-9]\d{9}$/.test(value)) {
-          newErrors.phone =
-            "Please enter a valid 10-digit Indian mobile number";
-        } else {
-          newErrors.phone = "";
-        }
-        break;
-
-      case "password":
-        if (!value.trim()) {
-          newErrors.password = "Please enter password";
-        } else if (value.length < 6) {
-          newErrors.password = "Password must be at least 6 characters";
-        } else {
-          newErrors.password = "";
-        }
-        break;
-
-      default:
-        break;
+  const handleFieldChange = useCallback((fieldName, value) => {
+    let processedValue = value;
+    
+    if (fieldName === "phone") {
+      processedValue = value.replace(/\D/g, "").slice(0, 10);
     }
 
-    setErrors(newErrors);
-  };
-
-  const handleFieldChange = (fieldName, value) => {
-    switch (fieldName) {
-      case "username":
-        setUsername(value);
-        break;
-      case "email":
-        setEmail(value);
-        break;
-      case "phone":
-        const cleaned = value.replace(/\D/g, "");
-        if (cleaned.length <= 10) {
-          setPhone(cleaned);
-        }
-        break;
-      case "password":
-        setPassword(value);
-        break;
-      default:
-        break;
-    }
+    setFormData(prev => ({ ...prev, [fieldName]: processedValue }));
 
     if (touched[fieldName]) {
-      validateField(
-        fieldName,
-        fieldName === "phone" ? value.replace(/\D/g, "") : value
-      );
+      validateField(fieldName, processedValue);
     }
-  };
+  }, [touched, validateField]);
 
-  const handleFieldBlur = (fieldName) => {
-    setTouched((prev) => ({ ...prev, [fieldName]: true }));
-    validateField(
-      fieldName,
-      fieldName === "phone"
-        ? phone
-        : fieldName === "username"
-        ? username
-        : fieldName === "email"
-        ? email
-        : password
-    );
-  };
+  const handleFieldBlur = useCallback((fieldName) => {
+    setTouched(prev => ({ ...prev, [fieldName]: true }));
+    validateField(fieldName, formData[fieldName]);
+  }, [formData, validateField]);
 
-  const togglePasswordVisibility = () => {
-    setShowPassword(!showPassword);
-  };
+  const togglePasswordVisibility = useCallback(() => {
+    setShowPassword(prev => !prev);
+  }, []);
 
   // ✅ Handle Google Sign-In
-  const handleGoogleSignIn = async () => {
+  const handleGoogleSignIn = useCallback(async () => {
     try {
       setGoogleLoading(true);
       const hasPlayServices = await GoogleSignin.hasPlayServices({
@@ -209,41 +160,26 @@ function RegisterPage({ navigation }) {
     } finally {
       setGoogleLoading(false);
     }
-  };
+  }, []);
 
-  const handleGoogleSignInError = (error) => {
-    switch (error.code) {
-      case statusCodes.SIGN_IN_CANCELLED:
-        showToast("Google sign-in cancelled");
-        break;
-      case statusCodes.IN_PROGRESS:
-        showToast("Google sign-in already in progress");
-        break;
-      case statusCodes.PLAY_SERVICES_NOT_AVAILABLE:
-        showToast("Google Play Services unavailable");
-        break;
-      default:
-        showToast(`Google sign-in failed: ${error.message || "Try again"}`);
-    }
-  };
+  const handleGoogleSignInError = useCallback((error) => {
+    const errorMessages = {
+      [statusCodes.SIGN_IN_CANCELLED]: "Google sign-in cancelled",
+      [statusCodes.IN_PROGRESS]: "Google sign-in already in progress",
+      [statusCodes.PLAY_SERVICES_NOT_AVAILABLE]: "Google Play Services unavailable",
+    };
+
+    showToast(errorMessages[error.code] || `Google sign-in failed: ${error.message || "Try again"}`);
+  }, []);
 
   // ✅ Google Auth to backend
-  const handleGoogleAuthentication = async (idToken, userInfo = null) => {
+  const handleGoogleAuthentication = useCallback(async (idToken, userInfo = null) => {
     try {
       const payload = { idToken, userInfo };
       const response = await userService.googleLogin(payload);
 
       if (response.success && response.data) {
-        const {
-          id,
-          email,
-          username,
-          message,
-          status,
-          contactNumber,
-        } = response.data;
-
-        console.log("Google Login Response:", response.data);
+        const { id, email, username, message, contactNumber } = response.data;
 
         await saveUserData(response.data);
 
@@ -253,14 +189,12 @@ function RegisterPage({ navigation }) {
         showToast(message || "Logged in successfully with Google");
 
         if (!contactNumber || contactNumber.trim() === "") {
-          console.log("⚠️ No contact number found. Navigating to EnterNumber...");
           navigation.navigate("EnterNumber", {
             userId: id,
             email,
             username,
           });
         } else {
-          console.log("✅ Contact number found. Navigating to MpinScreen...");
           navigation.navigate("MpinScreen", { step: 3 });
         }
       } else {
@@ -270,30 +204,25 @@ function RegisterPage({ navigation }) {
       console.error("Google authentication error:", error);
       showToast("Authentication failed. Please try again.");
     }
-  };
+  }, [navigation]);
 
-  const handleRegister = async () => {
-    const allTouched = {
-      username: true,
-      email: true,
-      phone: true,
-      password: true,
-    };
+  const validateAllFields = useCallback(() => {
+    const allTouched = Object.keys(formData).reduce((acc, key) => {
+      acc[key] = true;
+      return acc;
+    }, {});
     setTouched(allTouched);
 
-    validateField("username", username);
-    validateField("email", email);
-    validateField("phone", phone);
-    validateField("password", password);
+    Object.keys(formData).forEach(key => {
+      validateField(key, formData[key]);
+    });
 
-    const hasErrors =
-      Object.values(errors).some((error) => error !== "") ||
-      !username ||
-      !email ||
-      !phone ||
-      !password;
+    return Object.values(errors).every(error => error === "") && 
+           Object.values(formData).every(value => value.trim() !== "");
+  }, [formData, errors, validateField]);
 
-    if (hasErrors) {
+  const handleRegister = useCallback(async () => {
+    if (!validateAllFields()) {
       showToast("Please fix all errors before submitting");
       return;
     }
@@ -302,31 +231,28 @@ function RegisterPage({ navigation }) {
 
     try {
       const res = await userService.registerUser({
-        username,
-        email,
-        contactNumber: phone,
-        password,
+        username: formData.username,
+        email: formData.email,
+        contactNumber: formData.phone,
+        password: formData.password,
         hashKey: appHash || "",
       });
-
-      console.log("Registration response:", res);
 
       if (res.success) {
         await AsyncStorage.setItem(
           "tempUserData",
           JSON.stringify({
-            username,
-            email,
-            phone,
-            password,
+            username: formData.username,
+            email: formData.email,
+            phone: formData.phone,
+            password: formData.password,
             appHash,
           })
         );
 
         showToast("Registration successful! OTP sent.");
-
         navigation.navigate("OTP", {
-          phoneNumber: phone,
+          phoneNumber: formData.phone,
           appHash: appHash,
         });
       } else {
@@ -338,200 +264,124 @@ function RegisterPage({ navigation }) {
     } finally {
       setLoading(false);
     }
-  };
+  }, [formData, appHash, navigation, validateAllFields]);
 
-  const handleRegistrationError = (error, details = {}) => {
-    console.log("Registration Error Details:", details);
+  const handleRegistrationError = useCallback((error, details = {}) => {
+    const errorMessage = error?.toString()?.toLowerCase() || "";
+    const detailsMessage = details?.message?.toString()?.toLowerCase() || "";
 
-    const errorMessage = error?.toString() || "";
-    const errorLower = errorMessage.toLowerCase();
-    const detailsMessage = details?.message?.toString() || "";
-    const detailsLower = detailsMessage.toLowerCase();
-
-    if (
-      errorLower.includes("email already exists") ||
-      detailsLower.includes("email already exists") ||
-      detailsMessage === "Email already exists"
-    ) {
-      showToast(
-        "This email is already registered. Please use another email or login."
-      );
-      setEmail("");
-      setErrors((prev) => ({
-        ...prev,
-        email: "This email is already registered",
-      }));
-      setTimeout(() => {
-        Alert.alert(
-          "Email Already Exists",
-          "This email is already registered. Would you like to login?",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Login",
-              onPress: () =>
-                navigation.navigate("LoginPage", { prefillEmail: email }),
-            },
-          ]
-        );
-      }, 1500);
-      return;
-    }
-
-    if (
-      errorLower.includes("contact number already exists") ||
-      errorLower.includes("phone already exists") ||
-      errorLower.includes("number already exists") ||
-      detailsLower.includes("contact number already exists") ||
-      detailsLower.includes("phone already exists") ||
-      detailsLower.includes("number already exists")
-    ) {
-      setErrors((prev) => ({
-        ...prev,
-        phone: "This phone number is already registered",
-      }));
-      Alert.alert(
-        "Number Already Registered",
-        "This phone number is already registered. Would you like to login instead?",
-        [
-          { text: "Cancel", style: "cancel" },
-          {
-            text: "Login",
-            onPress: () =>
-              navigation.navigate("LoginPage", { prefillPhone: phone }),
-          },
-        ]
-      );
-      return;
-    }
-
-    if (
-      errorLower.includes("username already exists") ||
-      detailsLower.includes("username already exists")
-    ) {
-      showToast(
-        "This username is already taken. Please choose another or login with existing account."
-      );
-      setUsername("");
-      setErrors((prev) => ({
-        ...prev,
-        username: "This username is already taken",
-      }));
-      setTimeout(() => {
-        Alert.alert(
-          "Username Already Exists",
-          "This username is already taken. Would you like to login?",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Login",
-              onPress: () => navigation.navigate("LoginPage"),
-            },
-          ]
-        );
-      }, 1500);
-      return;
-    }
-
-    if (
-      errorLower.includes("already exists") ||
-      detailsLower.includes("already exists")
-    ) {
-      if (errorLower.includes("email") || detailsLower.includes("email")) {
-        showToast(
-          "This email is already registered. Please use another email or login."
-        );
-        setEmail("");
-        setErrors((prev) => ({
-          ...prev,
-          email: "This email is already registered",
-        }));
-        setTimeout(() => {
+    const errorHandlers = [
+      {
+        condition: () => errorMessage.includes("email already exists") || 
+                      detailsMessage.includes("email already exists") ||
+                      details.message === "Email already exists",
+        action: () => {
+          showToast("This email is already registered. Please use another email or login.");
+          setFormData(prev => ({ ...prev, email: "" }));
+          setErrors(prev => ({ ...prev, email: "This email is already registered" }));
+          setTimeout(() => {
+            Alert.alert(
+              "Email Already Exists",
+              "This email is already registered. Would you like to login?",
+              [
+                { text: "Cancel", style: "cancel" },
+                {
+                  text: "Login",
+                  onPress: () => navigation.navigate("LoginPage", { prefillEmail: formData.email }),
+                },
+              ]
+            );
+          }, 1500);
+        }
+      },
+      {
+        condition: () => errorMessage.includes("contact number already exists") || 
+                      errorMessage.includes("phone already exists") || 
+                      errorMessage.includes("number already exists") ||
+                      detailsMessage.includes("contact number already exists") ||
+                      detailsMessage.includes("phone already exists") ||
+                      detailsMessage.includes("number already exists"),
+        action: () => {
+          setErrors(prev => ({ ...prev, phone: "This phone number is already registered" }));
           Alert.alert(
-            "Email Already Exists",
-            "This email is already registered. Would you like to login?",
+            "Number Already Registered",
+            "This phone number is already registered. Would you like to login instead?",
             [
               { text: "Cancel", style: "cancel" },
               {
                 text: "Login",
-                onPress: () =>
-                  navigation.navigate("LoginPage", { prefillEmail: email }),
+                onPress: () => navigation.navigate("LoginPage", { prefillPhone: formData.phone }),
               },
             ]
           );
-        }, 1500);
-      } else if (
-        errorLower.includes("phone") ||
-        errorLower.includes("contact") ||
-        errorLower.includes("number")
-      ) {
-        setErrors((prev) => ({
-          ...prev,
-          phone: "This phone number is already registered",
-        }));
-        Alert.alert(
-          "Number Already Registered",
-          "This phone number is already registered. Would you like to login instead?",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Login",
-              onPress: () =>
-                navigation.navigate("LoginPage", { prefillPhone: phone }),
-            },
-          ]
-        );
-      } else if (
-        errorLower.includes("username") ||
-        detailsLower.includes("username")
-      ) {
-        showToast(
-          "This username is already taken. Please choose another or login with existing account."
-        );
-        setUsername("");
-        setErrors((prev) => ({
-          ...prev,
-          username: "This username is already taken",
-        }));
-        setTimeout(() => {
-          Alert.alert(
-            "Username Already Exists",
-            "This username is already taken. Would you like to login?",
-            [
-              { text: "Cancel", style: "cancel" },
-              {
-                text: "Login",
-                onPress: () => navigation.navigate("LoginPage"),
-              },
-            ]
-          );
-        }, 1500);
-      } else {
-        showToast("This user already exists. Redirecting to login...");
-        setTimeout(() => {
-          navigation.navigate("LoginPage");
-        }, 2000);
+        }
+      },
+      {
+        condition: () => errorMessage.includes("username already exists") || 
+                      detailsMessage.includes("username already exists"),
+        action: () => {
+          showToast("This username is already taken. Please choose another or login with existing account.");
+          setFormData(prev => ({ ...prev, username: "" }));
+          setErrors(prev => ({ ...prev, username: "This username is already taken" }));
+          setTimeout(() => {
+            Alert.alert(
+              "Username Already Exists",
+              "This username is already taken. Would you like to login?",
+              [
+                { text: "Cancel", style: "cancel" },
+                { text: "Login", onPress: () => navigation.navigate("LoginPage") },
+              ]
+            );
+          }, 1500);
+        }
       }
+    ];
+
+    const handler = errorHandlers.find(h => h.condition());
+    if (handler) {
+      handler.action();
       return;
     }
 
-    showToast(error || detailsMessage || "Registration failed");
-  };
+    showToast(error || details.message || "Registration failed");
+  }, [formData, navigation]);
 
-  const navigateToLogin = () => {
+  const navigateToLogin = useCallback(() => {
     navigation.navigate("LoginPage");
-  };
+  }, [navigation]);
 
-  const dismissKeyboard = () => {
+  const dismissKeyboard = useCallback(() => {
     Keyboard.dismiss();
-  };
+  }, []);
 
-  const RequiredLabel = ({ children }) => (
+  const RequiredLabel = useCallback(({ children }) => (
     <Text style={styles.label}>
       {children}
       <Text style={styles.requiredStar}> *</Text>
     </Text>
-  );
+  ), []);
+
+  const renderInputField = useCallback((fieldName, props = {}) => {
+    const commonProps = {
+      style: [styles.input, errors[fieldName] && styles.inputError],
+      value: formData[fieldName],
+      onChangeText: (value) => handleFieldChange(fieldName, value),
+      onBlur: () => handleFieldBlur(fieldName),
+      placeholderTextColor: COLORS.textTertiary,
+      autoCapitalize: "none",
+      autoCorrect: false,
+      ...props
+    };
+
+    return (
+      <>
+        <TextInput {...commonProps} />
+        {errors[fieldName] ? (
+          <Text style={styles.errorText}>{errors[fieldName]}</Text>
+        ) : null}
+      </>
+    );
+  }, [formData, errors, handleFieldChange, handleFieldBlur]);
 
   return (
     <TouchableWithoutFeedback onPress={dismissKeyboard}>
@@ -560,54 +410,31 @@ function RegisterPage({ navigation }) {
               <View style={styles.card}>
                 <Text style={styles.title}>Create Account</Text>
 
-
                 {/* Username Field */}
                 <RequiredLabel>Username</RequiredLabel>
-                <TextInput
-                  style={[styles.input, errors.username && styles.inputError]}
-                  value={username}
-                  onChangeText={(value) => handleFieldChange("username", value)}
-                  onBlur={() => handleFieldBlur("username")}
-                  placeholder="Enter username"
-                  placeholderTextColor={COLORS.textTertiary}
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {errors.username ? (
-                  <Text style={styles.errorText}>{errors.username}</Text>
-                ) : null}
+                {renderInputField("username", {
+                  placeholder: "Enter username"
+                })}
 
                 {/* Email Field */}
                 <RequiredLabel>Email</RequiredLabel>
-                <TextInput
-                  style={[styles.input, errors.email && styles.inputError]}
-                  value={email}
-                  onChangeText={(value) => handleFieldChange("email", value)}
-                  onBlur={() => handleFieldBlur("email")}
-                  placeholder="Enter email"
-                  placeholderTextColor={COLORS.textTertiary}
-                  keyboardType="email-address"
-                  autoCapitalize="none"
-                  autoCorrect={false}
-                />
-                {errors.email ? (
-                  <Text style={styles.errorText}>{errors.email}</Text>
-                ) : null}
+                {renderInputField("email", {
+                  placeholder: "Enter email",
+                  keyboardType: "email-address"
+                })}
 
                 {/* Mobile Number Field */}
                 <RequiredLabel>Mobile Number</RequiredLabel>
-                <View
-                  style={[
-                    styles.inputContainer,
-                    (errors.phone || !/^[6-9]\d{9}$/.test(phone)) &&
-                      touched.phone &&
-                      styles.inputError,
-                  ]}
-                >
+                <View style={[
+                  styles.inputContainer,
+                  (errors.phone || !/^[6-9]\d{9}$/.test(formData.phone)) &&
+                    touched.phone &&
+                    styles.inputError,
+                ]}>
                   <Text style={styles.countryCode}>+91</Text>
                   <TextInput
                     style={styles.phoneInput}
-                    value={phone}
+                    value={formData.phone}
                     onChangeText={(value) => handleFieldChange("phone", value)}
                     onBlur={() => handleFieldBlur("phone")}
                     placeholder="Enter 10-digit number"
@@ -622,18 +449,14 @@ function RegisterPage({ navigation }) {
 
                 {/* Password Field */}
                 <RequiredLabel>Password</RequiredLabel>
-                <View
-                  style={[
-                    styles.passwordContainer,
-                    errors.password && styles.inputError,
-                  ]}
-                >
+                <View style={[
+                  styles.passwordContainer,
+                  errors.password && styles.inputError,
+                ]}>
                   <TextInput
                     style={styles.passwordInput}
-                    value={password}
-                    onChangeText={(value) =>
-                      handleFieldChange("password", value)
-                    }
+                    value={formData.password}
+                    onChangeText={(value) => handleFieldChange("password", value)}
                     onBlur={() => handleFieldBlur("password")}
                     placeholder="Enter password"
                     placeholderTextColor={COLORS.textTertiary}
@@ -658,12 +481,9 @@ function RegisterPage({ navigation }) {
                   <Text style={styles.errorText}>{errors.password}</Text>
                 ) : null}
 
-                {/* ✅ Register Button */}
+                {/* Register Button */}
                 <TouchableOpacity
-                  style={[
-                    styles.primaryButton,
-                    loading && styles.disabledButton,
-                  ]}
+                  style={[styles.primaryButton, loading && styles.disabledButton]}
                   onPress={handleRegister}
                   disabled={loading}
                 >
@@ -676,26 +496,21 @@ function RegisterPage({ navigation }) {
                     {loading ? (
                       <ActivityIndicator color={COLORS.white} />
                     ) : (
-                      <Text style={styles.primaryButtonText}>
-                        Create Account
-                      </Text>
+                      <Text style={styles.primaryButtonText}>Create Account</Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
 
-                {/* ✅ Divider for Google Sign-In */}
+                {/* Divider for Google Sign-In */}
                 <View style={styles.dividerContainer}>
                   <View style={styles.divider} />
                   <Text style={styles.dividerText}>or continue with</Text>
                   <View style={styles.divider} />
                 </View>
 
-                {/* ✅ Google Sign-In Button */}
+                {/* Google Sign-In Button */}
                 <TouchableOpacity
-                  style={[
-                    styles.googleButton,
-                    googleLoading && styles.disabledButton,
-                  ]}
+                  style={[styles.googleButton, googleLoading && styles.disabledButton]}
                   onPress={handleGoogleSignIn}
                   disabled={googleLoading}
                 >
@@ -707,9 +522,7 @@ function RegisterPage({ navigation }) {
                         source={require("../../assets/icons/google.png")}
                         style={styles.googleIcon}
                       />
-                      <Text style={styles.googleButtonText}>
-                        Continue with Google
-                      </Text>
+                      <Text style={styles.googleButtonText}>Continue with Google</Text>
                     </View>
                   )}
                 </TouchableOpacity>
@@ -724,14 +537,12 @@ function RegisterPage({ navigation }) {
             </View>
           </ScrollView>
 
-          {/* ✅ Loading Overlay */}
+          {/* Loading Overlay */}
           {(loading || googleLoading) && (
             <View style={styles.loadingOverlay}>
               <ActivityIndicator size="large" color={COLORS.primary} />
               <Text style={styles.loadingText}>
-                {googleLoading
-                  ? "Signing in with Google..."
-                  : "Creating your account..."}
+                {googleLoading ? "Signing in with Google..." : "Creating your account..."}
               </Text>
             </View>
           )}

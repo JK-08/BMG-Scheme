@@ -33,6 +33,8 @@ import VerifyOtpScreen from './VerifyOTP/VerifyOTP'
 import FAQPage from './FAQ/FAQ'
 import NotificationsPage from './Notification/NotificationScreen'
 import RewardsPage from './Reward/Reward'
+import PaymentFailure from './Buy/PaymentFailure'
+import PaymentCancelled from './Buy/PaymentCancelled'
 
 export {
   MainLanding,
@@ -63,6 +65,8 @@ export {
   PaymentGateway,
   PaymentWebView,
   PaymentSuccess,
+  PaymentFailure,
+  PaymentCancelled,
   OnboardingScreen,
   EnterNumberScreen,
   VerifyOtpScreen,

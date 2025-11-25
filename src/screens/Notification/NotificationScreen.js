@@ -168,7 +168,7 @@ const NotificationsPage = () => {
         }
       />
     </View>
-   <BottomTab screen="Notification" />
+  
     </>
   );
 };

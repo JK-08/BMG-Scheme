@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -24,15 +24,21 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 const { COLORS } = theme;
 
 function VerifyMpinScreen({ navigation }) {
-  const [mpin, setMpin] = useState(["", "", "", ""]);
+  const [mpin, setMpin] = useState(Array(4).fill(""));
   const [isLoading, setIsLoading] = useState(false);
   const [showError, setShowError] = useState(false);
+  
   const inputRefs = useRef([]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
   const shakeAnim = useRef(new Animated.Value(0)).current;
 
+  // Animation effects
   useEffect(() => {
+    animateIn();
+  }, []);
+
+  const animateIn = useCallback(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -46,9 +52,9 @@ function VerifyMpinScreen({ navigation }) {
         useNativeDriver: true,
       }),
     ]).start();
-  }, []);
+  }, [fadeAnim, slideAnim]);
 
-  const triggerShake = () => {
+  const triggerShake = useCallback(() => {
     Animated.sequence([
       Animated.timing(shakeAnim, {
         toValue: 10,
@@ -71,15 +77,32 @@ function VerifyMpinScreen({ navigation }) {
         useNativeDriver: true,
       }),
     ]).start();
-  };
+  }, [shakeAnim]);
 
-  const handleMpinChange = (value, index) => {
+  const completeVerification = useCallback(async () => {
+    await AsyncStorage.setItem("isMpinCreated", "true");
+    
+    const userId = await AsyncStorage.getItem("userId");
+    console.log("📌 Logged-in User ID:", userId);
+
+    showToast("MPIN verified successfully!");
+    
+    setTimeout(() => {
+      navigation.replace("Drawer");
+    }, 800);
+  }, [navigation]);
+
+  // MPIN input handlers
+  const handleMpinChange = useCallback((value, index) => {
     if (value && !/^\d$/.test(value)) return;
 
-    const newMpin = [...mpin];
-    newMpin[index] = value;
-    setMpin(newMpin);
+    setMpin(prev => {
+      const newMpin = [...prev];
+      newMpin[index] = value;
+      return newMpin;
+    });
 
+    // Auto-focus logic
     if (value && index < 3) {
       inputRefs.current[index + 1]?.focus();
     } else if (!value && index > 0) {
@@ -87,15 +110,16 @@ function VerifyMpinScreen({ navigation }) {
     }
 
     if (showError) setShowError(false);
-  };
+  }, [showError]);
 
-  const handleKeyPress = (event, index) => {
+  const handleKeyPress = useCallback((event, index) => {
     if (event.nativeEvent.key === "Backspace" && !mpin[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
-  };
+  }, [mpin]);
 
-  const handleVerifyMpin = async () => {
+  // MPIN verification
+  const handleVerifyMpin = useCallback(async () => {
     const enteredMpin = mpin.join("");
 
     if (enteredMpin.length !== 4) {
@@ -124,49 +148,108 @@ function VerifyMpinScreen({ navigation }) {
         await AsyncStorage.setItem("isMpinCreated", "false");
 
         setTimeout(() => {
-          setMpin(["", "", "", ""]);
+          setMpin(Array(4).fill(""));
           navigation.replace("MpinScreen");
         }, 800);
 
         return;
       }
 
-      showToast("MPIN verified successfully!");
+      // MPIN verified successfully
+      await completeVerification();
 
-      await AsyncStorage.setItem("isMpinCreated", "true");
-
-      setTimeout(() => {
-        navigation.replace("Drawer");
-      }, 800);
     } catch (error) {
       console.error("MPIN verification error:", error);
 
       setShowError(true);
       triggerShake();
-      setMpin(["", "", "", ""]);
+      setMpin(Array(4).fill(""));
       inputRefs.current[0]?.focus();
 
       showToast("Incorrect MPIN. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [mpin, navigation, triggerShake, completeVerification]);
 
-  const handleForgotPress = () => {
+  const handleForgotPress = useCallback(() => {
     navigation.navigate("ForgotMpin");
-  };
+  }, [navigation]);
+
+  const dismissKeyboard = useCallback(() => Keyboard.dismiss(), []);
+
+  // Render helpers
+  const renderMpinInputs = useCallback(() => 
+    mpin.map((digit, index) => (
+      <View key={index} style={styles.mpinInputWrapper}>
+        <TextInput
+          ref={(ref) => (inputRefs.current[index] = ref)}
+          style={[
+            styles.mpinInput,
+            digit ? styles.mpinInputFilled : {},
+            showError ? styles.errorState : {},
+          ]}
+          maxLength={1}
+          keyboardType="numeric"
+          value={digit}
+          onChangeText={(value) => handleMpinChange(value, index)}
+          onKeyPress={(event) => handleKeyPress(event, index)}
+          secureTextEntry
+          textAlign="center"
+          selectTextOnFocus
+        />
+        {digit ? <View style={styles.filledIndicator} /> : null}
+      </View>
+    )), [mpin, showError, handleMpinChange, handleKeyPress]
+  );
+
+  const renderButton = useCallback(() => {
+    const isComplete = mpin.join("").length === 4 && !isLoading;
+    
+    if (isComplete) {
+      return (
+        <TouchableOpacity
+          onPress={handleVerifyMpin}
+          disabled={isLoading}
+          style={styles.buttonWrapper}
+        >
+          <LinearGradient
+            colors={COLORS.gradient.brand}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.createButton, styles.gradientButton]}
+          >
+            <Text style={styles.createButtonText}>
+              {isLoading ? "Verifying..." : "Verify MPIN"}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <TouchableOpacity
+        style={[styles.createButton, styles.disabledButton]}
+        disabled
+      >
+        <Text style={styles.createButtonText}>
+          {isLoading ? "Verifying..." : "Verify MPIN"}
+        </Text>
+      </TouchableOpacity>
+    );
+  }, [mpin, isLoading, handleVerifyMpin]);
 
   return (
-    <ImageBackground
-      source={require("../../assets/image.png")}
-      style={styles.backgroundImage}
-    >
-      <KeyboardAvoidingView
-        style={styles.keyboardAvoidingView}
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+      <ImageBackground
+        source={require("../../assets/image.png")}
+        style={styles.backgroundImage}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <KeyboardAvoidingView
+          style={styles.keyboardAvoidingView}
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
+        >
           <ScrollView
             contentContainerStyle={styles.scrollViewContent}
             keyboardShouldPersistTaps="handled"
@@ -207,29 +290,7 @@ function VerifyMpinScreen({ navigation }) {
                   <Text style={styles.mpinLabel}>Enter 4-Digit MPIN</Text>
 
                   <View style={styles.mpinContainer}>
-                    {mpin.map((digit, index) => (
-                      <View key={index} style={styles.mpinInputWrapper}>
-                        <TextInput
-                          ref={(ref) => (inputRefs.current[index] = ref)}
-                          style={[
-                            styles.mpinInput,
-                            digit ? styles.mpinInputFilled : {},
-                            showError ? styles.errorState : {},
-                          ]}
-                          maxLength={1}
-                          keyboardType="numeric"
-                          value={digit}
-                          onChangeText={(value) =>
-                            handleMpinChange(value, index)
-                          }
-                          onKeyPress={(event) => handleKeyPress(event, index)}
-                          secureTextEntry
-                          textAlign="center"
-                          selectTextOnFocus
-                        />
-                        {digit ? <View style={styles.filledIndicator} /> : null}
-                      </View>
-                    ))}
+                    {renderMpinInputs()}
                   </View>
 
                   {showError && (
@@ -247,40 +308,14 @@ function VerifyMpinScreen({ navigation }) {
                     <Text style={styles.forgotText}>Forgot MPIN?</Text>
                   </TouchableOpacity>
 
-                  {mpin.join("").length === 4 && !isLoading ? (
-                    <TouchableOpacity
-                      onPress={handleVerifyMpin}
-                      disabled={isLoading}
-                      style={styles.buttonWrapper}
-                    >
-                      <LinearGradient
-                        colors={COLORS.gradient.brand}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[styles.createButton, styles.gradientButton]}
-                      >
-                        <Text style={styles.createButtonText}>
-                          {isLoading ? "Verifying..." : "Verify MPIN"}
-                        </Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  ) : (
-                    <TouchableOpacity
-                      style={[styles.createButton, styles.disabledButton]}
-                      disabled
-                    >
-                      <Text style={styles.createButtonText}>
-                        {isLoading ? "Verifying..." : "Verify MPIN"}
-                      </Text>
-                    </TouchableOpacity>
-                  )}
+                  {renderButton()}
                 </View>
               </View>
             </Animated.View>
           </ScrollView>
-        </TouchableWithoutFeedback>
-      </KeyboardAvoidingView>
-    </ImageBackground>
+        </KeyboardAvoidingView>
+      </ImageBackground>
+    </TouchableWithoutFeedback>
   );
 }
 

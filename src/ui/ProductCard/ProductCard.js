@@ -73,9 +73,12 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
         <View style={styles.circleMedium} />
 
         <View style={styles.topStatusBar}>
-          <TextDefault style={styles.statusText}>
-            <TextDefault style={styles.statusLive}>{pName}</TextDefault>
-          </TextDefault>
+          <View>
+            <TextDefault style={styles.statusLive1}>{pName}</TextDefault>
+          </View>
+          <View>
+            <TextDefault style={styles.statusLive}> Active</TextDefault>
+          </View>
         </View>
 
         <TextDefault style={styles.schemeName}>
@@ -201,12 +204,18 @@ const styles = StyleSheet.create({
   statusText: {
     ...FONTS.bodyMedium,
     color: COLORS.textSecondary,
+    
   },
   statusLive: {
     color: COLORS.success,
     fontFamily: FONTS.family.semiBold,
     alignSelf: "center",
   },
+    statusLive1: {
+      color: COLORS.textPrimary,
+      ...FONTS.h6,
+      alignSelf: "center",
+    },
   schemeName: {
     ...FONTS.h3,
     color: COLORS.white,

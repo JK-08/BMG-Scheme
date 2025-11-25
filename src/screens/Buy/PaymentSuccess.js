@@ -12,6 +12,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 
 // ✅ Import SMS service
 import smsService from "../../services/SMSService";
+import NotificationService from "../../services/NotificationService";
 import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 
 const PaymentSuccess = () => {
@@ -60,7 +61,10 @@ const PaymentSuccess = () => {
           console.log("[PaymentSuccess] No stored payment data found");
         }
       } catch (error) {
-        console.error("[PaymentSuccess] Error loading stored payment data:", error);
+        console.error(
+          "[PaymentSuccess] Error loading stored payment data:",
+          error
+        );
       } finally {
         setLoading(false);
       }
@@ -71,14 +75,20 @@ const PaymentSuccess = () => {
   // ======================================================
   // ✅ SEND INSTALLMENT PAYMENT SUCCESS SMS
   // ======================================================
+  // ======================================================
+  // ✅ SEND INSTALLMENT OR JOINING PAYMENT SUCCESS SMS + NOTIFICATION
+  // ======================================================
   useEffect(() => {
     if (!isSuccess || smsSent) {
-      console.log("[PaymentSuccess] SMS sending skipped - already sent or not successful");
+      console.log(
+        "[PaymentSuccess] Skipped sending - already sent or payment failed"
+      );
       return;
     }
 
-    const sendSMS = async () => {
-      console.log("[PaymentSuccess] Sending payment success SMS");
+    const sendUpdates = async () => {
+      console.log("[PaymentSuccess] Sending SMS + Notification");
+
       try {
         const mobile =
           productData?.personalInfo?.mobile ||
@@ -86,9 +96,12 @@ const PaymentSuccess = () => {
           null;
 
         if (!mobile) {
-          console.warn("[PaymentSuccess] No mobile number found for SMS");
+          console.warn("[PaymentSuccess] No mobile number found");
           return;
         }
+
+        const userId = await AsyncStorage.getItem("userId");
+        console.log("customerid", userId);
 
         const name =
           productData?.personalInfo?.pName ||
@@ -120,19 +133,16 @@ const PaymentSuccess = () => {
 
         const paid = new Date(lastPaid);
         const nextDueObj = new Date(paid.setMonth(paid.getMonth() + 1));
+
         const nextDueDate = nextDueObj.toLocaleDateString("en-IN", {
           day: "2-digit",
           month: "short",
           year: "numeric",
         });
 
-        console.log("[PaymentSuccess] SMS details prepared", {
-          mobile: mobile.substring(0, 4) + '****', // Mask mobile for privacy
-          name,
-          schemeName,
-          amount,
-        });
-
+        // ======================================================
+        // 1️⃣ SEND SMS
+        // ======================================================
         await smsService.sendPaymentSuccessSMS(
           mobile,
           name,
@@ -143,14 +153,48 @@ const PaymentSuccess = () => {
           nextDueDate
         );
 
-        console.log("[PaymentSuccess] Payment SMS sent successfully");
+        console.log("[PaymentSuccess] Payment SMS sent");
+        console.log("userid", userId);
+
+        // ======================================================
+        // 2️⃣ SEND PUSH NOTIFICATION (JOINING PAYMENT ONLY)
+        // ======================================================
+        if (userId) {
+          console.log("[PaymentSuccess] Sending join-notification");
+
+          // Choose scheme banner automatically
+          let bannerUrl =
+            "https://scheme.bmgjewellers.com/uploads/slider/0691777d-6673-46a2-949b-39e7d4c76671_90.jpg";
+
+          if (schemeName.toLowerCase().includes("amount")) {
+            bannerUrl =
+              "https://scheme.bmgjewellers.com/uploads/scheme/e5686d85-88b1-43e4-9733-b6143e1742cc_78.jpg";
+          } else if (schemeName.toLowerCase().includes("fixed")) {
+            bannerUrl =
+              "https://scheme.bmgjewellers.com/uploads/scheme/7d40f881-c1f5-4d21-bdec-f596e139ca85_scheme3.jpg";
+          } else if (schemeName.toLowerCase().includes("smartpay")) {
+            bannerUrl =
+              "https://scheme.bmgjewellers.com/uploads/scheme/b964c9ae-2305-4722-be29-f209043357b6_scheme2.jpg";
+          }
+
+          // ⭐ FIXED PAYLOAD ⭐
+          await NotificationService.sendSchemeJoinNotification({
+            userId: String(userId),
+            schemeName,
+            amount,
+            imageUrl: bannerUrl,
+          });
+
+          console.log("[PaymentSuccess] Join notification sent");
+        }
+
         setSmsSent(true);
       } catch (err) {
-        console.error("[PaymentSuccess] SMS sending failed:", err);
+        console.error("[PaymentSuccess] Error sending SMS/Notification:", err);
       }
     };
 
-    sendSMS();
+    sendUpdates();
   }, [isSuccess, smsSent]);
 
   // Auto navigate after 20 seconds

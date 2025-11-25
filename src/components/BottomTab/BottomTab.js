@@ -63,9 +63,9 @@ function BottomTab({ screen }) {
         <MaterialCommunityIcons
           name="trophy"
           size={SIZES.icon.md}
-          color={getIconColor("Notification")}
+          color={getIconColor("Rewards")}
         />
-        <Text style={getTextStyle("Notification")}>Rewards</Text>
+        <Text style={getTextStyle("Rewards")}>Rewards</Text>
       </TouchableOpacity>
 
       {/* Support Icon */}

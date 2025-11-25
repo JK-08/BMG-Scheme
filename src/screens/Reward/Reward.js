@@ -14,6 +14,7 @@ import theme, { COLORS, SIZES, FONTS, SHADOWS } from '../../utils/AppTheme';
 import { BottomTab } from '../../components';
 import CommonHeader from '../../components/CommonHeader/CommonHeader';
 
+
 const { width } = Dimensions.get('window');
 
 const RewardsPage = () => {
@@ -341,7 +342,7 @@ const RewardsPage = () => {
           </View>
         </View>
       </View>
-      <BottomTab />
+     <BottomTab screen="Rewards" />
     </>
   );
 };

@@ -180,7 +180,7 @@ const styles = StyleSheet.create({
     elevation: 4,
   },
   notificationContent: { flexDirection: "row", padding: 16 },
-  notificationImage: { width: 60, height: 60, borderRadius: 12, marginRight: 14 },
+  notificationImage: { width: 100, height: 100, borderRadius: 12, marginRight: 14, resizeMode: "cover" },
   placeholderImage: { backgroundColor: "#f0f0f0", justifyContent: "center", alignItems: "center" },
   placeholderText: { fontSize: 28 },
   notificationText: { flex: 1 },

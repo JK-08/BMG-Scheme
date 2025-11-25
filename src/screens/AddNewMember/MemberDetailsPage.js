@@ -343,7 +343,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                   validationErrors.mobile && styles.errorInput,
                 ]}
                 value={formData.mobile}
-                editable={true}
+                editable={false}
                 maxLength={10}
                 keyboardType="numeric"
                 onChangeText={handleMobile}
@@ -626,7 +626,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     height: SIZES.input.height,
-    backgroundColor: COLORS.inputBackground,
+    backgroundColor: COLORS.inputBorder,
     borderRadius: SIZES.radius.md,
     borderWidth: 1.5,
     borderColor: COLORS.border,

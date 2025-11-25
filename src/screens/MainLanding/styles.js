@@ -33,18 +33,18 @@ const styles = StyleSheet.create({
   },
 
   // ========== CONTENT WRAPPER ==========
-  contentWrapper: {
-    paddingHorizontal: SIZES.padding.lg,
-    paddingVertical: SIZES.lg,
-    backgroundColor: COLORS.surface,
-    marginHorizontal: SIZES.padding.md,
-    marginTop: SIZES.lg,
-    borderRadius: SIZES.radius.lg,
-    ...SHADOWS.md,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
+  // contentWrapper: {
+  //   paddingHorizontal: SIZES.padding.lg,
+  //   paddingVertical: SIZES.lg,
+  //   backgroundColor: COLORS.surface,
+  //   marginHorizontal: SIZES.padding.md,
+  //   marginTop: SIZES.lg,
+  //   borderRadius: SIZES.radius.lg,
+  //   ...SHADOWS.md,
+  //   borderWidth: 1,
+  //   borderColor: COLORS.borderLight,
   
-  },
+  // },
   contentText: {
     ...FONTS.h5,
     color: COLORS.textPrimary,

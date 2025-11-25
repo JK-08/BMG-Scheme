@@ -13,7 +13,7 @@ import {
 import { getAppBanners } from "../../services/SliderService";
 import theme from "../../utils/AppTheme";
 
-const { COLORS, SIZES, FONTS, moderateScale } = theme;
+const { COLORS, SIZES, FONTS, moderateScale, verticalScale } = theme;
 const { width } = Dimensions.get("window");
 
 // ---------------- SKELETON ----------------
@@ -198,6 +198,7 @@ export default function EnhancedSlider() {
 const styles = StyleSheet.create({
   container: {
     marginVertical: SIZES.padding.md,
+    marginTop: verticalScale(50),
   },
 
   sliderItem: {

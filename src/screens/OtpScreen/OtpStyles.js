@@ -1,5 +1,5 @@
-import { StyleSheet, Platform } from 'react-native';
-import theme from '../../utils/AppTheme'; // Changed from appTheme to theme
+import { StyleSheet, Platform } from "react-native";
+import theme from "../../utils/AppTheme"; // Changed from appTheme to theme
 
 const { COLORS, SIZES, FONTS, moderateScale, verticalScale, SHADOWS } = theme;
 
@@ -7,41 +7,41 @@ const styles = StyleSheet.create({
   // Background & Container
   backgroundImage: {
     flex: 1,
-    width: '100%',
-    height: '100%',
-    resizeMode: 'cover',
+    width: "100%",
+    height: "100%",
+    resizeMode: "cover",
   },
   keyboardAvoidingView: {
     flex: 1,
   },
   scrollContainer: {
     flexGrow: 1,
-    justifyContent: 'center',
+    justifyContent: "center",
     paddingTop: verticalScale(SIZES.xl),
     paddingBottom: SIZES.xl,
   },
   container: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     paddingHorizontal: SIZES.padding.lg,
   },
 
   // Logo Section
   logoContainer: {
-    alignItems: 'center',
+    alignItems: "center",
     marginBottom: SIZES.xl,
   },
   logoImage: {
-    width: moderateScale(120),
-    height: moderateScale(120),
-    resizeMode: 'contain',
+    width: moderateScale(220),
+    height: moderateScale(94),
+    resizeMode: "contain",
     borderRadius: SIZES.radius.full,
   },
 
   // Card Container
   card: {
-    width: '100%',
+    width: "100%",
     maxWidth: moderateScale(400),
     backgroundColor: COLORS.card,
     borderRadius: SIZES.radius.xl,
@@ -55,13 +55,13 @@ const styles = StyleSheet.create({
   // Typography
   title: {
     ...FONTS.h3,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: SIZES.sm,
     color: COLORS.textPrimary,
   },
   subtitle: {
     ...FONTS.body,
-    textAlign: 'center',
+    textAlign: "center",
     marginBottom: SIZES.xl,
     color: COLORS.textSecondary,
     lineHeight: SIZES.font.lg * 1.4,
@@ -69,8 +69,8 @@ const styles = StyleSheet.create({
 
   // OTP Container
   otpContainer: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     marginBottom: SIZES.lg,
     marginTop: SIZES.md,
     gap: SIZES.xs,
@@ -79,25 +79,25 @@ const styles = StyleSheet.create({
     width: moderateScale(50),
     height: moderateScale(60),
     borderRadius: SIZES.radius.md,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
   otpInput: {
-    width: '100%',
-    height: '100%',
+    width: "100%",
+    height: "100%",
     fontSize: SIZES.font.xl,
     color: COLORS.textInverse,
     fontFamily: FONTS.family.bold,
-    textAlign: 'center',
+    textAlign: "center",
     borderRadius: SIZES.radius.md,
   },
 
   // Clear OTP Button
   clearOtpButton: {
-    alignSelf: 'center',
+    alignSelf: "center",
     marginBottom: SIZES.lg,
     padding: SIZES.padding.sm,
   },
@@ -110,14 +110,14 @@ const styles = StyleSheet.create({
   primaryButton: {
     borderRadius: SIZES.radius.md,
     marginTop: SIZES.md,
-    overflow: 'hidden',
+    overflow: "hidden",
     ...SHADOWS.md,
     height: SIZES.button.lg,
   },
   buttonGradient: {
     flex: 1,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   primaryButtonText: {
     ...FONTS.button,
@@ -129,9 +129,9 @@ const styles = StyleSheet.create({
 
   // Resend OTP
   resendContainer: {
-    flexDirection: 'row',
-    justifyContent: 'center',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
     marginTop: SIZES.xl,
     paddingVertical: SIZES.padding.sm,
   },
@@ -145,7 +145,7 @@ const styles = StyleSheet.create({
   },
   resendDisabled: {
     color: COLORS.textDisabled,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
 
   // Link Container
@@ -154,28 +154,28 @@ const styles = StyleSheet.create({
     paddingVertical: SIZES.padding.sm,
     paddingHorizontal: SIZES.padding.md,
     marginTop: SIZES.lg,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
   },
   linkText: {
     ...FONTS.bodyMedium,
-    textAlign: 'center',
+    textAlign: "center",
     color: COLORS.primary,
   },
 
   // Full Screen Loader
   fullScreenLoader: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
     bottom: 0,
-    justifyContent: 'center',
-    alignItems: 'center',
+    justifyContent: "center",
+    alignItems: "center",
     zIndex: 9999,
   },
   loaderBackground: {
-    position: 'absolute',
+    position: "absolute",
     top: 0,
     left: 0,
     right: 0,
@@ -186,8 +186,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.card,
     padding: SIZES.padding.xl,
     borderRadius: SIZES.radius.xl,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     minWidth: moderateScale(280),
     minHeight: moderateScale(200),
     margin: SIZES.lg,
@@ -199,21 +199,21 @@ const styles = StyleSheet.create({
     ...FONTS.h5,
     marginTop: SIZES.lg,
     color: COLORS.textPrimary,
-    textAlign: 'center',
+    textAlign: "center",
   },
   loadingSubtext: {
     ...FONTS.body,
     marginTop: SIZES.sm,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
     lineHeight: SIZES.font.md * 1.4,
   },
   loadingTimer: {
     ...FONTS.caption,
     marginTop: SIZES.xs,
     color: COLORS.secondary,
-    textAlign: 'center',
-    fontStyle: 'italic',
+    textAlign: "center",
+    fontStyle: "italic",
   },
   disabledText: {
     opacity: 0.5,
@@ -221,37 +221,37 @@ const styles = StyleSheet.create({
 });
 
 // Platform-specific adjustments
-if (Platform.OS === 'web') {
+if (Platform.OS === "web") {
   styles.scrollContainer = {
     ...styles.scrollContainer,
     paddingTop: verticalScale(SIZES.xxl * 1.5),
-    minHeight: '100vh',
+    minHeight: "100vh",
   };
-  
+
   styles.card = {
     ...styles.card,
-    cursor: 'default',
+    cursor: "default",
     maxWidth: moderateScale(420),
   };
-  
+
   styles.primaryButton = {
     ...styles.primaryButton,
-    cursor: 'pointer',
+    cursor: "pointer",
   };
-  
+
   styles.resendContainer = {
     ...styles.resendContainer,
-    cursor: 'pointer',
+    cursor: "pointer",
   };
-  
+
   styles.linkContainer = {
     ...styles.linkContainer,
-    cursor: 'pointer',
+    cursor: "pointer",
   };
-  
+
   styles.clearOtpButton = {
     ...styles.clearOtpButton,
-    cursor: 'pointer',
+    cursor: "pointer",
   };
 }
 
@@ -261,24 +261,24 @@ if (SIZES.screen.height < 600) {
     ...styles.scrollContainer,
     paddingTop: verticalScale(SIZES.lg),
   };
-  
+
   styles.container = {
     ...styles.container,
     paddingVertical: SIZES.sm,
   };
-  
+
   styles.card = {
     ...styles.card,
     paddingVertical: SIZES.padding.xl,
     paddingHorizontal: SIZES.padding.lg,
   };
-  
+
   styles.logoImage = {
     ...styles.logoImage,
     width: moderateScale(100),
     height: moderateScale(100),
   };
-  
+
   styles.otpInputWrapper = {
     ...styles.otpInputWrapper,
     width: moderateScale(45),

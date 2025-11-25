@@ -173,7 +173,7 @@ useEffect(() => {
       </View>
 
       {/* Silver Rate Display */}
-      <View style={styles.inputContainer}>
+      {/* <View style={styles.inputContainer}>
         <Text style={styles.label}>Current Silver Rate</Text>
         {loadingSilverRate ? (
           <View style={styles.loadingContainer}>
@@ -202,7 +202,7 @@ useEffect(() => {
         {validationErrors?.silverRate && (
           <Text style={styles.errorText}>{validationErrors.silverRate}</Text>
         )}
-      </View>
+      </View> */}
 
       {/* Calculated Weight */}
       {/* <View style={styles.inputContainer}>

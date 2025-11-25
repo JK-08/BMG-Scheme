@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -25,21 +25,23 @@ import theme from "../../utils/AppTheme";
 const { COLORS } = theme;
 
 function ResetMpinScreen({ navigation }) {
-  const [mpin, setMpin] = useState(["", "", "", ""]);
-  const [confirmMpin, setConfirmMpin] = useState(["", "", "", ""]);
+  const [mpin, setMpin] = useState(Array(4).fill(""));
+  const [confirmMpin, setConfirmMpin] = useState(Array(4).fill(""));
   const [isLoading, setIsLoading] = useState(false);
   const [isWeakMpin, setIsWeakMpin] = useState(false);
   const [mpinMatch, setMpinMatch] = useState(true);
+  
   const inputRefs = useRef([]);
   const confirmInputRefs = useRef([]);
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
+  // Animation
   useEffect(() => {
     animateIn();
   }, []);
 
-  const animateIn = () => {
+  const animateIn = useCallback(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -53,47 +55,60 @@ function ResetMpinScreen({ navigation }) {
         useNativeDriver: true,
       }),
     ]).start();
-  };
+  }, [fadeAnim, slideAnim]);
 
-  const handleMpinChange = (value, index, isConfirm = false) => {
-    if (value && !/^\d$/.test(value)) return;
-
-    const targetMpin = isConfirm ? confirmMpin : mpin;
-    const setTargetMpin = isConfirm ? setConfirmMpin : setMpin;
-    const targetRefs = isConfirm ? confirmInputRefs : inputRefs;
-
-    const newMpin = [...targetMpin];
-    newMpin[index] = value;
-    setTargetMpin(newMpin);
-
-    if (!isConfirm && newMpin.every((digit) => digit !== "") && index === 3) {
-      const enteredMpin = newMpin.join("");
-      setIsWeakMpin(checkWeakMpin(enteredMpin));
+  // MPIN validation
+  const validateMpin = useCallback((newMpin, isConfirm = false) => {
+    const mpinValue = newMpin.join("");
+    
+    if (!isConfirm && mpinValue.length === 4) {
+      setIsWeakMpin(checkWeakMpin(mpinValue));
     } else if (!isConfirm) {
       setIsWeakMpin(false);
     }
 
-    if (mpin.every(digit => digit !== "") && confirmMpin.every(digit => digit !== "")) {
+    if (mpin.join("").length === 4 && confirmMpin.join("").length === 4) {
       setMpinMatch(mpin.join("") === confirmMpin.join(""));
     }
+  }, [mpin, confirmMpin]);
 
+  // MPIN change handler
+  const handleMpinChange = useCallback((value, index, isConfirm = false) => {
+    if (value && !/^\d$/.test(value)) return;
+
+    const setTargetMpin = isConfirm ? setConfirmMpin : setMpin;
+    const targetRefs = isConfirm ? confirmInputRefs : inputRefs;
+
+    setTargetMpin(prev => {
+      const newMpin = [...prev];
+      newMpin[index] = value;
+      
+      // Validate after state update
+      setTimeout(() => validateMpin(newMpin, isConfirm), 0);
+      
+      return newMpin;
+    });
+
+    // Auto-focus logic
     if (value && index < 3) {
       targetRefs.current[index + 1]?.focus();
     } else if (!value && index > 0) {
       targetRefs.current[index - 1]?.focus();
     }
-  };
+  }, [validateMpin]);
 
-  const handleKeyPress = (event, index, isConfirm = false) => {
+  // Key press handler
+  const handleKeyPress = useCallback((event, index, isConfirm = false) => {
     const targetMpin = isConfirm ? confirmMpin : mpin;
     const targetRefs = isConfirm ? confirmInputRefs : inputRefs;
 
     if (event.nativeEvent.key === "Backspace" && !targetMpin[index] && index > 0) {
       targetRefs.current[index - 1]?.focus();
     }
-  };
+  }, [mpin, confirmMpin]);
 
-  const handleResetMpin = async () => {
+  // Reset MPIN function
+  const handleResetMpin = useCallback(async () => {
     const newMpin = mpin.join("");
     const confirmMpinValue = confirmMpin.join("");
 
@@ -134,7 +149,86 @@ function ResetMpinScreen({ navigation }) {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [mpin, confirmMpin, navigation]);
+
+  // Check if button should be enabled
+  const isButtonEnabled = useCallback(() => {
+    return mpin.join("").length === 4 && 
+           confirmMpin.join("").length === 4 && 
+           !isLoading && 
+           !isWeakMpin && 
+           mpinMatch;
+  }, [mpin, confirmMpin, isLoading, isWeakMpin, mpinMatch]);
+
+  // Render MPIN input fields
+  const renderMpinInputs = useCallback((isConfirm = false) => {
+    const data = isConfirm ? confirmMpin : mpin;
+    const refs = isConfirm ? confirmInputRefs : inputRefs;
+    const hasError = isConfirm ? !mpinMatch : isWeakMpin;
+
+    return (
+      <View style={styles.mpinContainer}>
+        {data.map((digit, index) => (
+          <View key={`${isConfirm ? 'confirm' : 'mpin'}-${index}`} style={styles.mpinInputWrapper}>
+            <TextInput
+              ref={(ref) => (refs.current[index] = ref)}
+              style={[
+                styles.mpinInput,
+                digit ? styles.mpinInputFilled : {},
+                hasError ? styles.errorState : {},
+              ]}
+              maxLength={1}
+              keyboardType="numeric"
+              value={digit}
+              onChangeText={(value) => handleMpinChange(value, index, isConfirm)}
+              onKeyPress={(event) => handleKeyPress(event, index, isConfirm)}
+              secureTextEntry={true}
+              textAlign="center"
+              selectTextOnFocus={true}
+            />
+            {digit ? <View style={styles.filledIndicator} /> : null}
+          </View>
+        ))}
+      </View>
+    );
+  }, [mpin, confirmMpin, mpinMatch, isWeakMpin, handleMpinChange, handleKeyPress]);
+
+  // Render button
+  const renderButton = useCallback(() => {
+    const enabled = isButtonEnabled();
+    
+    if (enabled) {
+      return (
+        <TouchableOpacity
+          onPress={handleResetMpin}
+          activeOpacity={0.9}
+          disabled={isLoading}
+          style={styles.buttonWrapper}
+        >
+          <LinearGradient
+            colors={COLORS.gradient.brand}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.createButton, styles.gradientButton]}
+          >
+            <Text style={styles.createButtonText}>
+              {isLoading ? "Resetting..." : "Reset MPIN"}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <View style={[styles.createButton, styles.disabledButton]}>
+        <Text style={styles.createButtonText}>
+          {isLoading ? "Resetting..." : "Reset MPIN"}
+        </Text>
+      </View>
+    );
+  }, [isButtonEnabled, handleResetMpin, isLoading]);
+
+  const dismissKeyboard = useCallback(() => Keyboard.dismiss(), []);
 
   return (
     <ImageBackground
@@ -146,7 +240,7 @@ function ResetMpinScreen({ navigation }) {
         style={styles.keyboardAvoidingView}
         keyboardVerticalOffset={Platform.OS === "ios" ? 60 : 0}
       >
-        <TouchableWithoutFeedback onPress={Keyboard.dismiss}>
+        <TouchableWithoutFeedback onPress={dismissKeyboard}>
           <ScrollView
             contentContainerStyle={styles.scrollViewContent}
             keyboardShouldPersistTaps="handled"
@@ -177,54 +271,10 @@ function ResetMpinScreen({ navigation }) {
 
                 <View style={styles.mpinSection}>
                   <Text style={styles.mpinLabel}>Enter New MPIN</Text>
-                  <View style={styles.mpinContainer}>
-                    {mpin.map((digit, index) => (
-                      <View key={index} style={styles.mpinInputWrapper}>
-                        <TextInput
-                          ref={(ref) => (inputRefs.current[index] = ref)}
-                          style={[
-                            styles.mpinInput,
-                            digit ? styles.mpinInputFilled : {},
-                            isWeakMpin ? styles.errorState : {},
-                          ]}
-                          maxLength={1}
-                          keyboardType="numeric"
-                          value={digit}
-                          onChangeText={(value) => handleMpinChange(value, index, false)}
-                          onKeyPress={(event) => handleKeyPress(event, index, false)}
-                          secureTextEntry={true}
-                          textAlign="center"
-                          selectTextOnFocus={true}
-                        />
-                        {digit ? <View style={styles.filledIndicator} /> : null}
-                      </View>
-                    ))}
-                  </View>
+                  {renderMpinInputs(false)}
 
                   <Text style={styles.mpinLabel}>Confirm New MPIN</Text>
-                  <View style={styles.mpinContainer}>
-                    {confirmMpin.map((digit, index) => (
-                      <View key={index} style={styles.mpinInputWrapper}>
-                        <TextInput
-                          ref={(ref) => (confirmInputRefs.current[index] = ref)}
-                          style={[
-                            styles.mpinInput,
-                            digit ? styles.mpinInputFilled : {},
-                            !mpinMatch ? styles.errorState : {},
-                          ]}
-                          maxLength={1}
-                          keyboardType="numeric"
-                          value={digit}
-                          onChangeText={(value) => handleMpinChange(value, index, true)}
-                          onKeyPress={(event) => handleKeyPress(event, index, true)}
-                          secureTextEntry={true}
-                          textAlign="center"
-                          selectTextOnFocus={true}
-                        />
-                        {digit ? <View style={styles.filledIndicator} /> : null}
-                      </View>
-                    ))}
-                  </View>
+                  {renderMpinInputs(true)}
 
                   {isWeakMpin && (
                     <Text style={styles.weakMpinWarning}>
@@ -244,35 +294,7 @@ function ResetMpinScreen({ navigation }) {
                 </View>
 
                 <View style={styles.actionSection}>
-                  {mpin.join("").length === 4 && 
-                   confirmMpin.join("").length === 4 && 
-                   !isLoading && 
-                   !isWeakMpin && 
-                   mpinMatch ? (
-                    <TouchableOpacity
-                      onPress={handleResetMpin}
-                      activeOpacity={0.9}
-                      disabled={isLoading}
-                      style={styles.buttonWrapper}
-                    >
-                      <LinearGradient
-                        colors={COLORS.gradient.brand}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[styles.createButton, styles.gradientButton]}
-                      >
-                        <Text style={styles.createButtonText}>
-                          {isLoading ? "Resetting..." : "Reset MPIN"}
-                        </Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={[styles.createButton, styles.disabledButton]}>
-                      <Text style={styles.createButtonText}>
-                        {isLoading ? "Resetting..." : "Reset MPIN"}
-                      </Text>
-                    </View>
-                  )}
+                  {renderButton()}
                 </View>
               </View>
             </Animated.View>

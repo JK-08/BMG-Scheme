@@ -1,5 +1,4 @@
 // services/bannerService.js
-
 const API_BASE_URL = "https://scheme.bmgjewellers.com/api/v1";
 
 export const bannerService = {
@@ -12,17 +11,14 @@ export const bannerService = {
       }
 
       const data = await response.json();
-
-      // API returns: { banners: [ ... ] }
       const banners = data.banners || [];
 
       console.log("Fetched scheme banners:", banners.length);
 
-      // Normalize data
-      return banners.map((b) => ({
-        id: b.BannerId,
-        title: b.title || "",
-        image_path: b.image_path,
+      return banners.map((banner) => ({
+        id: banner.BannerId,
+        title: banner.title || "",
+        image_path: banner.image_path,
       }));
     } catch (error) {
       console.error("Error fetching scheme banners:", error);

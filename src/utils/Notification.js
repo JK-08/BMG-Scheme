@@ -5,10 +5,10 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 import Constants from 'expo-constants';
 import { API_BASE_URL } from '../Config/API';
 
-// REGISTER PUSH TOKEN
+// ASK PERMISSION + RETURN TOKEN
 export async function registerForPushNotificationsAsync() {
   if (!Device.isDevice) {
-    Alert.alert("Use Real Device", "Push notifications do not work on emulators.");
+    Alert.alert("Real Device Required", "Push notifications do not work on emulators.");
     return null;
   }
 
@@ -21,11 +21,10 @@ export async function registerForPushNotificationsAsync() {
     }
 
     if (status !== "granted") {
-      Alert.alert("Permission Denied", "Please allow notifications.");
+      Alert.alert("Permission Denied", "Enable notifications in settings.");
       return null;
     }
 
-    // GET PROJECT ID
     const projectId =
       Constants.expoConfig?.extra?.eas?.projectId ||
       Constants.easConfig?.projectId;
@@ -36,13 +35,13 @@ export async function registerForPushNotificationsAsync() {
 
     return token;
 
-  } catch (e) {
-    console.log("❌ Notification Error:", e);
+  } catch (error) {
+    console.log("❌ Notification Error:", error);
     return null;
   }
 }
 
-// GENERATE DEVICE ID
+// GENERATE UNIQUE DEVICE ID
 async function generateDeviceId() {
   const saved = await AsyncStorage.getItem("deviceId");
   if (saved) return saved;
@@ -52,7 +51,7 @@ async function generateDeviceId() {
   return newId;
 }
 
-// SEND WELCOME NOTIFICATION
+// WELCOME PUSH
 async function sendWelcome(userId) {
   try {
     await fetch(`${API_BASE_URL}/notifications/sendMessage/6/user/${userId}`, {
@@ -61,11 +60,11 @@ async function sendWelcome(userId) {
     });
     console.log("🎉 Welcome notification sent!");
   } catch (e) {
-    console.log("❌ Welcome error:", e);
+    console.log("❌ Welcome push error:", e);
   }
 }
 
-// SEND DEVICE TOKEN TO SERVER
+// SEND TOKEN TO SERVER
 export async function sendPushTokenToServer(expoToken, userId) {
   try {
     const deviceId = await generateDeviceId();
@@ -78,13 +77,11 @@ export async function sendPushTokenToServer(expoToken, userId) {
       userId,
     };
 
-    console.log("📤 Sending device data:", data);
+    console.log("📤 Sending token:", data);
 
     const res = await fetch(`${API_BASE_URL}/device/register`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(data),
     });
 
@@ -99,5 +96,23 @@ export async function sendPushTokenToServer(expoToken, userId) {
   } catch (err) {
     console.log("❌ Server Error:", err);
     return false;
+  }
+}
+
+// CALL THIS AFTER LOGIN
+export async function handleLoginNotificationSetup(userId) {
+  const asked = await AsyncStorage.getItem("notificationAsked");
+
+  let token = null;
+
+  if (!asked) {
+    token = await registerForPushNotificationsAsync();
+    await AsyncStorage.setItem("notificationAsked", "yes");
+  } else {
+    console.log("🔕 Notification permission already asked");
+  }
+
+  if (token) {
+    await sendPushTokenToServer(token, userId);
   }
 }

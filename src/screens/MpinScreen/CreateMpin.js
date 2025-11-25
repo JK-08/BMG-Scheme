@@ -1,4 +1,4 @@
-import React, { useState, useRef, useEffect } from "react";
+import React, { useState, useRef, useEffect, useCallback } from "react";
 import {
   View,
   Text,
@@ -23,8 +23,15 @@ import theme from "../../utils/AppTheme";
 
 const { COLORS } = theme;
 
+// Constants
+const MPIN_LENGTH = 4;
+const WEAK_PATTERNS = {
+  REPEATED: /^(\d)\1{3}$/,
+  SEQUENTIAL: "0123456789"
+};
+
 const MpinScreen = ({ navigation }) => {
-  const [mpin, setMpin] = useState(["", "", "", ""]);
+  const [mpin, setMpin] = useState(Array(MPIN_LENGTH).fill(""));
   const [isLoading, setIsLoading] = useState(false);
   const [isWeakMpin, setIsWeakMpin] = useState(false);
   const [mpinExists, setMpinExists] = useState(false);
@@ -33,11 +40,12 @@ const MpinScreen = ({ navigation }) => {
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const slideAnim = useRef(new Animated.Value(50)).current;
 
+  // Animation
   useEffect(() => {
     animateIn();
   }, []);
 
-  const animateIn = () => {
+  const animateIn = useCallback(() => {
     Animated.parallel([
       Animated.timing(fadeAnim, {
         toValue: 1,
@@ -51,49 +59,57 @@ const MpinScreen = ({ navigation }) => {
         useNativeDriver: true,
       }),
     ]).start();
-  };
+  }, [fadeAnim, slideAnim]);
 
-  const isWeak = (pin) => {
-    const sequential = "0123456789";
+  // Weak MPIN detection
+  const isWeak = useCallback((pin) => {
     return (
-      /^(\d)\1{3}$/.test(pin) ||
-      sequential.includes(pin) ||
-      sequential.split("").reverse().join("").includes(pin)
+      WEAK_PATTERNS.REPEATED.test(pin) ||
+      WEAK_PATTERNS.SEQUENTIAL.includes(pin) ||
+      WEAK_PATTERNS.SEQUENTIAL.split("").reverse().join("").includes(pin)
     );
-  };
+  }, []);
 
-  const showToast = (msg) => {
+  // Toast utility
+  const showToast = useCallback((msg) => {
     ToastAndroid.show(msg, ToastAndroid.SHORT);
-  };
+  }, []);
 
-  const handleMpinChange = (value, index) => {
+  // MPIN input handlers
+  const handleMpinChange = useCallback((value, index) => {
     if (value && !/^\d$/.test(value)) return;
 
     const newMpin = [...mpin];
     newMpin[index] = value;
     setMpin(newMpin);
 
-    if (value && index < 3) inputRefs.current[index + 1]?.focus();
-    else if (!value && index > 0) inputRefs.current[index - 1]?.focus();
+    // Auto-focus next/previous input
+    if (value && index < MPIN_LENGTH - 1) {
+      inputRefs.current[index + 1]?.focus();
+    } else if (!value && index > 0) {
+      inputRefs.current[index - 1]?.focus();
+    }
 
-    if (newMpin.every((digit) => digit !== "")) {
-      const entered = newMpin.join("");
-      setIsWeakMpin(isWeak(entered));
+    // Check for weak MPIN when all digits are entered
+    if (newMpin.every(digit => digit !== "")) {
+      const enteredMpin = newMpin.join("");
+      setIsWeakMpin(isWeak(enteredMpin));
     } else {
       setIsWeakMpin(false);
     }
-  };
+  }, [mpin, isWeak]);
 
-  const handleKeyPress = (event, index) => {
+  const handleKeyPress = useCallback((event, index) => {
     if (event.nativeEvent.key === "Backspace" && !mpin[index] && index > 0) {
       inputRefs.current[index - 1]?.focus();
     }
-  };
+  }, [mpin]);
 
-  const handleCreateMpin = async () => {
+  // MPIN creation
+  const handleCreateMpin = useCallback(async () => {
     const enteredMpin = mpin.join("");
 
-    if (enteredMpin.length !== 4) {
+    if (enteredMpin.length !== MPIN_LENGTH) {
       return showToast("Please enter a valid 4-digit MPIN.");
     }
 
@@ -137,7 +153,78 @@ const MpinScreen = ({ navigation }) => {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [mpin, isWeak, showToast, navigation]);
+
+  // Navigation handlers
+  const navigateToVerifyMpin = useCallback(() => {
+    navigation.navigate("VerifyMpinScreen");
+  }, [navigation]);
+
+  // Check if create button should be enabled
+  const isCreateButtonEnabled = useCallback(() => {
+    const enteredMpin = mpin.join("");
+    return enteredMpin.length === MPIN_LENGTH && !isLoading && !isWeakMpin;
+  }, [mpin, isLoading, isWeakMpin]);
+
+  // Render MPIN inputs
+  const renderMpinInputs = useCallback(() => {
+    return mpin.map((digit, index) => (
+      <View key={`mpin-input-${index}`} style={styles.mpinInputWrapper}>
+        <TextInput
+          ref={(ref) => (inputRefs.current[index] = ref)}
+          style={[
+            styles.mpinInput,
+            digit ? styles.mpinInputFilled : {},
+            isWeakMpin ? styles.errorState : {},
+          ]}
+          maxLength={1}
+          keyboardType="numeric"
+          value={digit}
+          onChangeText={(value) => handleMpinChange(value, index)}
+          onKeyPress={(event) => handleKeyPress(event, index)}
+          secureTextEntry
+          textAlign="center"
+          selectTextOnFocus
+        />
+        {digit ? <View style={styles.filledIndicator} /> : null}
+      </View>
+    ));
+  }, [mpin, isWeakMpin, handleMpinChange, handleKeyPress]);
+
+  // Render create button
+  const renderCreateButton = useCallback(() => {
+    const isEnabled = isCreateButtonEnabled();
+
+    if (isEnabled) {
+      return (
+        <TouchableOpacity
+          onPress={handleCreateMpin}
+          activeOpacity={0.9}
+          disabled={isLoading}
+          style={styles.buttonWrapper}
+        >
+          <LinearGradient
+            colors={COLORS.gradient.brand}
+            start={{ x: 0, y: 0 }}
+            end={{ x: 1, y: 0 }}
+            style={[styles.createButton, styles.gradientButton]}
+          >
+            <Text style={styles.createButtonText}>
+              {isLoading ? "Creating..." : "Create MPIN"}
+            </Text>
+          </LinearGradient>
+        </TouchableOpacity>
+      );
+    }
+
+    return (
+      <View style={[styles.createButton, styles.disabledButton]}>
+        <Text style={styles.createButtonText}>
+          {isLoading ? "Creating..." : "Create MPIN"}
+        </Text>
+      </View>
+    );
+  }, [isCreateButtonEnabled, handleCreateMpin, isLoading]);
 
   return (
     <ImageBackground
@@ -181,35 +268,12 @@ const MpinScreen = ({ navigation }) => {
                 <View style={styles.mpinSection}>
                   <Text style={styles.mpinLabel}>Enter 4-Digit MPIN</Text>
                   <View style={styles.mpinContainer}>
-                    {mpin.map((digit, index) => (
-                      <View key={index} style={styles.mpinInputWrapper}>
-                        <TextInput
-                          ref={(ref) => (inputRefs.current[index] = ref)}
-                          style={[
-                            styles.mpinInput,
-                            digit ? styles.mpinInputFilled : {},
-                            isWeakMpin ? styles.errorState : {},
-                          ]}
-                          maxLength={1}
-                          keyboardType="numeric"
-                          value={digit}
-                          onChangeText={(value) =>
-                            handleMpinChange(value, index)
-                          }
-                          onKeyPress={(event) => handleKeyPress(event, index)}
-                          secureTextEntry
-                          textAlign="center"
-                          selectTextOnFocus
-                        />
-                        {digit ? <View style={styles.filledIndicator} /> : null}
-                      </View>
-                    ))}
+                    {renderMpinInputs()}
                   </View>
 
                   {isWeakMpin && (
                     <Text style={styles.weakMpinWarning}>
-                      This MPIN is too easy to guess. Please choose a stronger
-                      one.
+                      This MPIN is too easy to guess. Please choose a stronger one.
                     </Text>
                   )}
 
@@ -219,37 +283,11 @@ const MpinScreen = ({ navigation }) => {
                 </View>
 
                 <View style={styles.actionSection}>
-                  {mpin.join("").length === 4 && !isLoading && !isWeakMpin ? (
-                    <TouchableOpacity
-                      onPress={handleCreateMpin}
-                      activeOpacity={0.9}
-                      disabled={isLoading}
-                      style={styles.buttonWrapper}
-                    >
-                      <LinearGradient
-                        colors={COLORS.gradient.brand}
-                        start={{ x: 0, y: 0 }}
-                        end={{ x: 1, y: 0 }}
-                        style={[styles.createButton, styles.gradientButton]}
-                      >
-                        <Text style={styles.createButtonText}>
-                          {isLoading ? "Creating..." : "Create MPIN"}
-                        </Text>
-                      </LinearGradient>
-                    </TouchableOpacity>
-                  ) : (
-                    <View style={[styles.createButton, styles.disabledButton]}>
-                      <Text style={styles.createButtonText}>
-                        {isLoading ? "Creating..." : "Create MPIN"}
-                      </Text>
-                    </View>
-                  )}
+                  {renderCreateButton()}
 
                   <TouchableOpacity
                     style={styles.existingMpinLink}
-                    onPress={() => {
-                      navigation.navigate("VerifyMpinScreen")
-                    }}
+                    onPress={navigateToVerifyMpin}
                   >
                     <Text style={styles.existingMpinText}>
                       Already have an MPIN?
