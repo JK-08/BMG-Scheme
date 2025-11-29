@@ -121,7 +121,7 @@ function Header() {
       setGoldRate(data.GOLDRATE);
       setSilverRate(data.SILVERRATE);
       setRateUpdated(getFormattedUpdateTime());
-    } catch (err) {
+    } catch {
       showToast("Failed to fetch rates");
     }
   }, []);
@@ -152,65 +152,73 @@ function Header() {
   }, []);
 
   return (
-    <LinearGradient
-      colors={COLORS.gradient.brand}
-      start={{ x: 0, y: 0 }}
-      end={{ x: 0, y: 1 }}
-      style={styles.headerContainer}
-    >
-      {/* Top Header */}
-      <View style={styles.topHeaderSection}>
-        {/* Notifications */}
-        <TouchableOpacity
-          style={styles.faqIconContainer}
-          onPress={() => navigation.navigate("NotificationsPage")}
-        >
-          <View>
-            <MaterialIcons
-              name={notificationCount > 0 ? "notifications" : "notifications-none"}
-              size={28}
-              color={COLORS.textWhite}
-            />
+    <View style={{ overflow: "visible" }}>  {/* FIX for iOS clipping */}
+      {/* MAIN HEADER AREA */}
+      <LinearGradient
+        colors={COLORS.gradient.brand}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 0, y: 1 }}
+        style={styles.headerContainer}
+      >
 
-            {notificationCount > 0 && (
-              <View style={styles.notificationBadge}>
-                <Text style={styles.notificationText}>{notificationCount}</Text>
-              </View>
-            )}
+        {/* Top Header */}
+        <View style={styles.topHeaderSection}>
+          {/* Notifications */}
+          <TouchableOpacity
+            style={styles.faqIconContainer}
+            onPress={() => navigation.navigate("NotificationsPage")}
+          >
+            <View>
+              <MaterialIcons
+                name={notificationCount > 0 ? "notifications" : "notifications-none"}
+                size={28}
+                color={COLORS.textWhite}
+              />
+
+              {notificationCount > 0 && (
+                <View style={styles.notificationBadge}>
+                  <Text style={styles.notificationText}>{notificationCount}</Text>
+                </View>
+              )}
+            </View>
+          </TouchableOpacity>
+
+          {/* Drawer Menu */}
+          <DrawerMenu
+            isVisible={isDrawerVisible}
+            onClose={() => setIsDrawerVisible(false)}
+          />
+
+          {/* Logo */}
+          <View style={styles.mainHeaderSection}>
+            <View style={styles.logoContainer}>
+              <Image
+                source={require("../../assets/BMG-LOGO.png")}
+                style={styles.headerLogo}
+                resizeMode="contain"
+              />
+            </View>
           </View>
-        </TouchableOpacity>
 
-        {/* Drawer Menu */}
-        <DrawerMenu isVisible={isDrawerVisible} onClose={() => setIsDrawerVisible(false)} />
-
-        {/* Logo */}
-        <View style={styles.mainHeaderSection}>
-          <View style={styles.logoContainer}>
-            <Image
-              source={require("../../assets/BMG-LOGO.png")}
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
-          </View>
+          {/* Menu Button */}
+          <TouchableOpacity style={styles.menuIconContainer} onPress={toggleDrawer}>
+            <Icon name="menu" size={26} color={COLORS.textInverse} />
+          </TouchableOpacity>
         </View>
 
-        {/* Menu Button */}
-        <TouchableOpacity style={styles.menuIconContainer} onPress={toggleDrawer}>
-          <Icon name="menu" size={26} color={COLORS.textInverse} />
-        </TouchableOpacity>
-      </View>
-
-      {/* Rate Updated Card */}
-      <View style={styles.rateCardContainer}>
-        <View style={styles.rateTextContainer}>
-          <Icon name="event" size={20} color={COLORS.textWhite} />
-          <Text style={styles.rateLabel}>Rate Updated on {rateUpdated}</Text>
+        {/* Rate Updated Card */}
+        <View style={styles.rateCardContainer}>
+          <View style={styles.rateTextContainer}>
+            <Icon name="event" size={20} color={COLORS.textWhite} />
+            <Text style={styles.rateLabel}>Rate Updated on {rateUpdated}</Text>
+          </View>
         </View>
-      </View>
+      </LinearGradient>
 
-      {/* Floating Rate Cards */}
+      {/* FLOATING CARDS (OUTSIDE HEADER) */}
       <View style={styles.rateCardsOverlayContainer}>
-        {/* Silver Rate */}
+
+        {/* Silver Rate Card */}
         <LinearGradient colors={[COLORS.white, COLORS.white]} style={styles.rateCardOverlay}>
           <View style={styles.rateCardContent}>
             <Animated.View style={[styles.animatedCoinContainer, silverAnimatedStyle]}>
@@ -223,29 +231,33 @@ function Header() {
 
             <View style={styles.rateTextRightAligned}>
               <Text style={styles.rateLabelRight}>Silver Rate</Text>
-              <Text style={styles.rateValueRight}>₹{silverRate || "---"}</Text>
+             <Text style={styles.rateValueRight}>₹{String(silverRate || "---")}</Text>
+
               <Text style={styles.rateUnitRight}>per gram</Text>
             </View>
           </View>
         </LinearGradient>
 
         {/* Shopping Card */}
-        <LinearGradient colors={[COLORS.white, COLORS.white]} style={styles.rateCardOverlay}>
-          <TouchableOpacity
-            style={styles.rateCardContent}
-            onPress={() => Linking.openURL("https://app.bmgjewellers.com")}
-          >
-            <View style={styles.rateIconContainer}>
-              <MaterialIcons name="shopping-cart" size={32} color={COLORS.primary} />
-            </View>
+       {/* Shopping Card */}
+<LinearGradient colors={[COLORS.white, COLORS.white]} style={styles.rateCardOverlay}>
+  <TouchableOpacity
+    style={styles.rateCardContent}
+    onPress={() => Linking.openURL("https://app.bmgjewellers.com")}
+  >
+    <View style={styles.rateIconContainer}>
+      <MaterialIcons name="shopping-cart" size={32} color={COLORS.primary} />
+    </View>
 
-            <View>
-              <Text style={styles.shopTitle}>Online {'\n'}Shopping</Text>
-            </View>
-          </TouchableOpacity>
-        </LinearGradient>
+    <View style={{ justifyContent: "center", alignItems: "flex-start" }}>
+      <Text style={styles.shopTitle}>Online</Text>
+      <Text style={styles.shopTitle}>Shopping</Text>
+    </View>
+  </TouchableOpacity>
+</LinearGradient>
+
       </View>
-    </LinearGradient>
+    </View>
   );
 }
 
