@@ -14,8 +14,15 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
   const item = Array.isArray(productData) ? productData[0] : productData;
   if (!item) return null;
 
-  const { groupCode, regNo, joinDate, maturityDate, bonusAmount, nextDueDate,pName } =
-    item;
+  const {
+    groupCode,
+    regNo,
+    joinDate,
+    maturityDate,
+    bonusAmount,
+    nextDueDate,
+    pName,
+  } = item;
   const summary = item.schemeSummary || {};
   const trans = item.schemaSummaryTransBalance || {};
   const schemeType = summary.schemeType || {};
@@ -98,10 +105,10 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
           </TouchableOpacity>
         )}
 
-        {isAmountScheme && (
+        {isAmountScheme && nextDueDate != null && nextDueDate !== "" && (
           <View style={styles.nextDueContainer}>
             <TextDefault style={styles.nextDueLabel}>Next Due Date</TextDefault>
-            <TextDefault style={styles.nextDueValue}>{nextDue}</TextDefault>
+            <TextDefault style={styles.nextDueValue}>{nextDueDate}</TextDefault>
           </View>
         )}
 
@@ -204,18 +211,17 @@ const styles = StyleSheet.create({
   statusText: {
     ...FONTS.bodyMedium,
     color: COLORS.textSecondary,
-    
   },
   statusLive: {
     color: COLORS.success,
     fontFamily: FONTS.family.semiBold,
     alignSelf: "center",
   },
-    statusLive1: {
-      color: COLORS.textPrimary,
-      ...FONTS.h6,
-      alignSelf: "center",
-    },
+  statusLive1: {
+    color: COLORS.textPrimary,
+    ...FONTS.h6,
+    alignSelf: "center",
+  },
   schemeName: {
     ...FONTS.h3,
     color: COLORS.white,

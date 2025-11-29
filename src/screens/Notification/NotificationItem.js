@@ -8,16 +8,24 @@ import {
   Animated,
   PanResponder,
   Dimensions,
+  LayoutAnimation,
+  Platform,
+  UIManager,
 } from "react-native";
 
+// Enable LayoutAnimation for Android
+if (Platform.OS === 'android' && UIManager.setLayoutAnimationEnabledExperimental) {
+  UIManager.setLayoutAnimationEnabledExperimental(true);
+}
 
 const { width } = Dimensions.get("window");
 
 const NotificationItem = ({ item, index, onDelete }) => {
   const [fadeAnim] = useState(new Animated.Value(0));
   const [slideAnim] = useState(new Animated.Value(50));
-  const swipeAnim = useRef(new Animated.Value(0)).current;
+  const [isExpanded, setIsExpanded] = useState(false);
   const [isDeleting, setIsDeleting] = useState(false);
+  const swipeAnim = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
     // Fade and slide-in animation
@@ -36,6 +44,11 @@ const NotificationItem = ({ item, index, onDelete }) => {
       }),
     ]).start();
   }, []);
+
+  const toggleExpand = () => {
+    LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
+    setIsExpanded(!isExpanded);
+  };
 
   const panResponder = useRef(
     PanResponder.create({
@@ -108,7 +121,11 @@ const NotificationItem = ({ item, index, onDelete }) => {
         {...panResponder.panHandlers}
         style={[styles.notificationTouchable, { transform: [{ translateX: swipeAnim }] }]}
       >
-        <TouchableOpacity activeOpacity={0.9} style={styles.notificationContent}>
+        <TouchableOpacity 
+          activeOpacity={0.9} 
+          style={styles.notificationContent}
+          onPress={toggleExpand}
+        >
           {item.ImageUrl ? (
             <Image source={{ uri: item.ImageUrl }} style={styles.notificationImage} />
           ) : (
@@ -122,29 +139,27 @@ const NotificationItem = ({ item, index, onDelete }) => {
               <Text style={styles.notificationTitle} numberOfLines={2}>
                 {item.Title}
               </Text>
-              {/* <View style={[styles.statusBadge, { backgroundColor: statusColors.bg }]}>
-                <Text style={[styles.statusText, { color: statusColors.text }]}>
-                  {item.Status}
-                </Text>
-              </View> */}
+              {/* Status badge can be added back if needed */}
             </View>
 
-            <Text style={styles.notificationMessage} numberOfLines={3}>
+            <Text 
+              style={styles.notificationMessage} 
+              numberOfLines={isExpanded ? undefined : 3}
+            >
               {item.Message}
             </Text>
 
+            {/* Show "Read More/Less" only if content is long enough */}
+            {item.Message && item.Message.length > 150 && (
+              <TouchableOpacity onPress={toggleExpand} style={styles.readMoreButton}>
+                <Text style={styles.readMoreText}>
+                  {isExpanded ? "Read Less" : "Read More"}
+                </Text>
+              </TouchableOpacity>
+            )}
+
             <View style={styles.notificationFooter}>
-              {/* <View style={styles.dateContainer}>
-                <Text style={styles.dateIcon}>🕐</Text>
-                <Text style={styles.notificationDate}>
-                  {NotificationService.formatNotificationDate(item.CreatedAt)}
-                </Text>
-              </View> */}
-              {/* {item.SentAt && (
-                <Text style={styles.sentAtText}>
-                  Sent: {NotificationService.formatNotificationDate(item.SentAt)}
-                </Text>
-              )} */}
+              {/* Date and other footer content can be added here */}
             </View>
           </View>
         </TouchableOpacity>
@@ -154,7 +169,10 @@ const NotificationItem = ({ item, index, onDelete }) => {
 };
 
 const styles = StyleSheet.create({
-  notificationItem: { marginBottom: 12, position: "relative" },
+  notificationItem: { 
+    marginBottom: 12, 
+    position: "relative" 
+  },
   deleteBackground: {
     position: "absolute",
     right: 0,
@@ -166,9 +184,19 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  deleteAction: { alignItems: "center", justifyContent: "center" },
-  deleteIcon: { fontSize: 28, marginBottom: 4 },
-  deleteText: { color: "#fff", fontSize: 14, fontWeight: "700" },
+  deleteAction: { 
+    alignItems: "center", 
+    justifyContent: "center" 
+  },
+  deleteIcon: { 
+    fontSize: 28, 
+    marginBottom: 4 
+  },
+  deleteText: { 
+    color: "#fff", 
+    fontSize: 14, 
+    fontWeight: "700" 
+  },
   notificationTouchable: {
     backgroundColor: "#fff",
     borderRadius: 16,
@@ -179,21 +207,91 @@ const styles = StyleSheet.create({
     shadowRadius: 8,
     elevation: 4,
   },
-  notificationContent: { flexDirection: "row", padding: 16 },
-  notificationImage: { width: 100, height: 100, borderRadius: 12, marginRight: 14, resizeMode: "cover" },
-  placeholderImage: { backgroundColor: "#f0f0f0", justifyContent: "center", alignItems: "center" },
-  placeholderText: { fontSize: 28 },
-  notificationText: { flex: 1 },
-  titleRow: { flexDirection: "row", justifyContent: "space-between", alignItems: "flex-start", marginBottom: 6 },
-  notificationTitle: { fontSize: 17, fontWeight: "700", color: "#1a1a1a", flex: 1, marginRight: 8 },
-  notificationMessage: { fontSize: 15, color: "#555", lineHeight: 21, marginBottom: 10 },
-  notificationFooter: { flexDirection: "row", justifyContent: "space-between", alignItems: "center", flexWrap: "wrap" },
-  dateContainer: { flexDirection: "row", alignItems: "center" },
-  dateIcon: { fontSize: 12, marginRight: 4 },
-  notificationDate: { fontSize: 13, color: "#888", fontWeight: "500" },
-  sentAtText: { fontSize: 11, color: "#999", fontStyle: "italic" },
-  statusBadge: { paddingHorizontal: 10, paddingVertical: 5, borderRadius: 8 },
-  statusText: { fontSize: 11, fontWeight: "700", textTransform: "uppercase", letterSpacing: 0.5 },
+  notificationContent: { 
+    flexDirection: "row", 
+    padding: 16 
+  },
+  notificationImage: { 
+    width: 100, 
+    height: 100, 
+    borderRadius: 12, 
+    marginRight: 14, 
+    resizeMode: "cover" 
+  },
+  placeholderImage: { 
+    backgroundColor: "#f0f0f0", 
+    justifyContent: "center", 
+    alignItems: "center" 
+  },
+  placeholderText: { 
+    fontSize: 28 
+  },
+  notificationText: { 
+    flex: 1 
+  },
+  titleRow: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "flex-start", 
+    marginBottom: 6 
+  },
+  notificationTitle: { 
+    fontSize: 17, 
+    fontWeight: "700", 
+    color: "#1a1a1a", 
+    flex: 1, 
+    marginRight: 8 
+  },
+  notificationMessage: { 
+    fontSize: 15, 
+    color: "#555", 
+    lineHeight: 21, 
+    marginBottom: 8 
+  },
+  readMoreButton: {
+    alignSelf: 'flex-start',
+    marginBottom: 8,
+  },
+  readMoreText: {
+    color: "#007AFF",
+    fontSize: 14,
+    fontWeight: "600",
+  },
+  notificationFooter: { 
+    flexDirection: "row", 
+    justifyContent: "space-between", 
+    alignItems: "center", 
+    flexWrap: "wrap" 
+  },
+  dateContainer: { 
+    flexDirection: "row", 
+    alignItems: "center" 
+  },
+  dateIcon: { 
+    fontSize: 12, 
+    marginRight: 4 
+  },
+  notificationDate: { 
+    fontSize: 13, 
+    color: "#888", 
+    fontWeight: "500" 
+  },
+  sentAtText: { 
+    fontSize: 11, 
+    color: "#999", 
+    fontStyle: "italic" 
+  },
+  statusBadge: { 
+    paddingHorizontal: 10, 
+    paddingVertical: 5, 
+    borderRadius: 8 
+  },
+  statusText: { 
+    fontSize: 11, 
+    fontWeight: "700", 
+    textTransform: "uppercase", 
+    letterSpacing: 0.5 
+  },
 });
 
 export default NotificationItem;

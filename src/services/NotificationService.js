@@ -1,4 +1,5 @@
-const API_BASE_URL = "https://scheme.bmgjewellers.com/api/v1";
+
+import { API_BASE_URL } from "../Config/API";
 
 class NotificationService {
   // Get all notifications for a user
@@ -26,38 +27,6 @@ class NotificationService {
     }
   }
 
-  // 👉 SEND WELCOME MESSAGE (POST)
-  async sendWelcomeNotification(userId) {
-    try {
-      const response = await fetch(
-        `${API_BASE_URL}/notifications/sendMessage/6/user/${userId}`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-        }
-      );
-
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
-
-      const result = await response.json();
-
-      return {
-        code: 200,
-        data: result,
-        message: "Welcome notification sent",
-      };
-    } catch (error) {
-      console.error("🔥 Error sending welcome notification:", error);
-      return {
-        code: 500,
-        data: null,
-        message: error.message,
-      };
-    }
-  }
 
   // Delete a single notification by ID
   async deleteNotification(notificationId) {
@@ -109,51 +78,7 @@ class NotificationService {
     }
   }
 
-  // 👉 SEND CUSTOM SCHEME JOIN NOTIFICATION
-  // 👉 SEND SCHEME JOIN NOTIFICATION (AUTO MESSAGE)
-  async sendSchemeJoinNotification({ userId, schemeName, amount, imageUrl }) {
-    try {
-      const message =
-        `You have successfully enrolled in the ${schemeName}. ` +
-        `Your monthly installment amount is ₹${amount}. ` +
-        `Payments can be made anytime before the due date each month.`;
 
-      const payload = {
-        userId: String(userId),
-        title: `${schemeName} Joined`,
-        message,
-        imageUrl,
-      };
-
-      console.log("[NotificationService] Sending payload:", payload);
-
-      const response = await fetch(`${API_BASE_URL}/notifications/send`, {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(payload),
-      });
-
-      if (!response.ok)
-        throw new Error(`HTTP error! status: ${response.status}`);
-
-      const result = await response.json();
-
-      console.log("[NotificationService] Join notification result:", result);
-
-      return {
-        code: 200,
-        data: result,
-        message: "Scheme join notification sent",
-      };
-    } catch (error) {
-      console.error("🔥 Error sending scheme join notification:", error);
-      return {
-        code: 500,
-        data: null,
-        message: error.message,
-      };
-    }
-  }
 
   // Format date for display
   formatNotificationDate(dateString) {

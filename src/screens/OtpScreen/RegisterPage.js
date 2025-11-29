@@ -25,10 +25,6 @@ import { showToast } from "../../utils/toast";
 import theme from "../../utils/AppTheme";
 import styles from "./RegisterStyles";
 import userService from "../../services/UserService";
-import {
-  registerForPushNotificationsAsync,
-  sendPushTokenToServer,
-} from "../../utils/Notification";
 import { saveUserData } from "../../utils/AsynchStorageHelper";
 
 const { COLORS, SIZES } = theme;
@@ -182,9 +178,6 @@ function RegisterPage({ navigation }) {
         const { id, email, username, message, contactNumber } = response.data;
 
         await saveUserData(response.data);
-
-        const expoToken = await registerForPushNotificationsAsync();
-        if (expoToken) await sendPushTokenToServer(expoToken, id);
 
         showToast(message || "Logged in successfully with Google");
 

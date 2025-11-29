@@ -168,13 +168,13 @@ const NotificationsPage = () => {
         }
       />
     </View>
-  
+  <BottomTab />
     </>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1, backgroundColor: "#f8f9fa" },
+  container: { flex: 1, backgroundColor: "#ffffffff" },
   listContainer: { padding: 16, flexGrow: 1 },
   centerContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
   loadingText: { marginTop: 12, fontSize: 16, color: "#666" },

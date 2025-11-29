@@ -1,5 +1,3 @@
-// MainLanding.js (optimized)
-// NOTE: I kept all functions, prop names and logic intact — only reorganized and memoized
 import React, {
   useEffect,
   useState,
@@ -19,19 +17,13 @@ import {
   Dimensions,
 } from "react-native";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import { BottomTab, TextDefault, Slider } from "../../components";
+import { BottomTab, Slider } from "../../components";
 import GoldPlan from "../../ui/ProductCard/GoldPlans";
 import ProductCard from "../../ui/ProductCard/ProductCard";
 import { SafeAreaView } from "react-native-safe-area-context";
-import Footer from '../../components/Footer/Footer'
+import Footer from "../../components/Footer/Footer";
 import styles from "./styles";
-import {
-  COLORS,
-  SIZES,
-  FONTS,
-  SHADOWS,
-  moderateScale,
-} from "../../utils/AppTheme";
+import { COLORS } from "../../utils/AppTheme";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import ProductCardSkeleton from "../../components/SkeletonLoader/ProductCardSkeleton";
 import GoldPlansSkeleton from "../../components/SkeletonLoader/GoldPlansSkeleton";
@@ -41,9 +33,17 @@ import { getPhoneDetails } from "../../services/SchemeDetailsService";
 import { getUserData } from "../../utils/AsynchStorageHelper";
 import { getAllSchemes } from "../../services/SchemeNameService";
 
+import {
+  registerForPushNotifications,
+  listenForNotifications,
+  removeNotificationListeners,
+  sendLocalNotification,
+} from "../../utils/Notification";
+
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BASE_URL = "https://scheme.bmgjewellers.com";
 
+// Utility: toast
 const showToast = (message) => {
   if (Platform.OS === "android") {
     ToastAndroid.show(message, ToastAndroid.SHORT);
@@ -52,7 +52,6 @@ const showToast = (message) => {
   }
 };
 
-// ------------------- SWIPEABLE CARDS COMPONENT -------------------
 // ------------------- SWIPEABLE CARDS COMPONENT -------------------
 const SwipeableCards = React.memo(
   ({
@@ -64,7 +63,6 @@ const SwipeableCards = React.memo(
     emptyMessage,
     cardWidth = SCREEN_WIDTH - 40,
   }) => {
-    // ❗ HOOKS MUST ALWAYS RUN
     const [currentIndex, setCurrentIndex] = useState(0);
     const listRef = useRef(null);
 
@@ -86,15 +84,10 @@ const SwipeableCards = React.memo(
       [cardWidth]
     );
 
-    // ❗ Memo MUST always run (was previously inside IF)
     const skeletonData = useMemo(
       () => Array.from({ length: 3 }, (_, index) => ({ id: index })),
       []
     );
-
-    // -------------------------------------------------------
-    //              CONDITIONAL UI RETURN
-    // -------------------------------------------------------
 
     if (loading) {
       return (
@@ -164,7 +157,6 @@ const SwipeableCards = React.memo(
           contentContainerStyle={styles.flatListContent}
           getItemLayout={getItemLayout}
         />
-
         {data.length > 1 && (
           <View style={styles.paginationContainer}>
             {data.map((_, index) => (
@@ -188,7 +180,7 @@ const SwipeableCards = React.memo(
   }
 );
 
-// ------------------- SECTION HEADER COMPONENT -------------------
+// ------------------- SECTION HEADER -------------------
 const SectionHeader = React.memo(({ title, onViewAll }) => (
   <View style={styles.sectionHeaderContainer}>
     <Text style={styles.titleText}>{title}</Text>
@@ -198,7 +190,7 @@ const SectionHeader = React.memo(({ title, onViewAll }) => (
   </View>
 ));
 
-// ------------------- MAIN LANDING COMPONENT -------------------
+// ------------------- MAIN LANDING -------------------
 function MainLanding() {
   const navigation = useNavigation();
 
@@ -209,9 +201,44 @@ function MainLanding() {
   const [schemesLoading, setSchemesLoading] = useState(true);
   const [schemesError, setSchemesError] = useState(null);
   const [productError, setProductError] = useState(null);
-
   const [initialLoad, setInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Track notification initialization
+  const notificationInitializedRef = useRef(false);
+
+  // -------------------- Notifications --------------------
+  // In your MainLanding component
+  useEffect(() => {
+    const initNotifications = async () => {
+      try {
+        const userId = await AsyncStorage.getItem("userId");
+
+        // This will automatically handle the welcome notification
+        const token = await registerForPushNotifications(userId, {
+          showWelcomeNotification: true,
+          welcomeTitle: "🎉 Welcome!",
+          welcomeBody: "Check out the latest schemes now.",
+          welcomeImage:
+            "https://tse4.mm.bing.net/th/id/OIP.DeQ9K0_r5lXfh77zACJctQHaEo?rs=1&pid=ImgDetMain&o=7&rm=3",
+        });
+
+        if (!token) {
+          console.log("User denied notification permission");
+        } else {
+          console.log("Notification setup completed");
+        }
+
+        const listeners = listenForNotifications();
+        return () => removeNotificationListeners(listeners);
+      } catch (err) {
+        console.log("Error initializing notifications:", err);
+      }
+    };
+
+    initNotifications();
+  }, []);
+  // -------------------- End Notifications --------------------
 
   // Fetch all scheme rules from API
   const fetchSchemeRules = useCallback(async () => {
@@ -497,7 +524,7 @@ const MainLandingHeader = React.memo(function MainLandingHeader({
   );
 
   return (
-    <View style={{gap: 16}}>
+    <View style={{ gap: 16 }}>
       <MainHeader />
       <Slider />
 
@@ -529,7 +556,7 @@ const MainLandingHeader = React.memo(function MainLandingHeader({
           emptyMessage="No saving schemes available"
           renderItem={renderSchemeItem}
           renderSkeleton={(index) => <GoldPlansSkeleton key={index} />}
-          cardWidth={SCREEN_WIDTH * 0.90}
+          cardWidth={SCREEN_WIDTH * 0.9}
         />
       </View>
 
@@ -538,10 +565,8 @@ const MainLandingHeader = React.memo(function MainLandingHeader({
           <Text style={styles.titleText}>Promotions & Offers</Text>
         </View>
         <MainPageWithYouTube />
-
       </View>
       <Footer />
-      
     </View>
   );
 });

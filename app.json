@@ -2,7 +2,7 @@
   "expo": {
     "name": "BMG Digi Schemes",
     "slug": "scheme-bmg",
-    "version": "1.2.0",
+    "version": "1.2.2",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -22,7 +22,7 @@
         "WAKE_LOCK",
         "VIBRATE"
       ],
-      "versionCode": 20,
+      "versionCode": 22,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"

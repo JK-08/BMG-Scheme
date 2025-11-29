@@ -210,20 +210,21 @@ const styles = StyleSheet.create({
   imageContainer: {
     width: "95%",
     height: moderateScale(200),
-    borderRadius: SIZES.radius.lg,
+    // borderRadius: SIZES.radius.md,
     overflow: "hidden",
-    backgroundColor: COLORS.gray200,
+    // backgroundColor: COLORS.gray200,
   },
 
   sliderImage: {
     width: "100%",
     height: "100%",
+    resizeMode:"contain"
   },
 
-  overlay: {
-    ...StyleSheet.absoluteFillObject,
-    backgroundColor: COLORS.blackOpacity10,
-  },
+  // overlay: {
+  //   ...StyleSheet.absoluteFillObject,
+  //   backgroundColor: COLORS.blackOpacity10,
+  // },
 
   skeletonBackground: {
     ...StyleSheet.absoluteFillObject,

@@ -98,6 +98,7 @@ const BuyPage = () => {
   const productInfo = useMemo(
     () => ({
       weightLedger: productData?.schemeSummary?.weightLedger || "N",
+      FixedIns: productData?.schemeSummary?.FixedIns || "N",
       defaultAmount: productData?.amount || "",
       defaultName:
         productData?.personalInfo?.pName ||
@@ -114,9 +115,9 @@ const BuyPage = () => {
   // ---------- state ----------
   const [token, setToken] = useState(null);
   const [amount, setAmount] = useState(
-    productInfo.weightLedger === "Y"
-      ? ""
-      : productInfo.defaultAmount?.toString()
+    productInfo.weightLedger === "Y" || productInfo.FixedIns === "Y"
+      ? productInfo.defaultAmount?.toString()
+      : ""
   );
   const [loading, setLoading] = useState(false);
   const [payType, setPayType] = useState("CASH");
@@ -191,6 +192,11 @@ const BuyPage = () => {
     const numValue = parseFloat(value);
     if (isNaN(numValue) || numValue <= 0) {
       setAmountError("Please enter a valid amount greater than 0");
+      return false;
+    }
+    // Add minimum amount validation
+    if (numValue < 100) {
+      setAmountError("Minimum amount is ₹100");
       return false;
     }
     if (numValue > 10000000) {
@@ -297,80 +303,78 @@ const BuyPage = () => {
       schemeId: schemeInfo.schemeId,
     };
   }, [
-    amount,
+    amount, // Make sure amount is included in dependencies
     payTypeObj,
     productData,
     productInfo.defaultGroupCode,
     productInfo.defaultRegNo,
     productInfo.defaultAmount,
   ]);
-
   // -----------------------------
   // Insert cash payment immediately
   // -----------------------------
   // In BuyPage.js - update the insertCashPayment function catch block
-  const insertCashPayment = useCallback(
-    async () => {
-      try {
-        console.log("[Payment] Processing cash payment...", buildSchemeData());
-        const schemeData = buildSchemeData();
-        await insertSchemeCollection(schemeData);
+  const insertCashPayment = useCallback(async () => {
+    try {
+      console.log("[Payment] Processing cash payment...", buildSchemeData());
+      const schemeData = buildSchemeData();
+      await insertSchemeCollection(schemeData);
 
-        console.log("[Payment] Cash payment processed successfully");
-        navigation.navigate("PaymentSuccess", {
-          status: "SUCCESS",
-          orderDetails: {
-            amount: parseFloat(amount || productInfo.defaultAmount),
-            customer: {
-              name: productInfo.defaultName,
-              contact: productInfo.defaultContact,
-              regNo: productInfo.defaultRegNo,
-              groupCode: productInfo.defaultGroupCode,
-            },
-            payType: payType,
-            schemeInfo: productData?.schemeSummary || {},
+      console.log("[Payment] Cash payment processed successfully");
+      navigation.navigate("PaymentSuccess", {
+        status: "SUCCESS",
+        orderDetails: {
+          amount: parseFloat(amount || productInfo.defaultAmount),
+          customer: {
+            name: productInfo.defaultName,
+            contact: productInfo.defaultContact,
+            regNo: productInfo.defaultRegNo,
+            groupCode: productInfo.defaultGroupCode,
           },
-          schemeData,
-          paymentStatus: {
-            orderStatus: "PAID",
-            message: "Cash payment processed successfully",
+          payType: payType,
+          schemeInfo: productData?.schemeSummary || {},
+        },
+        schemeData,
+        paymentStatus: {
+          orderStatus: "PAID",
+          message: "Cash payment processed successfully",
+        },
+        productData,
+        isCashPayment: true,
+      });
+    } catch (error) {
+      console.error("[Payment] Cash payment failed:", error);
+      // Navigate to PaymentFailure for cash payment errors too
+      navigation.navigate("PaymentFailure", {
+        orderDetails: {
+          amount: parseFloat(amount || productInfo.defaultAmount),
+          customer: {
+            name: productInfo.defaultName,
+            contact: productInfo.defaultContact,
+            regNo: productInfo.defaultRegNo,
+            groupCode: productInfo.defaultGroupCode,
           },
-          productData,
-          isCashPayment: true,
-        });
-      } catch (error) {
-        console.error("[Payment] Cash payment failed:", error);
-        // Navigate to PaymentFailure for cash payment errors too
-        navigation.navigate("PaymentFailure", {
-          orderDetails: {
-            amount: parseFloat(amount || productInfo.defaultAmount),
-            customer: {
-              name: productInfo.defaultName,
-              contact: productInfo.defaultContact,
-              regNo: productInfo.defaultRegNo,
-              groupCode: productInfo.defaultGroupCode,
-            },
-            payType: payType,
-          },
-          productData,
-          paymentStatus: {
-            message: error.message || "Cash payment processing failed",
-          },
-          isCashPayment: true,
-        });
-      }
-    },
-    [
-      /* dependencies */
-    ]
-  );
+          payType: payType,
+        },
+        productData,
+        paymentStatus: {
+          message: error.message || "Cash payment processing failed",
+        },
+        isCashPayment: true,
+      });
+    }
+  });
 
   // -----------------------------
   // Handle Buy (main)
   // -----------------------------
   const handleBuy = useCallback(async () => {
     // Validate
-    if (productInfo.weightLedger === "Y" && !validateAmount(amount)) {
+    if (
+      productInfo.weightLedger === "N" &&
+      productInfo.FixedIns === "N" &&
+      !validateAmount(amount)
+    ) {
       Alert.alert(
         "Invalid Amount",
         amountError || "Please enter a valid amount."
@@ -558,8 +562,13 @@ const BuyPage = () => {
   const isButtonDisabled = () => {
     if (loading) return true;
     if (fetchingPaymentType) return true;
-    if (productInfo.weightLedger === "Y" && !!amountError) return true;
-    if (productInfo.weightLedger === "Y" && !amount) return true;
+
+    // If both are "N", amount input is enabled - validate amount
+    if (productInfo.weightLedger === "N" && productInfo.FixedIns === "N") {
+      if (!!amountError) return true;
+      if (!amount) return true;
+    }
+
     return false;
   };
 
@@ -687,26 +696,33 @@ const BuyPage = () => {
       color: COLORS.textPrimary,
       marginBottom: SIZES.margin.xs,
     },
-    inputWrapper: { position: "relative" },
+    inputWrapper: {
+      position: "relative",
+      flexDirection: "row",
+      alignItems: "center",
+    },
     currencySymbol: {
       position: "absolute",
       left: SIZES.padding.md,
-      top: "50%",
-      transform: [{ translateY: -10 }],
-      fontSize: SIZES.heading.h4,
-      lineHeight: SIZES.heading.h4 * 1.4,
+      top: "40%",
+      transform: [{ translateY: -12 }], // Better vertical centering
+      fontSize: SIZES.font.xxl, // Match input font size
       color: COLORS.textPrimary,
       zIndex: 1,
     },
     input: {
       backgroundColor: COLORS.inputBackground,
       borderRadius: SIZES.radius.md,
-      paddingLeft: SIZES.padding.xxl,
+      paddingLeft: SIZES.padding.xxl + 4, // Slightly more padding for better alignment
       ...FONTS.h4,
       color: COLORS.textPrimary,
       borderWidth: 1.5,
       borderColor: COLORS.border,
-      height: SIZES.input.height,
+      height: SIZES.input.height + 2,
+      marginBottom: 4,
+      includeFontPadding: false, // Prevents extra padding around text
+      textAlignVertical: "center", // Better vertical alignment
+      width: "100%",
     },
     inputFocused: {
       borderColor: COLORS.primary,
@@ -838,17 +854,20 @@ const BuyPage = () => {
           </View>
 
           {/* Amount Section */}
+          {/* Amount Section */}
           <View style={styles.amountSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionIcon}>💰</Text>
               <Text style={styles.sectionTitle}>
-                {productInfo.weightLedger === "Y"
+                {productInfo.weightLedger === "N" &&
+                productInfo.FixedIns === "N"
                   ? "Enter Amount"
                   : "Payment Amount"}
               </Text>
             </View>
 
-            {productInfo.weightLedger === "Y" ? (
+            {productInfo.weightLedger === "N" &&
+            productInfo.FixedIns === "N" ? (
               <View style={styles.inputContainer}>
                 <Text style={styles.inputLabel}>Amount *</Text>
                 <View style={styles.inputWrapper}>
@@ -880,7 +899,7 @@ const BuyPage = () => {
                   <Text
                     style={[styles.errorText, { color: COLORS.textTertiary }]}
                   >
-                    Enter amount between ₹1 - ₹1,00,00,000
+                    Enter amount between ₹100 - ₹1,00,00,000
                   </Text>
                 )}
               </View>
@@ -892,7 +911,6 @@ const BuyPage = () => {
               </View>
             )}
           </View>
-
           {/* Proceed Button */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity

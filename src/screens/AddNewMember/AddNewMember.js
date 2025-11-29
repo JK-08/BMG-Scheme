@@ -8,6 +8,7 @@ import SchemeDetailsPage from "./SchemeDetailsPage";
 import { API_BASE_URL_OLD, API_BASE_URL } from "../../Config/API";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import smsService from "../../services/SMSService";
+import { sendJoinSchemeNotification } from "../../services/CommonNotificationService"; // NEW IMPORT
 
 const { COLORS } = appTheme;
 
@@ -635,6 +636,18 @@ const AddNewMember = () => {
           console.log("❌ SMS sending failed:", smsErr);
         }
 
+        // 3️⃣ NEW: Send Join Scheme Notification
+        try {
+          await sendJoinSchemeNotification(
+            currentPaymentData.numericSchemeId,
+            parseFloat(currentPaymentData.schemeData.amount),
+            getSchemeName(currentPaymentData.numericSchemeId)
+          );
+          console.log("🔔 Join Scheme Notification sent");
+        } catch (notifErr) {
+          console.log("❌ Notification sending failed:", notifErr);
+        }
+
         // Hide loading and show success popup
         setProcessingPayment(false);
         Alert.alert(
@@ -718,77 +731,89 @@ const AddNewMember = () => {
     await processOnlinePayment(schemeFormData, numericSchemeId);
   };
 
-  const processCashPayment = async (schemeFormData, numericSchemeId) => {
-    setIsSubmitting(true);
-    try {
-      const response = await fetch(
-        `${API_BASE_URL_OLD}/member/schemeid?schemeId=${numericSchemeId}`
+const processCashPayment = async (schemeFormData, numericSchemeId) => {
+  setIsSubmitting(true);
+  try {
+    const response = await fetch(
+      `${API_BASE_URL_OLD}/member/schemeid?schemeId=${numericSchemeId}`
+    );
+    if (!response.ok) throw new Error(`HTTP ${response.status}`);
+    const apiData = await response.json();
+    if (!apiData || apiData.length === 0)
+      throw new Error("No scheme data returned from API.");
+
+    let selectedRecord;
+
+    if (schemeFormData.amount) {
+      selectedRecord = apiData.find(
+        (item) =>
+          parseFloat(item.AMOUNT || 0) === parseFloat(schemeFormData.amount)
       );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const apiData = await response.json();
-      if (!apiData || apiData.length === 0)
-        throw new Error("No scheme data returned from API.");
-
-      let selectedRecord;
-
-      if (schemeFormData.amount) {
-        selectedRecord = apiData.find(
-          (item) =>
-            parseFloat(item.AMOUNT || 0) === parseFloat(schemeFormData.amount)
-        );
-      }
-
-      if (!selectedRecord) selectedRecord = apiData[0];
-
-      const groupCode = selectedRecord.GROUPCODE;
-      const regNo =
-        selectedRecord.CURRENTREGNO ||
-        selectedRecord.REGNO ||
-        generateRandomRegNo();
-
-      // ✅ Submit member data for CASH payment
-      await submitMemberData(
-        numericSchemeId,
-        schemeFormData,
-        groupCode,
-        regNo,
-        null, // no online payment
-        true // cash payment flag
-      );
-
-      // Send welcome SMS
-      await smsService.sendWelcomeSMS(
-        memberData.mobile,
-        memberData.name,
-        getSchemeName(numericSchemeId),
-        schemeFormData.amount,
-        new Date().toISOString().slice(0, 10),
-        "BMG JEWELLERS PVT LTD"
-      );
-
-      Alert.alert(
-        "Success",
-        `Member added successfully to ${getSchemeName(numericSchemeId)}!`,
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              resetFormFields();
-              navigation.navigate("MainLanding");
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      console.error("Error during member creation (cash):", error);
-      Alert.alert(
-        "Submission Error",
-        error.message || "Failed to create member. Please try again."
-      );
-    } finally {
-      setIsSubmitting(false);
     }
-  };
+
+    if (!selectedRecord) selectedRecord = apiData[0];
+
+    const groupCode = selectedRecord.GROUPCODE;
+    const regNo =
+      selectedRecord.CURRENTREGNO ||
+      selectedRecord.REGNO ||
+      generateRandomRegNo();
+
+    // ✅ Submit member data for CASH payment
+    await submitMemberData(
+      numericSchemeId,
+      schemeFormData,
+      groupCode,
+      regNo,
+      null, // no online payment
+      true // cash payment flag
+    );
+
+    // Send welcome SMS
+    await smsService.sendWelcomeSMS(
+      memberData.mobile,
+      memberData.name,
+      getSchemeName(numericSchemeId),
+      schemeFormData.amount,
+      new Date().toISOString().slice(0, 10),
+      "BMG JEWELLERS PVT LTD"
+    );
+
+    // NEW: Send Join Scheme Notification for cash payment
+    try {
+      await sendJoinSchemeNotification(
+        numericSchemeId,
+        parseFloat(schemeFormData.amount),
+        getSchemeName(numericSchemeId)
+      );
+      console.log("🔔 Join Scheme Notification sent (Cash)");
+    } catch (notifErr) {
+      console.log("❌ Notification sending failed:", notifErr);
+    }
+
+    Alert.alert(
+      "Success",
+      `Member added successfully to ${getSchemeName(numericSchemeId)}!`,
+      [
+        {
+          text: "OK",
+          onPress: () => {
+            resetFormFields();
+            navigation.navigate("MainLanding");
+          },
+        },
+      ]
+    );
+  } catch (error) {
+    console.error("Error during member creation (cash):", error);
+    Alert.alert(
+      "Submission Error",
+      error.message || "Failed to create member. Please try again."
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const processOnlinePayment = async (schemeFormData, numericSchemeId) => {
     setIsProcessingPayment(true);

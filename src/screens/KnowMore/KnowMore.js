@@ -20,6 +20,7 @@ import {
 } from "../../utils/AppTheme";
 import Icon from "react-native-vector-icons/MaterialCommunityIcons";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
+import { SafeAreaView } from "react-native-safe-area-context";
 
 // ==========================================
 // UPDATED SCHEME CONTENT (TAMIL + ENGLISH)
@@ -153,14 +154,10 @@ const SchemeSection = React.memo(
   )
 );
 
-// ==========================================
-// MAIN SCREEN COMPONENT
-// ==========================================
 function KnowMore() {
   const route = useRoute();
   const navigation = useNavigation();
   const { schemeId } = route.params || {};
-
   const [language, setLanguage] = useState("english");
 
   const content = useMemo(() => SCHEME_CONTENT[language], [language]);
@@ -178,102 +175,101 @@ function KnowMore() {
     });
   }, []);
 
-  const handleJoinNow = useCallback(() => {
-    navigation.navigate("AddNewMember", { schemeId });
-  }, [navigation, schemeId]);
-
-  const handleClose = useCallback(() => {
-    navigation.navigate("MainLanding");
-  }, [navigation]);
-
   return (
     <ImageBackground
       source={require("../../assets/image.png")}
       style={styles.backgroundImage}
-      resizeMode="cover"
     >
-      <CommonHeader title="Know More" />
+      <SafeAreaView style={{ flex: 1 }}>
+        <CommonHeader title="Know More" />
 
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.container}>
-          {/* Language Switch */}
-          <TouchableOpacity
-            style={styles.languageButton}
-            onPress={toggleLanguage}
-            activeOpacity={0.8}
-          >
-            <Icon name="translate" size={SIZES.icon.sm} color={COLORS.white} />
-            <Text style={styles.languageButtonText}>
-              {isEnglish ? "தமிழ்" : "English"}
-            </Text>
-          </TouchableOpacity>
+        <ScrollView
+          contentContainerStyle={styles.scrollContent}
+          showsVerticalScrollIndicator={false}
+        >
+          <View style={styles.container}>
+            {/* Language switch */}
+            <TouchableOpacity
+              style={styles.languageButton}
+              onPress={toggleLanguage}
+              activeOpacity={0.8}
+            >
+              <Icon name="translate" size={SIZES.icon.sm} color={COLORS.white} />
+              <Text style={styles.languageButtonText}>
+                {isEnglish ? "தமிழ்" : "English"}
+              </Text>
+            </TouchableOpacity>
 
-          {/* SCHEME SECTIONS */}
-          <SchemeSection title="BMG SMART PAY" items={content.smartPay} />
-          <SchemeSection title="BMG LUMPSUM" items={content.lumpSum} />
-          <SchemeSection title="BMG BRIGHT" items={content.bright} />
+            {/* Scheme Sections */}
+            <SchemeSection title="BMG SMART PAY" items={content.smartPay} />
+            <SchemeSection title="BMG LUMPSUM" items={content.lumpSum} />
+            <SchemeSection title="BMG BRIGHT" items={content.bright} />
 
-          {/* TERMS */}
-          <View style={styles.termsSection}>
-            <Text style={styles.sectionTitle}>{content.termsTitle}</Text>
+            {/* Terms */}
+            <View style={styles.termsSection}>
+              <Text style={styles.sectionTitle}>{content.termsTitle}</Text>
 
-            {content.terms.map((item, index) => (
-              <View key={`term-${index}`} style={styles.featureItem}>
+              {content.terms.map((item, index) => (
+                <View key={`term-${index}`} style={styles.featureItem}>
+                  <Icon
+                    name="asterisk"
+                    size={SIZES.icon.xs}
+                    color={COLORS.primary}
+                    style={{ marginTop: 4 }}
+                  />
+                  <Text style={styles.featureText}>{item}</Text>
+                </View>
+              ))}
+            </View>
+
+            {/* Buttons */}
+            <View style={styles.buttonContainer}>
+              <TouchableOpacity
+                style={styles.button}
+                onPress={() =>
+                  navigation.navigate("AddNewMember", { schemeId })
+                }
+              >
                 <Icon
-                  name="asterisk"
-                  size={SIZES.icon.xs}
-                  color={COLORS.primary}
+                  name="account-plus"
+                  size={SIZES.icon.sm}
+                  color={COLORS.white}
                 />
-                <Text style={styles.featureText}>{item}</Text>
-              </View>
-            ))}
-          </View>
+                <Text style={styles.buttonText}>{content.joinNow}</Text>
+              </TouchableOpacity>
 
-          {/* Buttons */}
-          <View style={styles.buttonContainer}>
-            <TouchableOpacity
-              style={styles.button}
-              onPress={handleJoinNow}
-              activeOpacity={0.8}
-            >
-              <Icon
-                name="account-plus"
-                size={SIZES.icon.sm}
-                color={COLORS.white}
-              />
-              <Text style={styles.buttonText}>{content.joinNow}</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={styles.closeButton}
-              onPress={handleClose}
-              activeOpacity={0.8}
-            >
-              <Text style={styles.closeButtonText}>{content.close}</Text>
-            </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.closeButton}
+                onPress={() => navigation.navigate("MainLanding")}
+              >
+                <Text style={styles.closeButtonText}>{content.close}</Text>
+              </TouchableOpacity>
+            </View>
           </View>
-        </View>
-      </ScrollView>
+        </ScrollView>
+      </SafeAreaView>
     </ImageBackground>
   );
 }
 
-// ==========================================
-// UPDATED STYLES WITH NEW THEME
-// ==========================================
+// =============== FIXED STYLES ===============
 const styles = StyleSheet.create({
   backgroundImage: {
     flex: 1,
   },
+
   scrollContent: {
-    flexGrow: 1,
     paddingBottom: SIZES.padding.xl,
   },
+
   container: {
+    flexGrow: 1,
     padding: SIZES.padding.lg,
+    width: "100%",
+    minHeight: 0, // prevents clipping in android
     backgroundColor: COLORS.whiteOpacity50,
-    flex: 1,
   },
+
   languageButton: {
     alignSelf: "flex-end",
     flexDirection: "row",
@@ -284,66 +280,79 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius.md,
     marginBottom: SIZES.margin.lg,
     ...SHADOWS.sm,
-    gap: SIZES.xs,
   },
+
   languageButtonText: {
     ...FONTS.bodyMedium,
     color: COLORS.white,
     fontSize: SIZES.font.sm,
+    marginLeft: 6,
   },
+
   schemeSection: {
+    width: "100%",
     marginBottom: SIZES.margin.xl,
     backgroundColor: COLORS.white,
     padding: SIZES.padding.lg,
     borderRadius: SIZES.radius.lg,
     ...SHADOWS.sm,
   },
+
   schemeTitle: {
     ...FONTS.h4,
     color: COLORS.primary,
-    marginVertical: SIZES.margin.md,
+    marginBottom: SIZES.margin.md,
     textAlign: "center",
   },
+
+  featureItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: SIZES.margin.sm,
+    width: "100%",
+  },
+
+  featureIcon: {
+    marginTop: 4,
+    marginRight: 8,
+  },
+
+  featureText: {
+    flex: 1,
+    minWidth: 0,        // ensures wrapping on all phones
+    flexShrink: 1,
+    flexWrap: "wrap",
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    lineHeight: SIZES.font.md * 1.6,
+    textAlign: "left",
+  },
+
   termsSection: {
+    width: "100%",
     marginTop: SIZES.margin.md,
     backgroundColor: COLORS.white,
     padding: SIZES.padding.lg,
     borderRadius: SIZES.radius.lg,
     ...SHADOWS.sm,
   },
+
   sectionTitle: {
     ...FONTS.h4,
     color: COLORS.primary,
     marginBottom: SIZES.margin.lg,
     textAlign: "center",
   },
-  featureItem: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: SIZES.margin.sm,
-    paddingHorizontal: SIZES.padding.xs,
-  },
-  featureIcon: {
-    marginTop: 2,
-    marginRight: SIZES.padding.sm,
-  },
-  featureText: {
-    flex: 1,
-    flexWrap: "wrap", // 🆕 ADD THIS
-    flexShrink: 1, // 🆕 ADD THIS
-    ...FONTS.body,
-    color: COLORS.textPrimary,
-    textAlign: "justify",
-    lineHeight: SIZES.font.md * 1.6,
-  },
 
   buttonContainer: {
     marginTop: SIZES.margin.xl,
     flexDirection: "row",
     justifyContent: "center",
-    gap: SIZES.margin.lg,
+    width: "100%",
     flexWrap: "wrap",
+    gap: SIZES.margin.lg,
   },
+
   button: {
     backgroundColor: COLORS.primary,
     paddingVertical: SIZES.padding.lg,
@@ -351,27 +360,30 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius.lg,
     flexDirection: "row",
     alignItems: "center",
-    gap: SIZES.padding.sm,
     ...SHADOWS.md,
     minWidth: moderateScale(140),
     justifyContent: "center",
   },
+
   buttonText: {
     ...FONTS.button,
     color: COLORS.white,
     fontSize: SIZES.font.md,
+    marginLeft: 6,
   },
+
   closeButton: {
     backgroundColor: COLORS.white,
     paddingVertical: SIZES.padding.lg,
     paddingHorizontal: SIZES.padding.xxl,
     borderRadius: SIZES.radius.lg,
-    borderWidth: 2,
     borderColor: COLORS.primary,
+    borderWidth: 2,
     ...SHADOWS.sm,
     minWidth: moderateScale(140),
     justifyContent: "center",
   },
+
   closeButtonText: {
     ...FONTS.bodyBold,
     color: COLORS.primary,

@@ -9,7 +9,7 @@ import useFonts from "./src/utils/Fonts";
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
 
-  // LOAD FONTS
+  // --- Load fonts ---
   useEffect(() => {
     (async () => {
       await useFonts();

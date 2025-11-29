@@ -10,9 +10,8 @@ import {
 import { useRoute, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// ✅ Import SMS service
+// ✅ Import SMS service only
 import smsService from "../../services/SMSService";
-import NotificationService from "../../services/NotificationService";
 import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 
 const PaymentSuccess = () => {
@@ -73,21 +72,18 @@ const PaymentSuccess = () => {
   }, []);
 
   // ======================================================
-  // ✅ SEND INSTALLMENT PAYMENT SUCCESS SMS
-  // ======================================================
-  // ======================================================
-  // ✅ SEND INSTALLMENT OR JOINING PAYMENT SUCCESS SMS + NOTIFICATION
+  // ✅ SEND INSTALLMENT OR JOINING PAYMENT SUCCESS SMS ONLY
   // ======================================================
   useEffect(() => {
     if (!isSuccess || smsSent) {
       console.log(
-        "[PaymentSuccess] Skipped sending - already sent or payment failed"
+        "[PaymentSuccess] Skipped sending SMS - already sent or payment failed"
       );
       return;
     }
 
-    const sendUpdates = async () => {
-      console.log("[PaymentSuccess] Sending SMS + Notification");
+    const sendSMS = async () => {
+      console.log("[PaymentSuccess] Sending SMS");
 
       try {
         const mobile =
@@ -99,9 +95,6 @@ const PaymentSuccess = () => {
           console.warn("[PaymentSuccess] No mobile number found");
           return;
         }
-
-        const userId = await AsyncStorage.getItem("userId");
-        console.log("customerid", userId);
 
         const name =
           productData?.personalInfo?.pName ||
@@ -141,7 +134,7 @@ const PaymentSuccess = () => {
         });
 
         // ======================================================
-        // 1️⃣ SEND SMS
+        // SEND SMS ONLY
         // ======================================================
         await smsService.sendPaymentSuccessSMS(
           mobile,
@@ -154,47 +147,13 @@ const PaymentSuccess = () => {
         );
 
         console.log("[PaymentSuccess] Payment SMS sent");
-        console.log("userid", userId);
-
-        // ======================================================
-        // 2️⃣ SEND PUSH NOTIFICATION (JOINING PAYMENT ONLY)
-        // ======================================================
-        if (userId) {
-          console.log("[PaymentSuccess] Sending join-notification");
-
-          // Choose scheme banner automatically
-          let bannerUrl =
-            "https://scheme.bmgjewellers.com/uploads/slider/0691777d-6673-46a2-949b-39e7d4c76671_90.jpg";
-
-          if (schemeName.toLowerCase().includes("amount")) {
-            bannerUrl =
-              "https://scheme.bmgjewellers.com/uploads/scheme/e5686d85-88b1-43e4-9733-b6143e1742cc_78.jpg";
-          } else if (schemeName.toLowerCase().includes("fixed")) {
-            bannerUrl =
-              "https://scheme.bmgjewellers.com/uploads/scheme/7d40f881-c1f5-4d21-bdec-f596e139ca85_scheme3.jpg";
-          } else if (schemeName.toLowerCase().includes("smartpay")) {
-            bannerUrl =
-              "https://scheme.bmgjewellers.com/uploads/scheme/b964c9ae-2305-4722-be29-f209043357b6_scheme2.jpg";
-          }
-
-          // ⭐ FIXED PAYLOAD ⭐
-          await NotificationService.sendSchemeJoinNotification({
-            userId: String(userId),
-            schemeName,
-            amount,
-            imageUrl: bannerUrl,
-          });
-
-          console.log("[PaymentSuccess] Join notification sent");
-        }
-
         setSmsSent(true);
       } catch (err) {
-        console.error("[PaymentSuccess] Error sending SMS/Notification:", err);
+        console.error("[PaymentSuccess] Error sending SMS:", err);
       }
     };
 
-    sendUpdates();
+    sendSMS();
   }, [isSuccess, smsSent]);
 
   // Auto navigate after 20 seconds

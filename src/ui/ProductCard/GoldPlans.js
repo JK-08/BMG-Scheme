@@ -60,10 +60,7 @@ function GoldPlan({
       <ImageBackground
         source={finalImage}                 // ✅ Correct image applied
         style={styles.imageBackground}
-        imageStyle={{
-          borderTopLeftRadius: SIZES.radius.lg,
-          borderTopRightRadius: SIZES.radius.lg,
-        }}
+        
         resizeMode="contain"
       />
 
