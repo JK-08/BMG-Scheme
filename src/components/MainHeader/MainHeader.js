@@ -165,7 +165,7 @@ function Header() {
           style={styles.faqIconContainer}
           onPress={() => navigation.navigate("NotificationsPage")}
         >
-          <View>
+          {/* <View>
             <MaterialIcons
               name={notificationCount > 0 ? "notifications" : "notifications-none"}
               size={28}
@@ -177,10 +177,10 @@ function Header() {
                 <Text style={styles.notificationText}>{notificationCount}</Text>
               </View>
             )}
-          </View>
+          </View> */}
         </TouchableOpacity>
 
-        {/* Drawer Menu */}
+        {/* Drawer Menu data */}
         <DrawerMenu isVisible={isDrawerVisible} onClose={() => setIsDrawerVisible(false)} />
 
         {/* Logo */}

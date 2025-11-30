@@ -28,9 +28,9 @@ export default StyleSheet.create({
     borderRadius: SIZES.radius.full,
     alignItems: "center",
     justifyContent: "center",
-    backgroundColor: COLORS.whiteOpacity20,
-    borderWidth: 1,
-    borderColor: COLORS.whiteOpacity50,
+    // backgroundColor: COLORS.whiteOpacity20,
+    // borderWidth: 1,
+    // borderColor: COLORS.whiteOpacity50,
   },
 
   menuIconContainer: {

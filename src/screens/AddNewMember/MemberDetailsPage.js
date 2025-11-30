@@ -273,12 +273,18 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   };
 
   // CLEAR DATA
-  const clearSavedData = async () => {
-    await AsyncStorage.removeItem("digigoldMemberForm");
-    setFormData(INITIAL_FORM);
-    setValidationErrors({});
-    Alert.alert("Cleared", "Form data reset.");
-  };
+const clearSavedData = async () => {
+  await AsyncStorage.removeItem("digigoldMemberForm");
+
+  setFormData(prev => ({
+    ...INITIAL_FORM,
+    mobile: prev.mobile,   // <-- preserve user mobile number
+  }));
+
+  setValidationErrors({});
+  Alert.alert("Cleared", "Form data reset (mobile number preserved).");
+};
+
 
   // UI render (unchanged)
   return (

@@ -108,7 +108,7 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
         {isAmountScheme && nextDueDate != null && nextDueDate !== "" && (
           <View style={styles.nextDueContainer}>
             <TextDefault style={styles.nextDueLabel}>Next Due Date</TextDefault>
-            <TextDefault style={styles.nextDueValue}>{nextDueDate}</TextDefault>
+            <TextDefault style={styles.nextDueValue}>{nextDue}</TextDefault>
           </View>
         )}
 

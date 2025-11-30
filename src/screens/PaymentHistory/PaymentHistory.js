@@ -60,31 +60,31 @@ const PaymentHistoryScreen = ({ navigation, route }) => {
       day: "2-digit",
       month: "short",
       year: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
     });
   };
 
   const sortedPayments = [...paymentHistory].sort((a, b) => {
-    const da = new Date(a.updateTime || a.date);
-    const db = new Date(b.updateTime || b.date);
-    return sortOrder === "desc" ? db - da : da - db;
+    const ra = a.receiptNo ? a.receiptNo.toString() : "";
+    const rb = b.receiptNo ? b.receiptNo.toString() : "";
+
+    return sortOrder === "desc"
+      ? rb.localeCompare(ra, undefined, { numeric: true })
+      : ra.localeCompare(rb, undefined, { numeric: true });
   });
 
-
   const renderItem = ({ item }) => (
-    <TouchableOpacity
-      style={styles.transactionCard}
-      activeOpacity={0.8}
-
-    >
+    <TouchableOpacity style={styles.transactionCard} activeOpacity={0.8}>
       <LinearGradient
         colors={COLORS.gradient.primary}
         style={styles.iconWrap}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
       >
-        <MaterialIcons name="payment" size={SIZES.icon.md} color={COLORS.white} />
+        <MaterialIcons
+          name="payment"
+          size={SIZES.icon.md}
+          color={COLORS.white}
+        />
       </LinearGradient>
 
       <View style={styles.transactionInfo}>
@@ -179,12 +179,8 @@ const PaymentHistoryScreen = ({ navigation, route }) => {
             <View style={styles.divider} />
 
             <View style={styles.stat}>
-              <Text style={styles.statValue}>
-                {summary.count}
-              </Text>
-              <Text style={styles.statLabel}>
-                {"Payments"}
-              </Text>
+              <Text style={styles.statValue}>{summary.count}</Text>
+              <Text style={styles.statLabel}>{"Payments"}</Text>
             </View>
           </View>
         </View>
@@ -199,7 +195,11 @@ const PaymentHistoryScreen = ({ navigation, route }) => {
           contentContainerStyle={styles.listContent}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <MaterialIcons name="receipt" size={SIZES.icon.xxxl} color={COLORS.border} />
+              <MaterialIcons
+                name="receipt"
+                size={SIZES.icon.xxxl}
+                color={COLORS.border}
+              />
               <Text style={styles.emptyText}>No transactions yet</Text>
               <Text style={styles.emptySubtext}>
                 Payment history will appear here
@@ -214,14 +214,14 @@ const PaymentHistoryScreen = ({ navigation, route }) => {
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1 
+  container: {
+    flex: 1,
   },
-  bg: { 
-    flex: 1 
+  bg: {
+    flex: 1,
   },
-  bgImage: { 
-    opacity: 0.3 
+  bgImage: {
+    opacity: 0.3,
   },
   sortButton: {
     padding: SIZES.padding.xs,
@@ -250,14 +250,14 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: SIZES.padding.md,
   },
-  customerName: { 
-    ...FONTS.h5, 
-    color: COLORS.textPrimary, 
-    fontWeight: FONTS.weight.semiBold 
+  customerName: {
+    ...FONTS.h5,
+    color: COLORS.textPrimary,
+    fontWeight: FONTS.weight.semiBold,
   },
-  schemeName: { 
-    ...FONTS.caption, 
-    color: COLORS.textSecondary 
+  schemeName: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
   },
   summaryStats: {
     flexDirection: "row",
@@ -266,9 +266,9 @@ const styles = StyleSheet.create({
     borderTopColor: COLORS.borderLight,
     paddingTop: SIZES.padding.md,
   },
-  stat: { 
-    flex: 1, 
-    alignItems: "center" 
+  stat: {
+    flex: 1,
+    alignItems: "center",
   },
   statValue: {
     ...FONTS.h6,
@@ -276,9 +276,9 @@ const styles = StyleSheet.create({
     fontWeight: FONTS.weight.bold,
     marginBottom: SIZES.padding.xs,
   },
-  statLabel: { 
-    ...FONTS.caption, 
-    color: COLORS.textSecondary 
+  statLabel: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
   },
   divider: {
     width: 1,
@@ -304,34 +304,34 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginRight: SIZES.padding.md,
   },
-  transactionInfo: { 
-    flex: 1 
+  transactionInfo: {
+    flex: 1,
   },
   transactionTitle: {
     ...FONTS.body,
     color: COLORS.textPrimary,
     fontWeight: FONTS.weight.semiBold,
   },
-  transactionDate: { 
-    ...FONTS.caption, 
-    color: COLORS.textSecondary 
+  transactionDate: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
   },
-  silverText: { 
-    ...FONTS.caption, 
-    color: COLORS.success, 
-    marginTop: SIZES.padding.xs 
+  silverText: {
+    ...FONTS.caption,
+    color: COLORS.success,
+    marginTop: SIZES.padding.xs,
   },
-  amountSection: { 
-    alignItems: "flex-end" 
+  amountSection: {
+    alignItems: "flex-end",
   },
-  amountText: { 
-    ...FONTS.body, 
-    color: COLORS.primary, 
-    fontWeight: FONTS.weight.bold 
+  amountText: {
+    ...FONTS.body,
+    color: COLORS.primary,
+    fontWeight: FONTS.weight.bold,
   },
-  receiptText: { 
-    ...FONTS.caption, 
-    color: COLORS.textSecondary 
+  receiptText: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
   },
 
   listContent: {
@@ -343,14 +343,14 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingVertical: SIZES.padding.xxxl,
   },
-  emptyText: { 
-    ...FONTS.h6, 
-    color: COLORS.textSecondary, 
-    marginTop: SIZES.padding.md 
+  emptyText: {
+    ...FONTS.h6,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.padding.md,
   },
-  emptySubtext: { 
-    ...FONTS.caption, 
-    color: COLORS.textTertiary 
+  emptySubtext: {
+    ...FONTS.caption,
+    color: COLORS.textTertiary,
   },
 });
 

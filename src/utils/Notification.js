@@ -102,7 +102,7 @@ export async function registerForPushNotifications(userId, options = {}) {
 
   try {
     const token = await Notifications.getExpoPushTokenAsync({
-      projectId: "0273cdbf-5add-444d-8025-2c79e124f7d8",
+      projectId: "0b794a84-9fe9-4e0f-b638-8918e63be72d",
     });
     console.log("📨 Fresh Expo Token:", token.data);
 

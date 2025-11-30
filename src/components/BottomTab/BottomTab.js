@@ -56,16 +56,16 @@ function BottomTab({ screen }) {
 
       {/* Notifications Icon */}
       <TouchableOpacity
-        onPress={() => navigation.navigate("Rewards")}
+        onPress={() => navigation.navigate("NotificationsPage")}
         style={styles.footerBtnContainer}
         activeOpacity={0.7}
       >
         <MaterialCommunityIcons
-          name="trophy"
+          name="bell"
           size={SIZES.icon.md}
-          color={getIconColor("Rewards")}
+          color={getIconColor("NotificationsPage")}
         />
-        <Text style={getTextStyle("Rewards")}>Rewards</Text>
+        <Text style={getTextStyle("NotificationsPage")}>Notification</Text>
       </TouchableOpacity>
 
       {/* Support Icon */}
