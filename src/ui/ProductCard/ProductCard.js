@@ -169,12 +169,12 @@ const styles = StyleSheet.create({
   cardWrapper: {
     width: CARD_WIDTH,
     alignSelf: "center",
-    marginVertical: SIZES.margin.md,
+    // marginVertical:10,
     borderRadius: SIZES.radius.xl,
     overflow: "hidden",
     // ...SHADOWS.lg,
     width: "100%",
-    marginVertical: SIZES.margin.xs,
+    // marginVertical: 10,
     // minHeight: moderateScale(500),
   },
   cardContainer: {

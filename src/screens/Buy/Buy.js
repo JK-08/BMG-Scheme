@@ -27,16 +27,6 @@ import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { insertSchemeCollection } from "../../services/InstallmentUpdateService";
 
-/*
-  Notes:
-  - Helper functions that DON'T use hooks are defined outside or as plain functions inside component.
-  - All hooks (useState, useEffect, useMemo, useCallback) are used only at component top level.
-  - retryPaymentRef allows safe retries from Alert buttons without violating hook rules.
-*/
-
-// -----------------------------
-// Utility helpers (pure functions)
-// -----------------------------
 const generateCashPaymentDetails = () => {
   const cardNumber = Math.floor(
     1000000000 + Math.random() * 9000000000
@@ -46,12 +36,9 @@ const generateCashPaymentDetails = () => {
   return { cardNumber, rtnReason };
 };
 
-const createOrder = async () => {
-  const timestamp = new Date().getTime();
-  const random = Math.floor(Math.random() * 10000);
-  return `ORD-${timestamp}-${random}`;
-};
-
+// -----------------------------
+// API Functions
+// -----------------------------
 const getRedirectUrlApi = async (tranCtx) => {
   const url = `${API_BASE_URL}/payment/redirect-url`;
   console.log("[Payment] Getting redirect URL for transaction context");
@@ -108,6 +95,7 @@ const BuyPage = () => {
       defaultContact: productData?.personalInfo?.mobile || "9876543210",
       defaultGroupCode: productData?.groupCode || "",
       defaultRegNo: productData?.regNo || "",
+      schemeId: productData?.schemeSummary?.schemeId || "",
     }),
     [productData]
   );
@@ -275,6 +263,69 @@ const BuyPage = () => {
     };
   }, []);
 
+  // Move this function inside the BuyPage component
+  const createOrder = useCallback(async (amount, productInfo) => {
+    try {
+      // Validate amount
+      const paymentAmount = amount || productInfo.defaultAmount;
+      if (!paymentAmount || isNaN(parseFloat(paymentAmount))) {
+        throw new Error("Invalid amount provided");
+      }
+
+      // Create payload
+      const orderPayload = {
+        amount: parseFloat(paymentAmount),
+        customer: {
+          name: productInfo.defaultName,
+          contact: productInfo.defaultContact,
+          REGNO: productInfo.defaultRegNo,
+          GROUPCODE: productInfo.defaultGroupCode,
+        },
+      };
+
+      console.log("Creating payment order with payload:", orderPayload);
+
+      // API call
+      const response = await fetch(
+        `https://scheme.bmgjewellers.com/api/orders/create`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Accept: "application/json",
+          },
+          body: JSON.stringify(orderPayload),
+        }
+      );
+
+      console.log("Create order response status:", response.status);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error("Create order error response:", errorText);
+        throw new Error(`Failed to create order: HTTP ${response.status}`);
+      }
+
+      // Convert data to JSON
+      const data = await response.json();
+      console.log("Order created successfully:", data);
+
+      // Extract order ID from response (adjust based on your API response structure)
+      const orderId = data.order_id || data.id || data.transactionId || data.referenceNo;
+      console.log("Extracted order ID:", orderId);
+      if (!orderId) {
+        console.warn("No order ID found in response, using timestamp:", data);
+        // Generate a fallback order ID
+        return `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`;
+      }
+
+      return orderId;
+    } catch (error) {
+      console.log("Order creation error:", error);
+      throw error;
+    }
+  }, []);
+
   // -----------------------------
   // Build scheme collection payload
   // -----------------------------
@@ -303,20 +354,21 @@ const BuyPage = () => {
       schemeId: schemeInfo.schemeId,
     };
   }, [
-    amount, // Make sure amount is included in dependencies
+    amount,
     payTypeObj,
     productData,
     productInfo.defaultGroupCode,
     productInfo.defaultRegNo,
     productInfo.defaultAmount,
+    productInfo.schemeId,
   ]);
+
   // -----------------------------
   // Insert cash payment immediately
   // -----------------------------
-  // In BuyPage.js - update the insertCashPayment function catch block
   const insertCashPayment = useCallback(async () => {
     try {
-      console.log("[Payment] Processing cash payment...", buildSchemeData());
+      console.log("[Payment] Processing cash payment...");
       const schemeData = buildSchemeData();
       await insertSchemeCollection(schemeData);
 
@@ -363,7 +415,7 @@ const BuyPage = () => {
         isCashPayment: true,
       });
     }
-  });
+  }, [buildSchemeData, navigation, amount, productInfo, payType, productData]);
 
   // -----------------------------
   // Handle Buy (main)
@@ -400,7 +452,10 @@ const BuyPage = () => {
         return;
       }
 
-      const orderId = await createOrder();
+      // Get the order ID with correct parameters
+      const orderId = await createOrder(amount, productInfo);
+      console.log(`[Payment] Order ID created: ${orderId}`);
+      
       const payload = {
         merchantTxnNo: orderId,
         amount: parseFloat(amount || productInfo.defaultAmount),
@@ -412,7 +467,7 @@ const BuyPage = () => {
         returnURL: "https://app.bmgjewellers.com/api/v1/payment/success",
       };
 
-      console.log(`[Payment] Initiating sale for order: ${orderId}`);
+      console.log(`[Payment] Payload for initiate-sale:`, payload);
       const initiate = await fetch(`${API_BASE_URL}/payment/initiate-sale`, {
         method: "POST",
         headers: {
@@ -520,14 +575,10 @@ const BuyPage = () => {
     payType,
     payTypeResponse,
     productData,
-    productInfo.defaultAmount,
-    productInfo.defaultContact,
-    productInfo.defaultGroupCode,
-    productInfo.defaultName,
-    productInfo.defaultRegNo,
-    productInfo.weightLedger,
+    productInfo,
     token,
     validateAmount,
+    createOrder,
   ]);
 
   // keep a stable ref to handleBuy so that Alert retry can call it safely
@@ -572,7 +623,7 @@ const BuyPage = () => {
     return false;
   };
 
-  // ---------- styles (kept same as your original) ----------
+  // ---------- styles ----------
   const styles = StyleSheet.create({
     background: { flex: 1, backgroundColor: COLORS.background },
     container: { flex: 1 },
@@ -705,23 +756,23 @@ const BuyPage = () => {
       position: "absolute",
       left: SIZES.padding.md,
       top: "40%",
-      transform: [{ translateY: -12 }], // Better vertical centering
-      fontSize: SIZES.font.xxl, // Match input font size
+      transform: [{ translateY: -12 }],
+      fontSize: SIZES.font.xxl,
       color: COLORS.textPrimary,
       zIndex: 1,
     },
     input: {
       backgroundColor: COLORS.inputBackground,
       borderRadius: SIZES.radius.md,
-      paddingLeft: SIZES.padding.xxl + 4, // Slightly more padding for better alignment
+      paddingLeft: SIZES.padding.xxl + 4,
       ...FONTS.h4,
       color: COLORS.textPrimary,
       borderWidth: 1.5,
       borderColor: COLORS.border,
       height: SIZES.input.height + 2,
       marginBottom: 4,
-      includeFontPadding: false, // Prevents extra padding around text
-      textAlignVertical: "center", // Better vertical alignment
+      includeFontPadding: false,
+      textAlignVertical: "center",
       width: "100%",
     },
     inputFocused: {
@@ -854,7 +905,6 @@ const BuyPage = () => {
           </View>
 
           {/* Amount Section */}
-          {/* Amount Section */}
           <View style={styles.amountSection}>
             <View style={styles.sectionHeader}>
               <Text style={styles.sectionIcon}>💰</Text>
@@ -911,10 +961,11 @@ const BuyPage = () => {
               </View>
             )}
           </View>
+          
           {/* Proceed Button */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity
-              onPress={() => handleBuy()}
+              onPress={handleBuy}
               disabled={isButtonDisabled()}
               activeOpacity={0.8}
             >

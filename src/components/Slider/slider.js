@@ -197,8 +197,8 @@ export default function EnhancedSlider() {
 // ---------------- STYLES ----------------
 const styles = StyleSheet.create({
   container: {
-    marginVertical: SIZES.padding.md,
-    marginTop: verticalScale(50),
+    marginVertical:  verticalScale(5),
+    marginTop: verticalScale(30),
   },
 
   sliderItem: {

@@ -60,7 +60,7 @@ const styles = StyleSheet.create({
 
   // ========== SECTION STYLES ==========
   titleSpacer: {
-    marginTop: SIZES.md,
+    marginTop: SIZES.xs,
     paddingHorizontal: SIZES.padding.md,
     gap: SIZES.md,
   },

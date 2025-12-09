@@ -187,11 +187,11 @@ const PaymentWebView = () => {
           body: JSON.stringify(statusPayload),
         }
       );
-
+      
       const data = await response.json();
       console.log(
         `[Payment] Status response received: ${
-          data?.orderStatus || data?.status
+          data.txnStatus
         }`
       );
 

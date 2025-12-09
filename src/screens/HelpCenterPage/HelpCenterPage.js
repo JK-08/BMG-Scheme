@@ -1,4 +1,4 @@
-import React, { useEffect } from 'react'
+import React, { useEffect } from "react";
 import {
   View,
   Text,
@@ -7,31 +7,30 @@ import {
   TouchableOpacity,
   Linking,
   ImageBackground,
-  Alert
-} from 'react-native'
-import { SafeAreaView } from 'react-native-safe-area-context'
-import Icon from 'react-native-vector-icons/MaterialIcons'
-import { LinearGradient } from 'expo-linear-gradient'
-import theme from '../../utils/AppTheme'
-import CommonHeader from '../../components/CommonHeader/CommonHeader'
-import { BottomTab } from '../../components'
-import { useNavigation } from '@react-navigation/native';
-import { companyDetails } from '../../services/CompanyDetails';
+  Alert,
+} from "react-native";
+import { SafeAreaView } from "react-native-safe-area-context";
+import Icon from "react-native-vector-icons/MaterialIcons";
+import { LinearGradient } from "expo-linear-gradient";
+import theme from "../../utils/AppTheme";
+import CommonHeader from "../../components/CommonHeader/CommonHeader";
+import { BottomTab } from "../../components";
+import { useNavigation } from "@react-navigation/native";
+import { companyDetails } from "../../services/CompanyDetails";
 
-const { COLORS, SIZES, FONTS, verticalScale, moderateScale, SHADOWS } = theme
+const { COLORS, SIZES, FONTS, verticalScale, moderateScale, SHADOWS } = theme;
 // const SUPPORT_NUMBER = '70946 70946'
 
 function HelpCenterPage() {
   const navigation = useNavigation();
 
   const [companyInfo, setCompanyInfo] = React.useState(null);
-  console.log(companyInfo ,'companyInfo') ;
+  console.log(companyInfo, "companyInfo");
 
   // const [clickOpen , setClickOpen] = React.useState(false);
   // const [openedType, setOpenedType] = React.useState(null);
 
-
-  useEffect(()=>{
+  useEffect(() => {
     (async () => {
       try {
         const data = await companyDetails.getCompanyDetails();
@@ -41,33 +40,36 @@ function HelpCenterPage() {
       }
     })();
   }, []);
-const cleanPhoneNumber = (phoneNumber) => {
-  return phoneNumber.replace(/\D/g, "");
-};
+  const cleanPhoneNumber = (phoneNumber) => {
+    return phoneNumber.replace(/\D/g, "");
+  };
 
-const handlePhoneCall = async (phoneNumber) => {
-  const cleaned = cleanPhoneNumber(phoneNumber);
-  const url = `tel:${cleaned}`;
-  console.log("Calling URL:", url);
-  await Linking.openURL(url);
-
-};
+  const handlePhoneCall = async (phoneNumber) => {
+    const cleaned = cleanPhoneNumber(phoneNumber);
+    const url = `tel:${cleaned}`;
+    console.log("Calling URL:", url);
+    await Linking.openURL(url);
+  };
 
   const handleEmail = (email) => {
-    Linking.openURL(`mailto:${email}`)
-  }
+    Linking.openURL(`mailto:${email}`);
+  };
 
   const handleOpenMap = (address) => {
-    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(address)}`
-    Linking.openURL(url)
-  }
+    const url = `https://www.google.com/maps/search/?api=1&query=${encodeURIComponent(
+      address
+    )}`;
+    Linking.openURL(url);
+  };
 
   const handleWhatsApp = (message) => {
-    const url = `https://wa.me/${companyInfo?.cPhone}?text=${encodeURIComponent(message)}`
+    const url = `https://wa.me/${companyInfo?.cPhone}?text=${encodeURIComponent(
+      message
+    )}`;
     Linking.openURL(url).catch(() => {
-      alert('Make sure WhatsApp is installed')
-    })
-  }
+      alert("Make sure WhatsApp is installed");
+    });
+  };
 
   const ContactCard = ({ icon, title, children, iconBg }) => (
     <LinearGradient
@@ -84,75 +86,97 @@ const handlePhoneCall = async (phoneNumber) => {
       </View>
       {children}
     </LinearGradient>
-  )
+  );
 
   const ContactItem = ({ text, icon, onPress, isAddress = false }) => (
     <TouchableOpacity style={styles.contactItem} onPress={onPress}>
       {isAddress ? (
         <View style={styles.addressContainer}>
           <Text style={styles.contactText}>{companyInfo?.cAddress1}</Text>
-           <Text style={styles.contactText}>{companyInfo?.cAddress2}</Text> 
-           <Text style={styles.contactText}>{companyInfo?.cPincode}</Text> 
+          <Text style={styles.contactText}>{companyInfo?.cAddress2}</Text>
+          <Text style={styles.contactText}>{companyInfo?.cPincode}</Text>
         </View>
       ) : (
         <Text style={styles.contactText}>{text}</Text>
       )}
       <Icon name={icon} size={moderateScale(18)} color={COLORS.primary} />
     </TouchableOpacity>
-  )
+  );
 
   const QuickAction = ({ icon, text, onPress }) => (
     <TouchableOpacity style={styles.actionButton} onPress={onPress}>
       <Icon name={icon} size={moderateScale(20)} color={COLORS.white} />
       <Text style={styles.actionText}>{text}</Text>
     </TouchableOpacity>
-  )
-const getFullAddress = (info) => {
-  const line1 = companyInfo?.cAddress1 || "";
-  const line2 = companyInfo?.cAddress2 || "";
-  const pin  = companyInfo?.cPincode || "";
+  );
+  const getFullAddress = (info) => {
+    const line1 = companyInfo?.cAddress1 || "";
+    const line2 = companyInfo?.cAddress2 || "";
+    const pin = companyInfo?.cPincode || "";
 
-  return `${line1}, ${line2}, ${pin}`;
-};
+    return `${line1}, ${line2}, ${pin}`;
+  };
 
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={require('../../assets/image.png')}
+        source={require("../../assets/image.png")}
         style={styles.backgroundImage}
         resizeMode="cover"
       >
         <CommonHeader title="Help Center" subtitle="We're here to help you" />
-
-          
 
         <ScrollView
           contentContainerStyle={styles.scrollContainer}
           showsVerticalScrollIndicator={false}
         >
           {/* Contact Cards */}
-         <View style={styles.quickContainer}>
+          <View style={styles.quickContainer}>
+            {/* Row 1 */}
+            <View style={styles.quickContainerRow}>
+              <QuickAction
+                icon="chat"
+                text="Live Chat"
+                onPress={() =>
+                  handleWhatsApp("Hello! I need help via Live Chat.")
+                }
+              />
+              <QuickAction
+                icon="description"
+                text="Leave a message"
+                onPress={() => handlePhoneCall(companyInfo.cPhone)}
+              />
+            </View>
 
-  {/* Row 1 */}
-  <View style={styles.quickContainerRow}>
-    <QuickAction icon="chat" text="Live Chat" onPress={() => handleWhatsApp('Hello! I need help via Live Chat.')} />
-    <QuickAction icon="description" text="Leave a message" onPress={() => handlePhoneCall(companyInfo.cPhone)} />
-  </View>
+            {/* Row 2 */}
+            <View style={styles.quickContainerRow}>
+              <QuickAction
+                icon="mail"
+                text="Send Email"
+                onPress={() => navigation.navigate("EmailFormPage")}
+              />
 
-  {/* Row 2 */}
-  <View style={styles.quickContainerRow}>
-    <QuickAction icon="mail" text="Send Email" onPress={() => handleEmail(companyInfo?.cEmail)} />
-    <QuickAction icon="call" text="Call Support" onPress={() => handlePhoneCall(companyInfo?.cPhone)} />
-  </View>
+              <QuickAction
+                icon="call"
+                text="Call Support"
+                onPress={() => handlePhoneCall(companyInfo?.cPhone)}
+              />
+            </View>
 
-  {/* Row 3 */}
-  <View style={styles.quickContainerRow}>
-    <QuickAction icon="location-on" text="Location" onPress={() => handleOpenMap(getFullAddress())} />
-    <QuickAction icon="help-outline" text="FAQs" onPress={() => navigation.navigate('FAQPage')} />
-  </View>
-
-</View>
-
+            {/* Row 3 */}
+            <View style={styles.quickContainerRow}>
+              <QuickAction
+                icon="location-on"
+                text="Location"
+                onPress={() => handleOpenMap(getFullAddress())}
+              />
+              <QuickAction
+                icon="help-outline"
+                text="FAQs"
+                onPress={() => navigation.navigate("FAQPage")}
+              />
+            </View>
+          </View>
 
           {/* <View style={styles.cardsContainer}>
             <ContactCard 
@@ -237,18 +261,18 @@ const getFullAddress = (info) => {
         <BottomTab screen="HelpCenter" />
       </ImageBackground>
     </View>
-  )
+  );
 }
 
 const styles = StyleSheet.create({
-  container: { 
+  container: {
     flex: 1,
     backgroundColor: COLORS.background,
   },
   backgroundImage: {
     flex: 1,
   },
-  scrollContainer: { 
+  scrollContainer: {
     flexGrow: 1,
     paddingTop: SIZES.padding.md,
     paddingBottom: verticalScale(SIZES.padding.xl),
@@ -266,16 +290,16 @@ const styles = StyleSheet.create({
     borderColor: COLORS.borderLight,
   },
   cardHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: verticalScale(SIZES.padding.md),
   },
   iconContainer: {
     width: moderateScale(40),
     height: moderateScale(40),
     borderRadius: SIZES.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: SIZES.padding.md,
     ...SHADOWS.sm,
   },
@@ -284,9 +308,9 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
   },
   contactItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: verticalScale(SIZES.padding.sm),
     borderBottomWidth: 1,
     borderBottomColor: COLORS.borderLight,
@@ -297,7 +321,7 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: SIZES.padding.sm,
   },
-  addressContainer: { 
+  addressContainer: {
     flex: 1,
   },
   hoursContainer: {
@@ -314,20 +338,20 @@ const styles = StyleSheet.create({
     ...FONTS.h5,
     color: COLORS.textPrimary,
     marginBottom: verticalScale(SIZES.padding.md),
-    textAlign: 'center',
+    textAlign: "center",
   },
   hoursRow: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
+    flexDirection: "row",
+    justifyContent: "space-between",
     paddingVertical: verticalScale(SIZES.padding.sm),
   },
   hoursDay: {
     ...FONTS.body,
     color: COLORS.textPrimary,
   },
-  hoursTime: { 
+  hoursTime: {
     ...FONTS.bodyMedium,
-    color: COLORS.textPrimary, 
+    color: COLORS.textPrimary,
   },
   actionsContainer: {
     backgroundColor: COLORS.card,
@@ -342,30 +366,30 @@ const styles = StyleSheet.create({
     ...FONTS.h5,
     color: COLORS.textPrimary,
     marginBottom: verticalScale(SIZES.padding.md),
-    textAlign: 'center',
+    textAlign: "center",
   },
-  actionsRow: { 
-    flexDirection: 'row', 
-    justifyContent: 'space-between',
+  actionsRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
     gap: SIZES.padding.sm,
   },
   actionButton: {
-    alignItems: 'center',
+    alignItems: "center",
     padding: SIZES.padding.md,
     backgroundColor: COLORS.primaryLight,
     borderRadius: SIZES.radius.md,
     flex: 1,
     minHeight: verticalScale(80),
-    justifyContent: 'center',
+    justifyContent: "center",
     ...SHADOWS.sm,
   },
   actionText: {
     ...FONTS.bodyMedium,
     color: COLORS.white,
     marginTop: verticalScale(SIZES.xs),
-    textAlign: 'center',
+    textAlign: "center",
   },
-   quickContainer: {
+  quickContainer: {
     padding: 15,
   },
   quickContainerRow: {
@@ -374,6 +398,6 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     gap: 15,
   },
-})
+});
 
-export default HelpCenterPage
+export default HelpCenterPage;

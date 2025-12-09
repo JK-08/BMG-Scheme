@@ -36,6 +36,7 @@ function Drawer() {
       <NavigationStack.Screen name="FAQPage" component={Screen.FAQPage} />
       <NavigationStack.Screen name="NotificationsPage" component={Screen.NotificationsPage} />
       <NavigationStack.Screen name="Rewards" component={Screen.RewardsPage} />
+      <NavigationStack.Screen name="EmailFormPage" component={Screen.EmailFormPage} />
     </NavigationStack.Navigator>
   );
 }

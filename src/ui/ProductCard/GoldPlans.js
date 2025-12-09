@@ -89,7 +89,7 @@ const styles = StyleSheet.create({
     overflow: "hidden",
     width: "100%",
     alignSelf: "center",
-    marginVertical: moderateScale(10),
+    marginVertical: moderateScale(5),
     // backgroundColor: COLORS.surface,
     // ...SHADOWS.sm,
   },

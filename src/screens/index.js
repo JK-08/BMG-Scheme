@@ -35,6 +35,7 @@ import NotificationsPage from './Notification/NotificationScreen'
 import RewardsPage from './Reward/Reward'
 import PaymentFailure from './Buy/PaymentFailure'
 import PaymentCancelled from './Buy/PaymentCancelled'
+import EmailFormPage from './HelpCenterPage/EmailForm'
 
 export {
   MainLanding,
@@ -73,4 +74,5 @@ export {
   FAQPage,
   NotificationsPage,
   RewardsPage,
+  EmailFormPage,
 }

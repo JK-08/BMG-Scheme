@@ -486,7 +486,7 @@ const styles = StyleSheet.create({
   backgroundImageStyle: { opacity: 0.7 },
   scrollViewContent: {
     flexGrow: 1,
-    paddingBottom: SIZES.padding.lg,
+    paddingBottom: SIZES.padding.md,
   },
 
   // Floating Card Styles
