@@ -37,9 +37,14 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
   const insPaid = parseInt(trans.insPaid || 0);
 
   // PAY BUTTON CONDITION
-  const showPayButton =
-    ((isAmountScheme || isDigitalScheme) && insPaid < totalInstalments) ||
-    (isFixedDeposit && insPaid < 1);
+ const today = new Date();
+const maturityDt = maturityDate ? new Date(maturityDate) : null;
+
+const showPayButton =
+  (isAmountScheme && insPaid < totalInstalments) || // same as before
+  (isDigitalScheme && maturityDt && today <= maturityDt) || // show until maturity
+  (isFixedDeposit && insPaid < 1);
+
 
   const nextDue = nextDueDate
     ? new Date(nextDueDate).toLocaleDateString("en-GB").replace(/\//g, "-")
@@ -167,7 +172,7 @@ const styles = StyleSheet.create({
     marginVertical: SIZES.margin.md,
     borderRadius: SIZES.radius.xl,
     overflow: "hidden",
-    ...SHADOWS.lg,
+    // ...SHADOWS.lg,
     width: "100%",
     marginVertical: SIZES.margin.xs,
     // minHeight: moderateScale(500),
