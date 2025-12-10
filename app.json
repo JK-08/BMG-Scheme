@@ -2,7 +2,7 @@
   "expo": {
     "name": "BMG Digi Schemes",
     "slug": "bmg-scheme",
-    "version": "1.2.3",
+    "version": "1.2.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -22,7 +22,7 @@
         "WAKE_LOCK",
         "VIBRATE"
       ],
-      "versionCode": 23,
+      "versionCode": 24,
       "adaptiveIcon": {
         "foregroundImage": "./assets/icon.png",
         "backgroundColor": "#ffffff"
@@ -39,6 +39,10 @@
         "projectId": "a2916d84-f040-424a-805e-0be799d7a6ff"
       }
     },
-    "owner": "brightech"
+    "owner": "brightech",
+    "plugins": [
+      "expo-font",
+      "expo-localization"
+    ]
   }
 }
