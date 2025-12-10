@@ -10,8 +10,9 @@ import {
 import { useRoute, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// ✅ Import SMS service only
+// ✅ Import SMS service and API service
 import smsService from "../../services/SMSService";
+import { getPhoneDetails } from "../../services/SchemeDetailsService"; // Import your API function
 import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 
 const PaymentSuccess = () => {
@@ -19,8 +20,10 @@ const PaymentSuccess = () => {
   const navigation = useNavigation();
   const [storedPaymentData, setStoredPaymentData] = useState(null);
   const [loading, setLoading] = useState(true);
-  const [smsSent, setSmsSent] = useState(false); // ⬅️ avoid double trigger
+  const [smsSent, setSmsSent] = useState(false);
   const [isJoiningPayment, setIsJoiningPayment] = useState(true);
+  const [refreshedPhoneData, setRefreshedPhoneData] = useState(null); // Store refreshed phone data
+  const [smsSending, setSmsSending] = useState(false); // Track SMS sending state
 
   const {
     status,
@@ -71,6 +74,41 @@ const PaymentSuccess = () => {
     loadStoredPaymentData();
   }, []);
 
+  // Fetch updated phone details before sending SMS
+  const fetchUpdatedPhoneDetails = async () => {
+    try {
+      console.log("[PaymentSuccess] Fetching updated phone details...");
+      
+      // Get mobile number from existing data
+      const mobile = productData?.personalInfo?.mobile || 
+                     productData?.mobile ||
+                     orderDetails?.customer?.contact;
+      
+      if (!mobile) {
+        console.warn("[PaymentSuccess] No mobile number found for fetching updated details");
+        return null;
+      }
+
+      // Call your API to get updated phone details
+      const response = await getPhoneDetails(mobile);
+      
+      if (response && response.data && response.data.length > 0) {
+        console.log("[PaymentSuccess] Updated phone data fetched successfully");
+        return response.data[0]; // Return the first item from array
+      } else if (response && response.length > 0) {
+        // Handle case where response is directly the array
+        console.log("[PaymentSuccess] Updated phone data fetched successfully");
+        return response[0];
+      }
+      
+      console.log("[PaymentSuccess] No updated phone data found");
+      return null;
+    } catch (error) {
+      console.error("[PaymentSuccess] Error fetching updated phone details:", error);
+      return null;
+    }
+  };
+
   // ======================================================
   // ✅ SEND INSTALLMENT OR JOINING PAYMENT SUCCESS SMS ONLY
   // ======================================================
@@ -83,54 +121,111 @@ const PaymentSuccess = () => {
     }
 
     const sendSMS = async () => {
-      console.log("[PaymentSuccess] Sending SMS");
+      console.log("[PaymentSuccess] Starting SMS sending process");
+      setSmsSending(true);
 
       try {
-        const mobile =
-          productData?.personalInfo?.mobile ||
-          orderDetails?.customer?.contact ||
-          null;
+        // Step 1: Fetch updated phone details from API
+        const updatedPhoneData = await fetchUpdatedPhoneDetails();
+        
+        if (updatedPhoneData) {
+          setRefreshedPhoneData(updatedPhoneData);
+          console.log("[PaymentSuccess] Using refreshed phone data for SMS");
+        } else {
+          console.log("[PaymentSuccess] Using original product data for SMS");
+        }
+
+        // Step 2: Determine which data source to use
+        // Priority: Updated phone data > productData > orderDetails
+        const dataToUse = updatedPhoneData || productData;
+        
+        // Step 3: Get all necessary data for SMS
+        const mobile = dataToUse?.personalInfo?.mobile || 
+                       dataToUse?.mobile ||
+                       orderDetails?.customer?.contact ||
+                       null;
 
         if (!mobile) {
           console.warn("[PaymentSuccess] No mobile number found");
+          setSmsSending(false);
           return;
         }
 
-        const name =
-          productData?.personalInfo?.pName ||
-          orderDetails?.customer?.name ||
-          "Customer";
+        const name = dataToUse?.pName || 
+                     dataToUse?.personalInfo?.pName ||
+                     dataToUse?.name ||
+                     orderDetails?.customer?.name || 
+                     "Customer";
 
-        const amount = orderDetails?.amount || productData?.amount || 0;
+        const amount = dataToUse?.amount || 
+                       orderDetails?.amount || 
+                       0;
 
-        const schemeName =
-          orderDetails?.schemeInfo?.schemeName ||
-          productData?.schemeSummary?.schemeName ||
-          "BMG Scheme";
+        const schemeName = dataToUse?.schemeSummary?.schemeName || 
+                           dataToUse?.schemeName ||
+                           orderDetails?.schemeInfo?.schemeName || 
+                           "BMG Scheme";
 
-        const lastPaid =
-          productData?.lastPaidDate ||
-          schemeData?.rDate ||
-          new Date().toISOString();
+        // Get dates directly from data
+        const lastPaidDate = dataToUse?.lastPaidDate || 
+                            dataToUse?.paymentHistoryList?.[dataToUse?.paymentHistoryList?.length - 1]?.updateTime;
+        
+        const nextDueDate = dataToUse?.nextDueDate; // Already in format "2026-03-01"
+        
+        // Format last paid date from "2025-12-10 00:00:00.0" to "10 Dec 2025"
+        let formattedLastPaid = "";
+        if (lastPaidDate) {
+          const lastPaid = new Date(lastPaidDate);
+          if (!isNaN(lastPaid.getTime())) {
+            formattedLastPaid = lastPaid.toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+          }
+        }
 
-        const monthYear = new Date(lastPaid).toLocaleDateString("en-IN", {
-          month: "short",
-          year: "numeric",
-        });
+        // Format monthYear from lastPaidDate for SMS
+        let monthYear = "";
+        if (lastPaidDate) {
+          const dateObj = new Date(lastPaidDate);
+          if (!isNaN(dateObj.getTime())) {
+            monthYear = dateObj.toLocaleDateString("en-IN", {
+              month: "short",
+              year: "numeric",
+            });
+          }
+        }
 
+        // Current date for payment date
         const paidDate = new Date().toLocaleDateString("en-IN", {
           day: "2-digit",
           month: "short",
           year: "numeric",
         });
 
-        const paid = new Date(lastPaid);
-        const nextDueObj = new Date(paid.setMonth(paid.getMonth() + 1));
+        // Format next due date if available (already in "2026-03-01" format)
+        let formattedNextDue = "";
+        if (nextDueDate) {
+          const nextDue = new Date(nextDueDate);
+          if (!isNaN(nextDue.getTime())) {
+            formattedNextDue = nextDue.toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+          }
+        }
 
-        const nextDueDate = nextDueObj.toLocaleDateString("en-IN", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
+        // Log the data being sent for debugging
+        console.log("[PaymentSuccess] SMS Data:", {
+          mobile,
+          name,
+          schemeName,
+          amount,
+          monthYear,
+          paidDate,
+          formattedNextDue
         });
 
         // ======================================================
@@ -141,15 +236,18 @@ const PaymentSuccess = () => {
           name,
           schemeName,
           amount,
-          monthYear,
-          paidDate,
-          nextDueDate
+          monthYear,          // e.g., "Dec 2025"
+          paidDate,           // e.g., "10 Dec 2025"
+          formattedNextDue    // e.g., "01 Mar 2026"
         );
 
-        console.log("[PaymentSuccess] Payment SMS sent");
+        console.log("[PaymentSuccess] Payment SMS sent successfully");
         setSmsSent(true);
       } catch (err) {
         console.error("[PaymentSuccess] Error sending SMS:", err);
+        // You might want to show an error message to the user
+      } finally {
+        setSmsSending(false);
       }
     };
 
@@ -179,23 +277,39 @@ const PaymentSuccess = () => {
 
   const finalPaymentStatus = paymentStatus || storedPaymentData;
 
-  const groupCode =
-    productData?.groupCode ||
-    orderDetails?.groupCode ||
-    orderDetails?.productData?.groupCode ||
-    "N/A";
+  // Use refreshed phone data if available for display
+  const dataToDisplay = refreshedPhoneData || productData;
 
-  const regNo =
-    productData?.regNo ||
-    orderDetails?.regNo ||
-    orderDetails?.productData?.regNo ||
-    "N/A";
+  const groupCode = dataToDisplay?.groupCode ||
+                    orderDetails?.groupCode ||
+                    orderDetails?.productData?.groupCode ||
+                    "N/A";
 
-  const schemeName =
-    orderDetails?.schemeInfo?.schemeName ||
-    productData?.schemeSummary?.schemeName ||
-    schemeData?.schemeName ||
-    "SuperGold Scheme";
+  const regNo = dataToDisplay?.regNo ||
+                orderDetails?.regNo ||
+                orderDetails?.productData?.regNo ||
+                "N/A";
+
+  const schemeName = orderDetails?.schemeInfo?.schemeName ||
+                     dataToDisplay?.schemeSummary?.schemeName ||
+                     dataToDisplay?.schemeName ||
+                     schemeData?.schemeName ||
+                     "SuperGold Scheme";
+
+  // Get next due date from the data to display
+  const nextDueDate = dataToDisplay?.nextDueDate;
+  let formattedNextDue = "";
+  
+  if (nextDueDate) {
+    const nextDue = new Date(nextDueDate);
+    if (!isNaN(nextDue.getTime())) {
+      formattedNextDue = nextDue.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    }
+  }
 
   if (loading) {
     return (
@@ -225,7 +339,7 @@ const PaymentSuccess = () => {
         <Text style={styles.infoText}>
           Your payment of{" "}
           <Text style={{ fontWeight: FONTS.weight.bold }}>
-            ₹{orderDetails?.amount || productData?.amount}
+            ₹{orderDetails?.amount || dataToDisplay?.amount}
           </Text>{" "}
           has been processed successfully
           {isJoiningPayment && " and your Scheme Code is"}
@@ -236,6 +350,34 @@ const PaymentSuccess = () => {
             {groupCode} - {regNo}
           </Text>
         )}
+        
+        {/* Display Next Due Date if available */}
+        {formattedNextDue && (
+          <View style={styles.dueDateContainer}>
+            <Text style={styles.dueDateLabel}>Next Due Date:</Text>
+            <Text style={styles.dueDateValue}>{formattedNextDue}</Text>
+          </View>
+        )}
+
+        {/* Show SMS status */}
+        <View style={styles.smsStatusContainer}>
+          {smsSent ? (
+            <Text style={styles.smsSuccessText}>
+              ✓ Payment confirmation SMS sent
+            </Text>
+          ) : smsSending ? (
+            <View style={styles.smsLoadingContainer}>
+              <ActivityIndicator size="small" color={COLORS.primary} />
+              <Text style={styles.smsLoadingText}>
+                Sending payment confirmation...
+              </Text>
+            </View>
+          ) : (
+            <Text style={styles.smsPendingText}>
+              Preparing payment confirmation...
+            </Text>
+          )}
+        </View>
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity
@@ -253,7 +395,7 @@ const PaymentSuccess = () => {
 export default PaymentSuccess;
 
 // ───────────────────────────────
-//  STYLES (unchanged)
+//  STYLES
 // ───────────────────────────────
 const styles = StyleSheet.create({
   container: {
@@ -300,6 +442,44 @@ const styles = StyleSheet.create({
     color: COLORS.secondary,
     fontWeight: FONTS.weight.bold,
     textAlign: "center",
+  },
+  dueDateContainer: {
+    marginTop: SIZES.padding.lg,
+    alignItems: 'center',
+  },
+  dueDateLabel: {
+    ...FONTS.bodySmall,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.padding.xs,
+  },
+  dueDateValue: {
+    ...FONTS.bodyMedium,
+    color: COLORS.primary,
+    fontWeight: FONTS.weight.bold,
+  },
+  smsStatusContainer: {
+    marginTop: SIZES.padding.lg,
+    alignItems: 'center',
+    minHeight: 40,
+  },
+  smsSuccessText: {
+    ...FONTS.bodySmall,
+    color: COLORS.success,
+    textAlign: 'center',
+  },
+  smsLoadingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+  },
+  smsLoadingText: {
+    ...FONTS.bodySmall,
+    color: COLORS.textSecondary,
+    marginLeft: SIZES.padding.sm,
+  },
+  smsPendingText: {
+    ...FONTS.bodySmall,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
   },
   buttonContainer: {
     width: "100%",
