@@ -345,32 +345,8 @@ function LoginPage() {
                   </LinearGradient>
                 </TouchableOpacity>
 
-                {/* Divider */}
-                <View style={styles.dividerContainer}>
-                  <View style={styles.divider} />
-                  <Text style={styles.dividerText}>or continue with</Text>
-                  <View style={styles.divider} />
-                </View>
-
-                {/* Google Button */}
-                <TouchableOpacity
-                  style={[styles.googleButton, googleLoading && styles.disabledButton]}
-                  onPress={handleGoogleSignIn}
-                  disabled={googleLoading}
-                >
-                  
-                  {googleLoading ? (
-                    <ActivityIndicator color={COLORS.primary} />
-                  ) : (
-                    <View style={styles.googleButtonContent}>
-                      <Image
-                        source={require("../../assets/icons/google.png")}
-                        style={styles.googleIcon}
-                      />
-                      <Text style={styles.googleButtonText}>Continue with Google</Text>
-                    </View>
-                  )}
-                </TouchableOpacity>
+                
+               
 
                 {/* Register */}
                 <View style={styles.registerContainer}>
