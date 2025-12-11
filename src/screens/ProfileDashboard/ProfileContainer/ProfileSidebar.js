@@ -295,7 +295,9 @@ const DrawerMenu = ({ isVisible, onClose }) => {
      Menu items
   ------------------------- */
   const menuItems = [
-    { label: "My Scheme", icon: "list", route: "MyScheme" },
+    { label: "About", icon: "info", route: "AboutPage" },
+    { label: "FAQ", icon: "support-agent", route: "FAQPage" },
+    // { label: "My Scheme", icon: "list", route: "MyScheme" },
     { label: "Help Center", icon: "help-center", route: "HelpCenter" },
     { label: "Privacy Policy", icon: "privacy-tip", route: "PrivacyPolicy" },
     {
@@ -303,13 +305,12 @@ const DrawerMenu = ({ isVisible, onClose }) => {
       icon: "description",
       route: "TermsandCondition",
     },
-    // {
-    //   label: "Notifications",
-    //   icon: "notifications",
-    //   route: "NotificationsPage",
-    // },
-    { label: "About", icon: "info", route: "AboutPage" },
-    { label: "FAQ", icon: "support-agent", route: "FAQPage" },
+    {
+      label: "Refer a Friend",
+      icon: "monetization-on",
+      route: "ReferralScreen",
+    },
+    
   ];
 
   /* -------------------------
@@ -670,7 +671,7 @@ const styles = {
     justifyContent: "center",
 
     // Subtle glass shadow
-    shadowColor:"rgba(255, 255, 255, 0.7)",
+    shadowColor: "rgba(255, 255, 255, 0.7)",
     shadowOpacity: 0.15,
     shadowOffset: { width: 0, height: 2 },
     shadowRadius: 6,

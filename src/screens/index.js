@@ -36,6 +36,7 @@ import RewardsPage from './Reward/Reward'
 import PaymentFailure from './Buy/PaymentFailure'
 import PaymentCancelled from './Buy/PaymentCancelled'
 import EmailFormPage from './HelpCenterPage/EmailForm'
+import ReferralScreen from './Referral/Referral'
 
 export {
   MainLanding,
@@ -75,4 +76,5 @@ export {
   NotificationsPage,
   RewardsPage,
   EmailFormPage,
+  ReferralScreen,
 }
