@@ -64,9 +64,9 @@ useEffect(() => {
       } else if (userPhoneNumber) {
         // Phone number exists → go to MPIN
         if (isMpinCreated === "true") {
-          setInitialRoute("VerifyMpinScreen");
+          setInitialRoute("Drawer");
         } else {
-          setInitialRoute("MpinScreen");
+          setInitialRoute("Drawer");
         }
       } else {
         // No phone number → show login

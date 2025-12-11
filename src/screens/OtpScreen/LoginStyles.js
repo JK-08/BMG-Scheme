@@ -226,6 +226,7 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginLeft: SIZES.xs,
   },
+  
 
   // Loading Overlay
   loadingOverlay: {

@@ -12,9 +12,13 @@ import {
   KeyboardAvoidingView,
   TouchableWithoutFeedback,
   Keyboard,
+  Alert,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
-import { GoogleSignin, statusCodes } from "@react-native-google-signin/google-signin";
+import {
+  GoogleSignin,
+  statusCodes,
+} from "@react-native-google-signin/google-signin";
 import { showToast } from "../../utils/toast";
 import theme from "../../utils/AppTheme";
 import styles from "./LoginStyles";
@@ -38,6 +42,7 @@ function LoginPage() {
   });
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
+  const [usingDemoAccount, setUsingDemoAccount] = useState(false);
 
   const navigation = useNavigation();
 
@@ -53,15 +58,50 @@ function LoginPage() {
     });
   }, []);
 
+  // ✅ Demo Account Function
+  const handleDemoLogin = () => {
+    const demoCredentials = {
+      contactOrEmailOrUsername: "9790429938", // or "bmgdemo@gmail.com" or "bmg"
+      password: "123456",
+    };
+
+    // Set demo credentials
+    setContactOrEmailOrUsername(demoCredentials.contactOrEmailOrUsername);
+    setPassword(demoCredentials.password);
+    setUsingDemoAccount(true);
+
+    // Mark fields as touched
+    setTouched({
+      contactOrEmailOrUsername: true,
+      password: true,
+    });
+
+    // Clear errors
+    setErrors({
+      contactOrEmailOrUsername: "",
+      password: "",
+    });
+
+    // Show demo info
+    showToast("Demo account loaded. Click 'Login' to proceed.");
+
+    // Auto-login after 1 second
+    setTimeout(() => {
+      handleLogin();
+    }, 1000);
+  };
+
   const validateField = (fieldName, value) => {
     const newErrors = { ...errors };
 
     switch (fieldName) {
       case "contactOrEmailOrUsername":
         if (!value.trim()) {
-          newErrors.contactOrEmailOrUsername = "Please enter email or phone number";
+          newErrors.contactOrEmailOrUsername =
+            "Please enter email or phone number";
         } else if (!isValidEmailOrPhone(value)) {
-          newErrors.contactOrEmailOrUsername = "Please enter a valid email or phone number";
+          newErrors.contactOrEmailOrUsername =
+            "Please enter a valid email or phone number";
         } else {
           newErrors.contactOrEmailOrUsername = "";
         }
@@ -87,10 +127,20 @@ function LoginPage() {
   const isValidEmailOrPhone = (value) => {
     const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
     const phoneRegex = /^[6-9]\d{9}$/;
-    return emailRegex.test(value) || phoneRegex.test(value.replace(/\D/g, ""));
+    const usernameRegex = /^[a-zA-Z0-9_]{3,}$/; // For demo username
+    return (
+      emailRegex.test(value) ||
+      phoneRegex.test(value.replace(/\D/g, "")) ||
+      usernameRegex.test(value)
+    );
   };
 
   const handleFieldChange = (fieldName, value) => {
+    // If user starts typing, disable demo mode
+    if (usingDemoAccount) {
+      setUsingDemoAccount(false);
+    }
+
     switch (fieldName) {
       case "contactOrEmailOrUsername":
         setContactOrEmailOrUsername(value);
@@ -106,7 +156,9 @@ function LoginPage() {
     setTouched((prev) => ({ ...prev, [fieldName]: true }));
     validateField(
       fieldName,
-      fieldName === "contactOrEmailOrUsername" ? contactOrEmailOrUsername : password
+      fieldName === "contactOrEmailOrUsername"
+        ? contactOrEmailOrUsername
+        : password
     );
   };
 
@@ -178,6 +230,7 @@ function LoginPage() {
   };
 
   // ✅ Regular Login
+  // ✅ Regular Login
   const handleLogin = async () => {
     const allTouched = { contactOrEmailOrUsername: true, password: true };
     setTouched(allTouched);
@@ -197,10 +250,44 @@ function LoginPage() {
 
     setLoading(true);
     try {
-      const res = await userService.loginUser({
-        contactOrEmailOrUsername,
-        password,
-      });
+      let res;
+
+      // Check if it's demo account login
+      const isDemoLogin =
+        (contactOrEmailOrUsername === "9790429938" ||
+          contactOrEmailOrUsername === "bmgdemo@gmail.com" ||
+          contactOrEmailOrUsername === "bmg") &&
+        password === "123456";
+
+      if (isDemoLogin) {
+        // Simulate demo account login without API call
+        console.log("🔐 Demo account login detected");
+
+        // Create demo user data
+        const demoUserData = {
+          success: true,
+          data: {
+            id: "40111",
+            username: "bmg",
+            email: "bmgdemo@gmail.com",
+            contactNumber: "9790429938",
+            isVerified: true,
+            isDemo: true,
+            token: "demo_token_xndgngngdjngnmfhjfgmfgjdhmgmfhkfhmf65697jnuu56yz123",
+            message: "Demo account logged in successfully",
+            mpinSet: false, // Add this flag to indicate MPIN is not set for demo
+          },
+        };
+
+        res = demoUserData;
+        setUsingDemoAccount(true);
+      } else {
+        // Regular login
+        res = await userService.loginUser({
+          contactOrEmailOrUsername,
+          password,
+        });
+      }
 
       if (res.success && res.data?.token) {
         console.log("✅ Login Success:", res.data);
@@ -208,12 +295,31 @@ function LoginPage() {
         const normalizedData = {
           ...res.data,
           contactNumber: res.data.contactNumber || res.data.contact || "",
+          isDemo: isDemoLogin || false,
+          mpinSet: res.data.mpinSet || false, // Ensure mpinSet flag exists
         };
 
         await saveUserData(normalizedData);
 
-        showToast("Login successful!");
-        navigation.navigate("VerifyMpinScreen", { step: 3 });
+        showToast(
+          isDemoLogin ? "Demo account login successful!" : "Login successful!"
+        );
+
+        // Navigate based on demo status
+        if (isDemoLogin) {
+          // For demo account, go directly to Home/Drawer
+          navigation.reset({
+            index: 0,
+            routes: [{ name: "Drawer" }], // Or "Home" depending on your navigation structure
+          });
+        } else {
+          // For regular users, check if MPIN is set
+          if (res.data.mpinSet) {
+            navigation.navigate("VerifyMpinScreen", { step: 3 });
+          } else {
+            navigation.navigate("MpinScreen", { step: 1 }); // Set MPIN for first time
+          }
+        }
       } else {
         showToast(res.error || "Invalid credentials");
         setErrors((prev) => ({
@@ -231,8 +337,34 @@ function LoginPage() {
       setLoading(false);
     }
   };
-
   const navigateToRegister = () => navigation.navigate("RegisterPage");
+
+  // Quick Login Options
+  const quickLoginOptions = [
+    {
+      label: "Demo Account",
+      onPress: handleDemoLogin,
+      color: COLORS.secondary,
+    },
+    {
+      label: "Admin",
+      onPress: () => {
+        setContactOrEmailOrUsername("admin@example.com");
+        setPassword("admin123");
+        showToast("Admin credentials loaded");
+      },
+      color: COLORS.primary,
+    },
+    {
+      label: "Test User",
+      onPress: () => {
+        setContactOrEmailOrUsername("testuser@gmail.com");
+        setPassword("test123");
+        showToast("Test credentials loaded");
+      },
+      color: COLORS.success,
+    },
+  ];
 
   const RequiredLabel = ({ children }) => (
     <Text style={styles.label}>
@@ -269,10 +401,44 @@ function LoginPage() {
                 <Text style={styles.title}>Login</Text>
                 <Text style={styles.subtitle}>Sign in to continue</Text>
 
+                {/* Demo Indicator */}
+                {usingDemoAccount && (
+                  <View style={styles.demoIndicator}>
+                    <Text style={styles.demoIndicatorText}>
+                      ⚡ Using Demo Account
+                    </Text>
+                  </View>
+                )}
+
+                {/* Quick Login Buttons */}
+                <View style={styles.quickLoginContainer}>
+                  <Text style={styles.quickLoginTitle}>Quick Login:</Text>
+                  <View style={styles.quickLoginButtons}>
+                    {quickLoginOptions.map((option, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.quickLoginButton,
+                          { backgroundColor: option.color },
+                        ]}
+                        onPress={option.onPress}
+                        disabled={loading || googleLoading}
+                      >
+                        <Text style={styles.quickLoginButtonText}>
+                          {option.label}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                </View>
+
                 {/* Email/Phone Field */}
                 <RequiredLabel>Email or Phone</RequiredLabel>
                 <TextInput
-                  style={[styles.input, errors.contactOrEmailOrUsername && styles.inputError]}
+                  style={[
+                    styles.input,
+                    errors.contactOrEmailOrUsername && styles.inputError,
+                  ]}
                   value={contactOrEmailOrUsername}
                   onChangeText={(value) =>
                     handleFieldChange("contactOrEmailOrUsername", value)
@@ -283,16 +449,25 @@ function LoginPage() {
                   autoCapitalize="none"
                 />
                 {errors.contactOrEmailOrUsername ? (
-                  <Text style={styles.errorText}>{errors.contactOrEmailOrUsername}</Text>
+                  <Text style={styles.errorText}>
+                    {errors.contactOrEmailOrUsername}
+                  </Text>
                 ) : null}
 
                 {/* Password Field */}
                 <RequiredLabel>Password</RequiredLabel>
-                <View style={[styles.passwordContainer, errors.password && styles.inputError]}>
+                <View
+                  style={[
+                    styles.passwordContainer,
+                    errors.password && styles.inputError,
+                  ]}
+                >
                   <TextInput
                     style={styles.passwordInput}
                     value={password}
-                    onChangeText={(value) => handleFieldChange("password", value)}
+                    onChangeText={(value) =>
+                      handleFieldChange("password", value)
+                    }
                     onBlur={() => handleFieldBlur("password")}
                     placeholder="Enter password"
                     placeholderTextColor={COLORS.textTertiary}
@@ -313,7 +488,9 @@ function LoginPage() {
                     />
                   </TouchableOpacity>
                 </View>
-                {errors.password ? <Text style={styles.errorText}>{errors.password}</Text> : null}
+                {errors.password ? (
+                  <Text style={styles.errorText}>{errors.password}</Text>
+                ) : null}
 
                 {/* Forgot Password */}
                 <TouchableOpacity
@@ -322,17 +499,26 @@ function LoginPage() {
                   }
                   style={styles.forgotPasswordContainer}
                 >
-                  <Text style={styles.forgotPasswordText}>Forgot Password?</Text>
+                  <Text style={styles.forgotPasswordText}>
+                    Forgot Password?
+                  </Text>
                 </TouchableOpacity>
 
                 {/* Login Button */}
                 <TouchableOpacity
-                  style={[styles.primaryButton, loading && styles.disabledButton]}
+                  style={[
+                    styles.primaryButton,
+                    loading && styles.disabledButton,
+                  ]}
                   onPress={handleLogin}
                   disabled={loading}
                 >
                   <LinearGradient
-                    colors={COLORS.gradient.brand}
+                    colors={
+                      usingDemoAccount
+                        ? COLORS.gradient.secondary
+                        : COLORS.gradient.brand
+                    }
                     style={styles.buttonGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
@@ -340,7 +526,9 @@ function LoginPage() {
                     {loading ? (
                       <ActivityIndicator color={COLORS.white} />
                     ) : (
-                      <Text style={styles.primaryButtonText}>Login</Text>
+                      <Text style={styles.primaryButtonText}>
+                        {usingDemoAccount ? "Login with Demo" : "Login"}
+                      </Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
@@ -353,12 +541,14 @@ function LoginPage() {
                 </View>
 
                 {/* Google Button */}
-                <TouchableOpacity
-                  style={[styles.googleButton, googleLoading && styles.disabledButton]}
+                {/* <TouchableOpacity
+                  style={[
+                    styles.googleButton,
+                    googleLoading && styles.disabledButton,
+                  ]}
                   onPress={handleGoogleSignIn}
                   disabled={googleLoading}
                 >
-                  
                   {googleLoading ? (
                     <ActivityIndicator color={COLORS.primary} />
                   ) : (
@@ -367,31 +557,48 @@ function LoginPage() {
                         source={require("../../assets/icons/google.png")}
                         style={styles.googleIcon}
                       />
-                      <Text style={styles.googleButtonText}>Continue with Google</Text>
+                      <Text style={styles.googleButtonText}>
+                        Continue with Google
+                      </Text>
                     </View>
                   )}
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 {/* Register */}
                 <View style={styles.registerContainer}>
-                  <Text style={styles.registerText}>Don't have an account?</Text>
+                  <Text style={styles.registerText}>
+                    Don't have an account?
+                  </Text>
                   <TouchableOpacity onPress={navigateToRegister}>
                     <Text style={styles.registerLink}> Register</Text>
                   </TouchableOpacity>
                 </View>
+
+                {/* Demo Info */}
+                {/* <View style={styles.demoInfoContainer}>
+                  <Text style={styles.demoInfoTitle}>Demo Account:</Text>
+                  <Text style={styles.demoInfoText}>Username: bmg</Text>
+                  <Text style={styles.demoInfoText}>Email: bmgdemo@gmail.com</Text>
+                  <Text style={styles.demoInfoText}>Phone: 9790429938</Text>
+                  <Text style={styles.demoInfoText}>Password: 123456</Text>
+                </View> */}
               </View>
             </View>
           </ScrollView>
         </KeyboardAvoidingView>
 
-        {(loading || googleLoading) && (
+        {/* {(loading || googleLoading) && (
           <View style={styles.loadingOverlay}>
             <ActivityIndicator size="large" color={COLORS.primary} />
             <Text style={styles.loadingText}>
-              {googleLoading ? "Signing in with Google..." : "Processing..."}
+              {googleLoading
+                ? "Signing in with Google..."
+                : usingDemoAccount
+                ? "Logging in with demo..."
+                : "Processing..."}
             </Text>
           </View>
-        )}
+        )} */}
       </ImageBackground>
     </TouchableWithoutFeedback>
   );

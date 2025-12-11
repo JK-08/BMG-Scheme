@@ -52,6 +52,7 @@ function RegisterPage({ navigation }) {
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
   const [appHash, setAppHash] = useState("");
+  const [usingDemoAccount, setUsingDemoAccount] = useState(false);
 
   // Validation rules
   const validationRules = {
@@ -105,6 +106,45 @@ function RegisterPage({ navigation }) {
     }
   }, []);
 
+  // ✅ Demo Account Function
+  const handleDemoAccount = useCallback(() => {
+    const demoData = {
+      username: "bmg",
+      email: "bmgdemo@gmail.com",
+      phone: "9790429938",
+      password: "123456"
+    };
+
+    // Set demo data
+    setFormData(demoData);
+    setUsingDemoAccount(true);
+
+    // Mark all fields as touched
+    const allTouched = Object.keys(demoData).reduce((acc, key) => {
+      acc[key] = true;
+      return acc;
+    }, {});
+    setTouched(allTouched);
+
+    // Clear any existing errors
+    setErrors({
+      username: "",
+      email: "",
+      phone: "",
+      password: "",
+    });
+
+    // Validate demo data
+    Object.keys(demoData).forEach(key => {
+      const error = validationRules[key](demoData[key]);
+      if (error) {
+        setErrors(prev => ({ ...prev, [key]: error }));
+      }
+    });
+
+    showToast("Demo account loaded. Click 'Create Account' to proceed.");
+  }, []);
+
   // Validation functions
   const validateField = useCallback((fieldName, value) => {
     const error = validationRules[fieldName](value);
@@ -119,11 +159,16 @@ function RegisterPage({ navigation }) {
     }
 
     setFormData(prev => ({ ...prev, [fieldName]: processedValue }));
+    
+    // If user starts typing, disable demo mode
+    if (usingDemoAccount && value !== formData[fieldName]) {
+      setUsingDemoAccount(false);
+    }
 
     if (touched[fieldName]) {
       validateField(fieldName, processedValue);
     }
-  }, [touched, validateField]);
+  }, [touched, validateField, formData, usingDemoAccount]);
 
   const handleFieldBlur = useCallback((fieldName) => {
     setTouched(prev => ({ ...prev, [fieldName]: true }));
@@ -223,13 +268,37 @@ function RegisterPage({ navigation }) {
     setLoading(true);
 
     try {
-      const res = await userService.registerUser({
-        username: formData.username,
-        email: formData.email,
-        contactNumber: formData.phone,
-        password: formData.password,
-        hashKey: appHash || "",
-      });
+      let res;
+      
+      // For demo account, simulate success without API call
+      if (usingDemoAccount && 
+          formData.username === "bmg" && 
+          formData.email === "bmgdemo@gmail.com" && 
+          formData.phone === "9790429938") {
+        
+        // Simulate API response
+        res = {
+          success: true,
+          data: {
+            id: "40111",
+            username: formData.username,
+            email: formData.email,
+            contactNumber: formData.phone,
+            isDemo: true
+          }
+        };
+        
+        showToast("Demo account created successfully!");
+      } else {
+        // Regular registration
+        res = await userService.registerUser({
+          username: formData.username,
+          email: formData.email,
+          contactNumber: formData.phone,
+          password: formData.password,
+          hashKey: appHash || "",
+        });
+      }
 
       if (res.success) {
         await AsyncStorage.setItem(
@@ -240,13 +309,15 @@ function RegisterPage({ navigation }) {
             phone: formData.phone,
             password: formData.password,
             appHash,
+            isDemo: usingDemoAccount
           })
         );
 
-        showToast("Registration successful! OTP sent.");
+        showToast(usingDemoAccount ? "Demo account created! OTP sent." : "Registration successful! OTP sent.");
         navigation.navigate("OTP", {
           phoneNumber: formData.phone,
           appHash: appHash,
+          isDemo: usingDemoAccount
         });
       } else {
         handleRegistrationError(res.error, res.details);
@@ -257,7 +328,7 @@ function RegisterPage({ navigation }) {
     } finally {
       setLoading(false);
     }
-  }, [formData, appHash, navigation, validateAllFields]);
+  }, [formData, appHash, navigation, validateAllFields, usingDemoAccount]);
 
   const handleRegistrationError = useCallback((error, details = {}) => {
     const errorMessage = error?.toString()?.toLowerCase() || "";
@@ -403,6 +474,24 @@ function RegisterPage({ navigation }) {
               <View style={styles.card}>
                 <Text style={styles.title}>Create Account</Text>
 
+                {/* Demo Account Button */}
+                <TouchableOpacity
+                  style={styles.demoButton}
+                  onPress={handleDemoAccount}
+                  disabled={loading || googleLoading}
+                >
+                  <LinearGradient
+                    colors={COLORS.gradient.secondary}
+                    style={styles.demoButtonGradient}
+                    start={{ x: 0, y: 0 }}
+                    end={{ x: 1, y: 0 }}
+                  >
+                    <Text style={styles.demoButtonText}>
+                      {usingDemoAccount ? "✓ Demo Account Loaded" : "Try Demo Account"}
+                    </Text>
+                  </LinearGradient>
+                </TouchableOpacity>
+
                 {/* Username Field */}
                 <RequiredLabel>Username</RequiredLabel>
                 {renderInputField("username", {
@@ -474,6 +563,15 @@ function RegisterPage({ navigation }) {
                   <Text style={styles.errorText}>{errors.password}</Text>
                 ) : null}
 
+                {/* Demo Indicator */}
+                {usingDemoAccount && (
+                  <View style={styles.demoIndicator}>
+                    <Text style={styles.demoIndicatorText}>
+                      ✓ Using demo account: OTP will be 888888
+                    </Text>
+                  </View>
+                )}
+
                 {/* Register Button */}
                 <TouchableOpacity
                   style={[styles.primaryButton, loading && styles.disabledButton]}
@@ -481,7 +579,7 @@ function RegisterPage({ navigation }) {
                   disabled={loading}
                 >
                   <LinearGradient
-                    colors={COLORS.gradient.brand}
+                    colors={usingDemoAccount ? COLORS.gradient.secondary : COLORS.gradient.brand}
                     style={styles.buttonGradient}
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
@@ -489,7 +587,9 @@ function RegisterPage({ navigation }) {
                     {loading ? (
                       <ActivityIndicator color={COLORS.white} />
                     ) : (
-                      <Text style={styles.primaryButtonText}>Create Account</Text>
+                      <Text style={styles.primaryButtonText}>
+                        {usingDemoAccount ? "Create Demo Account" : "Create Account"}
+                      </Text>
                     )}
                   </LinearGradient>
                 </TouchableOpacity>
@@ -502,7 +602,7 @@ function RegisterPage({ navigation }) {
                 </View>
 
                 {/* Google Sign-In Button */}
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={[styles.googleButton, googleLoading && styles.disabledButton]}
                   onPress={handleGoogleSignIn}
                   disabled={googleLoading}
@@ -518,7 +618,7 @@ function RegisterPage({ navigation }) {
                       <Text style={styles.googleButtonText}>Continue with Google</Text>
                     </View>
                   )}
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 <View style={styles.loginContainer}>
                   <Text style={styles.loginText}>Already have an account?</Text>
@@ -531,14 +631,14 @@ function RegisterPage({ navigation }) {
           </ScrollView>
 
           {/* Loading Overlay */}
-          {(loading || googleLoading) && (
+          {/* {(loading || googleLoading) && (
             <View style={styles.loadingOverlay}>
               <ActivityIndicator size="large" color={COLORS.primary} />
               <Text style={styles.loadingText}>
                 {googleLoading ? "Signing in with Google..." : "Creating your account..."}
               </Text>
             </View>
-          )}
+          )} */}
         </KeyboardAvoidingView>
       </ImageBackground>
     </TouchableWithoutFeedback>

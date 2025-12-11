@@ -251,6 +251,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginTop: SIZES.md,
   },
+  
 });
 
 // Platform-specific adjustments

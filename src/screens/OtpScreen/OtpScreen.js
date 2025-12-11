@@ -17,7 +17,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getHash, useOtpVerify, removeListener } from "react-native-otp-verify";
 import { showToast } from "../../utils/toast";
-import theme from "../../utils/AppTheme"; // Changed from appTheme to theme
+import theme from "../../utils/AppTheme";
 import styles from "./OtpStyles.js";
 import userService from "../../services/UserService";
 import { saveUserData } from "../../utils/AsynchStorageHelper";
@@ -34,13 +34,45 @@ function OtpPage({ navigation, route }) {
   const [waitingForOtp, setWaitingForOtp] = useState(true);
   const [smsListenerReady, setSmsListenerReady] = useState(false);
   const [showFullScreenLoader, setShowFullScreenLoader] = useState(false);
+  const [isDemoAccount, setIsDemoAccount] = useState(false);
 
   const inputRefs = useRef([]);
   const phoneNumber = route.params?.phoneNumber || "";
+  const isDemo = route.params?.isDemo || false;
 
   const { message, timeoutError, startListener, stopListener } = useOtpVerify({
     numberOfDigits: 6,
   });
+
+  // Check if it's a demo account
+  useEffect(() => {
+    const checkDemoAccount = async () => {
+      try {
+        const tempUserData = await AsyncStorage.getItem("tempUserData");
+        if (tempUserData) {
+          const userData = JSON.parse(tempUserData);
+          if (
+            userData.isDemo ||
+            (userData.phone === "9790429938" &&
+              userData.email === "bmgdemo@gmail.com")
+          ) {
+            setIsDemoAccount(true);
+            showToast("Demo account detected. Use OTP: 888888");
+
+            // Auto-fill demo OTP after a short delay
+            setTimeout(() => {
+              setOtp(["8", "8", "8", "8", "8", "8"]);
+              showToast("Demo OTP auto-filled: 888888");
+            }, 1000);
+          }
+        }
+      } catch (error) {
+        console.error("Error checking demo account:", error);
+      }
+    };
+
+    checkDemoAccount();
+  }, []);
 
   // -------------------- TIMER --------------------
   useEffect(() => {
@@ -97,7 +129,7 @@ function OtpPage({ navigation, route }) {
 
   // -------------------- WAITING LOADER (20 seconds) --------------------
   useEffect(() => {
-    if (smsListenerReady && Platform.OS === "android") {
+    if (smsListenerReady && Platform.OS === "android" && !isDemoAccount) {
       setShowFullScreenLoader(true);
 
       const timer = setTimeout(() => {
@@ -108,7 +140,7 @@ function OtpPage({ navigation, route }) {
 
       return () => clearTimeout(timer);
     }
-  }, [smsListenerReady]);
+  }, [smsListenerReady, isDemoAccount]);
 
   // -------------------- HANDLE TIMEOUT --------------------
   useEffect(() => {
@@ -121,7 +153,12 @@ function OtpPage({ navigation, route }) {
 
   // -------------------- AUTO VERIFY TIMER (20 seconds) --------------------
   useEffect(() => {
-    if (waitingForOtp && smsListenerReady && Platform.OS === "android") {
+    if (
+      waitingForOtp &&
+      smsListenerReady &&
+      Platform.OS === "android" &&
+      !isDemoAccount
+    ) {
       setAutoVerifyTimer(20);
       const interval = setInterval(() => {
         setAutoVerifyTimer((prev) => {
@@ -138,12 +175,12 @@ function OtpPage({ navigation, route }) {
 
       return () => clearInterval(interval);
     }
-  }, [waitingForOtp, smsListenerReady]);
+  }, [waitingForOtp, smsListenerReady, isDemoAccount]);
 
   // -------------------- INITIALIZE LISTENER --------------------
   useEffect(() => {
     const initializeSMSListener = async () => {
-      if (Platform.OS === "android") {
+      if (Platform.OS === "android" && !isDemoAccount) {
         try {
           console.log("🔄 Initializing SMS listener...");
           const hashCodes = await getHash();
@@ -180,7 +217,7 @@ function OtpPage({ navigation, route }) {
         console.error("Cleanup SMS listener error:", error);
       }
     };
-  }, []);
+  }, [isDemoAccount]);
 
   // -------------------- AUTO VERIFY WHEN ALL DIGITS ENTERED --------------------
   useEffect(() => {
@@ -215,6 +252,18 @@ function OtpPage({ navigation, route }) {
     inputRefs.current[0]?.focus();
   };
 
+  // -------------------- DEMO OTP FUNCTION --------------------
+  const handleDemoOtp = () => {
+    setOtp(["8", "8", "8", "8", "8", "8"]);
+    showToast("Demo OTP entered: 888888");
+
+    // Auto verify after 1 second
+    setTimeout(() => {
+      handleVerifyOtp();
+    }, 1000);
+  };
+
+  // In the handleVerifyOtp function (in OTP verification)
   const handleVerifyOtp = async () => {
     const otpValue = otp.join("");
     if (otpValue.length !== 6) {
@@ -235,7 +284,38 @@ function OtpPage({ navigation, route }) {
         return;
       }
 
-      const { phone } = JSON.parse(tempUserData);
+      const { phone, isDemo } = JSON.parse(tempUserData);
+
+      // For demo account, auto-verify with OTP 888888
+      if ((isDemo || isDemoAccount) && otpValue === "888888") {
+        showToast("Demo OTP verified successfully!");
+
+        const demoUserData = {
+          id: "demo_user_001",
+          username: "bmg",
+          email: "bmgdemo@gmail.com",
+          contactNumber: "9790429938",
+          isVerified: true,
+          isDemo: true,
+          mpinSet: false, // Demo account doesn't need MPIN
+          message: "Demo account verified successfully",
+        };
+
+        await saveUserData(demoUserData);
+        await AsyncStorage.removeItem("tempUserData");
+
+        stopListener && stopListener();
+        setShowFullScreenLoader(false);
+
+        // Skip MPIN screen for demo, go directly to Home/Drawer
+        navigation.reset({
+          index: 0,
+          routes: [{ name: "Drawer" }], // Or "Home" depending on your navigation structure
+        });
+        return;
+      }
+
+      // Regular OTP verification
       const res = await userService.verifyOtp(phone, otpValue);
 
       if (res.success && res.data) {
@@ -247,7 +327,8 @@ function OtpPage({ navigation, route }) {
         stopListener && stopListener();
         setShowFullScreenLoader(false);
 
-        navigation.navigate("MpinScreen", { step: 3 });
+        // For regular users, go to MPIN setup
+        navigation.navigate("MpinScreen", { step: 1 });
       } else {
         showToast(res.error || "OTP verification failed");
         clearOtp();
@@ -272,7 +353,18 @@ function OtpPage({ navigation, route }) {
         return;
       }
 
-      const { username, email, phone, password } = JSON.parse(tempUserData);
+      const { username, email, phone, password, isDemo } =
+        JSON.parse(tempUserData);
+
+      if (isDemo || isDemoAccount) {
+        // For demo account, simulate resend
+        showToast("Demo OTP resent: 888888");
+        setResendTimer(20);
+        setOtp(["8", "8", "8", "8", "8", "8"]);
+        showToast("Demo OTP auto-filled: 888888");
+        return;
+      }
+
       const res = await userService.registerUser({
         username,
         email,
@@ -331,6 +423,15 @@ function OtpPage({ navigation, route }) {
                   Enter the 6-digit OTP sent to {"\n"}+91 {phoneNumber}
                 </Text>
 
+                {/* Demo Account Indicator */}
+                {isDemoAccount && (
+                  <View style={styles.demoBanner}>
+                    <Text style={styles.demoBannerText}>
+                      ⚡ DEMO ACCOUNT: Use OTP: 888888
+                    </Text>
+                  </View>
+                )}
+
                 {/* Manual OTP input */}
                 <View style={styles.otpContainer}>
                   {otp.map((digit, index) => (
@@ -360,6 +461,26 @@ function OtpPage({ navigation, route }) {
                   ))}
                 </View>
 
+                {/* Demo OTP Button */}
+                {isDemoAccount && (
+                  <TouchableOpacity
+                    style={styles.demoOtpButton}
+                    onPress={handleDemoOtp}
+                    disabled={showFullScreenLoader}
+                  >
+                    <LinearGradient
+                      colors={COLORS.gradient.secondary}
+                      style={styles.demoOtpButtonGradient}
+                      start={{ x: 0, y: 0 }}
+                      end={{ x: 1, y: 0 }}
+                    >
+                      <Text style={styles.demoOtpButtonText}>
+                        Auto-fill Demo OTP (888888)
+                      </Text>
+                    </LinearGradient>
+                  </TouchableOpacity>
+                )}
+
                 <TouchableOpacity
                   style={styles.clearOtpButton}
                   onPress={clearOtp}
@@ -384,7 +505,11 @@ function OtpPage({ navigation, route }) {
                   disabled={showFullScreenLoader}
                 >
                   <LinearGradient
-                    colors={COLORS.gradient.brand}
+                    colors={
+                      isDemoAccount
+                        ? COLORS.gradient.secondary
+                        : COLORS.gradient.brand
+                    }
                     start={{ x: 0, y: 0 }}
                     end={{ x: 1, y: 0 }}
                     style={styles.buttonGradient}
@@ -443,10 +568,12 @@ function OtpPage({ navigation, route }) {
                 </Text>
                 <Text style={styles.loadingSubtext}>
                   {waitingForOtp && !verifying
-                    ? "We're automatically detecting OTP from SMS..."
+                    ? isDemoAccount
+                      ? "Demo account detected. Use OTP: 888888"
+                      : "We're automatically detecting OTP from SMS..."
                     : "Please wait while we verify your OTP"}
                 </Text>
-                {waitingForOtp && !verifying && (
+                {waitingForOtp && !verifying && !isDemoAccount && (
                   <Text style={styles.loadingTimer}>
                     Auto-detecting OTP… {autoVerifyTimer}s remaining
                   </Text>
