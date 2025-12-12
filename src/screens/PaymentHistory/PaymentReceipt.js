@@ -3,6 +3,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { Asset } from "expo-asset";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert, Platform } from "react-native";
+import { API_BASE_URL } from "../../Config/API";
 
 class PaymentReceiptPDF {
   // Constants
@@ -17,7 +18,7 @@ class PaymentReceiptPDF {
   };
 
   static API_ENDPOINTS = {
-    COMPANY: "https://scheme.bmgjewellers.com/v1/api/company"
+    COMPANY: `${API_BASE_URL}/company`
   };
 
   // ---------------------------------------------------------------------------
@@ -267,10 +268,13 @@ class PaymentReceiptPDF {
         },
 
         schemeInfo: {
-          schemeName: schemeData?.schemeSummary?.schemeName || 
-                     responseData?.schemeInfo?.schemeName || 
-                     "BMG Scheme",
         },
+        schemeName: schemeData?.schemeSummary?.schemeName || 
+                   responseData?.schemeInfo?.schemeName || 
+                   "BMG Scheme",
+        hsnCode: schemeData?.schemeSummary?.hsnCode || 
+                   responseData?.schemeInfo?.hsnCode || 
+                   "HSN CODE",
       };
     } catch (error) {
       console.error("Error extracting data:", error);
@@ -507,8 +511,8 @@ class PaymentReceiptPDF {
     <tbody>
       <tr>
         <td>1</td>
-        <td>Advance Payment</td>
-        <td></td>
+        <td>${schemeInfo.schemeName}</td>
+        <td>${schemeInfo.hsnCode || ""}</td>
         <td>₹ ${this.formatAmount(payment.amount)}</td>
       </tr>
     </tbody>

@@ -9,6 +9,7 @@ import { API_BASE_URL_OLD, API_BASE_URL } from "../../Config/API";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import smsService from "../../services/SMSService";
 import { sendJoinSchemeNotification } from "../../services/CommonNotificationService"; // NEW IMPORT
+import { getAppliedReferralStatus } from "../../services/ReferalService";
 
 const { COLORS } = appTheme;
 
@@ -96,6 +97,20 @@ const AddNewMember = () => {
   // Payment order details
   const [orderDetails, setOrderDetails] = useState(null);
   const [currentPaymentData, setCurrentPaymentData] = useState(null);
+
+  //Referal
+
+  const [ReferralCode, setReferralCode] = useState(null);
+  useEffect(() => {
+    fetchReferralStatus();
+  }, []);
+  const fetchReferralStatus = async () => {
+    const result = await getAppliedReferralStatus();
+
+    const referralCode = result?.appliedReferralData?.referral_code;
+    console.log("Referral Code:", referralCode);
+    setReferralCode(referralCode);
+  };
 
   // Fetch all schemes on component mount
   useEffect(() => {
@@ -246,11 +261,44 @@ const AddNewMember = () => {
 
   const handleNextStep = (memberFormData) => {
     const errors = {};
-    if (!memberFormData.name?.trim()) errors.name = "Name is required";
-    if (!memberFormData.mobile?.trim())
+
+    // Validate name
+    if (!memberFormData.name?.trim()) {
+      errors.name = "Name is required";
+    } else if (memberFormData.name.trim().length > 20) {
+      errors.name = "Name cannot exceed 20 characters";
+    }
+
+    // Validate mobile
+    if (!memberFormData.mobile?.trim()) {
       errors.mobile = "Mobile number is required";
-    else if (memberFormData.mobile.length !== 10)
+    } else if (memberFormData.mobile.length !== 10) {
       errors.mobile = "Mobile number must be 10 digits";
+    }
+
+    // Validate email if provided
+    if (memberFormData.email?.trim()) {
+      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailRegex.test(memberFormData.email)) {
+        errors.email = "Please enter a valid email address";
+      }
+    }
+
+    // Validate Aadhar number if provided
+    if (memberFormData.aadharNumber?.trim()) {
+      const aadharRegex = /^\d{12}$/;
+      if (!aadharRegex.test(memberFormData.aadharNumber)) {
+        errors.aadharNumber = "Aadhar number must be 12 digits";
+      }
+    }
+
+    // Validate PAN number if provided
+    if (memberFormData.panNumber?.trim()) {
+      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
+      if (!panRegex.test(memberFormData.panNumber.toUpperCase())) {
+        errors.panNumber = "Please enter a valid PAN number";
+      }
+    }
 
     if (Object.keys(errors).length > 0) {
       setValidationErrors(errors);
@@ -548,6 +596,7 @@ const AddNewMember = () => {
         newMember,
         createSchemeSummary,
         schemeCollectInsert,
+        referralCode: ReferralCode || "", // Include referral code here
       };
 
       // 6️⃣ Submit API Call
@@ -731,89 +780,89 @@ const AddNewMember = () => {
     await processOnlinePayment(schemeFormData, numericSchemeId);
   };
 
-const processCashPayment = async (schemeFormData, numericSchemeId) => {
-  setIsSubmitting(true);
-  try {
-    const response = await fetch(
-      `${API_BASE_URL_OLD}/member/schemeid?schemeId=${numericSchemeId}`
-    );
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const apiData = await response.json();
-    if (!apiData || apiData.length === 0)
-      throw new Error("No scheme data returned from API.");
-
-    let selectedRecord;
-
-    if (schemeFormData.amount) {
-      selectedRecord = apiData.find(
-        (item) =>
-          parseFloat(item.AMOUNT || 0) === parseFloat(schemeFormData.amount)
-      );
-    }
-
-    if (!selectedRecord) selectedRecord = apiData[0];
-
-    const groupCode = selectedRecord.GROUPCODE;
-    const regNo =
-      selectedRecord.CURRENTREGNO ||
-      selectedRecord.REGNO ||
-      generateRandomRegNo();
-
-    // ✅ Submit member data for CASH payment
-    await submitMemberData(
-      numericSchemeId,
-      schemeFormData,
-      groupCode,
-      regNo,
-      null, // no online payment
-      true // cash payment flag
-    );
-
-    // Send welcome SMS
-    await smsService.sendWelcomeSMS(
-      memberData.mobile,
-      memberData.name,
-      getSchemeName(numericSchemeId),
-      schemeFormData.amount,
-      new Date().toISOString().slice(0, 10),
-      "BMG JEWELLERS PVT LTD"
-    );
-
-    // NEW: Send Join Scheme Notification for cash payment
+  const processCashPayment = async (schemeFormData, numericSchemeId) => {
+    setIsSubmitting(true);
     try {
-      await sendJoinSchemeNotification(
-        numericSchemeId,
-        parseFloat(schemeFormData.amount),
-        getSchemeName(numericSchemeId)
+      const response = await fetch(
+        `${API_BASE_URL_OLD}/member/schemeid?schemeId=${numericSchemeId}`
       );
-      console.log("🔔 Join Scheme Notification sent (Cash)");
-    } catch (notifErr) {
-      console.log("❌ Notification sending failed:", notifErr);
-    }
+      if (!response.ok) throw new Error(`HTTP ${response.status}`);
+      const apiData = await response.json();
+      if (!apiData || apiData.length === 0)
+        throw new Error("No scheme data returned from API.");
 
-    Alert.alert(
-      "Success",
-      `Member added successfully to ${getSchemeName(numericSchemeId)}!`,
-      [
-        {
-          text: "OK",
-          onPress: () => {
-            resetFormFields();
-            navigation.navigate("MainLanding");
+      let selectedRecord;
+
+      if (schemeFormData.amount) {
+        selectedRecord = apiData.find(
+          (item) =>
+            parseFloat(item.AMOUNT || 0) === parseFloat(schemeFormData.amount)
+        );
+      }
+
+      if (!selectedRecord) selectedRecord = apiData[0];
+
+      const groupCode = selectedRecord.GROUPCODE;
+      const regNo =
+        selectedRecord.CURRENTREGNO ||
+        selectedRecord.REGNO ||
+        generateRandomRegNo();
+
+      // ✅ Submit member data for CASH payment
+      await submitMemberData(
+        numericSchemeId,
+        schemeFormData,
+        groupCode,
+        regNo,
+        null, // no online payment
+        true // cash payment flag
+      );
+
+      // Send welcome SMS
+      await smsService.sendWelcomeSMS(
+        memberData.mobile,
+        memberData.name,
+        getSchemeName(numericSchemeId),
+        schemeFormData.amount,
+        new Date().toISOString().slice(0, 10),
+        "BMG JEWELLERS PVT LTD"
+      );
+
+      // NEW: Send Join Scheme Notification for cash payment
+      try {
+        await sendJoinSchemeNotification(
+          numericSchemeId,
+          parseFloat(schemeFormData.amount),
+          getSchemeName(numericSchemeId)
+        );
+        console.log("🔔 Join Scheme Notification sent (Cash)");
+      } catch (notifErr) {
+        console.log("❌ Notification sending failed:", notifErr);
+      }
+
+      Alert.alert(
+        "Success",
+        `Member added successfully to ${getSchemeName(numericSchemeId)}!`,
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              resetFormFields();
+              navigation.navigate("MainLanding");
+            },
           },
-        },
-      ]
-    );
-  } catch (error) {
-    console.error("Error during member creation (cash):", error);
-    Alert.alert(
-      "Submission Error",
-      error.message || "Failed to create member. Please try again."
-    );
-  } finally {
-    setIsSubmitting(false);
-  }
-};
+        ]
+      );
+    } catch (error) {
+      console.error("Error during member creation (cash):", error);
+      Alert.alert(
+        "Submission Error",
+        error.message || "Failed to create member. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
 
   const processOnlinePayment = async (schemeFormData, numericSchemeId) => {
     setIsProcessingPayment(true);

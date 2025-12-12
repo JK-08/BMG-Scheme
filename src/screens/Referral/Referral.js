@@ -1,4 +1,4 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from "react";
 import {
   View,
   Text,
@@ -11,142 +11,422 @@ import {
   Alert,
   SafeAreaView,
   ScrollView,
-} from 'react-native';
-import { COLORS, SIZES, FONTS, SHADOWS } from '../../utils/AppTheme';
-import CommonHeader from '../../components/CommonHeader/CommonHeader';
+  ActivityIndicator,
+} from "react-native";
+
+import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
+import CommonHeader from "../../components/CommonHeader/CommonHeader";
+import {
+  getReferralDetails,
+  applyReferralCode,
+  validateReferralCode,
+  getAppliedReferralStatus,
+} from "../../services/ReferalService";
 
 const ReferralScreen = () => {
-  // ============================================
-  // STATE MANAGEMENT
-  // ============================================
-  const [referralCode] = useState('ABC123'); // User's referral code
-  const [enteredCode, setEnteredCode] = useState('');
-  const [totalBonus] = useState(1500); // Total bonus earned
-  const [totalReferrals] = useState(8); // Total referrals count
+  // =======================
+  // STATE
+  // =======================
+  const [referralCode, setReferralCode] = useState("");
+  const [totalBonus, setTotalBonus] = useState(0);
+  const [totalReferrals, setTotalReferrals] = useState(0);
+  const [referralHistory, setReferralHistory] = useState([]);
+  const [enteredCode, setEnteredCode] = useState("");
+  const [referralLink, setReferralLink] = useState("");
+  const [playStoreLink, setPlayStoreLink] = useState("");
+  const [username, setUsername] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Dummy referral earnings history
-  const [referralHistory] = useState([
-    { id: 1, name: 'John Doe', amount: 200, date: '2025-01-10' },
-    { id: 2, name: 'Jane Smith', amount: 150, date: '2025-01-08' },
-    { id: 3, name: 'Mike Johnson', amount: 200, date: '2025-01-05' },
-    { id: 4, name: 'Sarah Wilson', amount: 300, date: '2024-12-28' },
-    { id: 5, name: 'David Brown', amount: 250, date: '2024-12-20' },
-    { id: 6, name: 'Emily Davis', amount: 200, date: '2024-12-15' },
-    { id: 7, name: 'Chris Taylor', amount: 100, date: '2024-12-10' },
-    { id: 8, name: 'Lisa Anderson', amount: 100, date: '2024-12-05' },
-  ]);
+  // New state for applied referral
+  const [hasAppliedReferral, setHasAppliedReferral] = useState(false);
+  const [appliedReferralData, setAppliedReferralData] = useState(null);
+  const [isCheckingReferralStatus, setIsCheckingReferralStatus] =
+    useState(false);
 
-  const referralLink = `https://myapp.com/ref?code=${referralCode}`;
+  // ===============================
+  // LOAD DATA FROM API
+  // ===============================
+  useEffect(() => {
+    loadAllData();
+  }, []);
 
-  // ============================================
-  // HANDLER FUNCTIONS
-  // ============================================
-  
-  // Share referral link using native share
-  const handleShare = async () => {
+  const loadAllData = async () => {
+    setIsLoading(true);
+    setIsCheckingReferralStatus(true);
+
     try {
-      const result = await Share.share({
-        message: `Join me on this amazing app! Use my referral code: ${referralCode}\n\n${referralLink}`,
-        title: 'Refer a Friend',
-      });
+      // Load referral details
+      const referralResult = await getReferralDetails();
 
-      if (result.action === Share.sharedAction) {
-        Alert.alert('Success', 'Referral link shared successfully!');
+      if (referralResult.success) {
+        const data = referralResult.data;
+
+        if (Array.isArray(data) && data.length > 0) {
+          // ---- FIRST OBJECT = USER INFO ----
+          const userInfo = data[0];
+          setReferralCode(userInfo.referral_code || "");
+          console.log("User Info:", userInfo);
+          setTotalBonus(userInfo.wallet_balance || 0);
+          setUsername(userInfo.username || "");
+
+          // Set referral link from API response if available, otherwise generate dynamically
+          setReferralLink(
+            userInfo.referralLink ||
+              `https://bmgscheme.com/signup?ref=${userInfo.referral_code}`
+          );
+
+          // Set Play Store link if available
+          setPlayStoreLink(
+            userInfo.playStoreLink || "https://play.google.com/store/apps"
+          );
+
+          // ---- REMAINING OBJECTS = REFERRAL HISTORY ----
+          const history = data.slice(1).map((item) => ({
+            id: item.new_member_personal_id || "0",
+            name: item.new_member_personal_name || "Unknown User",
+            amount: item.credited_amount || 0,
+            date: item.created_at
+              ? new Date(item.created_at).toLocaleDateString("en-IN", {
+                  day: "2-digit",
+                  month: "short",
+                  year: "numeric",
+                })
+              : "N/A",
+            schemeId: item.scheme_id || 0,
+          }));
+
+          setReferralHistory(history);
+          setTotalReferrals(history.length);
+
+          // Calculate total bonus from history if needed (in case wallet_balance is not provided)
+          if (!userInfo.wallet_balance && history.length > 0) {
+            const totalFromHistory = history.reduce(
+              (sum, item) => sum + (item.amount || 0),
+              0
+            );
+            setTotalBonus(totalFromHistory);
+          }
+        }
+      }
+
+      // Check applied referral status
+      const statusResult = await getAppliedReferralStatus();
+      if (statusResult.success) {
+        setHasAppliedReferral(statusResult.hasAppliedReferral);
+        setAppliedReferralData(statusResult.appliedReferralData);
       }
     } catch (error) {
-      Alert.alert('Error', 'Failed to share referral link');
+      console.error("Load data error:", error);
+      Alert.alert("Error", "Something went wrong while loading data");
+    } finally {
+      setIsLoading(false);
+      setIsCheckingReferralStatus(false);
     }
   };
 
-  // Copy referral link to clipboard
-  const handleCopyLink = () => {
-    Clipboard.setString(referralLink);
-    Alert.alert('Copied!', 'Referral link copied to clipboard');
-  };
-
-  // Submit referral code
-  const handleSubmitCode = () => {
-    if (!enteredCode.trim()) {
-      Alert.alert('Error', 'Please enter a referral code');
+  // ===============================
+  // SHARE LINK
+  // ===============================
+  const handleShare = async () => {
+    if (!referralCode) {
+      Alert.alert("Error", "Referral code not available");
       return;
     }
 
-    // Simulate API call
-    // In real app, you would validate this with your backend
-    if (enteredCode.toUpperCase() === 'VALID123') {
-      Alert.alert('Success', 'Referral code applied successfully!');
-      setEnteredCode('');
-    } else {
-      Alert.alert('Error', 'Invalid referral code. Please try again.');
+    try {
+      const shareMessage = playStoreLink
+        ? `Join me on BMG Scheme! Use my referral code: ${referralCode} to get bonus.\n\nDownload the app: ${playStoreLink}\n\nSign up with my referral link: ${referralLink}`
+        : `Join me on BMG Scheme! Use my referral code: ${referralCode} to get bonus.\n\nSign up here: ${referralLink}`;
+
+      await Share.share({
+        message: shareMessage,
+        title: "Refer & Earn with BMG Scheme",
+      });
+
+      Alert.alert("Success", "Referral link shared successfully!");
+    } catch (error) {
+      console.error("Share error:", error);
+      Alert.alert("Error", "Failed to share referral link");
     }
   };
 
-  // ============================================
-  // RENDER FUNCTIONS
-  // ============================================
+  // ===============================
+  // COPY LINK
+  // ===============================
+  const handleCopyLink = () => {
+    if (!referralCode) {
+      Alert.alert("Error", "Referral code not available");
+      return;
+    }
 
-  // Render referral history item
-  const renderHistoryItem = ({ item }) => (
+    const textToCopy =
+      referralLink || `https://bmgscheme.com/signup?ref=${referralCode}`;
+    Clipboard.setString(textToCopy);
+    Alert.alert("Copied!", "Referral link copied to clipboard");
+  };
+
+  // ===============================
+  // RENDER APPLIED REFERRAL SECTION
+  // ===============================
+  const renderAppliedReferralSection = () => {
+    if (isCheckingReferralStatus) {
+      return (
+        <View style={styles.appliedReferralCard}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+          <Text style={styles.checkingText}>Checking referral status...</Text>
+        </View>
+      );
+    }
+
+    if (hasAppliedReferral && appliedReferralData) {
+      return (
+        <View style={styles.appliedReferralCard}>
+          <View style={styles.appliedHeader}>
+            <Text style={styles.appliedTitle}>Applied Referral</Text>
+            <View style={styles.appliedBadge}>
+              <Text style={styles.appliedBadgeText}>Applied</Text>
+            </View>
+          </View>
+
+          <View style={styles.appliedContent}>
+            <Text style={styles.appliedLabel}>Friend's Referral Code:</Text>
+            <Text style={styles.appliedCode}>
+              {appliedReferralData.referral_code || "N/A"}
+            </Text>
+
+            <Text style={styles.appliedLabel}>Applied On:</Text>
+            <Text style={styles.appliedDate}>
+              {appliedReferralData.created_at
+                ? new Date(appliedReferralData.created_at).toLocaleDateString(
+                    "en-IN",
+                    {
+                      day: "2-digit",
+                      month: "short",
+                      year: "numeric",
+                      hour: "2-digit",
+                      minute: "2-digit",
+                    }
+                  )
+                : "N/A"}
+            </Text>
+          </View>
+
+          <View style={styles.appliedNote}>
+            <Text style={styles.appliedNoteText}>
+              ✓ You have already applied a friend's referral code
+            </Text>
+          </View>
+        </View>
+      );
+    }
+
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>Have a Referral Code?</Text>
+        <Text style={styles.sectionSubtitle}>
+          Enter a friend's referral code to get started with bonus
+        </Text>
+
+        <View style={styles.inputContainer}>
+          <TextInput
+            style={styles.input}
+            placeholder="Enter Friend's Referral Code"
+            placeholderTextColor={COLORS.inputPlaceholder}
+            value={enteredCode}
+            onChangeText={setEnteredCode}
+            autoCapitalize="characters"
+            maxLength={20}
+            editable={!isSubmitting}
+          />
+        </View>
+
+        <TouchableOpacity
+          style={[
+            styles.submitButton,
+            (!enteredCode.trim() || isSubmitting) &&
+              styles.submitButtonDisabled,
+          ]}
+          onPress={handleSubmitCode}
+          disabled={!enteredCode.trim() || isSubmitting}
+        >
+          {isSubmitting ? (
+            <ActivityIndicator size="small" color={COLORS.white} />
+          ) : (
+            <Text style={styles.submitButtonText}>Apply Referral Code</Text>
+          )}
+        </TouchableOpacity>
+      </View>
+    );
+  };
+
+  // ===============================
+  // SUBMIT REFERRAL CODE
+  // ===============================
+  const handleSubmitCode = async () => {
+    if (!enteredCode.trim()) {
+      Alert.alert("Error", "Please enter a referral code");
+      return;
+    }
+
+    if (isSubmitting) {
+      return;
+    }
+
+    // Prevent user from applying their own referral code
+    if (enteredCode.trim().toUpperCase() === referralCode?.toUpperCase()) {
+      Alert.alert("Invalid Code", "You cannot use your own referral code!");
+      return;
+    }
+
+    // Validate format before making API call
+    const validation = validateReferralCode(enteredCode);
+    if (!validation.valid) {
+      Alert.alert("Invalid Code", validation.message);
+      return;
+    }
+
+    setIsSubmitting(true);
+
+    try {
+      const result = await applyReferralCode(enteredCode);
+
+      if (result.success) {
+        Alert.alert(
+          "Success",
+          result.message || "Referral code applied successfully!",
+          [
+            {
+              text: "OK",
+              onPress: () => {
+                // Clear input
+                setEnteredCode("");
+                // Refresh all data to update UI
+                loadAllData();
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          "Error",
+          result.message || "Failed to apply referral code",
+          [{ text: "OK" }]
+        );
+      }
+    } catch (error) {
+      console.error("Submit referral code error:", error);
+      Alert.alert("Error", "Something went wrong. Please try again.", [
+        { text: "OK" },
+      ]);
+    } finally {
+      setIsSubmitting(false);
+    }
+  };
+  // ===============================
+  // RENDER HISTORY ITEM
+  // ===============================
+  const renderHistoryItem = ({ item, index }) => (
     <View style={styles.historyItem}>
       <View style={styles.historyLeft}>
         <View style={styles.avatarCircle}>
           <Text style={styles.avatarText}>
-            {item.name.split(' ').map(n => n[0]).join('')}
+            {item.name
+              .split(" ")
+              .map((n) => n[0]?.toUpperCase() || "")
+              .join("")
+              .slice(0, 2)}
           </Text>
         </View>
         <View style={styles.historyInfo}>
-          <Text style={styles.historyName}>{item.name}</Text>
+          <Text style={styles.historyName} numberOfLines={1}>
+            {item.name}
+          </Text>
           <Text style={styles.historyDate}>{item.date}</Text>
+          {item.schemeId > 0 && (
+            <Text style={styles.schemeText}>Scheme #{item.schemeId}</Text>
+          )}
         </View>
       </View>
       <View style={styles.historyRight}>
-        <Text style={styles.historyAmount}>₹{item.amount}</Text>
+        <Text style={styles.historyAmount}>₹{item.amount.toFixed(2)}</Text>
+        <Text style={styles.creditedText}>Credited</Text>
       </View>
     </View>
   );
 
+  // ===============================
+  // LOADING STATE
+  // ===============================
+  if (isLoading) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <CommonHeader
+          title="Refer & Earn"
+          subtitle="Share your referral code and earn rewards"
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={COLORS.primary} />
+          <Text style={styles.loadingText}>Loading referral data...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
+
+  // ===============================
+  // UI
+  // ===============================
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView 
+      <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
       >
-        {/* Header */}
-        <CommonHeader title="Refer & Earn" subtitle="Share your referral code and earn rewards" />
+        <CommonHeader
+          title="Refer & Earn"
+          subtitle="Share your referral code and earn rewards"
+        />
 
-        {/* ==================== SECTION 1: MY REFERRAL CODE ==================== */}
+        {/* ===== MY REFERRAL CODE ===== */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>My Referral Code</Text>
-          
-          {/* Referral Code Card */}
+
           <View style={styles.codeCard}>
-            <Text style={styles.codeLabel}>Your Code</Text>
-            <Text style={styles.codeText}>{referralCode}</Text>
+            <Text style={styles.codeLabel}>Your Referral Code</Text>
+            <Text style={styles.codeText}>{referralCode || "---"}</Text>
+            {username && (
+              <Text style={styles.usernameText}>@{username.trim()}</Text>
+            )}
           </View>
 
-          {/* Action Buttons */}
           <View style={styles.buttonRow}>
-            <TouchableOpacity 
-              style={styles.primaryButton}
+            <TouchableOpacity
+              style={[
+                styles.primaryButton,
+                !referralCode && styles.buttonDisabled,
+              ]}
               onPress={handleShare}
-              activeOpacity={0.8}
+              disabled={!referralCode}
             >
               <Text style={styles.primaryButtonText}>Share Referral Link</Text>
             </TouchableOpacity>
 
-            <TouchableOpacity 
-              style={styles.secondaryButton}
+            <TouchableOpacity
+              style={[
+                styles.secondaryButton,
+                !referralCode && styles.buttonDisabled,
+              ]}
               onPress={handleCopyLink}
-              activeOpacity={0.8}
+              disabled={!referralCode}
             >
               <Text style={styles.secondaryButtonText}>Copy Link</Text>
             </TouchableOpacity>
           </View>
 
-          {/* Stats Cards */}
+          {/* Stats */}
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
-              <Text style={styles.statValue}>₹{totalBonus}</Text>
+              <Text style={styles.statValue}>₹{totalBonus.toFixed(2)}</Text>
               <Text style={styles.statLabel}>Total Bonus Earned</Text>
             </View>
             <View style={styles.statCard}>
@@ -156,47 +436,57 @@ const ReferralScreen = () => {
           </View>
         </View>
 
-        {/* ==================== SECTION 2: ENTER REFERRAL CODE ==================== */}
+        {/* ===== HOW IT WORKS ===== */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Have a Referral Code?</Text>
-          <Text style={styles.sectionSubtitle}>
-            Enter a referral code to get started with bonus
-          </Text>
-
-          <View style={styles.inputContainer}>
-            <TextInput
-              style={styles.input}
-              placeholder="Enter Referral Code"
-              placeholderTextColor={COLORS.inputPlaceholder}
-              value={enteredCode}
-              onChangeText={setEnteredCode}
-              autoCapitalize="characters"
-              maxLength={20}
-            />
+          <Text style={styles.sectionTitle}>How It Works</Text>
+          <View style={styles.stepsContainer}>
+            <View style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>1</Text>
+              </View>
+              <Text style={styles.stepText}>
+                Share your referral code or link with friends
+              </Text>
+            </View>
+            <View style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>2</Text>
+              </View>
+              <Text style={styles.stepText}>
+                Ask them to sign up using your code/link
+              </Text>
+            </View>
+            <View style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>3</Text>
+              </View>
+              <Text style={styles.stepText}>
+                Earn ₹200 bonus for each successful referral
+              </Text>
+            </View>
           </View>
-
-          <TouchableOpacity 
-            style={styles.submitButton}
-            onPress={handleSubmitCode}
-            activeOpacity={0.8}
-          >
-            <Text style={styles.submitButtonText}>Submit Code</Text>
-          </TouchableOpacity>
         </View>
 
-        {/* ==================== SECTION 3: REFERRAL EARNINGS HISTORY ==================== */}
+        {/* ===== APPLIED REFERRAL / INPUT SECTION ===== */}
+        {renderAppliedReferralSection()}
+
+        {/* ===== REFERRAL HISTORY ===== */}
         <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Earnings History</Text>
-          <Text style={styles.sectionSubtitle}>
-            Track your referral rewards
-          </Text>
+          <View style={styles.historyHeader}>
+            <Text style={styles.sectionTitle}>Earnings History</Text>
+            {referralHistory.length > 0 && (
+              <Text style={styles.historyCount}>
+                {totalReferrals} referrals
+              </Text>
+            )}
+          </View>
 
           {referralHistory.length > 0 ? (
             <View style={styles.historyContainer}>
               <FlatList
                 data={referralHistory}
                 renderItem={renderHistoryItem}
-                keyExtractor={(item) => item.id.toString()}
+                keyExtractor={(item, index) => `${item.id}-${index}`}
                 scrollEnabled={false}
                 ItemSeparatorComponent={() => <View style={styles.separator} />}
               />
@@ -226,24 +516,17 @@ const styles = StyleSheet.create({
   scrollContent: {
     paddingBottom: SIZES.padding.xxl,
   },
-  
-  // Header
-  header: {
-    backgroundColor: COLORS.primary,
-    paddingHorizontal: SIZES.padding.lg,
-    paddingTop: SIZES.padding.xl,
-    paddingBottom: SIZES.padding.xxl,
-    borderBottomLeftRadius: SIZES.radius.xl,
-    borderBottomRightRadius: SIZES.radius.xl,
+
+  // Loading State
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  headerTitle: {
-    ...FONTS.h2,
-    color: COLORS.white,
-    marginBottom: SIZES.margin.xs,
-  },
-  headerSubtitle: {
-    ...FONTS.bodySmall,
-    color: COLORS.whiteOpacity50,
+  loadingText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin.md,
   },
 
   // Section
@@ -267,7 +550,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.md,
     padding: SIZES.padding.xl,
-    alignItems: 'center',
+    alignItems: "center",
     ...SHADOWS.sm,
     marginBottom: SIZES.margin.md,
   },
@@ -281,11 +564,17 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontFamily: FONTS.family.bold,
     letterSpacing: 4,
+    marginBottom: SIZES.margin.xs,
+  },
+  usernameText: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
+    fontFamily: FONTS.family.medium,
   },
 
   // Buttons
   buttonRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: SIZES.margin.sm,
     marginBottom: SIZES.margin.lg,
   },
@@ -294,8 +583,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.primary,
     borderRadius: SIZES.radius.md,
     paddingVertical: SIZES.padding.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     ...SHADOWS.sm,
   },
   primaryButtonText: {
@@ -308,8 +597,8 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.md,
     paddingVertical: SIZES.padding.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     borderWidth: 1,
     borderColor: COLORS.primary,
     ...SHADOWS.sm,
@@ -319,10 +608,13 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     fontFamily: FONTS.family.semiBold,
   },
+  buttonDisabled: {
+    opacity: 0.5,
+  },
 
   // Stats Cards
   statsRow: {
-    flexDirection: 'row',
+    flexDirection: "row",
     gap: SIZES.margin.sm,
   },
   statCard: {
@@ -330,7 +622,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.md,
     padding: SIZES.padding.lg,
-    alignItems: 'center',
+    alignItems: "center",
     ...SHADOWS.sm,
   },
   statValue: {
@@ -342,7 +634,39 @@ const styles = StyleSheet.create({
   statLabel: {
     ...FONTS.caption,
     color: COLORS.textSecondary,
-    textAlign: 'center',
+    textAlign: "center",
+  },
+
+  // Steps
+  stepsContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.lg,
+    ...SHADOWS.sm,
+  },
+  stepItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: SIZES.margin.lg,
+  },
+  stepNumber: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: COLORS.primaryOpacity20,
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: SIZES.margin.md,
+  },
+  stepNumberText: {
+    ...FONTS.bodySmall,
+    color: COLORS.primary,
+    fontFamily: FONTS.family.bold,
+  },
+  stepText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    flex: 1,
   },
 
   // Input Container
@@ -367,14 +691,29 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.secondary,
     borderRadius: SIZES.radius.md,
     paddingVertical: SIZES.padding.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     ...SHADOWS.sm,
+  },
+  submitButtonDisabled: {
+    opacity: 0.6,
   },
   submitButtonText: {
     ...FONTS.bodyMedium,
-    color: COLORS.textPrimary,
+    color: COLORS.white,
     fontFamily: FONTS.family.bold,
+  },
+
+  // History Header
+  historyHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SIZES.margin.sm,
+  },
+  historyCount: {
+    ...FONTS.bodySmall,
+    color: COLORS.textSecondary,
   },
 
   // History
@@ -385,14 +724,14 @@ const styles = StyleSheet.create({
     ...SHADOWS.sm,
   },
   historyItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingVertical: SIZES.padding.md,
   },
   historyLeft: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     flex: 1,
   },
   avatarCircle: {
@@ -400,8 +739,8 @@ const styles = StyleSheet.create({
     height: 44,
     borderRadius: 22,
     backgroundColor: COLORS.primaryOpacity20,
-    alignItems: 'center',
-    justifyContent: 'center',
+    alignItems: "center",
+    justifyContent: "center",
     marginRight: SIZES.margin.md,
   },
   avatarText: {
@@ -421,14 +760,24 @@ const styles = StyleSheet.create({
   historyDate: {
     ...FONTS.caption,
     color: COLORS.textSecondary,
+    marginBottom: 2,
+  },
+  schemeText: {
+    ...FONTS.captionSmall,
+    color: COLORS.textTertiary,
   },
   historyRight: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   historyAmount: {
     ...FONTS.bodyLarge,
     color: COLORS.success,
     fontFamily: FONTS.family.bold,
+    marginBottom: 2,
+  },
+  creditedText: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
   },
   separator: {
     height: 1,
@@ -440,7 +789,7 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.md,
     padding: SIZES.padding.xxl,
-    alignItems: 'center',
+    alignItems: "center",
     ...SHADOWS.sm,
   },
   emptyText: {
@@ -451,7 +800,76 @@ const styles = StyleSheet.create({
   emptySubtext: {
     ...FONTS.caption,
     color: COLORS.textTertiary,
-    textAlign: 'center',
+    textAlign: "center",
+  },
+
+  // Applied Referral Styles
+  appliedReferralCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.lg,
+    marginHorizontal: SIZES.padding.lg,
+    marginTop: SIZES.margin.lg,
+    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.success,
+  },
+  appliedHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SIZES.margin.md,
+  },
+  appliedTitle: {
+    ...FONTS.h4,
+    color: COLORS.textPrimary,
+  },
+  appliedBadge: {
+    backgroundColor: COLORS.success,
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: SIZES.padding.xs,
+    borderRadius: SIZES.radius.xs,
+  },
+  appliedBadgeText: {
+    ...FONTS.caption,
+    color: COLORS.white,
+    fontFamily: FONTS.family.semiBold,
+  },
+  appliedContent: {
+    marginBottom: SIZES.margin.md,
+  },
+  appliedLabel: {
+    ...FONTS.bodySmall,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin.xs,
+  },
+  appliedCode: {
+    ...FONTS.bodyLarge,
+    color: COLORS.primary,
+    fontFamily: FONTS.family.bold,
+    marginTop: 2,
+  },
+  appliedDate: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    marginTop: 2,
+  },
+  appliedNote: {
+    backgroundColor: COLORS.successOpacity20,
+    padding: SIZES.padding.md,
+    borderRadius: SIZES.radius.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.success,
+  },
+  appliedNoteText: {
+    ...FONTS.body,
+    color: COLORS.successDark,
+    fontFamily: FONTS.family.medium,
+  },
+  checkingText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin.sm,
   },
 });
 

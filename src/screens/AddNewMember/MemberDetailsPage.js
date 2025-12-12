@@ -25,6 +25,19 @@ import {
   validatePincode,
 } from "./Validations";
 
+// Define character limits for each field
+const FIELD_LIMITS = {
+  name: 20,
+  surname: 50,
+  doorNo: 20,
+  street: 100,
+  area: 100,
+  city: 50,
+  state: 50,
+  nomeni: 50,
+  email: 100,
+};
+
 const INITIAL_FORM = {
   name: "",
   mobile: "",
@@ -147,15 +160,23 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     fetchLocation();
   }, [formData.pincode]);
 
-  // FIELD UPDATE HANDLER
+  // FIELD UPDATE HANDLER WITH CHARACTER LIMITS
   const updateField = (field, value) => {
+    // Check if field has character limit
+    if (FIELD_LIMITS[field] && value.length > FIELD_LIMITS[field]) {
+      // Don't update if exceeds limit
+      return;
+    }
+
     setFormData((p) => ({ ...p, [field]: value }));
+    
+    // Clear any existing error for this field
     if (validationErrors[field]) {
       setValidationErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
-  // Special handlers
+  // Special handlers with character limits
   const handleMobile = (t) =>
     updateField("mobile", t.replace(/\D/g, "").slice(0, 10));
 
@@ -177,48 +198,77 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   const handleAadhar = (t) =>
     updateField("aadharNumber", t.replace(/\D/g, "").slice(0, 12));
 
-  // VALIDATION: now using centralized validators
+  // VALIDATION with character limit checks
   const validate = (d) => {
     const errors = {};
 
-    // required checks
-    if (!d.name?.trim()) errors.name = "Name is required";
+    // Name validation with character limit
+    if (!d.name?.trim()) {
+      errors.name = "Name is required";
+    } else if (d.name.trim().length < 2) {
+      errors.name = "Name must be at least 2 characters";
+    } else if (d.name.trim().length > FIELD_LIMITS.name) {
+      errors.name = `Name cannot exceed ${FIELD_LIMITS.name} characters`;
+    }
 
-    // mobile (use validator) — even if field is readOnly, validate presence/format
+    // Mobile validation
     const mobileErr = validateMobile(d.mobile || "");
     if (mobileErr) errors.mobile = mobileErr;
 
-    // email
-    const emailErr = validateEmail(d.email || "");
-    if (emailErr) errors.email = emailErr;
+    // Email validation with character limit
+    if (d.email?.trim()) {
+      const emailErr = validateEmail(d.email || "");
+      if (emailErr) {
+        errors.email = emailErr;
+      } else if (d.email.trim().length > FIELD_LIMITS.email) {
+        errors.email = `Email cannot exceed ${FIELD_LIMITS.email} characters`;
+      }
+    }
 
-    // address required fields
-    if (!d.doorNo?.trim()) errors.doorNo = "Door No. is required";
-    if (!d.street?.trim()) errors.street = "Street is required";
-    if (!d.area?.trim()) errors.area = "Area/Locality is required";
+    // Address validations with character limits
+    if (!d.doorNo?.trim()) {
+      errors.doorNo = "Door No. is required";
+    } else if (d.doorNo.trim().length > FIELD_LIMITS.doorNo) {
+      errors.doorNo = `Door No. cannot exceed ${FIELD_LIMITS.doorNo} characters`;
+    }
 
-    // pincode
+    if (!d.street?.trim()) {
+      errors.street = "Street is required";
+    } else if (d.street.trim().length > FIELD_LIMITS.street) {
+      errors.street = `Street cannot exceed ${FIELD_LIMITS.street} characters`;
+    }
+
+    if (!d.area?.trim()) {
+      errors.area = "Area/Locality is required";
+    } else if (d.area.trim().length > FIELD_LIMITS.area) {
+      errors.area = `Area cannot exceed ${FIELD_LIMITS.area} characters`;
+    }
+
+    // Pincode validation
     const pinErr = validatePincode(d.pincode || "");
     if (pinErr) errors.pincode = pinErr;
 
-    // city/state (auto filled but still required)
+    // City/State (auto filled but still required)
     if (!d.city?.trim()) errors.city = "City is required";
     if (!d.state?.trim()) errors.state = "State is required";
 
-    // nominee
-    if (!d.nomeni?.trim()) errors.nomeni = "Nominee Name is required";
+    // Nominee validations
+    if (!d.nomeni?.trim()) {
+      errors.nomeni = "Nominee Name is required";
+    } else if (d.nomeni.trim().length > FIELD_LIMITS.nomeni) {
+      errors.nomeni = `Nominee name cannot exceed ${FIELD_LIMITS.nomeni} characters`;
+    }
+    
     const nomMobileErr = validateMobile(d.mobile2 || "");
     if (nomMobileErr) errors.mobile2 = nomMobileErr;
 
-    // PAN (optional — only validate when provided)
+    // PAN validation (optional)
     if (d.panNumber?.trim()) {
       const panErr = validatePAN(d.panNumber);
       if (panErr) errors.panNumber = panErr;
-    } else {
-      // if you want PAN required, remove this else-block
     }
 
-    // Aadhaar (optional — only validate when provided)
+    // Aadhaar validation (optional)
     if (d.aadharNumber?.trim()) {
       const aErr = validateAadhaar(d.aadharNumber);
       if (aErr) errors.aadharNumber = aErr;
@@ -234,20 +284,20 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
 
     if (Object.keys(errors).length === 0) {
       const transformedData = {
-        name: formData.name,
+        name: formData.name.trim(),
         mobile: formData.mobile,
-        email: formData.email,
-        doorNo: formData.doorNo,
-        address1: formData.street,
-        address2: formData.area,
-        area: formData.area,
-        city: formData.city,
+        email: formData.email.trim(),
+        doorNo: formData.doorNo.trim(),
+        address1: formData.street.trim(),
+        address2: formData.area.trim(),
+        area: formData.area.trim(),
+        city: formData.city.trim(),
         pincode: formData.pincode,
-        selectedState: formData.state,
+        selectedState: formData.state.trim(),
         country: "India",
         panNumber: formData.panNumber,
         aadharNumber: formData.aadharNumber,
-        nomeni: formData.nomeni,
+        nomeni: formData.nomeni.trim(),
         mobile2: formData.mobile2,
       };
 
@@ -256,7 +306,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
       return;
     }
 
-    // focus the first error field
+    // Focus the first error field
     const firstError = Object.keys(errors)[0];
     if (firstError && inputRefs.current[firstError]) {
       try {
@@ -265,7 +315,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
           inputRefs.current[firstError]?.focus?.();
         });
       } catch (e) {
-        // some readOnly fields may not support focus/measure — ignore
+        // Some readOnly fields may not support focus/measure - ignore
       }
     }
 
@@ -273,20 +323,55 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   };
 
   // CLEAR DATA
-const clearSavedData = async () => {
-  await AsyncStorage.removeItem("digigoldMemberForm");
+  const clearSavedData = async () => {
+    await AsyncStorage.removeItem("digigoldMemberForm");
 
-  setFormData(prev => ({
-    ...INITIAL_FORM,
-    mobile: prev.mobile,   // <-- preserve user mobile number
-  }));
+    setFormData((prev) => ({
+      ...INITIAL_FORM,
+      mobile: prev.mobile, // Preserve user mobile number
+    }));
 
-  setValidationErrors({});
-  Alert.alert("Cleared", "Form data reset (mobile number preserved).");
-};
+    setValidationErrors({});
+    Alert.alert("Cleared", "Form data reset (mobile number preserved).");
+  };
 
+  // Helper function to render input with character counter
+  const renderInputWithCounter = (field, label, handler) => {
+    const hasLimit = FIELD_LIMITS[field];
+    
+    return (
+      <View style={styles.inputGroup}>
+        <Text style={styles.label}>{label}</Text>
+        <TextInput
+          style={[styles.input, validationErrors[field] && styles.errorInput]}
+          value={formData[field]}
+          onChangeText={handler || ((t) => updateField(field, t))}
+          onFocus={() => setActiveInput(field)}
+          ref={(ref) => (inputRefs.current[field] = ref)}
+          placeholder={`Enter ${label}`}
+          placeholderTextColor={COLORS.inputPlaceholder}
+          maxLength={hasLimit ? FIELD_LIMITS[field] : undefined}
+        />
+        
+        {/* Character counter for fields with limits */}
+        {hasLimit && (
+          <View style={styles.charCounter}>
+            <Text style={[
+              styles.counterText,
+              formData[field]?.length === FIELD_LIMITS[field] && styles.counterTextWarning
+            ]}>
+              {formData[field]?.length || 0}/{FIELD_LIMITS[field]}
+            </Text>
+          </View>
+        )}
+        
+        {validationErrors[field] && (
+          <Text style={styles.errorText}>{validationErrors[field]}</Text>
+        )}
+      </View>
+    );
+  };
 
-  // UI render (unchanged)
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -318,31 +403,14 @@ const clearSavedData = async () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Details</Text>
 
-          {/* Name */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Name *</Text>
-            <TextInput
-              style={[styles.input, validationErrors.name && styles.errorInput]}
-              value={formData.name}
-              editable={true}
-              onChangeText={(t) => updateField("name", t)}
-              placeholder="Enter Name"
-              placeholderTextColor={COLORS.inputPlaceholder}
-              onFocus={() => setActiveInput("name")}
-              ref={(ref) => (inputRefs.current.name = ref)}
-            />
-            {validationErrors.name && (
-              <Text style={styles.errorText}>{validationErrors.name}</Text>
-            )}
-          </View>
+          {/* Name with character counter */}
+          {renderInputWithCounter("name", "Name *")}
 
           {/* Mobile */}
           <View style={styles.inputGroup}>
             <Text style={styles.label}>Mobile Number *</Text>
-
             <View style={styles.mobileInput}>
               <Text style={styles.countryCode}>+91</Text>
-
               <TextInput
                 style={[
                   styles.mobileField,
@@ -359,42 +427,22 @@ const clearSavedData = async () => {
                 ref={(ref) => (inputRefs.current.mobile = ref)}
               />
             </View>
-
             {validationErrors.mobile && (
               <Text style={styles.errorText}>{validationErrors.mobile}</Text>
             )}
           </View>
 
-          {/* Email */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Email *</Text>
-            <TextInput
-              style={[
-                styles.input,
-                validationErrors.email && styles.errorInput,
-              ]}
-              value={formData.email}
-              editable={true}
-              onChangeText={(t) => updateField("email", t)}
-              keyboardType="email-address"
-              placeholder="Enter Email"
-              placeholderTextColor={COLORS.inputPlaceholder}
-              onFocus={() => setActiveInput("email")}
-              ref={(ref) => (inputRefs.current.email = ref)}
-            />
-            {validationErrors.email && (
-              <Text style={styles.errorText}>{validationErrors.email}</Text>
-            )}
-          </View>
+          {/* Email with character counter */}
+          {renderInputWithCounter("email", "Email *")}
         </View>
 
         {/* ADDRESS */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Address</Text>
 
-          {renderInput("doorNo", "Door No. *")}
-          {renderInput("street", "Street *")}
-          {renderInput("area", "Area / Locality *")}
+          {renderInputWithCounter("doorNo", "Door No. *")}
+          {renderInputWithCounter("street", "Street *")}
+          {renderInputWithCounter("area", "Area / Locality *")}
 
           {/* PIN */}
           <View style={styles.inputGroup}>
@@ -455,7 +503,7 @@ const clearSavedData = async () => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Nominee Details</Text>
 
-          {renderInput("nomeni", "Nominee Name *")}
+          {renderInputWithCounter("nomeni", "Nominee Name *")}
 
           {/* Nominee Mobile */}
           <View style={styles.inputGroup}>
@@ -487,7 +535,22 @@ const clearSavedData = async () => {
           </Text>
 
           {/* PAN */}
-          {renderInput("panNumber", "PAN Number", handlePan)}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>PAN Number</Text>
+            <TextInput
+              style={[styles.input]}
+              value={formData.panNumber}
+              onChangeText={handlePan}
+              onFocus={() => setActiveInput("panNumber")}
+              ref={(ref) => (inputRefs.current.panNumber = ref)}
+              placeholder="Enter PAN Number"
+              placeholderTextColor={COLORS.inputPlaceholder}
+              maxLength={10}
+            />
+            {validationErrors.panNumber && (
+              <Text style={styles.errorText}>{validationErrors.panNumber}</Text>
+            )}
+          </View>
 
           {/* Aadhar */}
           <View style={styles.inputGroup}>
@@ -523,27 +586,6 @@ const clearSavedData = async () => {
       <BottomTab />
     </KeyboardAvoidingView>
   );
-
-  // SMALL REUSABLE INPUT COMPONENT
-  function renderInput(field, label, handler) {
-    return (
-      <View style={styles.inputGroup}>
-        <Text style={styles.label}>{label}</Text>
-        <TextInput
-          style={[styles.input, validationErrors[field] && styles.errorInput]}
-          value={formData[field]}
-          onChangeText={handler || ((t) => updateField(field, t))}
-          onFocus={() => setActiveInput(field)}
-          ref={(ref) => (inputRefs.current[field] = ref)}
-          placeholder={`Enter ${label}`}
-          placeholderTextColor={COLORS.inputPlaceholder}
-        />
-        {validationErrors[field] && (
-          <Text style={styles.errorText}>{validationErrors[field]}</Text>
-        )}
-      </View>
-    );
-  }
 };
 
 const styles = StyleSheet.create({
@@ -652,6 +694,19 @@ const styles = StyleSheet.create({
     ...FONTS.caption,
     color: COLORS.error,
     marginTop: SIZES.margin.xs,
+  },
+  charCounter: {
+    alignSelf: "flex-end",
+    marginTop: 2,
+  },
+  counterText: {
+    ...FONTS.captionSmall,
+    color: COLORS.textSecondary,
+    fontSize: 12,
+  },
+  counterTextWarning: {
+    color: COLORS.warning,
+    fontWeight: "bold",
   },
   confirmBtn: {
     backgroundColor: COLORS.primary,
