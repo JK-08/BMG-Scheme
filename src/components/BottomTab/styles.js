@@ -1,81 +1,56 @@
-import { Dimensions, StyleSheet } from 'react-native';
-import { moderateScale, COLORS, FONTS, SIZES, SHADOWS } from '../../utils/AppTheme';
-
-const { height, width } = Dimensions.get('window');
+import { StyleSheet } from "react-native";
+import { COLORS, FONTS, SIZES } from "../../utils/AppTheme";
 
 const styles = StyleSheet.create({
   footerContainer: {
-    width,
-    height: SIZES.button.lg,
-    flexDirection: 'row',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    alignItems: "center",
     backgroundColor: COLORS.white,
-    justifyContent: 'space-between',
-    alignItems: 'center',
     borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-    ...SHADOWS.sm,
+    borderTopColor: COLORS.border,
+    paddingVertical: SIZES.padding.sm,
+    elevation: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: -2 },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
   },
   footerBtnContainer: {
-    width: '25%',
-    height: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    paddingVertical: SIZES.padding.sm,
-  },
-  imgContainer: {
-    justifyContent: 'center',
-    alignItems: 'center',
+    alignItems: "center",
+    justifyContent: "center",
+    width: 70,
   },
   activeText: {
-    marginTop: SIZES.margin.xs,
+    fontSize: 12,
+    fontFamily: FONTS.medium,
     color: COLORS.primary,
-    ...FONTS.caption,
-    fontWeight: FONTS.weight.semiBold,
+    marginTop: 4,
   },
   inactiveText: {
-    marginTop: SIZES.margin.xs,
+    fontSize: 12,
+    fontFamily: FONTS.regular,
     color: COLORS.textSecondary,
-    ...FONTS.caption,
-    fontWeight: FONTS.weight.regular,
+    marginTop: 4,
   },
-  profileContainer: {
-    width: '100%',
-    justifyContent: 'center',
-    alignItems: 'center',
-    position: 'relative',
+  
+  // Notification icon container
+  notificationIconContainer: {
+    position: "relative",
   },
-  profileBadge: {
-    width: SIZES.xs,
-    height: SIZES.xs,
-    position: 'absolute',
-    right: '25%',
-    top: 0,
-    backgroundColor: COLORS.success,
-    borderRadius: SIZES.radius.full,
-  },
-  badgeContainer: {
-    position: 'absolute',
-    top: -SIZES.padding.xs,
-    right: -SIZES.padding.sm,
-    backgroundColor: COLORS.error,
-    borderRadius: SIZES.radius.sm,
-    height: moderateScale(18),
-    width: moderateScale(18),
-    justifyContent: 'center',
-    alignItems: 'center',
-    ...SHADOWS.xs,
-  },
-  badgeText: {
-    color: COLORS.white,
-    fontSize: SIZES.font.xxs,
-    fontWeight: FONTS.weight.bold,
-  },
-  iconContainer: {
-    width: SIZES.icon.xxl,
-    height: SIZES.icon.xxl,
-    justifyContent: 'center',
-    alignItems: 'center',
-    borderRadius: SIZES.radius.full,
+  
+  // Simple dot badge style
+  dotBadge: {
+    position: "absolute",
+    top: -2,
+    right: -2,
+    backgroundColor: COLORS.error || "#FF3B30",
+    borderRadius: 6,
+    width: 12,
+    height: 12,
+    borderWidth: 2,
+    borderColor: COLORS.white || "#FFFFFF",
+
   },
 });
 

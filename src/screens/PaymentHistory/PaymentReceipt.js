@@ -385,7 +385,7 @@ class PaymentReceiptPDF {
                      "BMG Scheme",
           hsnCode: schemeData?.schemeSummary?.hsnCode || 
                    responseData?.schemeInfo?.hsnCode || 
-                   "HSN CODE",
+                   "",
         },
       };
     } catch (error) {

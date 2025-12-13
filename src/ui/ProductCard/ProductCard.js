@@ -37,14 +37,13 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
   const insPaid = parseInt(trans.insPaid || 0);
 
   // PAY BUTTON CONDITION
- const today = new Date();
-const maturityDt = maturityDate ? new Date(maturityDate) : null;
+  const today = new Date();
+  const maturityDt = maturityDate ? new Date(maturityDate) : null;
 
-const showPayButton =
-  (isAmountScheme && insPaid < totalInstalments) || // same as before
-  (isDigitalScheme && maturityDt && today <= maturityDt) || // show until maturity
-  (isFixedDeposit && insPaid < 1);
-
+  const showPayButton =
+    (isAmountScheme && insPaid < totalInstalments && maturityDt && today <= maturityDt) || // same as before
+    (isDigitalScheme && maturityDt && today <= maturityDt) || // show until maturity
+    (isFixedDeposit && insPaid < 1);
 
   const nextDue = nextDueDate
     ? new Date(nextDueDate).toLocaleDateString("en-GB").replace(/\//g, "-")
@@ -85,9 +84,10 @@ const showPayButton =
         <View style={styles.circleMedium} />
 
         <View style={styles.topStatusBar}>
-          <View>
-            <TextDefault style={styles.statusLive1}>{pName}</TextDefault>
-          </View>
+          <TextDefault style={styles.statusLive1}>
+            {pName?.length > 20 ? `${pName.substring(0, 20)}...` : pName}
+          </TextDefault>
+
           <View>
             <TextDefault style={styles.statusLive}> Active</TextDefault>
           </View>

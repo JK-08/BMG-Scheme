@@ -72,8 +72,6 @@ export const createMpinApi = async (mpin) => {
   }
 };
 
-
-
 /**
  * 🔹 Verify MPIN
  * Endpoint: POST /api/v1/mpin/verify?enteredMpin=1234
@@ -110,7 +108,7 @@ export const verifyMpinApi = async (mpin) => {
 };
 
 /**
- * 🔹 Reset MPIN
+ * 🔹 Reset MPIN (Existing - without old MPIN)
  * Endpoint: POST /api/v1/mpin/reset?newMpin=1234
  */
 export const resetMpinApi = async (newMpin) => {
@@ -128,6 +126,58 @@ export const resetMpinApi = async (newMpin) => {
 
     if (!response.ok) throw new Error(result?.message || result || "Failed to reset MPIN");
     return result;
+  } catch (error) {
+    console.error("❌ Reset MPIN API Error:", error);
+    throw error;
+  }
+};
+
+/**
+ * 🔹 Reset MPIN with Old MPIN (NEW SERVICE - FIXED)
+ * Endpoint: POST /api/v1/mpin/reset?oldMpin=1709&newMpin=1708
+ */
+export const resetMpinWithOldApi = async (oldMpin, newMpin) => {
+  try {
+    const headers = await getHeaders();
+    console.log("📤 Reset MPIN Request Headers:", headers);
+
+    // FIXED: Use the correct endpoint structure
+    const url = `${API_BASE_URL_2}/resetMpin?oldMpin=${encodeURIComponent(oldMpin)}&newMpin=${encodeURIComponent(newMpin)}`;
+    console.log("📤 Reset MPIN URL:", url);
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers,
+    });
+
+    const result = await parseResponse(response);
+
+    console.log("📩 Response Status:", response.status);
+    console.log("📩 Response Body:", result);
+
+    // Handle 400 Bad Request - Old MPIN incorrect or same as new
+    if (response.status === 400) {
+      const errorMsg = typeof result === 'string' ? result : 
+                      (result?.message || result?.error || "Old MPIN is incorrect or new MPIN cannot be same as old MPIN.");
+      throw new Error(errorMsg);
+    }
+
+    // Handle other error statuses
+    if (!response.ok) {
+      const errorMsg = typeof result === 'string' ? result : 
+                      (result?.message || result?.error || "Failed to reset MPIN");
+      throw new Error(errorMsg);
+    }
+
+    // Handle success (200 OK)
+    if (response.status === 200) {
+      const successMsg = typeof result === 'string' ? result : 
+                        (result?.message || "MPIN reset successfully.");
+      return successMsg;
+    }
+
+    return result;
+
   } catch (error) {
     console.error("❌ Reset MPIN API Error:", error);
     throw error;

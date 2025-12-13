@@ -37,6 +37,7 @@ import PaymentFailure from './Buy/PaymentFailure'
 import PaymentCancelled from './Buy/PaymentCancelled'
 import EmailFormPage from './HelpCenterPage/EmailForm'
 import ReferralScreen from './Referral/Referral'
+import ResetMpin from './ProfileDashboard/ResetMpin/ResetMpin'
 
 export {
   MainLanding,
@@ -77,4 +78,5 @@ export {
   RewardsPage,
   EmailFormPage,
   ReferralScreen,
+  ResetMpin
 }

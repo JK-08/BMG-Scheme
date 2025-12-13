@@ -12,6 +12,8 @@ import {
   SafeAreaView,
   ScrollView,
   ActivityIndicator,
+  Modal,
+  Dimensions,
 } from "react-native";
 
 import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
@@ -43,6 +45,54 @@ const ReferralScreen = () => {
   const [appliedReferralData, setAppliedReferralData] = useState(null);
   const [isCheckingReferralStatus, setIsCheckingReferralStatus] =
     useState(false);
+
+  // New state for redeem functionality
+  const [redeemModalVisible, setRedeemModalVisible] = useState(false);
+  const [isRedeeming, setIsRedeeming] = useState(false);
+  
+  // Sample data for redeemable schemes
+  const [redeemableSchemes] = useState([
+    {
+      id: 1,
+      name: "Gold Savings Plan",
+      amount: 2500.00,
+      maturityDate: "2024-03-15",
+      isMatured: true,
+      closingDate: "2024-03-16",
+      status: "matured",
+    },
+    {
+      id: 2,
+      name: "Silver Investment",
+      amount: 1800.50,
+      maturityDate: "2024-04-01",
+      isMatured: false,
+      closingDate: null,
+      status: "active",
+    },
+    {
+      id: 3,
+      name: "Platinum Scheme",
+      amount: 3500.00,
+      maturityDate: "2024-02-28",
+      isMatured: true,
+      closingDate: "2024-02-29",
+      status: "matured",
+    },
+    {
+      id: 4,
+      name: "Basic Savings",
+      amount: 1200.00,
+      maturityDate: "2024-05-20",
+      isMatured: false,
+      closingDate: null,
+      status: "active",
+    },
+  ]);
+
+  const totalRedeemableAmount = redeemableSchemes
+    .filter(scheme => scheme.isMatured)
+    .reduce((total, scheme) => total + scheme.amount, 0);
 
   // ===============================
   // LOAD DATA FROM API
@@ -124,6 +174,111 @@ const ReferralScreen = () => {
       setIsCheckingReferralStatus(false);
     }
   };
+
+  // ===============================
+  // REDEEM FUNCTIONALITY
+  // ===============================
+  const handleRedeemPress = () => {
+    // Show modal with sample data
+    setRedeemModalVisible(true);
+  };
+
+  const handleRedeemScheme = (schemeId) => {
+    setIsRedeeming(true);
+    
+    // Simulate API call delay
+    setTimeout(() => {
+      Alert.alert(
+        "Success!",
+        `Amount has been successfully redeemed and will be transferred to your wallet within 24-48 hours.`,
+        [{
+          text: "OK",
+          onPress: () => {
+            setIsRedeeming(false);
+            // In real app, you would update the schemes list
+            // For demo, we'll just close the modal
+            // setRedeemModalVisible(false);
+          }
+        }]
+      );
+      setIsRedeeming(false);
+    }, 1500);
+  };
+
+  const handleRedeemAll = () => {
+    const maturedSchemes = redeemableSchemes.filter(scheme => scheme.isMatured);
+    
+    if (maturedSchemes.length === 0) {
+      Alert.alert("No Mature Schemes", "You don't have any mature schemes to redeem.");
+      return;
+    }
+
+    Alert.alert(
+      "Redeem All",
+      `Are you sure you want to redeem ₹${totalRedeemableAmount.toFixed(2)} from ${maturedSchemes.length} mature scheme(s)?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Redeem All",
+          onPress: () => {
+            setIsRedeeming(true);
+            
+            // Simulate API call delay
+            setTimeout(() => {
+              Alert.alert(
+                "Success!",
+                `₹${totalRedeemableAmount.toFixed(2)} has been successfully redeemed from all mature schemes and will be transferred to your wallet within 24-48 hours.`,
+                [{
+                  text: "OK",
+                  onPress: () => {
+                    setIsRedeeming(false);
+                    setRedeemModalVisible(false);
+                  }
+                }]
+              );
+              setIsRedeeming(false);
+            }, 1500);
+          }
+        }
+      ]
+    );
+  };
+
+  // Render scheme item in modal
+  const renderSchemeItem = ({ item }) => (
+    <View style={styles.schemeItem}>
+      <View style={styles.schemeInfo}>
+        <Text style={styles.schemeName}>{item.name}</Text>
+        <Text style={styles.schemeDate}>
+          Maturity Date: {new Date(item.maturityDate).toLocaleDateString('en-IN', {
+            day: '2-digit',
+            month: 'short',
+            year: 'numeric'
+          })}
+        </Text>
+        {item.closingDate && (
+          <Text style={styles.schemeClosingDate}>
+            Closed on: {new Date(item.closingDate).toLocaleDateString('en-IN')}
+          </Text>
+        )}
+      </View>
+      <View style={styles.schemeAmountContainer}>
+        <Text style={styles.schemeAmount}>₹{item.amount.toFixed(2)}</Text>
+        <TouchableOpacity
+          style={[
+            styles.redeemButton,
+            !item.isMatured && styles.redeemButtonDisabled
+          ]}
+          onPress={() => handleRedeemScheme(item.id)}
+          disabled={!item.isMatured || isRedeeming}
+        >
+          <Text style={styles.redeemButtonText}>
+            {item.isMatured ? 'Redeem' : 'Not Matured'}
+          </Text>
+        </TouchableOpacity>
+      </View>
+    </View>
+  );
 
   // ===============================
   // SHARE LINK
@@ -423,7 +578,7 @@ const ReferralScreen = () => {
             </TouchableOpacity>
           </View>
 
-          {/* Stats */}
+          {/* Stats with Redeem Button */}
           <View style={styles.statsRow}>
             <View style={styles.statCard}>
               <Text style={styles.statValue}>₹{totalBonus.toFixed(2)}</Text>
@@ -434,6 +589,14 @@ const ReferralScreen = () => {
               <Text style={styles.statLabel}>Total Referrals</Text>
             </View>
           </View>
+
+          {/* Redeem Button */}
+          <TouchableOpacity
+            style={styles.redeemButtonMain}
+            onPress={handleRedeemPress}
+          >
+            <Text style={styles.redeemButtonMainText}>Redeem Amount</Text>
+          </TouchableOpacity>
         </View>
 
         {/* ===== HOW IT WORKS ===== */}
@@ -462,6 +625,14 @@ const ReferralScreen = () => {
               </View>
               <Text style={styles.stepText}>
                 Earn ₹200 bonus for each successful referral
+              </Text>
+            </View>
+            <View style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>4</Text>
+              </View>
+              <Text style={styles.stepText}>
+                Redeem your earnings when schemes reach maturity date
               </Text>
             </View>
           </View>
@@ -501,6 +672,59 @@ const ReferralScreen = () => {
           )}
         </View>
       </ScrollView>
+
+      {/* Redeem Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={redeemModalVisible}
+        onRequestClose={() => setRedeemModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            {/* Modal Header */}
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Redeem Amount</Text>
+              <TouchableOpacity
+                onPress={() => setRedeemModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>✕</Text>
+              </TouchableOpacity>
+            </View>
+
+            {/* Total Redeemable Amount */}
+            <View style={styles.totalRedeemableCard}>
+              <Text style={styles.totalRedeemableLabel}>Total Redeemable</Text>
+              <Text style={styles.totalRedeemableAmount}>
+                ₹{totalBonus.toFixed(2)}
+              </Text>
+            </View>
+
+            {/* Schemes List */}
+            {/* <View style={styles.schemesListContainer}>
+              <Text style={styles.schemesListTitle}>Your Schemes</Text>
+              <FlatList
+                data={redeemableSchemes}
+                renderItem={renderSchemeItem}
+                keyExtractor={(item) => item.id.toString()}
+                showsVerticalScrollIndicator={false}
+                contentContainerStyle={styles.schemesListContent}
+              />
+            </View> */}
+
+            {/* Important Note */}
+            <View style={styles.redeemNoteContainer}>
+              <Text style={styles.redeemNoteTitle}>Important:</Text>
+              <Text style={styles.redeemNoteText}>
+                • Amount can only be redeemed when scheme reaches maturity date{'\n'}
+                • Redeemed amount will be transferred to your wallet{'\n'}
+                • Processing may take 24-48 hours{'\n'}
+              </Text>
+            </View>
+          </View>
+        </View>
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -508,6 +732,8 @@ const ReferralScreen = () => {
 // ============================================
 // STYLES
 // ============================================
+const { width, height } = Dimensions.get('window');
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
@@ -576,7 +802,7 @@ const styles = StyleSheet.create({
   buttonRow: {
     flexDirection: "row",
     gap: SIZES.margin.sm,
-    marginBottom: SIZES.margin.lg,
+    marginBottom: SIZES.margin.md,
   },
   primaryButton: {
     flex: 1,
@@ -610,6 +836,22 @@ const styles = StyleSheet.create({
   },
   buttonDisabled: {
     opacity: 0.5,
+  },
+
+  // Redeem Button (Main)
+  redeemButtonMain: {
+    backgroundColor: COLORS.success,
+    borderRadius: SIZES.radius.md,
+    paddingVertical: SIZES.padding.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: SIZES.margin.md,
+    ...SHADOWS.sm,
+  },
+  redeemButtonMainText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.white,
+    fontFamily: FONTS.family.bold,
   },
 
   // Stats Cards
@@ -870,6 +1112,187 @@ const styles = StyleSheet.create({
     ...FONTS.body,
     color: COLORS.textSecondary,
     marginTop: SIZES.margin.sm,
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.5)',
+    justifyContent: 'center',
+  },
+  modalContainer: {
+    backgroundColor: COLORS.white,
+    borderTopLeftRadius: SIZES.radius.xl,
+    borderRadius: SIZES.radius.xl,
+    maxHeight: height * 0.85,
+    paddingBottom: SIZES.padding.lg,
+  },
+  modalHeader: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingHorizontal: SIZES.padding.lg,
+    paddingVertical: SIZES.padding.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  modalTitle: {
+    ...FONTS.h4,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.bold,
+  },
+  closeButton: {
+    padding: SIZES.padding.xs,
+  },
+  closeButtonText: {
+    ...FONTS.h4,
+    color: COLORS.textSecondary,
+  },
+  totalRedeemableCard: {
+    backgroundColor: COLORS.successOpacity10,
+    marginHorizontal: SIZES.padding.lg,
+    marginVertical: SIZES.margin.lg,
+    padding: SIZES.padding.lg,
+    borderRadius: SIZES.radius.md,
+    alignItems: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.successOpacity30,
+  },
+  totalRedeemableLabel: {
+    ...FONTS.bodySmall,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.margin.xs,
+  },
+  totalRedeemableAmount: {
+    // ...FONTS.h2,
+    color: COLORS.success,
+    // fontFamily: FONTS.family.bold,
+    marginBottom: SIZES.margin.xs,
+     fontSize: SIZES.heading.h2,
+    lineHeight: SIZES.heading.h2 * 1.3,
+    color: COLORS.textPrimary,
+    letterSpacing: 0.3,
+  },
+
+  schemesListContainer: {
+    flex: 1,
+    paddingHorizontal: SIZES.padding.lg,
+    marginBottom: SIZES.margin.lg,
+  },
+  schemesListTitle: {
+    ...FONTS.bodyMedium,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.semiBold,
+    marginBottom: SIZES.margin.md,
+  },
+  schemesListContent: {
+    paddingBottom: SIZES.padding.sm,
+  },
+  schemeItem: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    paddingVertical: SIZES.padding.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  schemeInfo: {
+    flex: 1,
+    marginRight: SIZES.margin.md,
+  },
+  schemeName: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.medium,
+    marginBottom: 4,
+  },
+  schemeDate: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
+    marginBottom: 2,
+  },
+  schemeClosingDate: {
+    ...FONTS.captionSmall,
+    color: COLORS.textTertiary,
+  },
+  schemeAmountContainer: {
+    alignItems: 'flex-end',
+  },
+  schemeAmount: {
+    ...FONTS.bodyLarge,
+    color: COLORS.success,
+    fontFamily: FONTS.family.bold,
+    marginBottom: SIZES.margin.xs,
+  },
+  redeemButton: {
+    backgroundColor: COLORS.success,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.xs,
+    borderRadius: SIZES.radius.sm,
+    minWidth: 80,
+    alignItems: 'center',
+  },
+  redeemButtonDisabled: {
+    backgroundColor: COLORS.textTertiary,
+  },
+  redeemButtonText: {
+    ...FONTS.caption,
+    color: COLORS.white,
+    fontFamily: FONTS.family.semiBold,
+  },
+  modalActions: {
+    flexDirection: 'row',
+    gap: SIZES.margin.sm,
+    paddingHorizontal: SIZES.padding.lg,
+    marginBottom: SIZES.margin.lg,
+  },
+  modalCancelButton: {
+    flex: 1,
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.md,
+    paddingVertical: SIZES.padding.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+    borderWidth: 1,
+    borderColor: COLORS.error,
+  },
+  modalCancelButtonText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.error,
+    fontFamily: FONTS.family.semiBold,
+  },
+  modalRedeemAllButton: {
+    flex: 2,
+    backgroundColor: COLORS.success,
+    borderRadius: SIZES.radius.md,
+    paddingVertical: SIZES.padding.md,
+    alignItems: 'center',
+    justifyContent: 'center',
+  },
+  modalRedeemAllButtonText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.white,
+    fontFamily: FONTS.family.bold,
+  },
+  redeemNoteContainer: {
+    backgroundColor: COLORS.warningOpacity10,
+    marginHorizontal: SIZES.padding.lg,
+    padding: SIZES.padding.md,
+    borderRadius: SIZES.radius.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.warning,
+  },
+  redeemNoteTitle: {
+    ...FONTS.bodySmall,
+    color: COLORS.warning,
+    fontFamily: FONTS.family.semiBold,
+    marginBottom: SIZES.margin.xs,
+  },
+  redeemNoteText: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
+    lineHeight: 18,
+    fontSize:14
   },
 });
 

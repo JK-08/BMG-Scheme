@@ -297,7 +297,7 @@ const DrawerMenu = ({ isVisible, onClose }) => {
   const menuItems = [
     { label: "About", icon: "info", route: "AboutPage" },
     { label: "FAQ", icon: "support-agent", route: "FAQPage" },
-    // { label: "My Scheme", icon: "list", route: "MyScheme" },
+    { label: "Reset MPIN", icon: "settings", route: "ResetMpin" },
     { label: "Help Center", icon: "help-center", route: "HelpCenter" },
     { label: "Privacy Policy", icon: "privacy-tip", route: "PrivacyPolicy" },
     {
