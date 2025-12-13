@@ -25,19 +25,6 @@ import {
   validatePincode,
 } from "./Validations";
 
-// Define character limits for each field
-const FIELD_LIMITS = {
-  name: 20,
-  surname: 50,
-  doorNo: 20,
-  street: 100,
-  area: 100,
-  city: 50,
-  state: 50,
-  nomeni: 50,
-  email: 100,
-};
-
 const INITIAL_FORM = {
   name: "",
   mobile: "",
@@ -160,14 +147,8 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     fetchLocation();
   }, [formData.pincode]);
 
-  // FIELD UPDATE HANDLER WITH CHARACTER LIMITS
+  // FIELD UPDATE HANDLER
   const updateField = (field, value) => {
-    // Check if field has character limit
-    if (FIELD_LIMITS[field] && value.length > FIELD_LIMITS[field]) {
-      // Don't update if exceeds limit
-      return;
-    }
-
     setFormData((p) => ({ ...p, [field]: value }));
     
     // Clear any existing error for this field
@@ -176,72 +157,61 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     }
   };
 
-  // Special handlers with character limits
+  // Special handlers
   const handleMobile = (t) =>
-    updateField("mobile", t.replace(/\D/g, "").slice(0, 10));
+    updateField("mobile", t.replace(/\D/g, ""));
 
   const handleNomineeMobile = (t) =>
-    updateField("mobile2", t.replace(/\D/g, "").slice(0, 10));
+    updateField("mobile2", t.replace(/\D/g, ""));
 
   const handlePincode = (t) =>
-    updateField("pincode", t.replace(/\D/g, "").slice(0, 6));
+    updateField("pincode", t.replace(/\D/g, ""));
 
   const handlePan = (t) =>
     updateField(
       "panNumber",
       t
         .replace(/[^A-Za-z0-9]/g, "")
-        .slice(0, 10)
         .toUpperCase()
     );
 
   const handleAadhar = (t) =>
-    updateField("aadharNumber", t.replace(/\D/g, "").slice(0, 12));
+    updateField("aadharNumber", t.replace(/\D/g, ""));
 
-  // VALIDATION with character limit checks
+  // VALIDATION
   const validate = (d) => {
     const errors = {};
 
-    // Name validation with character limit
+    // Name validation
     if (!d.name?.trim()) {
       errors.name = "Name is required";
     } else if (d.name.trim().length < 2) {
       errors.name = "Name must be at least 2 characters";
-    } else if (d.name.trim().length > FIELD_LIMITS.name) {
-      errors.name = `Name cannot exceed ${FIELD_LIMITS.name} characters`;
     }
 
     // Mobile validation
     const mobileErr = validateMobile(d.mobile || "");
     if (mobileErr) errors.mobile = mobileErr;
 
-    // Email validation with character limit
+    // Email validation
     if (d.email?.trim()) {
       const emailErr = validateEmail(d.email || "");
       if (emailErr) {
         errors.email = emailErr;
-      } else if (d.email.trim().length > FIELD_LIMITS.email) {
-        errors.email = `Email cannot exceed ${FIELD_LIMITS.email} characters`;
       }
     }
 
-    // Address validations with character limits
+    // Address validations
     if (!d.doorNo?.trim()) {
       errors.doorNo = "Door No. is required";
-    } else if (d.doorNo.trim().length > FIELD_LIMITS.doorNo) {
-      errors.doorNo = `Door No. cannot exceed ${FIELD_LIMITS.doorNo} characters`;
     }
 
     if (!d.street?.trim()) {
       errors.street = "Street is required";
-    } else if (d.street.trim().length > FIELD_LIMITS.street) {
-      errors.street = `Street cannot exceed ${FIELD_LIMITS.street} characters`;
     }
 
     if (!d.area?.trim()) {
       errors.area = "Area/Locality is required";
-    } else if (d.area.trim().length > FIELD_LIMITS.area) {
-      errors.area = `Area cannot exceed ${FIELD_LIMITS.area} characters`;
     }
 
     // Pincode validation
@@ -255,8 +225,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     // Nominee validations
     if (!d.nomeni?.trim()) {
       errors.nomeni = "Nominee Name is required";
-    } else if (d.nomeni.trim().length > FIELD_LIMITS.nomeni) {
-      errors.nomeni = `Nominee name cannot exceed ${FIELD_LIMITS.nomeni} characters`;
     }
     
     const nomMobileErr = validateMobile(d.mobile2 || "");
@@ -335,10 +303,8 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     Alert.alert("Cleared", "Form data reset (mobile number preserved).");
   };
 
-  // Helper function to render input with character counter
-  const renderInputWithCounter = (field, label, handler) => {
-    const hasLimit = FIELD_LIMITS[field];
-    
+  // Helper function to render input
+  const renderInput = (field, label, handler) => {
     return (
       <View style={styles.inputGroup}>
         <Text style={styles.label}>{label}</Text>
@@ -350,20 +316,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
           ref={(ref) => (inputRefs.current[field] = ref)}
           placeholder={`Enter ${label}`}
           placeholderTextColor={COLORS.inputPlaceholder}
-          maxLength={hasLimit ? FIELD_LIMITS[field] : undefined}
         />
-        
-        {/* Character counter for fields with limits */}
-        {hasLimit && (
-          <View style={styles.charCounter}>
-            <Text style={[
-              styles.counterText,
-              formData[field]?.length === FIELD_LIMITS[field] && styles.counterTextWarning
-            ]}>
-              {formData[field]?.length || 0}/{FIELD_LIMITS[field]}
-            </Text>
-          </View>
-        )}
         
         {validationErrors[field] && (
           <Text style={styles.errorText}>{validationErrors[field]}</Text>
@@ -403,8 +356,8 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Basic Details</Text>
 
-          {/* Name with character counter */}
-          {renderInputWithCounter("name", "Name *")}
+          {/* Name */}
+          {renderInput("name", "Name *")}
 
           {/* Mobile */}
           <View style={styles.inputGroup}>
@@ -418,7 +371,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                 ]}
                 value={formData.mobile}
                 editable={false}
-                maxLength={10}
                 keyboardType="numeric"
                 onChangeText={handleMobile}
                 placeholder="Enter Mobile Number"
@@ -432,17 +384,17 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
             )}
           </View>
 
-          {/* Email with character counter */}
-          {renderInputWithCounter("email", "Email *")}
+          {/* Email */}
+          {renderInput("email", "Email *")}
         </View>
 
         {/* ADDRESS */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Address</Text>
 
-          {renderInputWithCounter("doorNo", "Door No. *")}
-          {renderInputWithCounter("street", "Street *")}
-          {renderInputWithCounter("area", "Area / Locality *")}
+          {renderInput("doorNo", "Door No. *")}
+          {renderInput("street", "Street *")}
+          {renderInput("area", "Area / Locality *")}
 
           {/* PIN */}
           <View style={styles.inputGroup}>
@@ -453,7 +405,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                 validationErrors.pincode && styles.errorInput,
               ]}
               value={formData.pincode}
-              maxLength={6}
               keyboardType="numeric"
               onFocus={() => setActiveInput("pincode")}
               onChangeText={handlePincode}
@@ -503,7 +454,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Nominee Details</Text>
 
-          {renderInputWithCounter("nomeni", "Nominee Name *")}
+          {renderInput("nomeni", "Nominee Name *")}
 
           {/* Nominee Mobile */}
           <View style={styles.inputGroup}>
@@ -512,7 +463,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
               <Text style={styles.countryCode}>+91</Text>
               <TextInput
                 style={[styles.mobileField]}
-                maxLength={10}
                 value={formData.mobile2}
                 onChangeText={handleNomineeMobile}
                 onFocus={() => setActiveInput("mobile2")}
@@ -545,7 +495,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
               ref={(ref) => (inputRefs.current.panNumber = ref)}
               placeholder="Enter PAN Number"
               placeholderTextColor={COLORS.inputPlaceholder}
-              maxLength={10}
             />
             {validationErrors.panNumber && (
               <Text style={styles.errorText}>{validationErrors.panNumber}</Text>
@@ -561,7 +510,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                 validationErrors.aadharNumber && styles.errorInput,
               ]}
               value={formData.aadharNumber}
-              maxLength={12}
               onChangeText={handleAadhar}
               onFocus={() => setActiveInput("aadharNumber")}
               ref={(ref) => (inputRefs.current.aadharNumber = ref)}
@@ -694,19 +642,6 @@ const styles = StyleSheet.create({
     ...FONTS.caption,
     color: COLORS.error,
     marginTop: SIZES.margin.xs,
-  },
-  charCounter: {
-    alignSelf: "flex-end",
-    marginTop: 2,
-  },
-  counterText: {
-    ...FONTS.captionSmall,
-    color: COLORS.textSecondary,
-    fontSize: 12,
-  },
-  counterTextWarning: {
-    color: COLORS.warning,
-    fontWeight: "bold",
   },
   confirmBtn: {
     backgroundColor: COLORS.primary,

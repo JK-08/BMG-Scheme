@@ -3,7 +3,7 @@ import * as FileSystem from "expo-file-system/legacy";
 import { Asset } from "expo-asset";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { Alert, Platform } from "react-native";
-import { API_BASE_URL } from "../../Config/API";
+import { API_BASE_URL_OLD } from "../../Config/API";
 
 class PaymentReceiptPDF {
   // Constants
@@ -18,84 +18,194 @@ class PaymentReceiptPDF {
   };
 
   static API_ENDPOINTS = {
-    COMPANY: `${API_BASE_URL}/company`
+    COMPANY: `${API_BASE_URL_OLD}/company`
   };
 
   // ---------------------------------------------------------------------------
-  // COMPANY DATA MANAGEMENT
+  // COMPANY DATA MANAGEMENT - IMPROVED ERROR HANDLING
   // ---------------------------------------------------------------------------
   static async getCompanyData() {
     try {
+      console.log("🔄 Fetching company data...");
+      console.log("📡 API Endpoint:", this.API_ENDPOINTS.COMPANY);
+
       // Try to get cached company data first
       const cachedData = await AsyncStorage.getItem(this.STORAGE_KEYS.COMPANY_DATA);
       if (cachedData) {
+        console.log("📦 Found cached company data");
         const parsedData = JSON.parse(cachedData);
         if (this.isCompanyDataValid(parsedData)) {
+          console.log("✅ Using valid cached company data");
           return parsedData;
         }
+        console.log("⚠️ Cached data invalid, fetching fresh...");
       }
 
-      // Fetch fresh data from API
-      const response = await fetch(this.API_ENDPOINTS.COMPANY);
-      
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+      // Fetch fresh data from API with timeout
+      console.log("🌐 Making API request...");
+      const controller = new AbortController();
+      const timeoutId = setTimeout(() => controller.abort(), 10000); // 10 second timeout
+
+      try {
+        const response = await fetch(this.API_ENDPOINTS.COMPANY, {
+          signal: controller.signal,
+          headers: {
+            'Accept': 'application/json',
+            'Content-Type': 'application/json',
+          }
+        });
+        
+        clearTimeout(timeoutId);
+
+        console.log("📊 Response Status:", response.status);
+        console.log("📊 Response OK:", response.ok);
+
+        if (!response.ok) {
+          const errorText = await response.text();
+          console.error("❌ API Error Response:", errorText);
+          throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+        }
+
+        const apiResponse = await response.json();
+        console.log("📥 API Response:", JSON.stringify(apiResponse, null, 2));
+
+        if (!apiResponse.success) {
+          console.warn("⚠️ API reported failure:", apiResponse.message);
+          throw new Error(`API Error: ${apiResponse.message || "Unknown error"}`);
+        }
+
+        let companyData;
+        
+        // Handle different response structures
+        if (apiResponse.message && Array.isArray(apiResponse.message) && apiResponse.message.length > 0) {
+          companyData = apiResponse.message[0];
+        } else if (apiResponse.data) {
+          companyData = apiResponse.data;
+        } else if (typeof apiResponse.message === 'object') {
+          companyData = apiResponse.message;
+        } else {
+          console.warn("⚠️ Unexpected API response structure:", apiResponse);
+          throw new Error("Invalid API response structure");
+        }
+
+        console.log("✅ Company data extracted:", companyData);
+
+        // Cache the company data
+        await AsyncStorage.setItem(
+          this.STORAGE_KEYS.COMPANY_DATA, 
+          JSON.stringify(companyData)
+        );
+
+        console.log("💾 Company data cached successfully");
+        return companyData;
+      } catch (fetchError) {
+        clearTimeout(timeoutId);
+        
+        if (fetchError.name === 'AbortError') {
+          console.error("⏰ API request timeout");
+          throw new Error("API request timeout (10 seconds)");
+        }
+        throw fetchError;
       }
-
-      const apiResponse = await response.json();
-      
-      if (!apiResponse.success || !apiResponse.message || !apiResponse.message[0]) {
-        throw new Error("Invalid API response structure");
-      }
-
-      const companyData = apiResponse.message[0];
-      
-      // Cache the company data
-      await AsyncStorage.setItem(
-        this.STORAGE_KEYS.COMPANY_DATA, 
-        JSON.stringify(companyData)
-      );
-
-      return companyData;
     } catch (error) {
-      console.error("getCompanyData Error:", error);
+      console.error("❌ getCompanyData Error:", {
+        message: error.message,
+        stack: error.stack,
+        endpoint: this.API_ENDPOINTS.COMPANY
+      });
       
-      // Return default company data as fallback
+      // Try to get company data from AsyncStorage even if API fails
+      try {
+        const fallbackData = await AsyncStorage.getItem(this.STORAGE_KEYS.COMPANY_DATA);
+        if (fallbackData) {
+          const parsed = JSON.parse(fallbackData);
+          if (this.isCompanyDataValid(parsed)) {
+            console.log("🔄 Using previously cached data as fallback");
+            return parsed;
+          }
+        }
+      } catch (storageError) {
+        console.error("❌ Fallback data retrieval failed:", storageError);
+      }
+      
+      console.log("🔄 Returning default company data");
       return this.getDefaultCompanyData();
     }
   }
 
   static isCompanyDataValid(companyData) {
-    return companyData && 
+    if (!companyData) {
+      console.log("❌ Company data is null/undefined");
+      return false;
+    }
+    
+    const isValid = companyData && 
            companyData.cname && 
-           companyData.cAddress1 && 
-           typeof companyData.cname === 'string';
+           typeof companyData.cname === 'string' &&
+           companyData.cname.trim().length > 0;
+    
+    return isValid;
   }
 
   static getDefaultCompanyData() {
+    console.log("📄 Using default company data");
     return {
       companyId: "BMG",
-      cname: "BMG Jewellers pvt. ltd.,",
-      cAddress1: "160, West Masi Street, Near Pothys",
+      cname: "BMG JEWELLERS PVT LMT",
+      cAddress1: "160, West Masi Street",
       cAddress2: "Madurai",
       cAddress3: "",
       cAddress4: "",
-      cPhone: "70946 70946",
-      cPincode: "625001",
+      cPhone: "7094670946",
+      cPincode: "",
       cEmail: "contact@bmgjewellers.in",
-      cFax: "9514333609",
+      cFax: "0452 2900925",
       companyLogo: "",
-      gstNo: "",
+      contReceiptNo: "N",
+      startReceiptNo: 59,
+      jCompId: "BMG",
+      tinNo: "",
+      cstNo: "",
+      gstNo: "33AAICB0416C1ZG",
       stateId: 24
     };
   }
 
   static async clearCachedCompanyData() {
     await AsyncStorage.removeItem(this.STORAGE_KEYS.COMPANY_DATA);
+    console.log("🗑️ Cleared cached company data");
   }
 
   // ---------------------------------------------------------------------------
-  // SAVE DIRECTORY FOR ANDROID
+  // DEBUG API ENDPOINT MANUALLY
+  // ---------------------------------------------------------------------------
+  static async testAPIEndpoint() {
+    try {
+      console.log("🧪 Testing API Endpoint...");
+      console.log("🔗 URL:", this.API_ENDPOINTS.COMPANY);
+      
+      const response = await fetch(this.API_ENDPOINTS.COMPANY);
+      console.log("📊 Response Status:", response.status);
+      
+      const text = await response.text();
+      console.log("📝 Raw Response (first 500 chars):", text.substring(0, 500));
+      
+      try {
+        const json = JSON.parse(text);
+        console.log("📦 Parsed JSON:", JSON.stringify(json, null, 2));
+        return { success: response.ok, status: response.status, data: json };
+      } catch (parseError) {
+        console.error("❌ JSON Parse Error:", parseError);
+        return { success: false, status: response.status, rawText: text };
+      }
+    } catch (error) {
+      console.error("❌ Test Failed:", error);
+      return { success: false, error: error.message };
+    }
+  }
+
+  // ---------------------------------------------------------------------------
+  // REST OF THE CODE REMAINS THE SAME (with minor improvements)
   // ---------------------------------------------------------------------------
   static async getDirectoryUri() {
     try {
@@ -122,9 +232,6 @@ class PaymentReceiptPDF {
     Alert.alert("Reset", "Download folder permission has been reset.");
   }
 
-  // ---------------------------------------------------------------------------
-  // ASSET TO BASE64 - OPTIMIZED
-  // ---------------------------------------------------------------------------
   static async assetToBase64(moduleAsset) {
     const asset = Asset.fromModule(moduleAsset);
     
@@ -137,7 +244,6 @@ class PaymentReceiptPDF {
     const sourceUri = asset.localUri || asset.uri;
     if (!sourceUri) throw new Error("Asset URI not available");
 
-    // Return data URI directly if already in that format
     if (sourceUri.startsWith("data:")) {
       return sourceUri.substring(sourceUri.indexOf(",") + 1);
     }
@@ -161,7 +267,6 @@ class PaymentReceiptPDF {
         encoding: FileSystem.EncodingType.Base64,
       });
     } catch (copyErr) {
-      // Final fallback: fetch via network
       try {
         const response = await fetch(sourceUri);
         const buffer = await response.arrayBuffer();
@@ -183,11 +288,8 @@ class PaymentReceiptPDF {
     return global.btoa ? global.btoa(binary) : null;
   }
 
-  // ---------------------------------------------------------------------------
-  // FORMATTERS
-  // ---------------------------------------------------------------------------
   static formatDate(dateString) {
-    if (!dateString) return "N/A";
+    if (!dateString) return "";
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString("en-GB", {
@@ -196,7 +298,7 @@ class PaymentReceiptPDF {
         year: "numeric",
       });
     } catch {
-      return "Invalid Date";
+      return "";
     }
   }
 
@@ -208,11 +310,11 @@ class PaymentReceiptPDF {
   }
 
   static numberToWords(num) {
+    if (!num || isNaN(num) || num === 0) return "Zero Rupees Only";
+    
     const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
     const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
     const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
-
-    if (num === 0) return "Zero";
 
     const toWords = (n) => {
       if (n < 10) return ones[n];
@@ -238,62 +340,80 @@ class PaymentReceiptPDF {
   }
 
   // ---------------------------------------------------------------------------
-  // RESPONSE DATA MAPPING - OPTIMIZED
+  // UPDATED DATA EXTRACTION METHOD
   // ---------------------------------------------------------------------------
   static extractDataFromResponse(responseData) {
     try {
-      const schemeData = responseData?.schemeData || {};
+      console.log("📥 Raw response data for extraction:", JSON.stringify(responseData, null, 2));
+
+      // Extract data from the array structure
+      const schemeData = responseData?.[0] || {};
       const personalInfo = schemeData?.personalInfo || {};
-      const paymentData = responseData?.payment || {};
+      const schemeSummary = schemeData?.schemeSummary || {};
+      const paymentHistoryList = schemeData?.paymentHistoryList || [];
+      
+      // Get the latest payment (last in the array)
+      const latestPayment = paymentHistoryList.length > 0 
+        ? paymentHistoryList[paymentHistoryList.length - 1] 
+        : {};
+
+      console.log("🔍 Latest payment data:", latestPayment);
 
       return {
         payment: {
-          amount: paymentData.amount || "0",
-          weight: paymentData.weight || "0.0",
-          receiptNo: paymentData.receiptNo || "0",
-          updateTime: paymentData.updateTime || new Date().toISOString(),
-          paymentMode: paymentData.chqBank || "N/A",
-          paymentSubMode: paymentData.chqBranch || "N/A",
-          transactionId: paymentData.chq_CardNo || "N/A",
-          installment: paymentData.installment || "1",
+          amount: latestPayment.amount || "0",
+          weight: latestPayment.weight || "0.0",
+          receiptNo: latestPayment.receiptNo || "",
+          updateTime: latestPayment.updateTime || new Date().toISOString(),
+          paymentMode: latestPayment.chqBank || "",
+          paymentSubMode: latestPayment.chqBranch || "",
+          transactionId: latestPayment.chq_CardNo || "",
+          installment: latestPayment.installment || "",
         },
 
         customerInfo: {
-          customerName: responseData?.customerInfo?.customerName || personalInfo?.pName || "N/A",
-          mobile: responseData?.customerInfo?.mobile || personalInfo?.mobile || "N/A",
+          customerName: schemeData?.pName || personalInfo?.pName || "",
+          mobile: personalInfo?.mobile || "",
           address1: personalInfo?.doorNo 
-            ? `${personalInfo.doorNo}, ${personalInfo.address1}`
-            : personalInfo?.address1 || "N/A",
-          address2: personalInfo?.pinCode ? `${personalInfo.pinCode}` : "Tamil Nadu",
+            ? `${personalInfo.doorNo}, ${personalInfo.address1 || ""}`.trim()
+            : personalInfo?.address1 || "",
+          address2: personalInfo?.pinCode || "",
         },
 
         schemeInfo: {
+          schemeName: schemeSummary?.schemeName || "",
+          hsnCode: "", // Not available in the response
         },
-        schemeName: schemeData?.schemeSummary?.schemeName || 
-                   responseData?.schemeInfo?.schemeName || 
-                   "BMG Scheme",
-        hsnCode: schemeData?.schemeSummary?.hsnCode || 
-                   responseData?.schemeInfo?.hsnCode || 
-                   "HSN CODE",
       };
     } catch (error) {
-      console.error("Error extracting data:", error);
+      console.error("❌ Error extracting data:", error);
+      console.error("Error stack:", error.stack);
       throw new Error("Invalid response structure");
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // HTML TEMPLATE (Updated with dynamic company data)
-  // ---------------------------------------------------------------------------
   static generateReceiptHTML({ payment, customerInfo, schemeInfo, companyData, bgBase64, logoBase64 }) {
-    // Build company address dynamically
+    // Build company address dynamically - show empty if no data
     const companyAddress = [
-      companyData.cAddress1,
-      companyData.cAddress2,
-      companyData.cAddress3,
-      companyData.cAddress4,
+      companyData.cAddress1 || "",
+      companyData.cAddress2 || "",
+      companyData.cAddress3 || "",
+      companyData.cAddress4 || "",
       companyData.cPincode ? `PIN: ${companyData.cPincode}` : ""
     ].filter(Boolean).join(", ");
+
+    // Format phone numbers for display
+    const formatPhone = (phone) => {
+      if (!phone) return "";
+      const cleanPhone = phone.replace(/\D/g, '');
+      if (cleanPhone.length === 10) {
+        return cleanPhone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
+      }
+      return phone;
+    };
+
+    const companyPhone = formatPhone(companyData.cPhone);
+    const customerPhone = formatPhone(customerInfo.mobile);
 
     return `
 <!DOCTYPE html>
@@ -301,7 +421,7 @@ class PaymentReceiptPDF {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Payment Receipt - ${payment.receiptNo}</title>
+<title>Payment Receipt - ${payment.receiptNo || 'N/A'}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { 
@@ -359,19 +479,6 @@ class PaymentReceiptPDF {
     line-height: 1.5;
   }
   .company-details div { margin: 3px 0; }
-  .logo-address-container {
-    display: flex;
-    flex-direction: column;
-    align-items: flex-end;
-    margin-left: 20px;
-    margin-top: -30px;
-  }
-  .logo-top {
-    width: 180px;
-    height: auto;
-    display: block;
-    margin-bottom: 10px;
-  }
   .customer-address {
     font-size: 13px;
     line-height: 1.5;
@@ -404,6 +511,7 @@ class PaymentReceiptPDF {
     font-size: 13px; 
     line-height: 1.5;
     padding: 8px 0;
+    min-height: 40px;
   }
   .total-bar {
     margin: 5px 0 0 0;
@@ -436,18 +544,6 @@ class PaymentReceiptPDF {
     height: auto;
     margin-top: 5px;
   }
-  .top-header {
-    display: flex;
-    justify-content: space-between;
-    align-items: flex-start;
-    width: 100%;
-    margin-bottom: 10px;
-  }
-  .logo-header {
-    width: 160px;
-    height: auto;
-    margin-top: 5px;
-  }
   .receipt-title {
     font-size: 38px;
     font-weight: bold;
@@ -465,7 +561,18 @@ class PaymentReceiptPDF {
     border-top: 1px solid #999;
     border-bottom: 1px solid #999;
   }
-  .label { font-weight: bold; }
+  .label { 
+    font-weight: bold; 
+    min-width: 120px;
+    display: inline-block;
+  }
+  .value { 
+    word-break: break-word;
+  }
+  .empty-field {
+    color: #999;
+    font-style: italic;
+  }
 </style>
 </head>
 <body>
@@ -478,25 +585,25 @@ class PaymentReceiptPDF {
   <div class="header-container">
     <div class="left-info">
       <div class="receipt-info">
-        <div><span class="label">Receipt Number :</span> ${payment.receiptNo}</div>
-        <div><span class="label">Receipt Date :</span> ${this.formatDate(payment.updateTime)}</div>
+        <div><span class="label">Receipt Number :</span> <span class="value">${payment.receiptNo || '<span class="empty-field">Not available</span>'}</span></div>
+        <div><span class="label">Receipt Date :</span> <span class="value">${this.formatDate(payment.updateTime) || '<span class="empty-field">Not available</span>'}</span></div>
       </div>
       <div class="company-section">
-        <div class="company-name">${companyData.cname}</div>
+        <div class="company-name">${companyData.cname || 'BMG Jewellers'}</div>
         <div class="company-details">
-          <div>${companyAddress}</div>
-          <div>${companyData.cEmail}</div>
-          <div>${companyData.cPhone}</div>
-          ${companyData.gstNo ? `<div>GSTIN : ${companyData.gstNo}</div>` : '<div>GSTIN :</div>'}
+          <div>${companyAddress || '<span class="empty-field">Address not available</span>'}</div>
+          <div>${companyData.cEmail || '<span class="empty-field">Email not available</span>'}</div>
+          <div>${companyPhone || '<span class="empty-field">Phone not available</span>'}</div>
+          <div>GSTIN : ${companyData.gstNo || '<span class="empty-field">Not available</span>'}</div>
         </div>
       </div>
     </div>
     <div class="customer-address">
-      <div><span class="label">Name :</span> ${customerInfo.customerName}</div>
-      <div><span class="label">Mobile :</span> ${customerInfo.mobile}</div>
-      <div><span class="label">Transaction ID :</span> ${payment.transactionId}</div>
-      <div><span class="label">Transaction Mode :</span> ${payment.paymentMode}-${payment.paymentSubMode}</div>
-      <div><span class="label">Address :</span> ${customerInfo.address1}${customerInfo.address2 ? ", " + customerInfo.address2 : ""}</div>
+      <div><span class="label">Name :</span> <span class="value">${customerInfo.customerName || '<span class="empty-field">Not available</span>'}</span></div>
+      <div><span class="label">Mobile :</span> <span class="value">${customerPhone || '<span class="empty-field">Not available</span>'}</span></div>
+      <div><span class="label">Transaction ID :</span> <span class="value">${payment.transactionId || '<span class="empty-field">Not available</span>'}</span></div>
+      <div><span class="label">Transaction Mode :</span> <span class="value">${payment.paymentMode || ''}${payment.paymentSubMode ? ' - ' + payment.paymentSubMode : ''}</span></div>
+      <div><span class="label">Address :</span> <span class="value">${customerInfo.address1 || ''}${customerInfo.address2 ? ', ' + customerInfo.address2 : ''}</span></div>
     </div>
   </div>
   <table class="payment-table">
@@ -511,18 +618,18 @@ class PaymentReceiptPDF {
     <tbody>
       <tr>
         <td>1</td>
-        <td>${schemeInfo.schemeName}</td>
-        <td>${schemeInfo.hsnCode || ""}</td>
-        <td>₹ ${this.formatAmount(payment.amount)}</td>
+        <td>${schemeInfo.schemeName || '<span class="empty-field">Scheme name not available</span>'}</td>
+        <td>${schemeInfo.hsnCode || '<span class="empty-field">-</span>'}</td>
+        <td>₹ ${payment.amount ? this.formatAmount(payment.amount) : '0.00'}</td>
       </tr>
     </tbody>
   </table>
   <div class="amount-words">
-    Amount in words: ${this.numberToWords(Number(payment.amount))}
+    Amount in words: ${payment.amount ? this.numberToWords(Number(payment.amount)) : 'Zero Rupees Only'}
   </div>
   <div class="total-bar">
     <span>Total Amount Paid</span>
-    <span>₹ ${this.formatAmount(payment.amount)}</span>
+    <span>₹ ${payment.amount ? this.formatAmount(payment.amount) : '0.00'}</span>
   </div>
   <div class="footer-note">
     * This is a computer generated invoice and does not require a physical signature *
@@ -532,19 +639,31 @@ class PaymentReceiptPDF {
 </html>`;
   }
 
-  // ---------------------------------------------------------------------------
-  // PDF GENERATION - OPTIMIZED
-  // ---------------------------------------------------------------------------
   static async generatePDF(responseData) {
     try {
+      console.log("🔄 Starting PDF generation...");
       const { payment, customerInfo, schemeInfo } = this.extractDataFromResponse(responseData);
 
+      console.log("📥 Extracted data:", { 
+        receiptNo: payment.receiptNo,
+        amount: payment.amount,
+        customerName: customerInfo.customerName,
+        paymentMode: payment.paymentMode,
+        transactionId: payment.transactionId
+      });
+
       // Load assets and company data in parallel
+      console.log("🖼️ Loading assets...");
       const [bgBase64, logoBase64, companyData] = await Promise.all([
         this.assetToBase64(this.ASSETS.BACKGROUND),
         this.assetToBase64(this.ASSETS.LOGO),
         this.getCompanyData()
       ]);
+
+      console.log("✅ Assets loaded, company data:", {
+        companyName: companyData.cname,
+        source: companyData.companyId === "BMG" ? "Default" : "API/Cache"
+      });
 
       const html = this.generateReceiptHTML({
         payment,
@@ -555,13 +674,15 @@ class PaymentReceiptPDF {
         logoBase64,
       });
 
+      console.log("📄 Generating PDF from HTML...");
       const { uri } = await Print.printToFileAsync({
         html,
         width: 595, // A4 width in points
         height: 842, // A4 height in points
       });
 
-      const fileName = `BMG_Receipt_${payment.receiptNo}_${Date.now()}.pdf`;
+      const fileName = `BMG_Receipt_${payment.receiptNo || 'N/A'}_${Date.now()}.pdf`;
+      console.log("💾 PDF generated, saving as:", fileName);
 
       if (Platform.OS === "android") {
         const directoryUri = await this.getDirectoryUri();
@@ -578,9 +699,12 @@ class PaymentReceiptPDF {
         await FileSystem.writeAsStringAsync(newUri, base64, {
           encoding: FileSystem.EncodingType.Base64,
         });
+        
+        console.log("✅ PDF saved to:", newUri);
       } else {
         const newUri = FileSystem.documentDirectory + fileName;
         await FileSystem.moveAsync({ from: uri, to: newUri });
+        console.log("✅ PDF saved to:", newUri);
       }
 
       Alert.alert("Success ✓", `Receipt saved successfully!\n\nFile: ${fileName}`, [
@@ -589,7 +713,11 @@ class PaymentReceiptPDF {
 
       return { success: true, fileName, uri };
     } catch (error) {
-      console.error("PDF Generation Error:", error);
+      console.error("❌ PDF Generation Error:", {
+        message: error.message,
+        stack: error.stack,
+        timestamp: new Date().toISOString()
+      });
       Alert.alert("Error", `Failed to generate PDF: ${error.message}`, [
         { text: "OK", style: "cancel" },
       ]);
@@ -597,29 +725,24 @@ class PaymentReceiptPDF {
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // SHARE PDF
-  // ---------------------------------------------------------------------------
   static async sharePDF(responseData) {
     try {
       const result = await this.generatePDF(responseData);
       if (result.success && result.uri) {
-        console.log("PDF ready to share:", result.uri);
+        console.log("✅ PDF ready to share:", result.uri);
       }
       return result;
     } catch (error) {
-      console.error("Share PDF Error:", error);
+      console.error("❌ Share PDF Error:", error);
       return { success: false, error: error.message };
     }
   }
 
-  // ---------------------------------------------------------------------------
-  // REFRESH COMPANY DATA (Optional - if you want to force refresh)
-  // ---------------------------------------------------------------------------
   static async refreshCompanyData() {
     await this.clearCachedCompanyData();
-    return await this.getCompanyData();
-    console.log("Company data refreshed");
+    const data = await this.getCompanyData();
+    console.log("🔄 Company data refreshed:", data.cname);
+    return data;
   }
 }
 

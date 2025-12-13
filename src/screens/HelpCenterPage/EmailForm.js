@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -11,30 +11,61 @@ import {
   Platform,
   Animated,
   Dimensions,
+  Keyboard,
+  TouchableWithoutFeedback,
+  Modal,
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { API_BASE_URL } from "../../Config/API";
-import { useNavigation } from '@react-navigation/native'; // Add this import
+import { useNavigation } from '@react-navigation/native';
 
-const { width } = Dimensions.get('window');
+const { width, height } = Dimensions.get('window');
 
 export default function EmailFormPage() {
-  const navigation = useNavigation(); // Initialize navigation
+  const navigation = useNavigation();
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [subject, setSubject] = useState("");
   const [message, setMessage] = useState("");
-  const [isSubmitting, setIsSubmitting] = useState(false); // Add loading state
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [toast, setToast] = useState({
     visible: false,
     message: "",
-    type: "info", // 'success', 'error', 'info'
+    type: "info",
     title: ""
   });
+  const [keyboardVisible, setKeyboardVisible] = useState(false);
+  
   const fadeAnim = useState(new Animated.Value(0))[0];
   const slideAnim = useState(new Animated.Value(-100))[0];
+  
+  const scrollViewRef = useRef(null);
+  const messageInputRef = useRef(null);
+  const subjectInputRef = useRef(null);
+  const emailInputRef = useRef(null);
+  const nameInputRef = useRef(null);
+
+  useEffect(() => {
+    const keyboardDidShowListener = Keyboard.addListener(
+      'keyboardDidShow',
+      () => {
+        setKeyboardVisible(true);
+      }
+    );
+    const keyboardDidHideListener = Keyboard.addListener(
+      'keyboardDidHide',
+      () => {
+        setKeyboardVisible(false);
+      }
+    );
+
+    return () => {
+      keyboardDidShowListener.remove();
+      keyboardDidHideListener.remove();
+    };
+  }, []);
 
   const showToast = (title, message, type = "info") => {
     setToast({ visible: true, message, type, title });
@@ -80,8 +111,15 @@ export default function EmailFormPage() {
     });
   };
 
+  const dismissKeyboard = () => {
+    Keyboard.dismiss();
+  };
+
   const handleSend = async () => {
-    if (isSubmitting) return; // Prevent multiple submissions
+    // Dismiss keyboard first to ensure button press is registered
+    dismissKeyboard();
+    
+    if (isSubmitting) return;
     
     if (!name || !email || !subject || !message) {
       showToast("Validation Error", "Please fill all fields", "error");
@@ -100,7 +138,6 @@ export default function EmailFormPage() {
     }
 
     setIsSubmitting(true);
-    // Show loading toast
     showToast("Sending", "Please wait while we send your message...", "info");
 
     try {
@@ -123,7 +160,6 @@ export default function EmailFormPage() {
       const data = await response.text();
       console.log("Response Data:", data);
       
-      // Show response in toast
       if (response.ok) {
         showToast("Success", data || "Your inquiry has been sent successfully!", "success");
         
@@ -135,7 +171,7 @@ export default function EmailFormPage() {
         
         // Wait for toast to show, then navigate back after 2 seconds
         setTimeout(() => {
-          navigation.goBack(); // Go back to previous screen
+          navigation.goBack();
         }, 2000);
       } else {
         showToast("Error", data || "Something went wrong. Please try again.", "error");
@@ -174,168 +210,206 @@ export default function EmailFormPage() {
     }
   };
 
+  // Handle keyboard-aware scrolling
+  const handleContentSizeChange = () => {
+    if (scrollViewRef.current && keyboardVisible) {
+      scrollViewRef.current.scrollToEnd({ animated: true });
+    }
+  };
+
   return (
-    <KeyboardAvoidingView
-      style={styles.keyboardAvoidingView}
-      behavior={Platform.OS === "ios" ? "padding" : "height"}
-    >
-      <CommonHeader title="Contact Us" subtitle="We'd love to hear from you" />
-      <ScrollView
-        contentContainerStyle={styles.container}
-        showsVerticalScrollIndicator={false}
+    <TouchableWithoutFeedback onPress={dismissKeyboard}>
+      <KeyboardAvoidingView
+        style={styles.keyboardAvoidingView}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+        keyboardVerticalOffset={Platform.OS === "ios" ? 90 : 0}
       >
-        <View style={styles.formContainer}>
-          {/* Name Field */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              <Icon name="person" size={16} color="#4b79a1" /> Full Name
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="John Doe"
-              value={name}
-              onChangeText={setName}
-              placeholderTextColor="#999"
-              editable={!isSubmitting}
-            />
-          </View>
+        <CommonHeader title="Contact Us" subtitle="We'd love to hear from you" />
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.container}
+          showsVerticalScrollIndicator={false}
+          keyboardShouldPersistTaps="handled"
+          onContentSizeChange={handleContentSizeChange}
+        >
+          <View style={styles.formContainer}>
+            {/* Name Field */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                <Icon name="person" size={16} color="#4b79a1" /> Full Name
+              </Text>
+              <TextInput
+                ref={nameInputRef}
+                style={styles.input}
+                placeholder="John Doe"
+                value={name}
+                onChangeText={setName}
+                placeholderTextColor="#999"
+                editable={!isSubmitting}
+                returnKeyType="next"
+                onSubmitEditing={() => emailInputRef.current?.focus()}
+                blurOnSubmit={false}
+              />
+            </View>
 
-          {/* Email Field */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              <Icon name="email" size={16} color="#4b79a1" /> Email Address
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="john@example.com"
-              value={email}
-              onChangeText={setEmail}
-              keyboardType="email-address"
-              autoCapitalize="none"
-              placeholderTextColor="#999"
-              editable={!isSubmitting}
-            />
-          </View>
+            {/* Email Field */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                <Icon name="email" size={16} color="#4b79a1" /> Email Address
+              </Text>
+              <TextInput
+                ref={emailInputRef}
+                style={styles.input}
+                placeholder="john@example.com"
+                value={email}
+                onChangeText={setEmail}
+                keyboardType="email-address"
+                autoCapitalize="none"
+                placeholderTextColor="#999"
+                editable={!isSubmitting}
+                returnKeyType="next"
+                onSubmitEditing={() => subjectInputRef.current?.focus()}
+                blurOnSubmit={false}
+              />
+            </View>
 
-          {/* Subject Field */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              <Icon name="subject" size={16} color="#4b79a1" /> Subject
-            </Text>
-            <TextInput
-              style={styles.input}
-              placeholder="What is this regarding?"
-              value={subject}
-              onChangeText={setSubject}
-              placeholderTextColor="#999"
-              editable={!isSubmitting}
-            />
-          </View>
+            {/* Subject Field */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                <Icon name="subject" size={16} color="#4b79a1" /> Subject
+              </Text>
+              <TextInput
+                ref={subjectInputRef}
+                style={styles.input}
+                placeholder="What is this regarding?"
+                value={subject}
+                onChangeText={setSubject}
+                placeholderTextColor="#999"
+                editable={!isSubmitting}
+                returnKeyType="next"
+                onSubmitEditing={() => messageInputRef.current?.focus()}
+                blurOnSubmit={false}
+              />
+            </View>
 
-          {/* Message Field */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>
-              <Icon name="message" size={16} color="#4b79a1" /> Your Message
-            </Text>
-            <TextInput
-              style={[styles.input, styles.messageBox]}
-              placeholder="Type your message here..."
-              multiline
-              numberOfLines={6}
-              value={message}
-              onChangeText={setMessage}
-              textAlignVertical="top"
-              placeholderTextColor="#999"
-              maxLength={500}
-              editable={!isSubmitting}
-            />
-            <Text style={styles.charCount}>
-              {message.length}/500 characters
-            </Text>
-          </View>
+            {/* Message Field */}
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>
+                <Icon name="message" size={16} color="#4b79a1" /> Your Message
+              </Text>
+              <TextInput
+                ref={messageInputRef}
+                style={[styles.input, styles.messageBox]}
+                placeholder="Type your message here..."
+                multiline
+                numberOfLines={6}
+                value={message}
+                onChangeText={setMessage}
+                textAlignVertical="top"
+                placeholderTextColor="#999"
+                maxLength={500}
+                editable={!isSubmitting}
+                returnKeyType="done"
+                onSubmitEditing={dismissKeyboard}
+                blurOnSubmit={true}
+                onFocus={() => {
+                  setTimeout(() => {
+                    scrollViewRef.current?.scrollToEnd({ animated: true });
+                  }, 100);
+                }}
+              />
+              <Text style={styles.charCount}>
+                {message.length}/500 characters
+              </Text>
+            </View>
 
-          {/* Send Button */}
-          <TouchableOpacity 
-            onPress={handleSend} 
-            activeOpacity={0.9}
-            disabled={isSubmitting}
+            {/* Send Button */}
+            <TouchableOpacity 
+              onPress={handleSend} 
+              activeOpacity={0.9}
+              disabled={isSubmitting}
+              style={styles.buttonTouchable}
+            >
+              <LinearGradient
+                colors={["#4b79a1", "#283e51"]}
+                start={{ x: 0, y: 0 }}
+                end={{ x: 1, y: 0 }}
+                style={[styles.button, isSubmitting && styles.buttonDisabled]}
+              >
+                {isSubmitting ? (
+                  <>
+                    <Icon name="hourglass-empty" size={22} color="#fff" />
+                    <Text style={styles.buttonText}>Sending...</Text>
+                  </>
+                ) : (
+                  <>
+                    <Icon name="send" size={22} color="#fff" />
+                    <Text style={styles.buttonText}>Send Message</Text>
+                  </>
+                )}
+              </LinearGradient>
+            </TouchableOpacity>
+
+            {/* Cancel Button */}
+            <TouchableOpacity 
+              onPress={() => {
+                dismissKeyboard();
+                navigation.goBack();
+              }} 
+              style={styles.cancelButton}
+              disabled={isSubmitting}
+            >
+              <Text style={styles.cancelButtonText}>Cancel</Text>
+            </TouchableOpacity>
+
+            {/* Note */}
+            <View style={styles.noteContainer}>
+              <Icon name="info" size={16} color="#666" />
+              <Text style={styles.noteText}>
+                We'll respond to your inquiry within 24 hours
+              </Text>
+            </View>
+          </View>
+        </ScrollView>
+
+        {/* Custom Toast Notification */}
+        {toast.visible && (
+          <Animated.View
+            style={[
+              styles.toastContainer,
+              {
+                opacity: fadeAnim,
+                transform: [{ translateY: slideAnim }],
+              },
+            ]}
           >
             <LinearGradient
-              colors={["#4b79a1", "#283e51"]}
+              colors={getToastBackground()}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 0 }}
-              style={[styles.button, isSubmitting && styles.buttonDisabled]}
+              style={styles.toastGradient}
             >
-              {isSubmitting ? (
-                <>
-                  <Icon name="hourglass-empty" size={22} color="#fff" />
-                  <Text style={styles.buttonText}>Sending...</Text>
-                </>
-              ) : (
-                <>
-                  <Icon name="send" size={22} color="#fff" />
-                  <Text style={styles.buttonText}>Send Message</Text>
-                </>
-              )}
-            </LinearGradient>
-          </TouchableOpacity>
-
-          {/* Cancel Button */}
-          <TouchableOpacity 
-            onPress={() => navigation.goBack()} 
-            style={styles.cancelButton}
-            disabled={isSubmitting}
-          >
-            <Text style={styles.cancelButtonText}>Cancel</Text>
-          </TouchableOpacity>
-
-          {/* Note */}
-          <View style={styles.noteContainer}>
-            <Icon name="info" size={16} color="#666" />
-            <Text style={styles.noteText}>
-              We'll respond to your inquiry within 24 hours
-            </Text>
-          </View>
-        </View>
-      </ScrollView>
-
-      {/* Custom Toast Notification */}
-      {toast.visible && (
-        <Animated.View
-          style={[
-            styles.toastContainer,
-            {
-              opacity: fadeAnim,
-              transform: [{ translateY: slideAnim }],
-            },
-          ]}
-        >
-          <LinearGradient
-            colors={getToastBackground()}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.toastGradient}
-          >
-            <TouchableOpacity
-              style={styles.toastContent}
-              onPress={hideToast}
-              activeOpacity={0.8}
-            >
-              <View style={styles.toastIcon}>
-                {getToastIcon()}
-              </View>
-              <View style={styles.toastTextContainer}>
-                <Text style={styles.toastTitle}>{toast.title}</Text>
-                <Text style={styles.toastMessage}>{toast.message}</Text>
-              </View>
-              <TouchableOpacity onPress={hideToast} style={styles.closeButton}>
-                <Icon name="close" size={20} color="#fff" />
+              <TouchableOpacity
+                style={styles.toastContent}
+                onPress={hideToast}
+                activeOpacity={0.8}
+              >
+                <View style={styles.toastIcon}>
+                  {getToastIcon()}
+                </View>
+                <View style={styles.toastTextContainer}>
+                  <Text style={styles.toastTitle}>{toast.title}</Text>
+                  <Text style={styles.toastMessage}>{toast.message}</Text>
+                </View>
+                <TouchableOpacity onPress={hideToast} style={styles.closeButton}>
+                  <Icon name="close" size={20} color="#fff" />
+                </TouchableOpacity>
               </TouchableOpacity>
-            </TouchableOpacity>
-          </LinearGradient>
-        </Animated.View>
-      )}
-    </KeyboardAvoidingView>
+            </LinearGradient>
+          </Animated.View>
+        )}
+      </KeyboardAvoidingView>
+    </TouchableWithoutFeedback>
   );
 }
 
@@ -348,6 +422,7 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     paddingHorizontal: 20,
     paddingVertical: 30,
+    paddingBottom: 50, // Extra padding for better scroll
   },
   formContainer: {
     backgroundColor: "#fff",
@@ -394,13 +469,15 @@ const styles = StyleSheet.create({
     marginTop: 6,
     marginRight: 4,
   },
+  buttonTouchable: {
+    marginTop: 10,
+  },
   button: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "center",
     paddingVertical: 16,
     borderRadius: 12,
-    marginTop: 10,
     shadowColor: "#4b79a1",
     shadowOffset: {
       width: 0,
