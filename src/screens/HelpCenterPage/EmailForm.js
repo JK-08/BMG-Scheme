@@ -91,7 +91,7 @@ export default function EmailFormPage() {
     // Auto hide after 4 seconds
     setTimeout(() => {
       hideToast();
-    }, 4000);
+    }, 2000);
   };
 
   const hideToast = () => {

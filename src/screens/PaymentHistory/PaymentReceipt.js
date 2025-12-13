@@ -90,6 +90,12 @@ class PaymentReceiptPDF {
 
         console.log("✅ Company data extracted:", companyData);
 
+        // Validate extracted data
+        if (!this.isCompanyDataValid(companyData)) {
+          console.warn("⚠️ Extracted company data invalid:", companyData);
+          throw new Error("Company data validation failed");
+        }
+
         // Cache the company data
         await AsyncStorage.setItem(
           this.STORAGE_KEYS.COMPANY_DATA, 
@@ -144,6 +150,15 @@ class PaymentReceiptPDF {
            typeof companyData.cname === 'string' &&
            companyData.cname.trim().length > 0;
     
+    if (!isValid) {
+      console.log("❌ Company data validation failed:", {
+        hasCname: !!companyData.cname,
+        cnameType: typeof companyData.cname,
+        cnameLength: companyData.cname ? companyData.cname.trim().length : 0,
+        data: JSON.stringify(companyData)
+      });
+    }
+    
     return isValid;
   }
 
@@ -151,22 +166,17 @@ class PaymentReceiptPDF {
     console.log("📄 Using default company data");
     return {
       companyId: "BMG",
-      cname: "BMG JEWELLERS PVT LMT",
-      cAddress1: "160, West Masi Street",
+      cname: "BMG Jewellers pvt. ltd.,",
+      cAddress1: "160, West Masi Street, Near Pothys",
       cAddress2: "Madurai",
       cAddress3: "",
       cAddress4: "",
-      cPhone: "7094670946",
-      cPincode: "",
+      cPhone: "70946 70946",
+      cPincode: "625001",
       cEmail: "contact@bmgjewellers.in",
-      cFax: "0452 2900925",
+      cFax: "9514333609",
       companyLogo: "",
-      contReceiptNo: "N",
-      startReceiptNo: 59,
-      jCompId: "BMG",
-      tinNo: "",
-      cstNo: "",
-      gstNo: "33AAICB0416C1ZG",
+      gstNo: "",
       stateId: 24
     };
   }
@@ -289,7 +299,7 @@ class PaymentReceiptPDF {
   }
 
   static formatDate(dateString) {
-    if (!dateString) return "";
+    if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
       return date.toLocaleDateString("en-GB", {
@@ -298,7 +308,7 @@ class PaymentReceiptPDF {
         year: "numeric",
       });
     } catch {
-      return "";
+      return "Invalid Date";
     }
   }
 
@@ -310,11 +320,11 @@ class PaymentReceiptPDF {
   }
 
   static numberToWords(num) {
-    if (!num || isNaN(num) || num === 0) return "Zero Rupees Only";
-    
     const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
     const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
     const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+
+    if (num === 0) return "Zero";
 
     const toWords = (n) => {
       if (n < 10) return ones[n];
@@ -339,81 +349,60 @@ class PaymentReceiptPDF {
     return result.trim() + " Rupees Only";
   }
 
-  // ---------------------------------------------------------------------------
-  // UPDATED DATA EXTRACTION METHOD
-  // ---------------------------------------------------------------------------
   static extractDataFromResponse(responseData) {
     try {
-      console.log("📥 Raw response data for extraction:", JSON.stringify(responseData, null, 2));
-
-      // Extract data from the array structure
-      const schemeData = responseData?.[0] || {};
+      const schemeData = responseData?.schemeData || {};
       const personalInfo = schemeData?.personalInfo || {};
-      const schemeSummary = schemeData?.schemeSummary || {};
-      const paymentHistoryList = schemeData?.paymentHistoryList || [];
-      
-      // Get the latest payment (last in the array)
-      const latestPayment = paymentHistoryList.length > 0 
-        ? paymentHistoryList[paymentHistoryList.length - 1] 
-        : {};
-
-      console.log("🔍 Latest payment data:", latestPayment);
+      const paymentData = responseData?.payment || {};
+        
 
       return {
         payment: {
-          amount: latestPayment.amount || "0",
-          weight: latestPayment.weight || "0.0",
-          receiptNo: latestPayment.receiptNo || "",
-          updateTime: latestPayment.updateTime || new Date().toISOString(),
-          paymentMode: latestPayment.chqBank || "",
-          paymentSubMode: latestPayment.chqBranch || "",
-          transactionId: latestPayment.chq_CardNo || "",
-          installment: latestPayment.installment || "",
+          amount: paymentData.amount || "0",
+          weight: paymentData.weight || "0.0",
+          receiptNo: paymentData.receiptNo || "0",
+          updateTime: paymentData.updateTime || new Date().toISOString(),
+          paymentMode: paymentData.chqBank || "N/A",
+          paymentSubMode: paymentData.chqBranch || "N/A",
+          transactionId: paymentData.chq_CardNo || "N/A",
+          installment: paymentData.installment || "1",
         },
 
         customerInfo: {
-          customerName: schemeData?.pName || personalInfo?.pName || "",
-          mobile: personalInfo?.mobile || "",
+          customerName: responseData?.customerInfo?.customerName || personalInfo?.pName || "N/A",
+          mobile: responseData?.customerInfo?.mobile || personalInfo?.mobile || "N/A",
           address1: personalInfo?.doorNo 
-            ? `${personalInfo.doorNo}, ${personalInfo.address1 || ""}`.trim()
-            : personalInfo?.address1 || "",
-          address2: personalInfo?.pinCode || "",
+            ? `${personalInfo.doorNo}, ${personalInfo.address1}`
+            : personalInfo?.address1 || "N/A",
+          address2: personalInfo?.pinCode ? `${personalInfo.pinCode}` : "Tamil Nadu",
         },
 
+      
+
         schemeInfo: {
-          schemeName: schemeSummary?.schemeName || "",
-          hsnCode: "", // Not available in the response
+          schemeName: schemeData?.schemeSummary?.schemeName || 
+                     responseData?.schemeInfo?.schemeName || 
+                     "BMG Scheme",
+          hsnCode: schemeData?.schemeSummary?.hsnCode || 
+                   responseData?.schemeInfo?.hsnCode || 
+                   "HSN CODE",
         },
       };
     } catch (error) {
-      console.error("❌ Error extracting data:", error);
-      console.error("Error stack:", error.stack);
+      console.error("Error extracting data:", error);
       throw new Error("Invalid response structure");
     }
   }
 
   static generateReceiptHTML({ payment, customerInfo, schemeInfo, companyData, bgBase64, logoBase64 }) {
-    // Build company address dynamically - show empty if no data
+    // Build company address dynamically
     const companyAddress = [
-      companyData.cAddress1 || "",
-      companyData.cAddress2 || "",
-      companyData.cAddress3 || "",
-      companyData.cAddress4 || "",
+      companyData.cAddress1,
+      companyData.cAddress2,
+      companyData.cAddress3,
+      companyData.cAddress4,
       companyData.cPincode ? `PIN: ${companyData.cPincode}` : ""
     ].filter(Boolean).join(", ");
-
-    // Format phone numbers for display
-    const formatPhone = (phone) => {
-      if (!phone) return "";
-      const cleanPhone = phone.replace(/\D/g, '');
-      if (cleanPhone.length === 10) {
-        return cleanPhone.replace(/(\d{3})(\d{3})(\d{4})/, '$1-$2-$3');
-      }
-      return phone;
-    };
-
-    const companyPhone = formatPhone(companyData.cPhone);
-    const customerPhone = formatPhone(customerInfo.mobile);
 
     return `
 <!DOCTYPE html>
@@ -421,7 +410,7 @@ class PaymentReceiptPDF {
 <head>
 <meta charset="UTF-8" />
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Payment Receipt - ${payment.receiptNo || 'N/A'}</title>
+<title>Payment Receipt - ${payment.receiptNo}</title>
 <style>
   * { margin: 0; padding: 0; box-sizing: border-box; }
   body { 
@@ -479,6 +468,19 @@ class PaymentReceiptPDF {
     line-height: 1.5;
   }
   .company-details div { margin: 3px 0; }
+  .logo-address-container {
+    display: flex;
+    flex-direction: column;
+    align-items: flex-end;
+    margin-left: 20px;
+    margin-top: -30px;
+  }
+  .logo-top {
+    width: 180px;
+    height: auto;
+    display: block;
+    margin-bottom: 10px;
+  }
   .customer-address {
     font-size: 13px;
     line-height: 1.5;
@@ -511,7 +513,6 @@ class PaymentReceiptPDF {
     font-size: 13px; 
     line-height: 1.5;
     padding: 8px 0;
-    min-height: 40px;
   }
   .total-bar {
     margin: 5px 0 0 0;
@@ -544,6 +545,18 @@ class PaymentReceiptPDF {
     height: auto;
     margin-top: 5px;
   }
+  .top-header {
+    display: flex;
+    justify-content: space-between;
+    align-items: flex-start;
+    width: 100%;
+    margin-bottom: 10px;
+  }
+  .logo-header {
+    width: 160px;
+    height: auto;
+    margin-top: 5px;
+  }
   .receipt-title {
     font-size: 38px;
     font-weight: bold;
@@ -561,18 +574,7 @@ class PaymentReceiptPDF {
     border-top: 1px solid #999;
     border-bottom: 1px solid #999;
   }
-  .label { 
-    font-weight: bold; 
-    min-width: 120px;
-    display: inline-block;
-  }
-  .value { 
-    word-break: break-word;
-  }
-  .empty-field {
-    color: #999;
-    font-style: italic;
-  }
+  .label { font-weight: bold; }
 </style>
 </head>
 <body>
@@ -585,25 +587,25 @@ class PaymentReceiptPDF {
   <div class="header-container">
     <div class="left-info">
       <div class="receipt-info">
-        <div><span class="label">Receipt Number :</span> <span class="value">${payment.receiptNo || '<span class="empty-field">Not available</span>'}</span></div>
-        <div><span class="label">Receipt Date :</span> <span class="value">${this.formatDate(payment.updateTime) || '<span class="empty-field">Not available</span>'}</span></div>
+        <div><span class="label">Receipt Number :</span> ${payment.receiptNo}</div>
+        <div><span class="label">Receipt Date :</span> ${this.formatDate(payment.updateTime)}</div>
       </div>
       <div class="company-section">
-        <div class="company-name">${companyData.cname || 'BMG Jewellers'}</div>
+        <div class="company-name">${companyData.cname}</div>
         <div class="company-details">
-          <div>${companyAddress || '<span class="empty-field">Address not available</span>'}</div>
-          <div>${companyData.cEmail || '<span class="empty-field">Email not available</span>'}</div>
-          <div>${companyPhone || '<span class="empty-field">Phone not available</span>'}</div>
-          <div>GSTIN : ${companyData.gstNo || '<span class="empty-field">Not available</span>'}</div>
+          <div>${companyAddress}</div>
+          <div>${companyData.cEmail}</div>
+          <div>${companyData.cPhone}</div>
+          ${companyData.gstNo ? `<div>GSTIN : ${companyData.gstNo}</div>` : '<div>GSTIN :</div>'}
         </div>
       </div>
     </div>
     <div class="customer-address">
-      <div><span class="label">Name :</span> <span class="value">${customerInfo.customerName || '<span class="empty-field">Not available</span>'}</span></div>
-      <div><span class="label">Mobile :</span> <span class="value">${customerPhone || '<span class="empty-field">Not available</span>'}</span></div>
-      <div><span class="label">Transaction ID :</span> <span class="value">${payment.transactionId || '<span class="empty-field">Not available</span>'}</span></div>
-      <div><span class="label">Transaction Mode :</span> <span class="value">${payment.paymentMode || ''}${payment.paymentSubMode ? ' - ' + payment.paymentSubMode : ''}</span></div>
-      <div><span class="label">Address :</span> <span class="value">${customerInfo.address1 || ''}${customerInfo.address2 ? ', ' + customerInfo.address2 : ''}</span></div>
+      <div><span class="label">Name :</span> ${customerInfo.customerName}</div>
+      <div><span class="label">Mobile :</span> ${customerInfo.mobile}</div>
+      <div><span class="label">Transaction ID :</span> ${payment.transactionId}</div>
+      <div><span class="label">Transaction Mode :</span> ${payment.paymentMode}-${payment.paymentSubMode}</div>
+      <div><span class="label">Address :</span> ${customerInfo.address1}${customerInfo.address2 ? ", " + customerInfo.address2 : ""}</div>
     </div>
   </div>
   <table class="payment-table">
@@ -618,18 +620,18 @@ class PaymentReceiptPDF {
     <tbody>
       <tr>
         <td>1</td>
-        <td>${schemeInfo.schemeName || '<span class="empty-field">Scheme name not available</span>'}</td>
-        <td>${schemeInfo.hsnCode || '<span class="empty-field">-</span>'}</td>
-        <td>₹ ${payment.amount ? this.formatAmount(payment.amount) : '0.00'}</td>
+        <td>${schemeInfo.schemeName}</td>
+        <td>${schemeInfo.hsnCode || ""}</td>
+        <td>₹ ${this.formatAmount(payment.amount)}</td>
       </tr>
     </tbody>
   </table>
   <div class="amount-words">
-    Amount in words: ${payment.amount ? this.numberToWords(Number(payment.amount)) : 'Zero Rupees Only'}
+    Amount in words: ${this.numberToWords(Number(payment.amount))}
   </div>
   <div class="total-bar">
     <span>Total Amount Paid</span>
-    <span>₹ ${payment.amount ? this.formatAmount(payment.amount) : '0.00'}</span>
+    <span>₹ ${this.formatAmount(payment.amount)}</span>
   </div>
   <div class="footer-note">
     * This is a computer generated invoice and does not require a physical signature *
@@ -647,9 +649,7 @@ class PaymentReceiptPDF {
       console.log("📥 Extracted data:", { 
         receiptNo: payment.receiptNo,
         amount: payment.amount,
-        customerName: customerInfo.customerName,
-        paymentMode: payment.paymentMode,
-        transactionId: payment.transactionId
+        customerName: customerInfo.customerName 
       });
 
       // Load assets and company data in parallel
@@ -681,7 +681,7 @@ class PaymentReceiptPDF {
         height: 842, // A4 height in points
       });
 
-      const fileName = `BMG_Receipt_${payment.receiptNo || 'N/A'}_${Date.now()}.pdf`;
+      const fileName = `BMG_Receipt_${payment.receiptNo}_${Date.now()}.pdf`;
       console.log("💾 PDF generated, saving as:", fileName);
 
       if (Platform.OS === "android") {
