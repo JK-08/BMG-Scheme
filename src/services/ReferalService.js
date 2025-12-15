@@ -5,231 +5,158 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 // 1️⃣ Get Referral Details (existing function)
 // --------------------------------------------------------
 export const getReferralDetails = async () => {
+  console.log("🟢 [getReferralDetails] STEP 1: Function started");
+
   const userId = await AsyncStorage.getItem("userId");
+  console.log("🟢 STEP 2: UserId from storage →", userId);
 
   try {
-    const response = await fetch(`${API_BASE_URL_OLD}/account/referrals/${userId}`);
+    const url = `${API_BASE_URL_OLD}/account/referrals/${userId}`;
+    console.log("🟢 STEP 3: API URL →", url);
+
+    const response = await fetch(url);
+    console.log("🟢 STEP 4: Response status →", response.status);
 
     if (!response.ok) {
-      return {
-        success: false,
-        message: "Network error occurred",
-      };
+      console.log("🔴 STEP 5: Response NOT OK");
+      return { success: false, message: "Network error occurred" };
     }
 
     const data = await response.json();
-    console.log("Referral Details Data:", data.length);
+    console.log("🟢 STEP 6: Response data →", data);
+    console.log("🟢 STEP 7: Referral count →", data.length);
 
-    return {
-      success: true,
-      data: data,
-    };
+    return { success: true, data };
   } catch (error) {
-    console.error("Referral fetch error:", error);
-    return {
-      success: false,
-      message: "Something went wrong",
-    };
+    console.log("🔴 STEP 8: Catch error →", error);
+    return { success: false, message: "Something went wrong" };
   }
 };
+
 
 // --------------------------------------------------------
 // 2️⃣ Check Applied Referral Status (NEW FUNCTION)
 // --------------------------------------------------------
 export const getAppliedReferralStatus = async () => {
+  console.log("🟡 [getAppliedReferralStatus] STEP 1: Function started");
+
   try {
     const userId = await AsyncStorage.getItem("userId");
-    
+    console.log("🟡 STEP 2: UserId →", userId);
+
     if (!userId) {
-      return {
-        success: false,
-        message: "User not logged in",
-        hasAppliedReferral: false,
-      };
+      console.log("🔴 STEP 3: User not logged in");
+      return { success: false, hasAppliedReferral: false };
     }
 
-    // Fetch applied referral logs
-    const response = await fetch(
-      `${API_BASE_URL}/referral/logs/${userId}`,
-      {
-        method: "GET",
-        headers: {
-          "Content-Type": "application/json",
-          "Accept": "application/json",
-        },
-      }
-    );
+    const url = `${API_BASE_URL}/referral/logs/${userId}`;
+    console.log("🟡 STEP 4: API URL →", url);
 
-    console.log("Applied referral status response:", response.status);
+    const response = await fetch(url, {
+      method: "GET",
+      headers: { "Content-Type": "application/json" },
+    });
+
+    console.log("🟡 STEP 5: Response status →", response.status);
 
     if (!response.ok) {
-      return {
-        success: false,
-        message: "Failed to fetch referral status",
-        hasAppliedReferral: false,
-      };
+      console.log("🔴 STEP 6: Failed API call");
+      return { success: false, hasAppliedReferral: false };
     }
 
     const data = await response.json();
-    console.log("Applied referral data:", data);
+    console.log("🟡 STEP 7: Response data →", data);
 
-    // Check if user has applied any referral code
     const hasAppliedReferral = Array.isArray(data) && data.length > 0;
-    
+    console.log("🟡 STEP 8: hasAppliedReferral →", hasAppliedReferral);
+
+    if (hasAppliedReferral) {
+      console.log("🟢 STEP 9: Applied referral data →", data[0]);
+    }
+
     return {
       success: true,
-      hasAppliedReferral: hasAppliedReferral,
+      hasAppliedReferral,
       appliedReferralData: hasAppliedReferral ? data[0] : null,
-      message: hasAppliedReferral 
-        ? "Referral code already applied" 
-        : "No referral code applied yet",
     };
-
   } catch (error) {
-    console.error("Check applied referral error:", error);
-    return {
-      success: false,
-      message: "Network error",
-      hasAppliedReferral: false,
-    };
+    console.log("🔴 STEP 10: Catch error →", error);
+    return { success: false, hasAppliedReferral: false };
   }
 };
+
 
 // --------------------------------------------------------
 // 3️⃣ Apply Friend's Referral Code
 // --------------------------------------------------------
 export const applyReferralCode = async (referralCode) => {
+  console.log("🔵 [applyReferralCode] STEP 1: Function started");
+  console.log("🔵 STEP 2: Input referralCode →", referralCode);
+
   try {
-    // Get current user ID
     const userId = await AsyncStorage.getItem("userId");
-    
+    console.log("🔵 STEP 3: UserId →", userId);
+
     if (!userId) {
-      return {
-        success: false,
-        message: "User not logged in. Please login again.",
-      };
+      console.log("🔴 STEP 4: User not logged in");
+      return { success: false, message: "User not logged in" };
     }
 
     if (!referralCode || referralCode.trim() === "") {
-      return {
-        success: false,
-        message: "Please enter a valid referral code",
-      };
+      console.log("🔴 STEP 5: Invalid referral code");
+      return { success: false, message: "Invalid referral code" };
     }
 
-    // Clean the referral code
     const cleanReferralCode = referralCode.trim().toUpperCase();
+    console.log("🔵 STEP 6: Cleaned referral code →", cleanReferralCode);
 
-    // Construct the URL
     const url = `${API_BASE_URL}/referral/check?userId=${userId}&referralCode=${cleanReferralCode}`;
+    console.log("🔵 STEP 7: API URL →", url);
 
-    console.log("Applying referral code:", {
-      url: url,
-      userId: userId,
-      referralCode: cleanReferralCode
-    });
+    const response = await fetch(url, { method: "POST" });
+    console.log("🔵 STEP 8: Response status →", response.status);
 
-    // Make POST request
-    const response = await fetch(url, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        "Accept": "application/json",
-      },
-    });
+    const data = await response.json();
+    console.log("🔵 STEP 9: Response data →", data);
 
-    console.log("Response status:", response.status);
-
-    // Parse response
-    let responseData;
-    const contentType = response.headers.get("content-type");
-    
-    if (contentType && contentType.includes("application/json")) {
-      responseData = await response.json();
-    } else {
-      const textResponse = await response.text();
-      console.log("Non-JSON response:", textResponse);
-      return {
-        success: false,
-        message: "Server returned unexpected response format",
-      };
-    }
-
-    console.log("Response data:", responseData);
-
-    // Check for successful response
     if (response.ok) {
-      return {
-        success: true,
-        message: responseData.message || "Referral code applied successfully!",
-        data: responseData,
-      };
+      console.log("🟢 STEP 10: Referral applied successfully");
+      return { success: true, data };
     } else {
-      // Handle error responses
-      return {
-        success: false,
-        message: responseData.message || responseData.error || "Failed to apply referral code",
-        data: responseData,
-      };
+      console.log("🔴 STEP 11: Failed to apply referral");
+      return { success: false, data };
     }
-
   } catch (error) {
-    console.error("Apply referral code error:", error);
-    
-    // Handle specific error types
-    if (error.message.includes("Network request failed")) {
-      return {
-        success: false,
-        message: "Network error. Please check your internet connection.",
-      };
-    }
-    
-    return {
-      success: false,
-      message: "Something went wrong. Please try again.",
-    };
+    console.log("🔴 STEP 12: Catch error →", error);
+    return { success: false, message: "Network error" };
   }
 };
+
 
 // --------------------------------------------------------
 // 4️⃣ Validate Referral Code Format (Helper Function)
 // --------------------------------------------------------
 export const validateReferralCode = (code) => {
+  console.log("🟣 [validateReferralCode] STEP 1: Code received →", code);
+
   if (!code || code.trim() === "") {
-    return {
-      valid: false,
-      message: "Referral code cannot be empty",
-    };
+    console.log("🔴 STEP 2: Code empty");
+    return { valid: false };
   }
 
   const cleanCode = code.trim();
-  
-  // Check length (adjust as per your requirements)
+  console.log("🟣 STEP 3: Cleaned code →", cleanCode);
+
   if (cleanCode.length < 3) {
-    return {
-      valid: false,
-      message: "Referral code is too short",
-    };
+    console.log("🔴 STEP 4: Code too short");
+    return { valid: false };
   }
 
   if (cleanCode.length > 20) {
-    return {
-      valid: false,
-      message: "Referral code is too long",
-    };
+    console.log("🔴 STEP 5: Code too long");
+    return { valid: false };
   }
 
-  // Check for special characters (optional)
-  const specialCharRegex = /[!@#$%^&*()_+\-=\[\]{};':"\\|,.<>\/?]+/;
-  if (specialCharRegex.test(cleanCode)) {
-    return {
-      valid: false,
-      message: "Referral code contains invalid characters",
-    };
-  }
-
-  return {
-    valid: true,
-    message: "Valid referral code",
-  };
+  console.log("🟢 STEP 6: Code is valid");
+  return { valid: true };
 };

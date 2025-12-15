@@ -16,6 +16,7 @@ import {
   Alert,
   ActivityIndicator,
 } from "react-native";
+import AsyncStorage from '@react-native-async-storage/async-storage'; // Add this import
 import NotificationService from "../../services/NotificationService";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { Ionicons } from "@expo/vector-icons";
@@ -31,6 +32,7 @@ if (
 }
 
 const { width } = Dimensions.get("window");
+
 
 const NotificationItem = ({ item, index, onDelete, onMarkAsRead, userId }) => {
   const [fadeAnim] = useState(new Animated.Value(0));
@@ -221,35 +223,42 @@ const NotificationItem = ({ item, index, onDelete, onMarkAsRead, userId }) => {
   );
 };
 
-const NotificationsPage = ({ userId = "66" }) => {
-  // Default userId for testing
+const NotificationsPage = () => {
   const [notifications, setNotifications] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
   const [selectedFilter, setSelectedFilter] = useState("all");
   const [error, setError] = useState(null);
+  const [userId, setUserId] = useState(null); // Initialize as null
 
-  useEffect(() => {
-    if (userId) {
-      loadNotifications();
+  // Fetch userId from AsyncStorage
+  const getUserIdFromStorage = async () => {
+    try {
+      const storedUserId = await AsyncStorage.getItem('userId');
+      console.log('Retrieved userId from storage:', storedUserId);
+      return storedUserId;
+    } catch (error) {
+      console.error('Error fetching userId from AsyncStorage:', error);
+      return null;
     }
-  }, [userId]);
+  };
 
-  const loadNotifications = async () => {
+  // Load notifications when userId is available
+  const loadNotifications = async (currentUserId) => {
     try {
       setLoading(true);
       setError(null);
-      console.log(`Loading notifications for userId: ${userId}`);
+      console.log(`Loading notifications for userId: ${currentUserId}`);
 
-      const response = await NotificationService.getUserNotifications(userId);
+      const response = await NotificationService.getUserNotifications(currentUserId);
       console.log(`Notifications response:`, response);
 
       if (response.code === 200) {
         const notificationsData = response.data || [];
         console.log(`Setting ${notificationsData.length} notifications`);
         setNotifications(notificationsData);
-        await loadUnreadCount();
+        await loadUnreadCount(currentUserId);
       } else {
         setError(response.message || "Failed to load notifications");
         Alert.alert(
@@ -266,14 +275,12 @@ const NotificationsPage = ({ userId = "66" }) => {
     }
   };
 
-  const loadUnreadCount = async () => {
+  const loadUnreadCount = async (currentUserId) => {
     try {
-      console.log(`Loading unread count for userId: ${userId}`);
-      const response = await NotificationService.getUnreadCount(userId);
+      console.log(`Loading unread count for userId: ${currentUserId}`);
+      const response = await NotificationService.getUnreadCount(currentUserId);
       console.log(`Unread count response:`, response);
-      setUnreadCount(response.data.unreadCount || 0);
-
-
+      
       if (response.code === 200) {
         setUnreadCount(response.data.unreadCount || 0);
       }
@@ -282,9 +289,33 @@ const NotificationsPage = ({ userId = "66" }) => {
     }
   };
 
+  // Initialize - fetch userId first, then load notifications
+  useEffect(() => {
+    const initializeNotifications = async () => {
+      try {
+        const storedUserId = await getUserIdFromStorage();
+        if (storedUserId) {
+          setUserId(storedUserId);
+          await loadNotifications(storedUserId);
+        } else {
+          setError("User ID not found. Please login again.");
+          setLoading(false);
+        }
+      } catch (error) {
+        console.error("Error initializing notifications:", error);
+        setError("Failed to load user data");
+        setLoading(false);
+      }
+    };
+
+    initializeNotifications();
+  }, []);
+
   const onRefresh = useCallback(async () => {
     setRefreshing(true);
-    await loadNotifications();
+    if (userId) {
+      await loadNotifications(userId);
+    }
     setRefreshing(false);
   }, [userId]);
 
@@ -296,18 +327,20 @@ const NotificationsPage = ({ userId = "66" }) => {
         prev.filter((item) => (item.id || item.Id) !== notificationId)
       );
       // Refresh unread count if needed
-      await loadUnreadCount();
+      if (userId) {
+        await loadUnreadCount(userId);
+      }
     } catch (error) {
       console.error("Error deleting notification:", error);
       Alert.alert("Error", "Failed to delete notification");
     }
   };
 
-  const handleMarkAsRead = async (notificationId, userId) => {
+  const handleMarkAsRead = async (notificationId, currentUserId) => {
     try {
       const response = await NotificationService.markAsRead(
         notificationId,
-        userId
+        currentUserId
       );
       console.log(`Mark as read response:`, response);
 
@@ -335,6 +368,11 @@ const NotificationsPage = ({ userId = "66" }) => {
   };
 
   const handleMarkAllAsRead = async () => {
+    if (!userId) {
+      Alert.alert("Error", "User ID not available");
+      return;
+    }
+    
     try {
       const response = await NotificationService.markAllAsRead(userId);
       console.log(`Mark all as read response:`, response);
@@ -358,6 +396,11 @@ const NotificationsPage = ({ userId = "66" }) => {
   };
 
   const handleDeleteAll = async () => {
+    if (!userId) {
+      Alert.alert("Error", "User ID not available");
+      return;
+    }
+
     Alert.alert(
       "Delete All",
       "Are you sure you want to delete all notifications?",
@@ -406,11 +449,12 @@ const NotificationsPage = ({ userId = "66" }) => {
     return dateB - dateA;
   });
 
-  if (loading && notifications.length === 0) {
+  // Show loading while fetching userId
+  if (loading && !userId) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" color="#007AFF" />
-        <Text style={styles.loadingText}>Loading notifications...</Text>
+        <Text style={styles.loadingText}>Loading user data...</Text>
       </View>
     );
   }
@@ -421,7 +465,17 @@ const NotificationsPage = ({ userId = "66" }) => {
         <Text style={styles.errorText}>Error: {error}</Text>
         <TouchableOpacity
           style={styles.retryButton}
-          onPress={loadNotifications}
+          onPress={() => {
+            // Retry initialization
+            const retry = async () => {
+              const storedUserId = await getUserIdFromStorage();
+              if (storedUserId) {
+                setUserId(storedUserId);
+                await loadNotifications(storedUserId);
+              }
+            };
+            retry();
+          }}
         >
           <Text style={styles.retryText}>Retry</Text>
         </TouchableOpacity>
@@ -431,100 +485,99 @@ const NotificationsPage = ({ userId = "66" }) => {
 
   return (
     <>
-    <View style={styles.container}>
-      <CommonHeader
-        title="Notifications"
-        rightComponent={
-          <TouchableOpacity onPress={handleDeleteAll} activeOpacity={0.7}>
-            <View
-              style={{
-                width: moderateScale(40),
-                height: moderateScale(40),
-                alignItems: "center",
-                justifyContent: "center",
-                borderRadius: SIZES.radius.full,
-                backgroundColor: COLORS.primary,
-                ...SHADOWS.sm,
-              }}
-            >
-              <Ionicons
-                name="trash"
-                size={SIZES.icon.md}
-                color={COLORS.white}
-              />
-            </View>
-          </TouchableOpacity>
-        }
-      />
-
-      {/* Filter buttons */}
-      <View style={styles.filterContainer}>
-        {["all", "unread", "read"].map((filter) => (
-          <TouchableOpacity
-            key={filter}
-            style={[
-              styles.filterButton,
-              selectedFilter === filter && styles.filterButtonActive,
-            ]}
-            onPress={() => setSelectedFilter(filter)}
-          >
-            <Text
-              style={[
-                styles.filterText,
-                selectedFilter === filter && styles.filterTextActive,
-              ]}
-            >
-              {filter.charAt(0).toUpperCase() + filter.slice(1)}
-            </Text>
-          </TouchableOpacity>
-        ))}
-      </View>
-
-      {/* Notifications list */}
-      <ScrollView
-        style={styles.notificationsList}
-        refreshControl={
-          <RefreshControl
-            refreshing={refreshing}
-            onRefresh={onRefresh}
-            colors={["#007AFF"]}
-            tintColor="#007AFF"
-          />
-        }
-      >
-        {sortedNotifications.length === 0 ? (
-          <View style={styles.emptyContainer}>
-            <Text style={styles.emptyText}>📭</Text>
-            <Text style={styles.emptyMessage}>
-              {selectedFilter === "unread"
-                ? "No unread notifications"
-                : selectedFilter === "read"
-                ? "No read notifications"
-                : "No notifications yet"}
-            </Text>
-            <TouchableOpacity
-              style={styles.refreshButton}
-              onPress={loadNotifications}
-            >
-              <Text style={styles.refreshButtonText}>Refresh</Text>
+      <View style={styles.container}>
+        <CommonHeader
+          title="Notifications"
+          rightComponent={
+            <TouchableOpacity onPress={handleDeleteAll} activeOpacity={0.7}>
+              <View
+                style={{
+                  width: moderateScale(40),
+                  height: moderateScale(40),
+                  alignItems: "center",
+                  justifyContent: "center",
+                  borderRadius: SIZES.radius.full,
+                  backgroundColor: COLORS.primary,
+                  ...SHADOWS.sm,
+                }}
+              >
+                <Ionicons
+                  name="trash"
+                  size={SIZES.icon.md}
+                  color={COLORS.white}
+                />
+              </View>
             </TouchableOpacity>
-          </View>
-        ) : (
-          sortedNotifications.map((item, index) => (
-            <NotificationItem
-              key={item.id || item.Id || index}
-              item={item}
-              index={index}
-              onDelete={handleDeleteNotification}
-              onMarkAsRead={handleMarkAsRead}
-              userId={userId}
-            />
-          ))
-        )}
-      </ScrollView>
+          }
+        />
 
-    </View>
-    <BottomTab screen={'NotificationsPage'} />
+        {/* Filter buttons */}
+        <View style={styles.filterContainer}>
+          {["all", "unread", "read"].map((filter) => (
+            <TouchableOpacity
+              key={filter}
+              style={[
+                styles.filterButton,
+                selectedFilter === filter && styles.filterButtonActive,
+              ]}
+              onPress={() => setSelectedFilter(filter)}
+            >
+              <Text
+                style={[
+                  styles.filterText,
+                  selectedFilter === filter && styles.filterTextActive,
+                ]}
+              >
+                {filter.charAt(0).toUpperCase() + filter.slice(1)}
+              </Text>
+            </TouchableOpacity>
+          ))}
+        </View>
+
+        {/* Notifications list */}
+        <ScrollView
+          style={styles.notificationsList}
+          refreshControl={
+            <RefreshControl
+              refreshing={refreshing}
+              onRefresh={onRefresh}
+              colors={["#007AFF"]}
+              tintColor="#007AFF"
+            />
+          }
+        >
+          {sortedNotifications.length === 0 ? (
+            <View style={styles.emptyContainer}>
+              <Text style={styles.emptyText}>📭</Text>
+              <Text style={styles.emptyMessage}>
+                {selectedFilter === "unread"
+                  ? "No unread notifications"
+                  : selectedFilter === "read"
+                  ? "No read notifications"
+                  : "No notifications yet"}
+              </Text>
+              <TouchableOpacity
+                style={styles.refreshButton}
+                onPress={() => userId && loadNotifications(userId)}
+              >
+                <Text style={styles.refreshButtonText}>Refresh</Text>
+              </TouchableOpacity>
+            </View>
+          ) : (
+            sortedNotifications.map((item, index) => (
+              <NotificationItem
+                key={item.id || item.Id || index}
+                item={item}
+                index={index}
+                onDelete={handleDeleteNotification}
+                onMarkAsRead={handleMarkAsRead}
+                userId={userId}
+              />
+            ))
+          )}
+        </ScrollView>
+      </View>
+      <BottomTab screen={'NotificationsPage'} />
     </>
   );
 };

@@ -265,8 +265,6 @@ const AddNewMember = () => {
     // Validate name
     if (!memberFormData.name?.trim()) {
       errors.name = "Name is required";
-    } else if (memberFormData.name.trim().length > 20) {
-      errors.name = "Name cannot exceed 20 characters";
     }
 
     // Validate mobile

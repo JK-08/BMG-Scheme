@@ -18,7 +18,7 @@ class NotificationService {
       }
       
       const data = await response.json();
-      // console.log(`Notifications data received:`, data);
+      console.log(`Notifications data received:`, data);
 
       return {
         code: 200,
