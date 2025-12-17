@@ -218,6 +218,50 @@ const styles = StyleSheet.create({
   disabledText: {
     opacity: 0.5,
   },
+  // In OtpStyles.js, add these styles:
+
+// Underline OTP Style
+otpContainerUnderline: {
+  flexDirection: "row",
+  justifyContent: "space-between",
+  marginBottom: SIZES.lg,
+  marginTop: SIZES.md,
+  paddingHorizontal: SIZES.padding.sm,
+},
+otpDigitContainer: {
+  flex: 1,
+  marginHorizontal: SIZES.xs,
+  alignItems: "center",
+},
+otpInputUnderline: {
+  width: "100%",
+  height: verticalScale(50),
+  fontSize: SIZES.font.xxl,
+  color: COLORS.textPrimary,
+  fontFamily: FONTS.family.bold,
+  textAlign: "center",
+  padding: 0,
+  includeFontPadding: false,
+  backgroundColor: "transparent",
+},
+otpInputFilled: {
+  color: COLORS.primary,
+  transform: [{ scale: 1.1 }],
+},
+underline: {
+  width: "100%",
+  height: 2,
+  backgroundColor: COLORS.borderLight,
+  marginTop: SIZES.xs,
+},
+underlineActive: {
+  backgroundColor: COLORS.primary,
+  height: 3,
+},
+disabledInput: {
+  opacity: 0.5,
+},
+
 });
 
 // Platform-specific adjustments
@@ -294,5 +338,51 @@ if (SIZES.screen.height > 800) {
     paddingVertical: SIZES.padding.xxl,
   };
 }
+// Add at the end of OtpStyles.js:
+
+// Responsive OTP adjustments
+const responsiveOtpStyles = StyleSheet.create({
+  // For very small screens
+  smallScreen: {
+    otpInputWrapper: {
+      width: verticalScale(40),
+      height: verticalScale(45),
+    },
+    otpInput: {
+      fontSize: SIZES.font.lg,
+    },
+  },
+  
+  // For medium screens
+  mediumScreen: {
+    otpInputWrapper: {
+      width: verticalScale(48),
+      height: verticalScale(55),
+    },
+  },
+  
+  // For large screens
+  largeScreen: {
+    otpInputWrapper: {
+      width: verticalScale(55),
+      height: verticalScale(65),
+    },
+  },
+});
+
+// Apply responsive styles based on screen height
+const getResponsiveOtpStyles = () => {
+  const screenHeight = SIZES.screen.height;
+  
+  if (screenHeight < 600) {
+    return responsiveOtpStyles.smallScreen;
+  } else if (screenHeight > 800) {
+    return responsiveOtpStyles.largeScreen;
+  }
+  return responsiveOtpStyles.mediumScreen;
+};
+
+// Then merge with existing styles
+Object.assign(styles, getResponsiveOtpStyles());
 
 export default styles;

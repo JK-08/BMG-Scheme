@@ -330,9 +330,8 @@ function OtpPage({ navigation, route }) {
                 <Text style={styles.subtitle}>
                   Enter the 6-digit OTP sent to {"\n"}+91 {phoneNumber}
                 </Text>
-
                 {/* Manual OTP input */}
-                <View style={styles.otpContainer}>
+                {/* <View style={styles.otpContainer}>
                   {otp.map((digit, index) => (
                     <LinearGradient
                       key={index}
@@ -358,8 +357,36 @@ function OtpPage({ navigation, route }) {
                       />
                     </LinearGradient>
                   ))}
+                </View> */}
+                // In OtpPage.js:
+                {/* Manual OTP input - Underline style */}
+                <View style={styles.otpContainerUnderline}>
+                  {otp.map((digit, index) => (
+                    <View key={index} style={styles.otpDigitContainer}>
+                      <TextInput
+                        ref={(ref) => (inputRefs.current[index] = ref)}
+                        style={[
+                          styles.otpInputUnderline,
+                          digit && styles.otpInputFilled,
+                          showFullScreenLoader && styles.disabledInput,
+                        ]}
+                        keyboardType="numeric"
+                        maxLength={1}
+                        value={digit}
+                        onChangeText={(val) => handleOtpChange(val, index)}
+                        textAlign="center"
+                        selectionColor={COLORS.primary}
+                        editable={!showFullScreenLoader}
+                      />
+                      <View
+                        style={[
+                          styles.underline,
+                          digit && styles.underlineActive,
+                        ]}
+                      />
+                    </View>
+                  ))}
                 </View>
-
                 <TouchableOpacity
                   style={styles.clearOtpButton}
                   onPress={clearOtp}
@@ -374,7 +401,6 @@ function OtpPage({ navigation, route }) {
                     Clear OTP
                   </Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   style={[
                     styles.primaryButton,
@@ -394,7 +420,6 @@ function OtpPage({ navigation, route }) {
                     </Text>
                   </LinearGradient>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   style={styles.resendContainer}
                   onPress={handleResendOtp}
@@ -411,7 +436,6 @@ function OtpPage({ navigation, route }) {
                     {resendTimer > 0 ? `Resend in ${resendTimer}s` : "Resend"}
                   </Text>
                 </TouchableOpacity>
-
                 <TouchableOpacity
                   onPress={() => navigation.navigate("LoginPage")}
                   style={styles.linkContainer}

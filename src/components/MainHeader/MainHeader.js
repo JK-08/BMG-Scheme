@@ -1,12 +1,11 @@
 // components/Header/Header.js
-import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
+import React, { useState, useEffect, useRef, useCallback } from "react";
 import {
   View,
   Text,
   TouchableOpacity,
   Image,
   Animated,
-  Alert,
   ToastAndroid,
   Platform,
   Linking,
@@ -15,18 +14,18 @@ import { MaterialIcons } from "@expo/vector-icons";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import { useNavigation } from "@react-navigation/native";
 import { LinearGradient } from "expo-linear-gradient";
+import AsyncStorage from "@react-native-async-storage/async-storage";
+
 import DrawerMenu from "../../screens/ProfileDashboard/ProfileContainer/ProfileSidebar";
 import theme from "../../utils/AppTheme";
 import styles from "./Styles";
 import { API_BASE_URL_OLD } from "../../Config/API";
 import NotificationService from "../../services/NotificationService";
-import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { COLORS } = theme;
-
-// ========== Constants ==========
 const ANIMATION_DURATION = 2000;
 const SILVER_ANIMATION_DELAY = 100;
+
 const API_ENDPOINTS = {
   todayRate: `${API_BASE_URL_OLD}/account/todayrate`,
 };
@@ -35,7 +34,7 @@ const API_ENDPOINTS = {
 const showToast = (message) => {
   Platform.OS === "android"
     ? ToastAndroid.show(message, ToastAndroid.SHORT)
-    : Alert.alert("", message);
+    : alert(message);
 };
 
 const getFormattedUpdateTime = () => {
@@ -43,15 +42,14 @@ const getFormattedUpdateTime = () => {
   const hours = now.getHours();
   const minutes = now.getMinutes().toString().padStart(2, "0");
   const ampm = hours >= 12 ? "PM" : "AM";
-  const formattedHour = hours % 12 === 0 ? 12 : hours % 12;
-  const time = `${formattedHour}:${minutes} ${ampm}`;
+  const formattedHour = hours % 12 || 12;
 
   const day = now.getDate().toString().padStart(2, "0");
   const monthNames = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
   const month = monthNames[now.getMonth()];
   const year = now.getFullYear();
 
-  return `${day}-${month}-${year} ${time}`;
+  return `${day}-${month}-${year} ${formattedHour}:${minutes} ${ampm}`;
 };
 
 // ========== Icon Animation ==========
@@ -59,7 +57,6 @@ const useIconAnimation = (delay = 0) => {
   const animationValue = useRef(new Animated.Value(0)).current;
 
   useEffect(() => {
-    animationValue.setValue(0);
     const animation = Animated.loop(
       Animated.timing(animationValue, {
         toValue: 1,
@@ -68,33 +65,34 @@ const useIconAnimation = (delay = 0) => {
       })
     );
 
-    delay ? setTimeout(() => animation.start(), delay) : animation.start();
-    return () => animation.stop();
-  }, []);
-
-  return useMemo(() => {
-    return {
-      transform: [
-        { perspective: 1000 },
-        {
-          rotateY: animationValue.interpolate({
-            inputRange: [0, 0.5, 1],
-            outputRange: ["0deg", "180deg", "360deg"],
-          }),
-        },
-        {
-          scale: animationValue.interpolate({
-            inputRange: [0, 0.5, 1],
-            outputRange: [1, 0.8, 1],
-          }),
-        },
-      ],
-      opacity: animationValue.interpolate({
-        inputRange: [0, 0.5, 1],
-        outputRange: [1, 0.6, 1],
-      }),
+    const timer = delay ? setTimeout(() => animation.start(), delay) : animation.start();
+    return () => {
+      animation.stop();
+      if (timer) clearTimeout(timer);
     };
   }, []);
+
+  return {
+    transform: [
+      { perspective: 1000 },
+      {
+        rotateY: animationValue.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: ["0deg", "180deg", "360deg"],
+        }),
+      },
+      {
+        scale: animationValue.interpolate({
+          inputRange: [0, 0.5, 1],
+          outputRange: [1, 0.8, 1],
+        }),
+      },
+    ],
+    opacity: animationValue.interpolate({
+      inputRange: [0, 0.5, 1],
+      outputRange: [1, 0.6, 1],
+    }),
+  };
 };
 
 // ========== Header ==========
@@ -104,52 +102,52 @@ function Header() {
   const [silverRate, setSilverRate] = useState(null);
   const [rateUpdated, setRateUpdated] = useState("");
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
-  const [notificationCount, setNotificationCount] = useState(0);
+  const [unreadCount, setUnreadCount] = useState(0);
 
   const silverAnimatedStyle = useIconAnimation(SILVER_ANIMATION_DELAY);
+  const toggleDrawer = useCallback(() => setIsDrawerVisible((prev) => !prev), []);
 
-  const toggleDrawer = useCallback(() => {
-    setIsDrawerVisible((prev) => !prev);
-  }, []);
-
+  // ========== Fetch Rates ==========
   const fetchRates = useCallback(async () => {
     try {
       const res = await fetch(API_ENDPOINTS.todayRate);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
-
       const data = await res.json();
       setGoldRate(data.GOLDRATE);
       setSilverRate(data.SILVERRATE);
       setRateUpdated(getFormattedUpdateTime());
-    } catch (err) {
+    } catch {
       showToast("Failed to fetch rates");
     }
   }, []);
 
-  const fetchNotificationCount = useCallback(async () => {
+  // ========== Fetch Unread Notifications ==========
+  const fetchUnreadNotifications = useCallback(async () => {
     try {
       const userId = await AsyncStorage.getItem("userId");
       if (!userId) return;
 
-      const result = await NotificationService.getUserNotifications(userId);
-
-      if (result.code === 200 && Array.isArray(result.data)) {
-        setNotificationCount(result.data.length);
-      } else {
-        setNotificationCount(0);
-      }
+      const result = await NotificationService.getUnreadCount(userId);
+      setUnreadCount(result.code === 200 ? result.data.unreadCount || 0 : 0);
     } catch {
-      setNotificationCount(0);
+      // optional: ignore or log
     }
   }, []);
 
   useEffect(() => {
+    // Initial fetch
     fetchRates();
-    fetchNotificationCount();
+    fetchUnreadNotifications();
 
-    const interval = setInterval(fetchNotificationCount, 20000);
-    return () => clearInterval(interval);
-  }, []);
+    // Intervals
+    const rateInterval = setInterval(fetchRates, 20000); // every 20s
+    const notifInterval = setInterval(fetchUnreadNotifications, 1000); // every 1s
+
+    return () => {
+      clearInterval(rateInterval);
+      clearInterval(notifInterval);
+    };
+  }, [fetchRates, fetchUnreadNotifications]);
 
   return (
     <LinearGradient
@@ -165,33 +163,32 @@ function Header() {
           style={styles.faqIconContainer}
           onPress={() => navigation.navigate("NotificationsPage")}
         >
-          {/* <View>
+          <View>
             <MaterialIcons
-              name={notificationCount > 0 ? "notifications" : "notifications-none"}
+              name={unreadCount > 0 ? "notifications" : "notifications-none"}
               size={28}
               color={COLORS.textWhite}
             />
-
-            {notificationCount > 0 && (
+            {unreadCount > 0 && (
               <View style={styles.notificationBadge}>
-                <Text style={styles.notificationText}>{notificationCount}</Text>
+                <Text style={styles.notificationText}>
+                  {unreadCount > 99 ? "99+" : unreadCount}
+                </Text>
               </View>
             )}
-          </View> */}
+          </View>
         </TouchableOpacity>
 
-        {/* Drawer Menu data */}
+        {/* Drawer Menu */}
         <DrawerMenu isVisible={isDrawerVisible} onClose={() => setIsDrawerVisible(false)} />
 
         {/* Logo */}
         <View style={styles.mainHeaderSection}>
-          <View style={styles.logoContainer}>
-            <Image
-              source={require("../../assets/BMG-LOGO.png")}
-              style={styles.headerLogo}
-              resizeMode="contain"
-            />
-          </View>
+          <Image
+            source={require("../../assets/BMG-LOGO.png")}
+            style={styles.headerLogo}
+            resizeMode="contain"
+          />
         </View>
 
         {/* Menu Button */}
@@ -200,7 +197,7 @@ function Header() {
         </TouchableOpacity>
       </View>
 
-      {/* Rate Updated Card */}
+      {/* Rate Updated */}
       <View style={styles.rateCardContainer}>
         <View style={styles.rateTextContainer}>
           <Icon name="event" size={20} color={COLORS.textWhite} />
@@ -220,7 +217,6 @@ function Header() {
                 resizeMode="contain"
               />
             </Animated.View>
-
             <View style={styles.rateTextRightAligned}>
               <Text style={styles.rateLabelRight}>Silver Rate</Text>
               <Text style={styles.rateValueRight}>₹{silverRate || "---"}</Text>
@@ -238,10 +234,7 @@ function Header() {
             <View style={styles.rateIconContainer}>
               <MaterialIcons name="shopping-cart" size={32} color={COLORS.primary} />
             </View>
-
-            <View>
-              <Text style={styles.shopTitle}>Online {'\n'}Shopping</Text>
-            </View>
+            <Text style={styles.shopTitle}>Online {"\n"}Shopping</Text>
           </TouchableOpacity>
         </LinearGradient>
       </View>

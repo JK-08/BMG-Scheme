@@ -24,6 +24,7 @@ import {
   validateReferralCode,
   getAppliedReferralStatus,
 } from "../../services/ReferalService";
+import { BottomTab } from "../../components";
 
 const ReferralScreen = () => {
   // =======================
@@ -532,7 +533,8 @@ const ReferralScreen = () => {
   // UI
   // ===============================
   return (
-    <SafeAreaView style={styles.container}>
+    <>
+    <View style={styles.container}>
       <ScrollView
         showsVerticalScrollIndicator={false}
         contentContainerStyle={styles.scrollContent}
@@ -701,17 +703,6 @@ const ReferralScreen = () => {
               </Text>
             </View>
 
-            {/* Schemes List */}
-            {/* <View style={styles.schemesListContainer}>
-              <Text style={styles.schemesListTitle}>Your Schemes</Text>
-              <FlatList
-                data={redeemableSchemes}
-                renderItem={renderSchemeItem}
-                keyExtractor={(item) => item.id.toString()}
-                showsVerticalScrollIndicator={false}
-                contentContainerStyle={styles.schemesListContent}
-              />
-            </View> */}
 
             {/* Important Note */}
             <View style={styles.redeemNoteContainer}>
@@ -725,7 +716,9 @@ const ReferralScreen = () => {
           </View>
         </View>
       </Modal>
-    </SafeAreaView>
+    </View>
+    <BottomTab screen="ReferralScreen" />
+    </>
   );
 };
 

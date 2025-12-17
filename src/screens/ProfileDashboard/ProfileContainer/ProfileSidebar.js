@@ -306,9 +306,9 @@ const DrawerMenu = ({ isVisible, onClose }) => {
       route: "TermsandCondition",
     },
     {
-      label: "Refer a Friend",
-      icon: "monetization-on",
-      route: "ReferralScreen",
+      label: "Account Delete",
+      icon: "delete",
+      route: "DeleteButton",
     },
     
   ];
