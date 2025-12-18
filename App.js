@@ -5,9 +5,11 @@ import FlashMessage from "react-native-flash-message";
 import AppContainer from "./src/routes/routes";
 import { colors } from "./src/utils/colors";
 import useFonts from "./src/utils/Fonts";
+import 'react-native-gesture-handler'
 
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
+
 
   // --- Load fonts ---
   useEffect(() => {

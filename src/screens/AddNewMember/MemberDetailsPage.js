@@ -10,6 +10,7 @@ import {
   Platform,
   Keyboard,
   StyleSheet,
+  Modal,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BottomTab } from "../../components";
@@ -29,6 +30,9 @@ const INITIAL_FORM = {
   name: "",
   mobile: "",
   email: "",
+  dateOfBirth: "",
+  maritalStatus: "", // "married" or "unmarried"
+  anniversaryDate: "",
   doorNo: "",
   street: "",
   area: "",
@@ -41,6 +45,22 @@ const INITIAL_FORM = {
   aadharNumber: "",
 };
 
+// Month names for display
+const MONTHS = [
+  "January",
+  "February",
+  "March",
+  "April",
+  "May",
+  "June",
+  "July",
+  "August",
+  "September",
+  "October",
+  "November",
+  "December",
+];
+
 const MemberDetailsPage = ({ onNext, onBack }) => {
   const scrollViewRef = useRef(null);
   const inputRefs = useRef({});
@@ -49,6 +69,30 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   const [activeInput, setActiveInput] = useState(null);
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [validationErrors, setValidationErrors] = useState({});
+
+  // Date picker states
+  const [showDatePicker, setShowDatePicker] = useState(null); // 'dob' or 'anniversary'
+  const [selectedDate, setSelectedDate] = useState({
+    day: "01",
+    month: "01",
+    year: "1990",
+  });
+
+  // Generate years (from 1900 to current year)
+  const currentYear = new Date().getFullYear();
+  const years = Array.from({ length: currentYear - 1900 + 1 }, (_, i) =>
+    (currentYear - i).toString()
+  );
+
+  // Generate days (1-31)
+  const days = Array.from({ length: 31 }, (_, i) =>
+    (i + 1).toString().padStart(2, "0")
+  );
+
+  // Generate months (1-12)
+  const months = Array.from({ length: 12 }, (_, i) =>
+    (i + 1).toString().padStart(2, "0")
+  );
 
   // LOAD SAVED FORM + USER PROFILE
   useEffect(() => {
@@ -70,6 +114,12 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
           mobile: phone || savedData.mobile || "",
           email: email || savedData.email || "",
         }));
+
+        // Pre-populate date picker with saved DOB if exists
+        if (savedData.dateOfBirth) {
+          const [year, month, day] = savedData.dateOfBirth.split("-");
+          setSelectedDate({ day, month, year });
+        }
       } catch (e) {
         console.error("Load error:", e);
       }
@@ -150,33 +200,72 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   // FIELD UPDATE HANDLER
   const updateField = (field, value) => {
     setFormData((p) => ({ ...p, [field]: value }));
-    
+
     // Clear any existing error for this field
     if (validationErrors[field]) {
       setValidationErrors((prev) => ({ ...prev, [field]: "" }));
     }
   };
 
+  // DATE HANDLERS
+  const openDatePicker = (type) => {
+    // If editing existing date, parse it
+    if (type === "dob" && formData.dateOfBirth) {
+      const [year, month, day] = formData.dateOfBirth.split("-");
+      setSelectedDate({ day, month, year });
+    } else if (type === "anniversary" && formData.anniversaryDate) {
+      const [year, month, day] = formData.anniversaryDate.split("-");
+      setSelectedDate({ day, month, year });
+    } else {
+      // Default to 1st Jan 1990
+      setSelectedDate({ day: "01", month: "01", year: "1990" });
+    }
+    setShowDatePicker(type);
+  };
+
+  const handleDateConfirm = () => {
+    if (!selectedDate.day || !selectedDate.month || !selectedDate.year) {
+      Alert.alert("Error", "Please select a valid date");
+      return;
+    }
+
+    const formattedDate = `${selectedDate.year}-${selectedDate.month}-${selectedDate.day}`;
+
+    if (showDatePicker === "dob") {
+      updateField("dateOfBirth", formattedDate);
+    } else if (showDatePicker === "anniversary") {
+      updateField("anniversaryDate", formattedDate);
+    }
+
+    setShowDatePicker(null);
+  };
+
+  const formatDateDisplay = (dateString) => {
+    if (!dateString) return "";
+    const [year, month, day] = dateString.split("-");
+    return `${day}/${month}/${year}`;
+  };
+
+  // MARITAL STATUS HANDLER
+  const handleMaritalStatus = (status) => {
+    updateField("maritalStatus", status);
+    if (status === "unmarried") {
+      updateField("anniversaryDate", "");
+    }
+  };
+
   // Special handlers
-  const handleMobile = (t) =>
-    updateField("mobile", t.replace(/\D/g, ""));
+  const handleMobile = (t) => updateField("mobile", t.replace(/\D/g, ""));
 
   const handleNomineeMobile = (t) =>
     updateField("mobile2", t.replace(/\D/g, ""));
 
-  const handlePincode = (t) =>
-    updateField("pincode", t.replace(/\D/g, ""));
+  const handlePincode = (t) => updateField("pincode", t.replace(/\D/g, ""));
 
   const handlePan = (t) =>
-    updateField(
-      "panNumber",
-      t
-        .replace(/[^A-Za-z0-9]/g, "")
-        .toUpperCase()
-    );
+    updateField("panNumber", t.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
 
-  const handleAadhar = (t) =>
-    updateField("aadharNumber", t.replace(/\D/g, ""));
+  const handleAadhar = (t) => updateField("aadharNumber", t.replace(/\D/g, ""));
 
   // VALIDATION
   const validate = (d) => {
@@ -187,6 +276,39 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
       errors.name = "Name is required";
     } else if (d.name.trim().length < 2) {
       errors.name = "Name must be at least 2 characters";
+    }
+
+    // Date of Birth validation
+    if (!d.dateOfBirth?.trim()) {
+      errors.dateOfBirth = "Date of Birth is required";
+    } else {
+      const dob = new Date(d.dateOfBirth);
+      const today = new Date();
+      const age = today.getFullYear() - dob.getFullYear();
+      const monthDiff = today.getMonth() - dob.getMonth();
+
+      if (
+        monthDiff < 0 ||
+        (monthDiff === 0 && today.getDate() < dob.getDate())
+      ) {
+        // Subtract a year if birthday hasn't occurred this year
+        const adjustedAge = age - 1;
+        if (adjustedAge < 18) {
+          errors.dateOfBirth = "You must be at least 18 years old";
+        }
+      } else if (age < 18) {
+        errors.dateOfBirth = "You must be at least 18 years old";
+      }
+    }
+
+    // Marital Status validation
+    if (!d.maritalStatus) {
+      errors.maritalStatus = "Marital Status is required";
+    }
+
+    // Anniversary Date validation (if married)
+    if (d.maritalStatus === "married" && !d.anniversaryDate?.trim()) {
+      errors.anniversaryDate = "Anniversary Date is required";
     }
 
     // Mobile validation
@@ -226,7 +348,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     if (!d.nomeni?.trim()) {
       errors.nomeni = "Nominee Name is required";
     }
-    
+
     const nomMobileErr = validateMobile(d.mobile2 || "");
     if (nomMobileErr) errors.mobile2 = nomMobileErr;
 
@@ -255,6 +377,9 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         name: formData.name.trim(),
         mobile: formData.mobile,
         email: formData.email.trim(),
+        dateOfBirth: formData.dateOfBirth,
+        maritalStatus: formData.maritalStatus,
+        anniversaryDate: formData.anniversaryDate,
         doorNo: formData.doorNo.trim(),
         address1: formData.street.trim(),
         address2: formData.area.trim(),
@@ -317,10 +442,105 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
           placeholder={`Enter ${label}`}
           placeholderTextColor={COLORS.inputPlaceholder}
         />
-        
+
         {validationErrors[field] && (
           <Text style={styles.errorText}>{validationErrors[field]}</Text>
         )}
+      </View>
+    );
+  };
+
+  // Custom Picker Component
+  const renderCustomPicker = () => {
+    return (
+      <View style={styles.pickerContainer}>
+        {/* Day Picker */}
+        <View style={styles.pickerColumn}>
+          <Text style={styles.pickerLabel}>Day</Text>
+          <ScrollView
+            style={styles.pickerScrollView}
+            showsVerticalScrollIndicator={false}
+          >
+            {days.map((day) => (
+              <TouchableOpacity
+                key={day}
+                style={[
+                  styles.pickerItem,
+                  selectedDate.day === day && styles.pickerItemSelected,
+                ]}
+                onPress={() => setSelectedDate((prev) => ({ ...prev, day }))}
+              >
+                <Text
+                  style={[
+                    styles.pickerItemText,
+                    selectedDate.day === day && styles.pickerItemTextSelected,
+                  ]}
+                >
+                  {day}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Month Picker */}
+        <View style={styles.pickerColumn}>
+          <Text style={styles.pickerLabel}>Month</Text>
+          <ScrollView
+            style={styles.pickerScrollView}
+            showsVerticalScrollIndicator={false}
+          >
+            {months.map((month) => (
+              <TouchableOpacity
+                key={month}
+                style={[
+                  styles.pickerItem,
+                  selectedDate.month === month && styles.pickerItemSelected,
+                ]}
+                onPress={() => setSelectedDate((prev) => ({ ...prev, month }))}
+              >
+                <Text
+                  style={[
+                    styles.pickerItemText,
+                    selectedDate.month === month &&
+                      styles.pickerItemTextSelected,
+                  ]}
+                >
+                  {MONTHS[parseInt(month) - 1]}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
+
+        {/* Year Picker */}
+        <View style={styles.pickerColumn}>
+          <Text style={styles.pickerLabel}>Year</Text>
+          <ScrollView
+            style={styles.pickerScrollView}
+            showsVerticalScrollIndicator={false}
+          >
+            {years.map((year) => (
+              <TouchableOpacity
+                key={year}
+                style={[
+                  styles.pickerItem,
+                  selectedDate.year === year && styles.pickerItemSelected,
+                ]}
+                onPress={() => setSelectedDate((prev) => ({ ...prev, year }))}
+              >
+                <Text
+                  style={[
+                    styles.pickerItemText,
+                    selectedDate.year === year && styles.pickerItemTextSelected,
+                  ]}
+                >
+                  {year}
+                </Text>
+              </TouchableOpacity>
+            ))}
+          </ScrollView>
+        </View>
       </View>
     );
   };
@@ -358,6 +578,126 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
 
           {/* Name */}
           {renderInput("name", "Name *")}
+
+          {/* Date of Birth */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Date of Birth *</Text>
+            <TouchableOpacity
+              style={[
+                styles.input,
+                validationErrors.dateOfBirth && styles.errorInput,
+              ]}
+              onPress={() => openDatePicker("dob")}
+            >
+              <Text
+                style={
+                  formData.dateOfBirth
+                    ? styles.dateText
+                    : styles.placeholderText
+                }
+              >
+                {formData.dateOfBirth
+                  ? formatDateDisplay(formData.dateOfBirth)
+                  : "Select Date of Birth"}
+              </Text>
+              <MaterialIcons
+                name="calendar-today"
+                size={20}
+                color={COLORS.textSecondary}
+                style={styles.dateIcon}
+              />
+            </TouchableOpacity>
+            {validationErrors.dateOfBirth && (
+              <Text style={styles.errorText}>
+                {validationErrors.dateOfBirth}
+              </Text>
+            )}
+          </View>
+
+          {/* Marital Status */}
+          <View style={styles.inputGroup}>
+            <Text style={styles.label}>Marital Status *</Text>
+            <View style={styles.checkboxContainer}>
+              <TouchableOpacity
+                style={[
+                  styles.checkbox,
+                  formData.maritalStatus === "married" &&
+                    styles.checkboxSelected,
+                ]}
+                onPress={() => handleMaritalStatus("married")}
+              >
+                <Text
+                  style={[
+                    styles.checkboxText,
+                    formData.maritalStatus === "married" &&
+                      styles.checkboxTextSelected,
+                  ]}
+                >
+                  Married
+                </Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[
+                  styles.checkbox,
+                  formData.maritalStatus === "unmarried" &&
+                    styles.checkboxSelected,
+                ]}
+                onPress={() => handleMaritalStatus("unmarried")}
+              >
+                <Text
+                  style={[
+                    styles.checkboxText,
+                    formData.maritalStatus === "unmarried" &&
+                      styles.checkboxTextSelected,
+                  ]}
+                >
+                  Unmarried
+                </Text>
+              </TouchableOpacity>
+            </View>
+            {validationErrors.maritalStatus && (
+              <Text style={styles.errorText}>
+                {validationErrors.maritalStatus}
+              </Text>
+            )}
+          </View>
+
+          {/* Anniversary Date (only show if married) */}
+          {formData.maritalStatus === "married" && (
+            <View style={styles.inputGroup}>
+              <Text style={styles.label}>Anniversary Date *</Text>
+              <TouchableOpacity
+                style={[
+                  styles.input,
+                  validationErrors.anniversaryDate && styles.errorInput,
+                ]}
+                onPress={() => openDatePicker("anniversary")}
+              >
+                <Text
+                  style={
+                    formData.anniversaryDate
+                      ? styles.dateText
+                      : styles.placeholderText
+                  }
+                >
+                  {formData.anniversaryDate
+                    ? formatDateDisplay(formData.anniversaryDate)
+                    : "Select Anniversary Date"}
+                </Text>
+                <MaterialIcons
+                  name="event"
+                  size={20}
+                  color={COLORS.textSecondary}
+                  style={styles.dateIcon}
+                />
+              </TouchableOpacity>
+              {validationErrors.anniversaryDate && (
+                <Text style={styles.errorText}>
+                  {validationErrors.anniversaryDate}
+                </Text>
+              )}
+            </View>
+          )}
 
           {/* Mobile */}
           <View style={styles.inputGroup}>
@@ -531,18 +871,62 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         </TouchableOpacity>
       </ScrollView>
 
+      {/* CUSTOM DATE PICKER MODAL */}
+      <Modal visible={!!showDatePicker} transparent animationType="fade">
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>
+                {showDatePicker === "dob"
+                  ? "Select Date of Birth"
+                  : "Select Anniversary Date"}
+              </Text>
+              <TouchableOpacity onPress={() => setShowDatePicker(null)}>
+                <MaterialIcons
+                  name="close"
+                  size={24}
+                  color={COLORS.textPrimary}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.selectedDatePreview}>
+              Selected: {selectedDate.day}/{selectedDate.month}/
+              {selectedDate.year}
+            </Text>
+
+            {renderCustomPicker()}
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={styles.cancelButton}
+                onPress={() => setShowDatePicker(null)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={styles.setButton}
+                onPress={handleDateConfirm}
+              >
+                <Text style={styles.setButtonText}>Confirm Date</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
       <BottomTab />
     </KeyboardAvoidingView>
   );
 };
 
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1, 
-    backgroundColor: COLORS.background 
+  container: {
+    flex: 1,
+    backgroundColor: COLORS.background,
   },
-  scrollContent: { 
-    padding: SIZES.padding.lg 
+  scrollContent: {
+    padding: SIZES.padding.lg,
   },
   header: {
     backgroundColor: COLORS.primary,
@@ -596,8 +980,8 @@ const styles = StyleSheet.create({
     fontStyle: "italic",
     marginBottom: SIZES.margin.md,
   },
-  inputGroup: { 
-    marginBottom: SIZES.margin.md 
+  inputGroup: {
+    marginBottom: SIZES.margin.md,
   },
   label: {
     ...FONTS.label,
@@ -609,14 +993,59 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.radius.md,
     paddingHorizontal: SIZES.padding.md,
+    justifyContent: "center",
     ...FONTS.body,
     color: COLORS.textPrimary,
     borderWidth: 1.5,
     borderColor: COLORS.border,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
   },
   errorInput: {
     borderColor: COLORS.error,
     borderWidth: 2,
+  },
+  dateText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
+  placeholderText: {
+    ...FONTS.body,
+    color: COLORS.inputPlaceholder,
+    flex: 1,
+  },
+  dateIcon: {
+    marginLeft: SIZES.margin.sm,
+  },
+  checkboxContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: SIZES.margin.xs,
+  },
+  checkbox: {
+    flex: 1,
+    height: SIZES.input.height,
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.md,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    justifyContent: "center",
+    alignItems: "center",
+    marginHorizontal: SIZES.margin.xs,
+  },
+  checkboxSelected: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primaryDark,
+  },
+  checkboxText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+  },
+  checkboxTextSelected: {
+    color: COLORS.white,
+    fontWeight: "600",
   },
   mobileInput: {
     flexDirection: "row",
@@ -633,10 +1062,10 @@ const styles = StyleSheet.create({
     color: COLORS.primary,
     marginRight: SIZES.margin.sm,
   },
-  mobileField: { 
-    flex: 1, 
-    ...FONTS.body, 
-    color: COLORS.textPrimary 
+  mobileField: {
+    flex: 1,
+    ...FONTS.body,
+    color: COLORS.textPrimary,
   },
   errorText: {
     ...FONTS.caption,
@@ -653,6 +1082,107 @@ const styles = StyleSheet.create({
     ...SHADOWS.md,
   },
   confirmText: {
+    ...FONTS.button,
+    color: COLORS.white,
+  },
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center", // 🔥 center vertically
+    alignItems: "center", // 🔥 center horizontally
+  },
+  modalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.xl,
+    padding: SIZES.padding.lg,
+    width: "90%", // 🔥 looks like dialog
+    maxHeight: "80%",
+  },
+
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SIZES.margin.lg,
+  },
+  modalTitle: {
+    ...FONTS.h5,
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
+  selectedDatePreview: {
+    ...FONTS.body,
+    color: COLORS.primary,
+    textAlign: "center",
+    marginBottom: SIZES.margin.lg,
+    fontWeight: "600",
+  },
+  pickerContainer: {
+    flexDirection: "row",
+    height: 200,
+    marginBottom: SIZES.margin.lg,
+  },
+  pickerColumn: {
+    flex: 1,
+    marginHorizontal: SIZES.margin.xs,
+  },
+  pickerLabel: {
+    ...FONTS.label,
+    color: COLORS.textPrimary,
+    textAlign: "center",
+    marginBottom: SIZES.margin.sm,
+    fontWeight: "600",
+  },
+  pickerScrollView: {
+    flex: 1,
+  },
+  pickerItem: {
+    paddingVertical: SIZES.padding.sm,
+    paddingHorizontal: SIZES.padding.xs,
+    borderRadius: SIZES.radius.sm,
+    marginVertical: 2,
+    alignItems: "center",
+  },
+  pickerItemSelected: {
+    backgroundColor: COLORS.primary,
+  },
+  pickerItemText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+  },
+  pickerItemTextSelected: {
+    color: COLORS.white,
+    fontWeight: "600",
+  },
+  modalButtons: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginTop: SIZES.margin.lg,
+  },
+  cancelButton: {
+    flex: 1,
+    height: SIZES.button.md,
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.md,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: SIZES.margin.sm,
+  },
+  cancelButtonText: {
+    ...FONTS.button,
+    color: COLORS.textSecondary,
+  },
+  setButton: {
+    flex: 1,
+    height: SIZES.button.md,
+    backgroundColor: COLORS.primary,
+    borderRadius: SIZES.radius.md,
+    justifyContent: "center",
+    alignItems: "center",
+    marginLeft: SIZES.margin.sm,
+  },
+  setButtonText: {
     ...FONTS.button,
     color: COLORS.white,
   },

@@ -4,6 +4,15 @@ import * as Notifications from "expo-notifications";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { showMessage } from "react-native-flash-message";
 import { API_BASE_URL } from "../Config/API";
+import Constants from "expo-constants";
+
+function getExpoProjectId() {
+  return (
+    Constants.expoConfig?.extra?.eas?.projectId ||
+    Constants.easConfig?.projectId ||
+    null
+  );
+}
 
 // ----------------- Android Notification Channels -----------------
 if (Platform.OS === "android") {
@@ -101,9 +110,19 @@ export async function registerForPushNotifications(userId, options = {}) {
   }
 
   try {
+    const projectId = getExpoProjectId();
+
+    if (!projectId) {
+      console.log("❌ Expo Project ID not found");
+      return null;
+    }
+
     const token = await Notifications.getExpoPushTokenAsync({
-      projectId: "0b794a84-9fe9-4e0f-b638-8918e63be72d",
+      projectId,
     });
+
+    console.log("📨 Fresh Expo Token:", token.data);
+
     console.log("📨 Fresh Expo Token:", token.data);
 
     if (userId) {

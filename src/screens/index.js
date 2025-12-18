@@ -38,6 +38,7 @@ import PaymentCancelled from './Buy/PaymentCancelled'
 import EmailFormPage from './HelpCenterPage/EmailForm'
 import ReferralScreen from './Referral/Referral'
 import ResetMpin from './ProfileDashboard/ResetMpin/ResetMpin'
+import SchemeClosingHistoryScreen from './ClosedSchemes/ClosedSchemes'
 
 export {
   MainLanding,
@@ -78,5 +79,6 @@ export {
   RewardsPage,
   EmailFormPage,
   ReferralScreen,
-  ResetMpin
+  ResetMpin,
+  SchemeClosingHistoryScreen,
 }

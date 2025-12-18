@@ -15,6 +15,7 @@ import {
   Platform,
   Pressable,
   Text,
+  ActivityIndicator,
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { MaterialIcons } from "@expo/vector-icons";
@@ -31,26 +32,25 @@ import * as Application from "expo-application";
 import Constants from "expo-constants";
 import { checkForUpdate } from "../../../utils/VersionChecker";
 import { SafeAreaView } from "react-native-safe-area-context";
+import * as ImagePicker from "expo-image-picker";
+import memberPhotoService from "../../../services/UserProfileService";
 
 const { COLORS, SIZES, FONTS, moderateScale } = theme;
 const { width } = Dimensions.get("window");
 
-// Change this to your real version if you want:
-const APP_VERSION = "1.0.0";
-const appVersion1 = Application.nativeApplicationVersion;
-const appVersion = Constants.expoConfig.version;
-// Play Store package (from you)
-const PLAY_STORE_PACKAGE = "com.bmg.bmgscheme";
+// Add your  base URL here
+const IMAGE_BASE_URL = "https://scheme.bmgjewellers.com"; // Replace with your actual  base URL
 
 const DrawerMenu = ({ isVisible, onClose }) => {
   const navigation = useNavigation();
   const [userData, setUserData] = useState({});
   const [activeRoute, setActiveRoute] = useState(null);
+  const [uploading, setUploading] = useState(false);
 
   // Animated values
-  const slideAnim = useRef(new Animated.Value(width)).current; // translateX
-  const fadeAnim = useRef(new Animated.Value(0)).current; // overlay opacity
-  const profileY = useRef(new Animated.Value(20)).current; // profile slide up
+  const slideAnim = useRef(new Animated.Value(width)).current;
+  const fadeAnim = useRef(new Animated.Value(0)).current;
+  const profileY = useRef(new Animated.Value(20)).current;
   const profileOpacity = useRef(new Animated.Value(0)).current;
 
   /* -------------------------
@@ -164,38 +164,29 @@ const DrawerMenu = ({ isVisible, onClose }) => {
 
   /* -------------------------
      PanResponder: swipe-left to close
-     Because drawer is anchored to right:
-       - when open: translateX = 0
-       - when closed: translateX = width (off-screen right)
-     On left-swipe gesture.dx will be negative -> -gesture.dx positive
   ------------------------- */
   const panResponder = useRef(
     PanResponder.create({
       onMoveShouldSetPanResponder: (_, gesture) => {
-        // only when horizontal significant movement
         const isHorizontal =
           Math.abs(gesture.dx) > 10 && Math.abs(gesture.dy) < 60;
-        // only respond when user swipes left (dx < 0)
         return isHorizontal && gesture.dx < 0;
       },
       onPanResponderMove: (_, gesture) => {
         if (gesture.dx < 0) {
-          // use positive value for translateX
           const newTranslate = Math.min(width, -gesture.dx);
           slideAnim.setValue(newTranslate);
         }
       },
       onPanResponderRelease: (_, gesture) => {
-        const closeThreshold = 80; // px
+        const closeThreshold = 80;
         if (-gesture.dx > closeThreshold) {
-          // animate off-screen then call onClose
           Animated.timing(slideAnim, {
             toValue: width,
             duration: 200,
             useNativeDriver: true,
           }).start(() => onClose());
         } else {
-          // restore to open (0)
           Animated.timing(slideAnim, {
             toValue: 0,
             duration: 180,
@@ -205,6 +196,169 @@ const DrawerMenu = ({ isVisible, onClose }) => {
       },
     })
   ).current;
+
+  /* -------------------------
+     Image Picker Functions
+  ------------------------- */
+  const pickImageFromGallery = async () => {
+    try {
+      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
+      
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "We need permission to access your photo library to set profile picture."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchImageLibraryAsync({
+        mediaTypes: ImagePicker.MediaTypeOptions.Images,
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        await uploadProfilePicture(result.assets[0]);
+      }
+    } catch (error) {
+      console.error("Error picking image:", error);
+      Alert.alert("Error", "Failed to pick image from gallery.");
+    }
+  };
+
+  const takePhotoWithCamera = async () => {
+    try {
+      const { status } = await ImagePicker.requestCameraPermissionsAsync();
+      
+      if (status !== "granted") {
+        Alert.alert(
+          "Permission Required",
+          "We need camera permission to take a photo."
+        );
+        return;
+      }
+
+      const result = await ImagePicker.launchCameraAsync({
+        allowsEditing: true,
+        aspect: [1, 1],
+        quality: 0.8,
+      });
+
+      if (!result.canceled && result.assets && result.assets[0]) {
+        await uploadProfilePicture(result.assets[0]);
+      }
+    } catch (error) {
+      console.error("Error taking photo:", error);
+      Alert.alert("Error", "Failed to take photo.");
+    }
+  };
+
+  const uploadProfilePicture = async (imageAsset) => {
+    setUploading(true);
+    try {
+      const image = {
+        uri: imageAsset.uri,
+        type: imageAsset.mimeType || "image/jpeg",
+        fileName: imageAsset.fileName || `profile_${Date.now()}.jpg`,
+      };
+
+      console.log("Starting upload with image:", {
+        uri: image.uri.substring(0, 50) + "...",
+        type: image.type,
+        fileName: image.fileName,
+      });
+
+      const response = await memberPhotoService.uploadPhoto(image);
+      
+      console.log("Upload response:", response);
+
+      if (response.photoPath) {
+        let fullImageUrl;
+        
+        if (response.photoPath.startsWith('http')) {
+          fullImageUrl = response.photoPath;
+        } else if (response.photoPath.startsWith('/')) {
+          fullImageUrl = `${IMAGE_BASE_URL}${response.photoPath}`;
+        } else {
+          fullImageUrl = `${IMAGE_BASE_URL}/uploads/${response.photoPath}`;
+        }
+        
+        console.log("Full image URL:", fullImageUrl);
+        
+        setUserData(prev => ({ ...prev, picture: fullImageUrl }));
+        
+        await AsyncStorage.setItem("userProfilePicture", fullImageUrl);
+        
+        Alert.alert("Success", response.message || "Profile picture updated successfully!");
+      } else {
+        Alert.alert("Warning", "Upload completed but no photo path returned. Please check with support.");
+      }
+    } catch (error) {
+      console.error("Upload error details:", error);
+      Alert.alert(
+        "Upload Failed", 
+        error.message || "Failed to upload profile picture. Please try again."
+      );
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const deleteProfilePicture = async () => {
+    Alert.alert(
+      "Delete Profile Picture",
+      "Are you sure you want to remove your profile picture?",
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Delete",
+          style: "destructive",
+          onPress: async () => {
+            try {
+              setUploading(true);
+              await memberPhotoService.deletePhoto();
+              
+              setUserData(prev => ({ ...prev, picture: null }));
+              
+              await AsyncStorage.removeItem("userProfilePicture");
+              
+              Alert.alert("Success", "Profile picture removed successfully!");
+            } catch (error) {
+              console.error("Delete error:", error);
+              Alert.alert("Error", "Failed to delete profile picture.");
+            } finally {
+              setUploading(false);
+            }
+          },
+        },
+      ]
+    );
+  };
+
+  const handleProfilePictureUpdate = () => {
+    Alert.alert(
+      "Update Profile Picture",
+      "Choose an option",
+      [
+        {
+          text: "Take Photo",
+          onPress: takePhotoWithCamera,
+        },
+        {
+          text: "Choose from Gallery",
+          onPress: pickImageFromGallery,
+        },
+        ...(userData.picture ? [{
+          text: "Remove Current Photo",
+          onPress: deleteProfilePicture,
+          style: "destructive",
+        }] : []),
+        { text: "Cancel", style: "cancel" },
+      ]
+    );
+  };
 
   /* -------------------------
      Utility handlers
@@ -234,32 +388,13 @@ const DrawerMenu = ({ isVisible, onClose }) => {
     setActiveRoute(route);
     onClose();
     setTimeout(() => {
-      // small timeout so drawer closes smooth before navigate
       navigation.navigate(route);
     }, 220);
   };
 
-  const handleProfilePictureUpdate = () => {
-    Alert.alert("Update Profile Picture", "Choose an option", [
-      {
-        text: "Take Photo",
-        onPress: () => {
-          console.log("Open camera (implement)");
-        },
-      },
-      {
-        text: "Choose from Gallery",
-        onPress: () => {
-          console.log("Open gallery (implement)");
-        },
-      },
-      { text: "Cancel", style: "cancel" },
-    ]);
-  };
-
   const handleShareApp = async () => {
     try {
-      const url = `https://play.google.com/store/apps/details?id=${PLAY_STORE_PACKAGE}`;
+      const url = `https://play.google.com/store/apps/details?id=com.bmg.bmgscheme`;
       await Share.share({
         message: `Check out this app: ${url}`,
         url,
@@ -271,8 +406,8 @@ const DrawerMenu = ({ isVisible, onClose }) => {
   };
 
   const handleRateUs = async () => {
-    const androidUrl = `market://details?id=${PLAY_STORE_PACKAGE}`;
-    const webUrl = `https://play.google.com/store/apps/details?id=${PLAY_STORE_PACKAGE}`;
+    const androidUrl = `market://details?id=com.bmg.bmgscheme`;
+    const webUrl = `https://play.google.com/store/apps/details?id=com.bmg.bmgscheme`;
     try {
       if (Platform.OS === "android") {
         const canOpen = await Linking.canOpenURL(androidUrl);
@@ -280,7 +415,6 @@ const DrawerMenu = ({ isVisible, onClose }) => {
           return Linking.openURL(androidUrl);
         }
       }
-      // Fallback to web URL (works on iOS & web)
       const canOpenWeb = await Linking.canOpenURL(webUrl);
       if (canOpenWeb) {
         return Linking.openURL(webUrl);
@@ -310,12 +444,13 @@ const DrawerMenu = ({ isVisible, onClose }) => {
       icon: "delete",
       route: "DeleteButton",
     },
-    
+    {
+      label: "Closed Schemes",
+      icon: "archive",
+      route: "ClosedSchemes",
+    },
   ];
 
-  /* -------------------------
-     Small helpers for styles
-  ------------------------- */
   const isActive = (route) => activeRoute === route;
 
   return (
@@ -334,7 +469,6 @@ const DrawerMenu = ({ isVisible, onClose }) => {
           },
         ]}
       >
-        {/* touchable area to close when tapping outside */}
         <TouchableOpacity
           style={{ flex: 1 }}
           activeOpacity={1}
@@ -342,7 +476,7 @@ const DrawerMenu = ({ isVisible, onClose }) => {
         />
       </Animated.View>
 
-      {/* Drawer (right-side). translateX from 0 (open) -> width (closed/off-screen) */}
+      {/* Drawer */}
       <Animated.View
         {...panResponder.panHandlers}
         style={[
@@ -361,7 +495,6 @@ const DrawerMenu = ({ isVisible, onClose }) => {
             style={styles.headerContainer}
           >
             <View style={styles.headerTopRow}>
-              {/* Close arrow */}
               <Pressable
                 onPress={onClose}
                 style={({ pressed }) => [
@@ -376,15 +509,6 @@ const DrawerMenu = ({ isVisible, onClose }) => {
                   color={COLORS.white}
                 />
               </Pressable>
-
-              {/* optional place for app logo or icon */}
-              {/* <View style={styles.appBadge}>
-                <MaterialIcons
-                  name="diamond"
-                  size={moderateScale(22)}
-                  color={COLORS.white}
-                />
-              </View> */}
             </View>
 
             {/* Animated profile block */}
@@ -399,9 +523,12 @@ const DrawerMenu = ({ isVisible, onClose }) => {
             >
               <TouchableOpacity
                 style={styles.profileCircle}
-                // onPress={handleProfilePictureUpdate}
+                onPress={handleProfilePictureUpdate}
+                disabled={uploading}
               >
-                {userData.picture ? (
+                {uploading ? (
+                  <ActivityIndicator size="large" color={COLORS.white} />
+                ) : userData.picture ? (
                   <Image
                     source={{ uri: userData.picture }}
                     style={styles.profileImage}
@@ -413,13 +540,13 @@ const DrawerMenu = ({ isVisible, onClose }) => {
                     color={COLORS.white}
                   />
                 )}
-                {/* <View style={styles.editProfileIcon}>
+                <View style={styles.editProfileIcon}>
                   <MaterialIcons
                     name="edit"
                     size={moderateScale(12)}
                     color={COLORS.white}
                   />
-                </View> */}
+                </View>
               </TouchableOpacity>
 
               <TextDefault style={styles.welcomeText}>
@@ -431,10 +558,12 @@ const DrawerMenu = ({ isVisible, onClose }) => {
             </Animated.View>
           </LinearGradient>
 
-          {/* Menu list */}
+          {/* Menu list - Using contentContainerStyle for proper scrolling */}
           <ScrollView
-            style={styles.menuContainer}
+            style={styles.scrollView}
+            contentContainerStyle={styles.scrollContent}
             showsVerticalScrollIndicator={false}
+            bounces={true}
           >
             {menuItems.map((item, index) => {
               const active = isActive(item.route);
@@ -463,7 +592,6 @@ const DrawerMenu = ({ isVisible, onClose }) => {
               );
             })}
 
-            {/* Divider-ish spacing */}
             <View style={{ height: 8 }} />
 
             {/* Extra Actions */}
@@ -504,22 +632,21 @@ const DrawerMenu = ({ isVisible, onClose }) => {
               </View>
             </TouchableOpacity>
 
-            {/* Footer / version */}
-            <TextDefault
-              style={{
-                textAlign: "center",
-                marginTop: 10,
-                marginBottom: 20,
-                color: COLORS.textSecondary,
-              }}
-            >
-              Version {Application.nativeApplicationVersion}
-            </TextDefault>
-            {/* Company Branding */}
-            <View style={styles.brandBadge}>
-              <Text style={styles.brandLine1}>BrightechSoftware</Text>
-              <Text style={styles.brandLine2}>Solutions</Text>
+            {/* Footer section inside ScrollView */}
+            <View style={styles.footer}>
+              <TextDefault style={styles.versionText}>
+                Version {Application.nativeApplicationVersion}
+              </TextDefault>
+              
+              {/* Company Branding - Now inside ScrollView */}
+              <View style={styles.brandBadge}>
+                <Text style={styles.brandLine1}>BrightechSoftware</Text>
+                <Text style={styles.brandLine2}>Solutions</Text>
+              </View>
             </View>
+            
+            {/* Extra padding at bottom for safe area */}
+            <View style={{ height: 20 }} />
           </ScrollView>
         </SafeAreaView>
       </Animated.View>
@@ -528,14 +655,14 @@ const DrawerMenu = ({ isVisible, onClose }) => {
 };
 
 /* -------------------------
-   Styles (object)
+   Styles
 ------------------------- */
 const styles = {
   overlay: {
     position: "absolute",
     width: "100%",
     height: "100%",
-    backgroundColor: "#00000066", // dim overlay (glass style)
+    backgroundColor: "#00000066",
   },
   drawer: {
     position: "absolute",
@@ -543,7 +670,6 @@ const styles = {
     top: 0,
     bottom: 0,
     width: width * 0.8,
-    // glass-like panel via opacity (NO blur)
     backgroundColor: COLORS.surface || COLORS.background || "#fff",
     ...theme.SHADOWS.xl,
     borderLeftWidth: 1,
@@ -551,7 +677,13 @@ const styles = {
   },
   drawerContent: {
     flex: 1,
-    backgroundColor: "transparent", // header uses gradient, rest inherits the drawer background
+  },
+  scrollView: {
+    flex: 1,
+  },
+  scrollContent: {
+    flexGrow: 1,
+    paddingBottom: 20, // Add padding at bottom
   },
 
   /* Header */
@@ -571,12 +703,6 @@ const styles = {
   closeButton: {
     padding: 6,
     marginLeft: -6,
-  },
-  appBadge: {
-    padding: 6,
-    borderRadius: 10,
-    alignItems: "center",
-    justifyContent: "center",
   },
 
   /* Profile area */
@@ -628,11 +754,6 @@ const styles = {
   },
 
   /* Menu */
-  menuContainer: {
-    flex: 1,
-    paddingTop: SIZES.padding.md,
-    backgroundColor: "transparent",
-  },
   menuItem: {
     paddingVertical: SIZES.padding.lg,
     paddingHorizontal: SIZES.padding.xl,
@@ -656,39 +777,40 @@ const styles = {
 
   /* Footer */
   footer: {
-    paddingVertical: SIZES.padding.lg,
+    marginTop: SIZES.padding.lg,
+    paddingHorizontal: SIZES.padding.xl,
     alignItems: "center",
+    position: "relative", // Changed from absolute
+  },
+  versionText: {
+    textAlign: "center",
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.padding.md,
   },
   brandBadge: {
-    position: "absolute",
-    right: 14,
-    bottom: -42,
     backgroundColor: "rgba(255, 255, 255, 0.7)",
-    paddingVertical: 6,
-    paddingHorizontal: 14,
-    borderRadius: 18,
-    alignItems: "flex-end",
+    paddingVertical: 8,
+    paddingHorizontal: 16,
+    borderRadius: 20,
+    alignItems: "center",
     justifyContent: "center",
-
-    // Subtle glass shadow
-    shadowColor: "rgba(255, 255, 255, 0.7)",
-    shadowOpacity: 0.15,
+    shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowRadius: 6,
-    elevation: 1,
-    backdropFilter: "blur(4px)", // works on native iOS
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
+    borderWidth: 1,
+    borderColor: "rgba(0,0,0,0.05)",
   },
-
   brandLine1: {
-    fontSize: 13,
+    fontSize: 14,
     fontWeight: "700",
     color: COLORS.primary,
     letterSpacing: 0.7,
     fontStyle: "italic",
   },
-
   brandLine2: {
-    fontSize: 11,
+    fontSize: 12,
     fontWeight: "600",
     letterSpacing: 0.5,
     color: "#444",

@@ -279,7 +279,7 @@ const NotificationsPage = () => {
     try {
       console.log(`Loading unread count for userId: ${currentUserId}`);
       const response = await NotificationService.getUnreadCount(currentUserId);
-      console.log(`Unread count response:`, response);
+      // console.log(`Unread count response:`, response);
       
       if (response.code === 200) {
         setUnreadCount(response.data.unreadCount || 0);

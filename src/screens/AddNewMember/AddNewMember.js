@@ -532,7 +532,8 @@ const AddNewMember = () => {
         idProof: "Aadhaar",
         idProofNo: memberData.aadharNumber || "",
         panNumber: memberData.panNumber || "",
-        dob: memberData.dob || "",
+        dob: memberData.dateOfBirth || "",
+        anniversaryDate: memberData.anniversaryDate || "",
         email: memberData.email || "",
         upDateTime: nowDateTime,
         userId: "999",
@@ -596,7 +597,7 @@ const AddNewMember = () => {
         schemeCollectInsert,
         referralCode: ReferralCode || "", // Include referral code here
       };
-
+console.log("Submit Member Data", requestBody);
       // 6️⃣ Submit API Call
       const submitResponse = await fetch(`${API_BASE_URL_OLD}/member/create`, {
         method: "POST",

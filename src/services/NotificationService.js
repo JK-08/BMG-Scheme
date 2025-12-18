@@ -38,12 +38,12 @@ class NotificationService {
   // Get unread notification count for a user
   async getUnreadCount(userId) {
     try {
-      console.log(`Fetching unread count for user: ${userId}`);
+      // console.log(`Fetching unread count for user: ${userId}`);
       const response = await fetch(
         `${API_BASE_URL}/notifications/user/${userId}/unread-count`
       );
       
-      console.log(`Unread count response status: ${response.status}`);
+      // console.log(`Unread count response status: ${response.status}`);
       
       if (!response.ok) {
         const errorText = await response.text();
@@ -52,7 +52,7 @@ class NotificationService {
       }
       
       const data = await response.json();
-      console.log(`Unread count data:`, data);
+      // console.log(`Unread count data:`, data);
 
       return {
         code: 200,

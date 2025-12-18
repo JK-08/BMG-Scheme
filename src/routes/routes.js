@@ -39,6 +39,7 @@ function Drawer() {
       <NavigationStack.Screen name="EmailFormPage" component={Screen.EmailFormPage} />
       <NavigationStack.Screen name="ReferralScreen" component={Screen.ReferralScreen} />
       <NavigationStack.Screen name="ResetMpin" component={Screen.ResetMpin} />
+      <NavigationStack.Screen name="ClosedSchemes" component={Screen.SchemeClosingHistoryScreen} />
     </NavigationStack.Navigator>
   );
 }
