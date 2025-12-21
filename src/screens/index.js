@@ -39,6 +39,10 @@ import EmailFormPage from './HelpCenterPage/EmailForm'
 import ReferralScreen from './Referral/Referral'
 import ResetMpin from './ProfileDashboard/ResetMpin/ResetMpin'
 import SchemeClosingHistoryScreen from './ClosedSchemes/ClosedSchemes'
+import DigiLockerWebViewScreen from './DigiLockerWebview/DigiLockerWebview'
+import DigiLockerStatusScreen from './DigiLockerWebview/DigiLockerStatus'
+import MemberDetailsPage from './AddNewMember/MemberDetailsPage'
+import SchemeDetailsPage from './AddNewMember/SchemeDetailsPage'
 
 export {
   MainLanding,
@@ -81,4 +85,8 @@ export {
   ReferralScreen,
   ResetMpin,
   SchemeClosingHistoryScreen,
+  DigiLockerWebViewScreen,
+  DigiLockerStatusScreen,
+  MemberDetailsPage,
+  SchemeDetailsPage
 }

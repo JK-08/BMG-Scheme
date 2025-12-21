@@ -311,6 +311,12 @@ const AddNewMember = () => {
     setCurrentStep(2);
   };
 
+  // In AddNewMember.js, add this:
+useEffect(() => {
+  console.log("Route params received:", route.params);
+  console.log("Scheme ID:", route.params?.schemeId);
+  console.log("Scheme Name:", route.params?.schemeName);
+}, [route.params]);
   // Create payment order
   const createPaymentOrder = async (
     amount,
@@ -1063,16 +1069,21 @@ console.log("Submit Member Data", requestBody);
     }
 
     switch (currentStep) {
-      case 1:
-        return (
-          <MemberDetailsPage
-            memberData={memberData}
-            onNext={handleNextStep}
-            onBack={handleBack}
-            validationErrors={validationErrors}
-            setValidationErrors={setValidationErrors}
-          />
-        );
+     case 1:
+  return (
+    <MemberDetailsPage
+      memberData={memberData}
+      onNext={(memberFormData) => {
+        // Store member data
+        setMemberData(memberFormData);
+        // Navigate to next step
+        setCurrentStep(2);
+      }}
+      onBack={handleBack}
+      validationErrors={validationErrors}
+      setValidationErrors={setValidationErrors}
+    />
+  );
       case 2:
         return (
           <SchemeDetailsPage

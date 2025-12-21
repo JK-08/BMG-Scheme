@@ -4,6 +4,7 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createStackNavigator } from "@react-navigation/stack";
 import * as Screen from "../screens";
 
+
 const MainStack = createStackNavigator();
 const NavigationStack = createStackNavigator();
 
@@ -40,6 +41,10 @@ function Drawer() {
       <NavigationStack.Screen name="ReferralScreen" component={Screen.ReferralScreen} />
       <NavigationStack.Screen name="ResetMpin" component={Screen.ResetMpin} />
       <NavigationStack.Screen name="ClosedSchemes" component={Screen.SchemeClosingHistoryScreen} />
+      <NavigationStack.Screen name="DigiLockerWebViewScreen" component={Screen.DigiLockerWebViewScreen} />
+      <NavigationStack.Screen name="DigiLockerStatusScreen" component={Screen.DigiLockerStatusScreen} />
+      <NavigationStack.Screen name="MemberDetailsPage" component={Screen.MemberDetailsPage} />
+      <NavigationStack.Screen name="SchemeDetailsPage" component={Screen.SchemeDetailsPage} />
     </NavigationStack.Navigator>
   );
 }

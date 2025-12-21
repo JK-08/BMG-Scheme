@@ -11,13 +11,13 @@ import {
   Keyboard,
   StyleSheet,
   Modal,
+  ActivityIndicator,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BottomTab } from "../../components";
 import { SHADOWS, COLORS, SIZES, FONTS } from "../../utils/AppTheme";
 import { MaterialIcons } from "@expo/vector-icons";
-
-// <-- import your validators (adjust path if needed) -->
+import { useNavigation, useRoute } from "@react-navigation/native";
 import {
   validateAadhaar,
   validatePAN,
@@ -25,13 +25,17 @@ import {
   validateEmail,
   validatePincode,
 } from "./Validations";
+import {
+  startDigiLockerFlow,
+  verifyAndFetchAadhaarData,
+} from "../../services/DigiLockerService";
 
 const INITIAL_FORM = {
   name: "",
   mobile: "",
   email: "",
   dateOfBirth: "",
-  maritalStatus: "", // "married" or "unmarried"
+  maritalStatus: "",
   anniversaryDate: "",
   doorNo: "",
   street: "",
@@ -45,7 +49,16 @@ const INITIAL_FORM = {
   aadharNumber: "",
 };
 
-// Month names for display
+const AADHAAR_STATUS = {
+  NOT_STARTED: "not_started",
+  VERIFICATION_INITIATED: "verification_initiated",
+  PENDING: "pending",
+  VERIFIED: "verified",
+  FAILED: "failed",
+  EXPIRED: "expired",
+  AUTHENTICATED: "AUTHENTICATED",
+};
+
 const MONTHS = [
   "January",
   "February",
@@ -64,37 +77,48 @@ const MONTHS = [
 const MemberDetailsPage = ({ onNext, onBack }) => {
   const scrollViewRef = useRef(null);
   const inputRefs = useRef({});
+  const navigation = useNavigation();
+  const route = useRoute();
 
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [activeInput, setActiveInput] = useState(null);
   const [formData, setFormData] = useState(INITIAL_FORM);
   const [validationErrors, setValidationErrors] = useState({});
+  const [loading, setLoading] = useState(false);
+  const [formDisabled, setFormDisabled] = useState(true); // Lock form until Aadhaar verified
+
+  // Enhanced Aadhaar state management
+  const [aadhaarStatus, setAadhaarStatus] = useState(
+    AADHAAR_STATUS.NOT_STARTED
+  );
+  const [aadhaarVerificationId, setAadhaarVerificationId] = useState("");
+  const [aadhaarPollingCount, setAadhaarPollingCount] = useState(0);
+  const [showAddressConfirmModal, setShowAddressConfirmModal] = useState(false);
+  const [aadhaarAddress, setAadhaarAddress] = useState(null);
+  const [aadhaarData, setAadhaarData] = useState(null);
+  const [isCheckingExistingVerification, setIsCheckingExistingVerification] =
+    useState(false);
 
   // Date picker states
-  const [showDatePicker, setShowDatePicker] = useState(null); // 'dob' or 'anniversary'
+  const [showDatePicker, setShowDatePicker] = useState(null);
   const [selectedDate, setSelectedDate] = useState({
     day: "01",
     month: "01",
     year: "1990",
   });
 
-  // Generate years (from 1900 to current year)
   const currentYear = new Date().getFullYear();
   const years = Array.from({ length: currentYear - 1900 + 1 }, (_, i) =>
     (currentYear - i).toString()
   );
-
-  // Generate days (1-31)
   const days = Array.from({ length: 31 }, (_, i) =>
     (i + 1).toString().padStart(2, "0")
   );
-
-  // Generate months (1-12)
   const months = Array.from({ length: 12 }, (_, i) =>
     (i + 1).toString().padStart(2, "0")
   );
 
-  // LOAD SAVED FORM + USER PROFILE
+  // LOAD SAVED FORM + AADHAAR STATUS
   useEffect(() => {
     (async () => {
       try {
@@ -115,16 +139,135 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
           email: email || savedData.email || "",
         }));
 
-        // Pre-populate date picker with saved DOB if exists
         if (savedData.dateOfBirth) {
           const [year, month, day] = savedData.dateOfBirth.split("-");
           setSelectedDate({ day, month, year });
         }
+
+        // Load Aadhaar verification status
+        await loadAadhaarStatus();
       } catch (e) {
         console.error("Load error:", e);
       }
     })();
   }, []);
+
+  // Check for verification ID from WebView
+  useEffect(() => {
+    if (route.params?.verificationId) {
+      setAadhaarVerificationId(route.params.verificationId);
+      setAadhaarStatus(AADHAAR_STATUS.PENDING);
+      pollForAadhaarData();
+    }
+  }, [route.params?.verificationId]);
+
+  // Load Aadhaar status from storage
+  const loadAadhaarStatus = async () => {
+    try {
+      const [status, savedVerificationId, savedAadhaarData] = await Promise.all(
+        [
+          AsyncStorage.getItem("aadhaarVerificationStatus"),
+          AsyncStorage.getItem("aadhaarVerificationId"),
+          AsyncStorage.getItem("aadhaarData"),
+        ]
+      );
+
+      if (savedVerificationId && savedAadhaarData) {
+        const parsedData = JSON.parse(savedAadhaarData);
+        const savedAadhaarNum = parsedData.uid?.replace(/\D/g, "") || "";
+        const enteredAadhaarNum = formData.aadharNumber.replace(/\D/g, "");
+
+        // Only restore if Aadhaar number matches
+        if (savedAadhaarNum === enteredAadhaarNum || enteredAadhaarNum === "") {
+          setAadhaarVerificationId(savedVerificationId);
+
+          if (status === AADHAAR_STATUS.VERIFIED) {
+            setAadhaarStatus(AADHAAR_STATUS.VERIFIED);
+            setAadhaarData(parsedData);
+            setAadhaarAddress(parsedData.address);
+            setFormDisabled(false); // Unlock form
+          } else if (status === AADHAAR_STATUS.PENDING) {
+            setAadhaarStatus(AADHAAR_STATUS.PENDING);
+            pollForAadhaarData();
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error loading Aadhaar status:", error);
+    }
+  };
+
+  // Auto-check verification when Aadhaar number changes
+  useEffect(() => {
+    const checkExistingVerification = async () => {
+      if (
+        formData.aadharNumber.length === 12 &&
+        !isCheckingExistingVerification
+      ) {
+        setIsCheckingExistingVerification(true);
+
+        try {
+          const savedAadhaarData = await AsyncStorage.getItem("aadhaarData");
+          if (savedAadhaarData) {
+            const parsedData = JSON.parse(savedAadhaarData);
+            const savedAadhaarNum = parsedData.uid?.replace(/\D/g, "");
+            const enteredAadhaarNum = formData.aadharNumber.replace(/\D/g, "");
+
+            if (savedAadhaarNum === enteredAadhaarNum) {
+              // Same Aadhaar number, load existing verification
+              await loadAadhaarStatus();
+            } else {
+              // Different Aadhaar number, reset verification
+              setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
+              setAadhaarData(null);
+              setAadhaarAddress(null);
+              setFormDisabled(true);
+              setAadhaarVerificationId("");
+              await AsyncStorage.multiRemove([
+                "aadhaarVerificationId",
+                "aadhaarVerificationStatus",
+                "aadhaarData",
+              ]);
+            }
+          } else {
+            // No saved data, check if we have verification ID
+            const savedStatus = await AsyncStorage.getItem(
+              "aadhaarVerificationStatus"
+            );
+            if (savedStatus === AADHAAR_STATUS.VERIFIED) {
+              // Status says verified but no data, clear it
+              await AsyncStorage.multiRemove([
+                "aadhaarVerificationId",
+                "aadhaarVerificationStatus",
+                "aadhaarData",
+              ]);
+              setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
+              setFormDisabled(true);
+            }
+          }
+        } catch (error) {
+          console.error("Error checking existing verification:", error);
+        } finally {
+          setIsCheckingExistingVerification(false);
+        }
+      } else if (formData.aadharNumber.length < 12) {
+        setFormDisabled(true);
+        setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
+      }
+    };
+
+    const timeoutId = setTimeout(checkExistingVerification, 1000);
+    return () => clearTimeout(timeoutId);
+  }, [formData.aadharNumber]);
+
+  // Enable/disable form based on Aadhaar verification status
+  useEffect(() => {
+    if (aadhaarStatus === AADHAAR_STATUS.VERIFIED) {
+      setFormDisabled(false);
+    } else {
+      setFormDisabled(true);
+    }
+  }, [aadhaarStatus]);
 
   // SAVE FORM ON CHANGE
   useEffect(() => {
@@ -205,11 +348,221 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     if (validationErrors[field]) {
       setValidationErrors((prev) => ({ ...prev, [field]: "" }));
     }
+
+    // Clear Aadhaar verification if Aadhaar number changes
+    if (field === "aadharNumber" && aadhaarStatus === AADHAAR_STATUS.VERIFIED) {
+      setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
+      setAadhaarAddress(null);
+      setAadhaarData(null);
+      setFormDisabled(true);
+      AsyncStorage.multiRemove([
+        "aadhaarVerificationId",
+        "aadhaarVerificationStatus",
+        "aadhaarData",
+      ]);
+    }
+  };
+
+  // Enhanced AADHAAR VERIFICATION HANDLERS
+  const verifyAadhaar = async () => {
+    const aadhaarErr = validateAadhaar(formData.aadharNumber || "");
+    if (aadhaarErr) {
+      Alert.alert("Invalid Aadhaar", aadhaarErr);
+      return;
+    }
+
+    setLoading(true);
+    setAadhaarStatus(AADHAAR_STATUS.VERIFICATION_INITIATED);
+
+    try {
+      const verificationId = `VER_${Date.now()}_${Math.random()
+        .toString(36)
+        .substring(2, 9)}`;
+
+      setAadhaarVerificationId(verificationId);
+      await AsyncStorage.multiSet([
+        ["aadhaarVerificationId", verificationId],
+        ["aadhaarVerificationStatus", AADHAAR_STATUS.VERIFICATION_INITIATED],
+      ]);
+
+      const result = await startDigiLockerFlow({
+        verificationId,
+        redirectUrl: "https://bmgjewellers.com",
+      });
+
+      if (result.step === "URL_CREATED") {
+        // Open DigiLocker WebView
+        navigation.navigate("DigiLockerWebViewScreen", {
+          url: result.url,
+          verificationId,
+        });
+      } else {
+        throw new Error("Failed to start verification");
+      }
+    } catch (error) {
+      console.error("Verify Aadhaar error:", error);
+      setAadhaarStatus(AADHAAR_STATUS.FAILED);
+      Alert.alert("Error", "Failed to start Aadhaar verification");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const MAX_POLL_ATTEMPTS = 15;
+  const POLL_INTERVAL = 2000;
+
+  const pollForAadhaarData = async (attempt = 1) => {
+    try {
+      if (attempt === 1) {
+        setLoading(true);
+        setAadhaarPollingCount(0);
+        setAadhaarStatus(AADHAAR_STATUS.PENDING);
+        await AsyncStorage.setItem(
+          "aadhaarVerificationStatus",
+          AADHAAR_STATUS.PENDING
+        );
+      }
+
+      if (attempt > MAX_POLL_ATTEMPTS) {
+        setAadhaarStatus(AADHAAR_STATUS.EXPIRED);
+        await AsyncStorage.setItem(
+          "aadhaarVerificationStatus",
+          AADHAAR_STATUS.EXPIRED
+        );
+        setLoading(false);
+        Alert.alert(
+          "Verification Timeout",
+          "Aadhaar verification is taking longer than expected. Please try again."
+        );
+        return;
+      }
+
+      setAadhaarPollingCount(attempt);
+      const result = await verifyAndFetchAadhaarData(aadhaarVerificationId);
+
+      console.log("Poll result:", result);
+
+      if (result.step === "SUCCESS") {
+        const fetchedData = result.data;
+        const address = extractAddressFromAadhaar(fetchedData);
+
+        setAadhaarData(fetchedData);
+        setAadhaarAddress(address);
+        setAadhaarStatus(AADHAAR_STATUS.VERIFIED);
+
+        await AsyncStorage.multiSet([
+          ["aadhaarVerificationStatus", AADHAAR_STATUS.VERIFIED],
+          ["aadhaarData", JSON.stringify({ ...fetchedData, address })],
+        ]);
+
+        setLoading(false);
+
+        // Show address confirmation modal
+        setTimeout(() => {
+          setShowAddressConfirmModal(true);
+        }, 500);
+
+        return;
+      }
+
+      if (result.step === "PENDING") {
+        // Continue polling
+        setTimeout(() => pollForAadhaarData(attempt + 1), POLL_INTERVAL);
+        return;
+      }
+
+      if (result.step === "FAILED") {
+        throw new Error("Verification failed");
+      }
+    } catch (error) {
+      console.error("Polling error:", error);
+      setAadhaarStatus(AADHAAR_STATUS.FAILED);
+      await AsyncStorage.setItem(
+        "aadhaarVerificationStatus",
+        AADHAAR_STATUS.FAILED
+      );
+      setLoading(false);
+      Alert.alert(
+        "Verification Failed",
+        "Unable to verify Aadhaar. Please try again."
+      );
+    }
+  };
+
+  const extractAddressFromAadhaar = (aadhaarData) => {
+    // Based on your example response structure
+    if (!aadhaarData || !aadhaarData.split_address) {
+      return {
+        doorNo: "",
+        street: "",
+        area: "",
+        pincode: "",
+        city: "",
+        state: "",
+      };
+    }
+
+    const addr = aadhaarData.split_address;
+    return {
+      doorNo: addr.house || "",
+      street: addr.street || "",
+      area: addr.vtc || addr.locality || "",
+      pincode: addr.pincode || "",
+      city: addr.dist || addr.city || "",
+      state: addr.state || "",
+    };
+  };
+
+  // Clear Aadhaar verification
+  const clearAadhaarVerification = async () => {
+    try {
+      setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
+      setAadhaarVerificationId("");
+      setAadhaarData(null);
+      setAadhaarAddress(null);
+      setFormDisabled(true);
+
+      await AsyncStorage.multiRemove([
+        "aadhaarVerificationId",
+        "aadhaarVerificationStatus",
+        "aadhaarData",
+      ]);
+
+      Alert.alert("Cleared", "Aadhaar verification has been cleared.");
+    } catch (error) {
+      console.error("Error clearing Aadhaar:", error);
+    }
+  };
+
+  const handleUseAadhaarAddress = () => {
+    if (aadhaarAddress) {
+      setFormData((prev) => ({
+        ...prev,
+        doorNo: aadhaarAddress.doorNo || "",
+        street: aadhaarAddress.street || "",
+        area: aadhaarAddress.area || "",
+        pincode: aadhaarAddress.pincode || "",
+        city: aadhaarAddress.city || "",
+        state: aadhaarAddress.state || "",
+      }));
+    }
+    setShowAddressConfirmModal(false);
+  };
+
+  const handleManualAddress = () => {
+    setShowAddressConfirmModal(false);
   };
 
   // DATE HANDLERS
   const openDatePicker = (type) => {
-    // If editing existing date, parse it
+    if (formDisabled) {
+      Alert.alert(
+        "Action Required",
+        "Please verify Aadhaar first to fill other details."
+      );
+      return;
+    }
+
     if (type === "dob" && formData.dateOfBirth) {
       const [year, month, day] = formData.dateOfBirth.split("-");
       setSelectedDate({ day, month, year });
@@ -217,7 +570,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
       const [year, month, day] = formData.anniversaryDate.split("-");
       setSelectedDate({ day, month, year });
     } else {
-      // Default to 1st Jan 1990
       setSelectedDate({ day: "01", month: "01", year: "1990" });
     }
     setShowDatePicker(type);
@@ -248,6 +600,13 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
 
   // MARITAL STATUS HANDLER
   const handleMaritalStatus = (status) => {
+    if (formDisabled) {
+      Alert.alert(
+        "Action Required",
+        "Please verify Aadhaar first to fill other details."
+      );
+      return;
+    }
     updateField("maritalStatus", status);
     if (status === "unmarried") {
       updateField("anniversaryDate", "");
@@ -255,21 +614,45 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   };
 
   // Special handlers
-  const handleMobile = (t) => updateField("mobile", t.replace(/\D/g, ""));
+  const handleMobile = (t) => {
+    if (formDisabled) return;
+    updateField("mobile", t.replace(/\D/g, ""));
+  };
 
-  const handleNomineeMobile = (t) =>
+  const handleNomineeMobile = (t) => {
+    if (formDisabled) return;
     updateField("mobile2", t.replace(/\D/g, ""));
+  };
 
-  const handlePincode = (t) => updateField("pincode", t.replace(/\D/g, ""));
+  const handlePincode = (t) => {
+    if (formDisabled) return;
+    updateField("pincode", t.replace(/\D/g, ""));
+  };
 
-  const handlePan = (t) =>
+  const handlePan = (t) => {
+    if (formDisabled) return;
     updateField("panNumber", t.replace(/[^A-Za-z0-9]/g, "").toUpperCase());
+  };
 
-  const handleAadhar = (t) => updateField("aadharNumber", t.replace(/\D/g, ""));
+  const handleAadhar = (t) => {
+    const cleanValue = t.replace(/\D/g, "");
+    updateField("aadharNumber", cleanValue);
+
+    // If Aadhaar number changes and was previously verified, clear verification
+    if (cleanValue.length !== 12 && aadhaarStatus === AADHAAR_STATUS.VERIFIED) {
+      clearAadhaarVerification();
+    }
+  };
 
   // VALIDATION
   const validate = (d) => {
     const errors = {};
+
+    // Check Aadhaar verification first
+    if (aadhaarStatus !== AADHAAR_STATUS.VERIFIED) {
+      errors.aadharNumber = "Please complete Aadhaar verification first";
+      return errors;
+    }
 
     // Name validation
     if (!d.name?.trim()) {
@@ -291,7 +674,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         monthDiff < 0 ||
         (monthDiff === 0 && today.getDate() < dob.getDate())
       ) {
-        // Subtract a year if birthday hasn't occurred this year
         const adjustedAge = age - 1;
         if (adjustedAge < 18) {
           errors.dateOfBirth = "You must be at least 18 years old";
@@ -358,10 +740,14 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
       if (panErr) errors.panNumber = panErr;
     }
 
-    // Aadhaar validation (optional)
-    if (d.aadharNumber?.trim()) {
+    // Aadhaar validation
+    if (!d.aadharNumber?.trim()) {
+      errors.aadharNumber = "Aadhaar is required";
+    } else {
       const aErr = validateAadhaar(d.aadharNumber);
-      if (aErr) errors.aadharNumber = aErr;
+      if (aErr) {
+        errors.aadharNumber = aErr;
+      }
     }
 
     setValidationErrors(errors);
@@ -390,12 +776,16 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         country: "India",
         panNumber: formData.panNumber,
         aadharNumber: formData.aadharNumber,
+        aadhaarVerified: aadhaarStatus === AADHAAR_STATUS.VERIFIED,
         nomeni: formData.nomeni.trim(),
         mobile2: formData.mobile2,
       };
 
       console.log("Transformed data for AddNewMember:", transformedData);
-      onNext(transformedData);
+      navigation.navigate("SchemeDetailsPage", {
+        memberData: transformedData,
+      });
+
       return;
     }
 
@@ -418,6 +808,11 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   // CLEAR DATA
   const clearSavedData = async () => {
     await AsyncStorage.removeItem("digigoldMemberForm");
+    await AsyncStorage.multiRemove([
+      "aadhaarVerificationId",
+      "aadhaarVerificationStatus",
+      "aadhaarData",
+    ]);
 
     setFormData((prev) => ({
       ...INITIAL_FORM,
@@ -425,22 +820,44 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     }));
 
     setValidationErrors({});
+    setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
+    setAadhaarAddress(null);
+    setAadhaarData(null);
+    setFormDisabled(true);
     Alert.alert("Cleared", "Form data reset (mobile number preserved).");
   };
 
-  // Helper function to render input
-  const renderInput = (field, label, handler) => {
+  // Helper function to render input with disabled state
+  const renderInput = (field, label, handler, isRequired = true) => {
+    const isAadhaarField = field === "aadharNumber";
+    const isDisabled = formDisabled && !isAadhaarField;
+
     return (
       <View style={styles.inputGroup}>
-        <Text style={styles.label}>{label}</Text>
+        <Text style={[styles.label, isDisabled && styles.disabledLabel]}>
+          {label} {isRequired ? "*" : ""}
+        </Text>
         <TextInput
-          style={[styles.input, validationErrors[field] && styles.errorInput]}
+          style={[
+            styles.input,
+            validationErrors[field] && styles.errorInput,
+            isDisabled && styles.disabledInput,
+            field === "aadharNumber" &&
+              aadhaarStatus === AADHAAR_STATUS.VERIFIED &&
+              styles.verifiedInput,
+          ]}
           value={formData[field]}
           onChangeText={handler || ((t) => updateField(field, t))}
           onFocus={() => setActiveInput(field)}
           ref={(ref) => (inputRefs.current[field] = ref)}
           placeholder={`Enter ${label}`}
-          placeholderTextColor={COLORS.inputPlaceholder}
+          placeholderTextColor={
+            isDisabled
+              ? COLORS.inputPlaceholderDisabled
+              : COLORS.inputPlaceholder
+          }
+          editable={!isDisabled}
+          selectTextOnFocus={!isDisabled}
         />
 
         {validationErrors[field] && (
@@ -545,6 +962,215 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     );
   };
 
+  // Enhanced Aadhaar verification UI component
+  const renderAadhaarVerification = () => (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>
+        Step 1: Aadhaar Verification (Mandatory)
+      </Text>
+
+      <View style={styles.inputGroup}>
+        <View style={styles.aadhaarHeader}>
+          <Text style={styles.label}>Aadhaar Number *</Text>
+
+          {/* Status Badge */}
+          {aadhaarStatus === AADHAAR_STATUS.VERIFIED && (
+            <View style={styles.verifiedBadge}>
+              <MaterialIcons name="verified" size={16} color={COLORS.success} />
+              <Text style={styles.verifiedText}>Verified</Text>
+            </View>
+          )}
+          {aadhaarStatus === AADHAAR_STATUS.PENDING && (
+            <View style={styles.pendingBadge}>
+              <ActivityIndicator size="small" color={COLORS.warning} />
+              <Text style={styles.pendingText}>Verifying...</Text>
+            </View>
+          )}
+          {aadhaarStatus === AADHAAR_STATUS.FAILED && (
+            <View style={styles.failedBadge}>
+              <MaterialIcons name="error" size={16} color={COLORS.error} />
+              <Text style={styles.failedText}>Failed</Text>
+            </View>
+          )}
+          {aadhaarStatus === AADHAAR_STATUS.VERIFICATION_INITIATED && (
+            <View style={styles.initiatedBadge}>
+              <MaterialIcons
+                name="hourglass-empty"
+                size={16}
+                color={COLORS.info}
+              />
+              <Text style={styles.initiatedText}>Initiated</Text>
+            </View>
+          )}
+        </View>
+
+        <View style={styles.aadhaarContainer}>
+          <TextInput
+            style={[
+              styles.input,
+              styles.aadhaarInput,
+              validationErrors.aadharNumber && styles.errorInput,
+              aadhaarStatus === AADHAAR_STATUS.VERIFIED && styles.verifiedInput,
+              aadhaarStatus === AADHAAR_STATUS.PENDING && styles.pendingInput,
+            ]}
+            value={formData.aadharNumber}
+            onChangeText={handleAadhar}
+            onFocus={() => setActiveInput("aadharNumber")}
+            ref={(ref) => (inputRefs.current.aadharNumber = ref)}
+            placeholder="Enter 12-digit Aadhaar Number"
+            placeholderTextColor={COLORS.inputPlaceholder}
+            keyboardType="numeric"
+            editable={aadhaarStatus !== AADHAAR_STATUS.VERIFIED}
+            maxLength={12}
+            autoFocus={true}
+          />
+
+          {/* Action Buttons */}
+          <View style={styles.aadhaarActions}>
+            {aadhaarStatus === AADHAAR_STATUS.VERIFIED ? (
+              <>
+                <TouchableOpacity
+                  style={[styles.aadhaarButton, styles.viewDetailsButton]}
+                  onPress={() => {
+                    if (aadhaarData) {
+                      Alert.alert(
+                        "Aadhaar Details",
+                        `Name: ${aadhaarData.name || "Not available"}\n` +
+                          `DOB: ${aadhaarData.dob || "Not available"}\n` +
+                          `Gender: ${aadhaarData.gender || "Not available"}\n` +
+                          `Address: ${aadhaarAddress?.doorNo || ""}, ${
+                            aadhaarAddress?.street || ""
+                          }, ${aadhaarAddress?.area || ""}`
+                      );
+                    }
+                  }}
+                >
+                  <MaterialIcons
+                    name="visibility"
+                    size={16}
+                    color={COLORS.primary}
+                  />
+                  <Text style={styles.viewDetailsText}>View</Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[styles.aadhaarButton, styles.clearButton]}
+                  onPress={clearAadhaarVerification}
+                >
+                  <MaterialIcons name="close" size={16} color={COLORS.error} />
+                  <Text style={styles.clearText}>Clear</Text>
+                </TouchableOpacity>
+              </>
+            ) : (
+              <TouchableOpacity
+                style={[
+                  styles.verifyButton,
+                  loading && styles.verifyButtonDisabled,
+                  aadhaarStatus === AADHAAR_STATUS.PENDING &&
+                    styles.pendingButton,
+                  formData.aadharNumber.length !== 12 &&
+                    styles.verifyButtonDisabled,
+                ]}
+                onPress={verifyAadhaar}
+                disabled={
+                  loading ||
+                  formData.aadharNumber.length !== 12 ||
+                  aadhaarStatus === AADHAAR_STATUS.PENDING ||
+                  aadhaarStatus === AADHAAR_STATUS.VERIFICATION_INITIATED
+                }
+              >
+                {aadhaarStatus === AADHAAR_STATUS.PENDING ? (
+                  <>
+                    <ActivityIndicator size="small" color={COLORS.white} />
+                    <Text style={styles.verifyButtonText}>
+                      Verifying ({aadhaarPollingCount}/{MAX_POLL_ATTEMPTS})
+                    </Text>
+                  </>
+                ) : aadhaarStatus === AADHAAR_STATUS.VERIFICATION_INITIATED ? (
+                  <Text style={styles.verifyButtonText}>Initializing...</Text>
+                ) : (
+                  <>
+                    <MaterialIcons
+                      name="verified-user"
+                      size={18}
+                      color={COLORS.white}
+                    />
+                    <Text style={styles.verifyButtonText}>
+                      {aadhaarStatus === AADHAAR_STATUS.FAILED
+                        ? "Retry"
+                        : "Verify"}
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            )}
+          </View>
+        </View>
+
+        {validationErrors.aadharNumber && (
+          <Text style={styles.errorText}>{validationErrors.aadharNumber}</Text>
+        )}
+
+        {/* Status Messages */}
+        <View style={styles.statusMessages}>
+          {aadhaarStatus === AADHAAR_STATUS.NOT_STARTED && (
+            <Text style={styles.aadhaarNote}>
+              Please enter your 12-digit Aadhaar number and click "Verify" to
+              authenticate via DigiLocker. Other fields will be unlocked after
+              successful verification.
+            </Text>
+          )}
+          {aadhaarStatus === AADHAAR_STATUS.VERIFICATION_INITIATED && (
+            <Text style={styles.infoNote}>
+              Verification initiated. Please complete the process in DigiLocker.
+            </Text>
+          )}
+          {aadhaarStatus === AADHAAR_STATUS.PENDING && (
+            <Text style={styles.infoNote}>
+              Waiting for verification to complete... This may take a few
+              moments.
+            </Text>
+          )}
+          {aadhaarStatus === AADHAAR_STATUS.VERIFIED && (
+            <Text style={styles.successNote}>
+              ✓ Aadhaar successfully verified! You can now fill the remaining
+              details.
+            </Text>
+          )}
+          {aadhaarStatus === AADHAAR_STATUS.FAILED && (
+            <Text style={styles.errorNote}>
+              ✗ Verification failed. Please try again.
+            </Text>
+          )}
+          {aadhaarStatus === AADHAAR_STATUS.EXPIRED && (
+            <Text style={styles.errorNote}>
+              ⚠ Verification session expired. Please start again.
+            </Text>
+          )}
+        </View>
+      </View>
+    </View>
+  );
+
+  // Helper to render section with lock state
+  const renderSection = (title, children, isLocked = false) => {
+    return (
+      <View style={[styles.section, isLocked && styles.lockedSection]}>
+        <View style={styles.sectionHeader}>
+          <Text style={[styles.sectionTitle, isLocked && styles.lockedTitle]}>
+            {title}
+            {isLocked && " 🔒"}
+          </Text>
+          {isLocked && (
+            <Text style={styles.lockedMessage}>
+              Complete Aadhaar verification to unlock
+            </Text>
+          )}
+        </View>
+        {children}
+      </View>
+    );
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -565,309 +1191,400 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
           </TouchableOpacity>
 
           <Text style={styles.headerTitle}>Confirm Your KYC Details</Text>
-          <Text style={styles.headerSubtitle}>To Join Our Schemes</Text>
+          <Text style={styles.headerSubtitle}>
+            {formDisabled ? "Verify Aadhaar First" : "To Join Our Schemes"}
+          </Text>
 
           <TouchableOpacity onPress={clearSavedData} style={styles.clearBtn}>
             <MaterialIcons name="delete" size={22} color={COLORS.white} />
           </TouchableOpacity>
         </View>
 
-        {/* BASIC DETAILS */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Basic Details</Text>
+        {/* AADHAAR VERIFICATION - Always first */}
+        {renderAadhaarVerification()}
 
-          {/* Name */}
-          {renderInput("name", "Name *")}
+        {/* BASIC DETAILS - Conditionally locked */}
+        {renderSection(
+          "Basic Details",
+          <>
+            {renderInput("name", "Name", null, true)}
 
-          {/* Date of Birth */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Date of Birth *</Text>
-            <TouchableOpacity
-              style={[
-                styles.input,
-                validationErrors.dateOfBirth && styles.errorInput,
-              ]}
-              onPress={() => openDatePicker("dob")}
-            >
-              <Text
-                style={
-                  formData.dateOfBirth
-                    ? styles.dateText
-                    : styles.placeholderText
-                }
-              >
-                {formData.dateOfBirth
-                  ? formatDateDisplay(formData.dateOfBirth)
-                  : "Select Date of Birth"}
-              </Text>
-              <MaterialIcons
-                name="calendar-today"
-                size={20}
-                color={COLORS.textSecondary}
-                style={styles.dateIcon}
-              />
-            </TouchableOpacity>
-            {validationErrors.dateOfBirth && (
-              <Text style={styles.errorText}>
-                {validationErrors.dateOfBirth}
-              </Text>
-            )}
-          </View>
-
-          {/* Marital Status */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Marital Status *</Text>
-            <View style={styles.checkboxContainer}>
-              <TouchableOpacity
-                style={[
-                  styles.checkbox,
-                  formData.maritalStatus === "married" &&
-                    styles.checkboxSelected,
-                ]}
-                onPress={() => handleMaritalStatus("married")}
-              >
-                <Text
-                  style={[
-                    styles.checkboxText,
-                    formData.maritalStatus === "married" &&
-                      styles.checkboxTextSelected,
-                  ]}
-                >
-                  Married
-                </Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[
-                  styles.checkbox,
-                  formData.maritalStatus === "unmarried" &&
-                    styles.checkboxSelected,
-                ]}
-                onPress={() => handleMaritalStatus("unmarried")}
-              >
-                <Text
-                  style={[
-                    styles.checkboxText,
-                    formData.maritalStatus === "unmarried" &&
-                      styles.checkboxTextSelected,
-                  ]}
-                >
-                  Unmarried
-                </Text>
-              </TouchableOpacity>
-            </View>
-            {validationErrors.maritalStatus && (
-              <Text style={styles.errorText}>
-                {validationErrors.maritalStatus}
-              </Text>
-            )}
-          </View>
-
-          {/* Anniversary Date (only show if married) */}
-          {formData.maritalStatus === "married" && (
+            {/* Date of Birth */}
             <View style={styles.inputGroup}>
-              <Text style={styles.label}>Anniversary Date *</Text>
+              <Text
+                style={[styles.label, formDisabled && styles.disabledLabel]}
+              >
+                Date of Birth *
+              </Text>
               <TouchableOpacity
                 style={[
                   styles.input,
-                  validationErrors.anniversaryDate && styles.errorInput,
+                  validationErrors.dateOfBirth && styles.errorInput,
+                  formDisabled && styles.disabledInput,
                 ]}
-                onPress={() => openDatePicker("anniversary")}
+                onPress={() => openDatePicker("dob")}
+                disabled={formDisabled}
               >
                 <Text
-                  style={
-                    formData.anniversaryDate
+                  style={[
+                    formData.dateOfBirth
                       ? styles.dateText
-                      : styles.placeholderText
-                  }
+                      : styles.placeholderText,
+                    formDisabled && styles.disabledText,
+                  ]}
                 >
-                  {formData.anniversaryDate
-                    ? formatDateDisplay(formData.anniversaryDate)
-                    : "Select Anniversary Date"}
+                  {formData.dateOfBirth
+                    ? formatDateDisplay(formData.dateOfBirth)
+                    : "Select Date of Birth"}
                 </Text>
                 <MaterialIcons
-                  name="event"
+                  name="calendar-today"
                   size={20}
-                  color={COLORS.textSecondary}
+                  color={
+                    formDisabled
+                      ? COLORS.inputPlaceholderDisabled
+                      : COLORS.textSecondary
+                  }
                   style={styles.dateIcon}
                 />
               </TouchableOpacity>
-              {validationErrors.anniversaryDate && (
+              {validationErrors.dateOfBirth && (
                 <Text style={styles.errorText}>
-                  {validationErrors.anniversaryDate}
+                  {validationErrors.dateOfBirth}
                 </Text>
               )}
             </View>
-          )}
 
-          {/* Mobile */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Mobile Number *</Text>
-            <View style={styles.mobileInput}>
-              <Text style={styles.countryCode}>+91</Text>
+            {/* Marital Status */}
+            <View style={styles.inputGroup}>
+              <Text
+                style={[styles.label, formDisabled && styles.disabledLabel]}
+              >
+                Marital Status *
+              </Text>
+              <View style={styles.checkboxContainer}>
+                <TouchableOpacity
+                  style={[
+                    styles.checkbox,
+                    formData.maritalStatus === "married" &&
+                      styles.checkboxSelected,
+                    formDisabled && styles.disabledCheckbox,
+                  ]}
+                  onPress={() => handleMaritalStatus("married")}
+                  disabled={formDisabled}
+                >
+                  <Text
+                    style={[
+                      styles.checkboxText,
+                      formData.maritalStatus === "married" &&
+                        styles.checkboxTextSelected,
+                      formDisabled && styles.disabledText,
+                    ]}
+                  >
+                    Married
+                  </Text>
+                </TouchableOpacity>
+                <TouchableOpacity
+                  style={[
+                    styles.checkbox,
+                    formData.maritalStatus === "unmarried" &&
+                      styles.checkboxSelected,
+                    formDisabled && styles.disabledCheckbox,
+                  ]}
+                  onPress={() => handleMaritalStatus("unmarried")}
+                  disabled={formDisabled}
+                >
+                  <Text
+                    style={[
+                      styles.checkboxText,
+                      formData.maritalStatus === "unmarried" &&
+                        styles.checkboxTextSelected,
+                      formDisabled && styles.disabledText,
+                    ]}
+                  >
+                    Unmarried
+                  </Text>
+                </TouchableOpacity>
+              </View>
+              {validationErrors.maritalStatus && (
+                <Text style={styles.errorText}>
+                  {validationErrors.maritalStatus}
+                </Text>
+              )}
+            </View>
+
+            {/* Anniversary Date (only show if married) */}
+            {formData.maritalStatus === "married" && (
+              <View style={styles.inputGroup}>
+                <Text
+                  style={[styles.label, formDisabled && styles.disabledLabel]}
+                >
+                  Anniversary Date *
+                </Text>
+                <TouchableOpacity
+                  style={[
+                    styles.input,
+                    validationErrors.anniversaryDate && styles.errorInput,
+                    formDisabled && styles.disabledInput,
+                  ]}
+                  onPress={() => openDatePicker("anniversary")}
+                  disabled={formDisabled}
+                >
+                  <Text
+                    style={[
+                      formData.anniversaryDate
+                        ? styles.dateText
+                        : styles.placeholderText,
+                      formDisabled && styles.disabledText,
+                    ]}
+                  >
+                    {formData.anniversaryDate
+                      ? formatDateDisplay(formData.anniversaryDate)
+                      : "Select Anniversary Date"}
+                  </Text>
+                  <MaterialIcons
+                    name="event"
+                    size={20}
+                    color={
+                      formDisabled
+                        ? COLORS.inputPlaceholderDisabled
+                        : COLORS.textSecondary
+                    }
+                    style={styles.dateIcon}
+                  />
+                </TouchableOpacity>
+                {validationErrors.anniversaryDate && (
+                  <Text style={styles.errorText}>
+                    {validationErrors.anniversaryDate}
+                  </Text>
+                )}
+              </View>
+            )}
+
+            {/* Mobile */}
+            <View style={styles.inputGroup}>
+              <Text
+                style={[styles.label, formDisabled && styles.disabledLabel]}
+              >
+                Mobile Number *
+              </Text>
+              <View
+                style={[
+                  styles.mobileInput,
+                  formDisabled && styles.disabledInput,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.countryCode,
+                    formDisabled && styles.disabledText,
+                  ]}
+                >
+                  +91
+                </Text>
+                <TextInput
+                  style={[
+                    styles.mobileField,
+                    validationErrors.mobile && styles.errorInput,
+                    formDisabled && styles.disabledText,
+                  ]}
+                  value={formData.mobile}
+                  editable={!formDisabled}
+                  keyboardType="numeric"
+                  onChangeText={handleMobile}
+                  placeholder="Enter Mobile Number"
+                  placeholderTextColor={
+                    formDisabled
+                      ? COLORS.inputPlaceholderDisabled
+                      : COLORS.inputPlaceholder
+                  }
+                  onFocus={() => setActiveInput("mobile")}
+                  ref={(ref) => (inputRefs.current.mobile = ref)}
+                />
+              </View>
+              {validationErrors.mobile && (
+                <Text style={styles.errorText}>{validationErrors.mobile}</Text>
+              )}
+            </View>
+
+            {/* Email */}
+            {renderInput("email", "Email", null, true)}
+          </>,
+          formDisabled
+        )}
+
+        {/* ADDRESS - Conditionally locked */}
+        {renderSection(
+          "Address",
+          <>
+            {renderInput("doorNo", "Door No.", null, true)}
+            {renderInput("street", "Street", null, true)}
+            {renderInput("area", "Area / Locality", null, true)}
+
+            {/* PIN */}
+            <View style={styles.inputGroup}>
+              <Text
+                style={[styles.label, formDisabled && styles.disabledLabel]}
+              >
+                PIN Code *
+              </Text>
               <TextInput
                 style={[
-                  styles.mobileField,
-                  validationErrors.mobile && styles.errorInput,
+                  styles.input,
+                  validationErrors.pincode && styles.errorInput,
+                  formDisabled && styles.disabledInput,
                 ]}
-                value={formData.mobile}
-                editable={false}
+                value={formData.pincode}
                 keyboardType="numeric"
-                onChangeText={handleMobile}
-                placeholder="Enter Mobile Number"
-                placeholderTextColor={COLORS.inputPlaceholder}
-                onFocus={() => setActiveInput("mobile")}
-                ref={(ref) => (inputRefs.current.mobile = ref)}
+                onFocus={() => setActiveInput("pincode")}
+                onChangeText={handlePincode}
+                ref={(ref) => (inputRefs.current.pincode = ref)}
+                placeholder="Enter PIN Code"
+                placeholderTextColor={
+                  formDisabled
+                    ? COLORS.inputPlaceholderDisabled
+                    : COLORS.inputPlaceholder
+                }
+                editable={!formDisabled}
               />
+              {validationErrors.pincode && (
+                <Text style={styles.errorText}>{validationErrors.pincode}</Text>
+              )}
             </View>
-            {validationErrors.mobile && (
-              <Text style={styles.errorText}>{validationErrors.mobile}</Text>
-            )}
-          </View>
 
-          {/* Email */}
-          {renderInput("email", "Email *")}
-        </View>
+            {/* DISTRICT */}
+            <View style={styles.inputGroup}>
+              <Text
+                style={[styles.label, formDisabled && styles.disabledLabel]}
+              >
+                District *
+              </Text>
+              <TextInput
+                style={[styles.input, formDisabled && styles.disabledInput]}
+                value={formData.city}
+                editable={false}
+                selectTextOnFocus={false}
+                placeholder="Auto-filled"
+                placeholderTextColor={
+                  formDisabled
+                    ? COLORS.inputPlaceholderDisabled
+                    : COLORS.inputPlaceholder
+                }
+              />
+              {validationErrors.city && (
+                <Text style={styles.errorText}>{validationErrors.city}</Text>
+              )}
+            </View>
 
-        {/* ADDRESS */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Address</Text>
+            {/* STATE */}
+            <View style={styles.inputGroup}>
+              <Text
+                style={[styles.label, formDisabled && styles.disabledLabel]}
+              >
+                State *
+              </Text>
+              <TextInput
+                style={[styles.input, formDisabled && styles.disabledInput]}
+                value={formData.state}
+                editable={false}
+                selectTextOnFocus={false}
+                placeholder="Auto-filled"
+                placeholderTextColor={
+                  formDisabled
+                    ? COLORS.inputPlaceholderDisabled
+                    : COLORS.inputPlaceholder
+                }
+              />
+              {validationErrors.state && (
+                <Text style={styles.errorText}>{validationErrors.state}</Text>
+              )}
+            </View>
+          </>,
+          formDisabled
+        )}
 
-          {renderInput("doorNo", "Door No. *")}
-          {renderInput("street", "Street *")}
-          {renderInput("area", "Area / Locality *")}
-
-          {/* PIN */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>PIN Code *</Text>
-            <TextInput
-              style={[
-                styles.input,
-                validationErrors.pincode && styles.errorInput,
-              ]}
-              value={formData.pincode}
-              keyboardType="numeric"
-              onFocus={() => setActiveInput("pincode")}
-              onChangeText={handlePincode}
-              ref={(ref) => (inputRefs.current.pincode = ref)}
-              placeholder="Enter PIN Code"
-              placeholderTextColor={COLORS.inputPlaceholder}
-            />
-            {validationErrors.pincode && (
-              <Text style={styles.errorText}>{validationErrors.pincode}</Text>
-            )}
-          </View>
-
-          {/* DISTRICT */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>District *</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.city}
-              editable={false}
-              selectTextOnFocus={false}
-              placeholder="Auto-filled"
-              placeholderTextColor={COLORS.inputPlaceholder}
-            />
-            {validationErrors.city && (
-              <Text style={styles.errorText}>{validationErrors.city}</Text>
-            )}
-          </View>
-
-          {/* STATE */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>State *</Text>
-            <TextInput
-              style={styles.input}
-              value={formData.state}
-              editable={false}
-              selectTextOnFocus={false}
-              placeholder="Auto-filled"
-              placeholderTextColor={COLORS.inputPlaceholder}
-            />
-            {validationErrors.state && (
-              <Text style={styles.errorText}>{validationErrors.state}</Text>
-            )}
-          </View>
-        </View>
+        {/* PAN (Optional) */}
+        {renderSection(
+          "PAN Card (Optional)",
+          <>
+            <Text style={styles.optionalNote}>
+              PAN is optional but recommended for financial transactions.
+            </Text>
+            {renderInput("panNumber", "PAN Number", handlePan, false)}
+          </>,
+          formDisabled
+        )}
 
         {/* NOMINEE */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Nominee Details</Text>
+        {renderSection(
+          "Nominee Details",
+          <>
+            {renderInput("nomeni", "Nominee Name", null, true)}
 
-          {renderInput("nomeni", "Nominee Name *")}
-
-          {/* Nominee Mobile */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Nominee Mobile Number *</Text>
-            <View style={styles.mobileInput}>
-              <Text style={styles.countryCode}>+91</Text>
-              <TextInput
-                style={[styles.mobileField]}
-                value={formData.mobile2}
-                onChangeText={handleNomineeMobile}
-                onFocus={() => setActiveInput("mobile2")}
-                ref={(ref) => (inputRefs.current.mobile2 = ref)}
-                placeholder="Enter Nominee Mobile"
-                keyboardType="numeric"
-              />
-            </View>
-            {validationErrors.mobile2 && (
-              <Text style={styles.errorText}>{validationErrors.mobile2}</Text>
-            )}
-          </View>
-        </View>
-
-        {/* OPTIONAL KYC */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>KYC Documents (Optional)</Text>
-          <Text style={styles.optionalNote}>
-            These documents are optional but recommended.
-          </Text>
-
-          {/* PAN */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>PAN Number</Text>
-            <TextInput
-              style={[styles.input]}
-              value={formData.panNumber}
-              onChangeText={handlePan}
-              onFocus={() => setActiveInput("panNumber")}
-              ref={(ref) => (inputRefs.current.panNumber = ref)}
-              placeholder="Enter PAN Number"
-              placeholderTextColor={COLORS.inputPlaceholder}
-            />
-            {validationErrors.panNumber && (
-              <Text style={styles.errorText}>{validationErrors.panNumber}</Text>
-            )}
-          </View>
-
-          {/* Aadhar */}
-          <View style={styles.inputGroup}>
-            <Text style={styles.label}>Aadhar Number</Text>
-            <TextInput
-              style={[
-                styles.input,
-                validationErrors.aadharNumber && styles.errorInput,
-              ]}
-              value={formData.aadharNumber}
-              onChangeText={handleAadhar}
-              onFocus={() => setActiveInput("aadharNumber")}
-              ref={(ref) => (inputRefs.current.aadharNumber = ref)}
-              placeholder="Enter Aadhar Number"
-              placeholderTextColor={COLORS.inputPlaceholder}
-              keyboardType="numeric"
-            />
-            {validationErrors.aadharNumber && (
-              <Text style={styles.errorText}>
-                {validationErrors.aadharNumber}
+            {/* Nominee Mobile */}
+            <View style={styles.inputGroup}>
+              <Text
+                style={[styles.label, formDisabled && styles.disabledLabel]}
+              >
+                Nominee Mobile Number *
               </Text>
-            )}
-          </View>
-        </View>
+              <View
+                style={[
+                  styles.mobileInput,
+                  formDisabled && styles.disabledInput,
+                ]}
+              >
+                <Text
+                  style={[
+                    styles.countryCode,
+                    formDisabled && styles.disabledText,
+                  ]}
+                >
+                  +91
+                </Text>
+                <TextInput
+                  style={[
+                    styles.mobileField,
+                    formDisabled && styles.disabledText,
+                  ]}
+                  value={formData.mobile2}
+                  onChangeText={handleNomineeMobile}
+                  onFocus={() => setActiveInput("mobile2")}
+                  ref={(ref) => (inputRefs.current.mobile2 = ref)}
+                  placeholder="Enter Nominee Mobile"
+                  keyboardType="numeric"
+                  editable={!formDisabled}
+                  placeholderTextColor={
+                    formDisabled
+                      ? COLORS.inputPlaceholderDisabled
+                      : COLORS.inputPlaceholder
+                  }
+                />
+              </View>
+              {validationErrors.mobile2 && (
+                <Text style={styles.errorText}>{validationErrors.mobile2}</Text>
+              )}
+            </View>
+          </>,
+          formDisabled
+        )}
 
         {/* CONFIRM BUTTON */}
-        <TouchableOpacity style={styles.confirmBtn} onPress={handleNext}>
-          <Text style={styles.confirmText}>Confirm</Text>
+        <TouchableOpacity
+          style={[
+            styles.confirmBtn,
+            (loading || formDisabled) && styles.confirmBtnDisabled,
+          ]}
+          onPress={handleNext}
+          disabled={loading || formDisabled}
+        >
+          {loading ? (
+            <ActivityIndicator size="small" color={COLORS.white} />
+          ) : (
+            <Text style={styles.confirmText}>
+              {formDisabled ? "Verify Aadhaar First" : "Confirm"}
+            </Text>
+          )}
         </TouchableOpacity>
       </ScrollView>
 
@@ -909,6 +1626,82 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                 onPress={handleDateConfirm}
               >
                 <Text style={styles.setButtonText}>Confirm Date</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
+        </View>
+      </Modal>
+
+      {/* ADDRESS CONFIRMATION MODAL */}
+      <Modal
+        visible={showAddressConfirmModal}
+        transparent
+        animationType="slide"
+        onRequestClose={handleManualAddress}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContent}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Aadhaar Address Found</Text>
+              <TouchableOpacity onPress={handleManualAddress}>
+                <MaterialIcons
+                  name="close"
+                  size={24}
+                  color={COLORS.textPrimary}
+                />
+              </TouchableOpacity>
+            </View>
+
+            <Text style={styles.modalSubtitle}>
+              We found your address from Aadhaar:
+            </Text>
+
+            <View style={styles.addressPreview}>
+              {aadhaarAddress?.doorNo ? (
+                <Text style={styles.addressText}>
+                  {aadhaarAddress.doorNo}, {aadhaarAddress.street}
+                </Text>
+              ) : null}
+              {aadhaarAddress?.area ? (
+                <Text style={styles.addressText}>{aadhaarAddress.area}</Text>
+              ) : null}
+              {(aadhaarAddress?.city ||
+                aadhaarAddress?.state ||
+                aadhaarAddress?.pincode) && (
+                <Text style={styles.addressText}>
+                  {aadhaarAddress.city || ""}
+                  {aadhaarAddress.city && aadhaarAddress.state ? ", " : ""}
+                  {aadhaarAddress.state || ""}
+                  {aadhaarAddress.pincode ? ` - ${aadhaarAddress.pincode}` : ""}
+                </Text>
+              )}
+              {!aadhaarAddress?.doorNo &&
+                !aadhaarAddress?.area &&
+                !aadhaarAddress?.city &&
+                !aadhaarAddress?.state &&
+                !aadhaarAddress?.pincode && (
+                  <Text style={styles.addressText}>
+                    Address details not available in Aadhaar data
+                  </Text>
+                )}
+            </View>
+
+            <Text style={styles.modalQuestion}>
+              Would you like to use this address?
+            </Text>
+
+            <View style={styles.modalButtons}>
+              <TouchableOpacity
+                style={[styles.cancelButton, styles.wideButton]}
+                onPress={handleManualAddress}
+              >
+                <Text style={styles.cancelButtonText}>No, Enter Manually</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.setButton, styles.wideButton]}
+                onPress={handleUseAadhaarAddress}
+              >
+                <Text style={styles.setButtonText}>Yes, Use This Address</Text>
               </TouchableOpacity>
             </View>
           </View>
@@ -969,10 +1762,25 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
+  lockedSection: {
+    opacity: 0.7,
+    backgroundColor: COLORS.inputBackground,
+  },
+  sectionHeader: {
+    marginBottom: SIZES.margin.md,
+  },
   sectionTitle: {
     ...FONTS.h5,
     color: COLORS.textPrimary,
-    marginBottom: SIZES.margin.md,
+  },
+  lockedTitle: {
+    color: COLORS.textSecondary,
+  },
+  lockedMessage: {
+    ...FONTS.caption,
+    color: COLORS.warning,
+    marginTop: SIZES.margin.xs,
+    fontStyle: "italic",
   },
   optionalNote: {
     ...FONTS.caption,
@@ -988,6 +1796,9 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     marginBottom: SIZES.margin.xs,
   },
+  disabledLabel: {
+    color: COLORS.textSecondary,
+  },
   input: {
     height: SIZES.input.height,
     backgroundColor: COLORS.inputBackground,
@@ -1002,9 +1813,22 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "space-between",
   },
+  disabledInput: {
+    backgroundColor: COLORS.inputBackground,
+    borderColor: COLORS.borderLight,
+    opacity: 0.7,
+  },
   errorInput: {
     borderColor: COLORS.error,
     borderWidth: 2,
+  },
+  verifiedInput: {
+    borderColor: COLORS.success,
+    backgroundColor: COLORS.successLight,
+  },
+  pendingInput: {
+    borderColor: COLORS.warning,
+    backgroundColor: COLORS.warningLight,
   },
   dateText: {
     ...FONTS.body,
@@ -1015,6 +1839,9 @@ const styles = StyleSheet.create({
     ...FONTS.body,
     color: COLORS.inputPlaceholder,
     flex: 1,
+  },
+  disabledText: {
+    color: COLORS.inputPlaceholderDisabled,
   },
   dateIcon: {
     marginLeft: SIZES.margin.sm,
@@ -1035,6 +1862,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     marginHorizontal: SIZES.margin.xs,
   },
+  disabledCheckbox: {
+    backgroundColor: COLORS.inputBackground,
+    borderColor: COLORS.borderLight,
+    opacity: 0.7,
+  },
   checkboxSelected: {
     backgroundColor: COLORS.primary,
     borderColor: COLORS.primaryDark,
@@ -1051,7 +1883,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     height: SIZES.input.height,
-    backgroundColor: COLORS.inputBorder,
+    backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.radius.md,
     borderWidth: 1.5,
     borderColor: COLORS.border,
@@ -1081,25 +1913,187 @@ const styles = StyleSheet.create({
     marginVertical: SIZES.margin.xl,
     ...SHADOWS.md,
   },
+  confirmBtnDisabled: {
+    backgroundColor: COLORS.disabled,
+  },
   confirmText: {
     ...FONTS.button,
     color: COLORS.white,
+  },
+  // Aadhaar specific styles
+  aadhaarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SIZES.margin.xs,
+  },
+  aadhaarContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  aadhaarInput: {
+    flex: 1,
+    marginRight: SIZES.margin.sm,
+  },
+  verifyButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.sm,
+    borderRadius: SIZES.radius.md,
+    minHeight: SIZES.input.height,
+    justifyContent: "center",
+    minWidth: 100,
+  },
+  verifyButtonDisabled: {
+    backgroundColor: COLORS.disabled,
+  },
+  verifyButtonText: {
+    ...FONTS.bodySmall,
+    color: COLORS.white,
+    marginLeft: SIZES.margin.xs,
+    fontWeight: "600",
+  },
+  verifiedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.successLight,
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: 4,
+    borderRadius: SIZES.radius.sm,
+    borderWidth: 1,
+    borderColor: COLORS.success,
+  },
+  verifiedText: {
+    ...FONTS.caption,
+    color: COLORS.success,
+    marginLeft: 4,
+    fontWeight: "600",
+  },
+  pendingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.warningLight,
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: 4,
+    borderRadius: SIZES.radius.sm,
+    borderWidth: 1,
+    borderColor: COLORS.warning,
+  },
+  pendingText: {
+    ...FONTS.caption,
+    color: COLORS.warning,
+    marginLeft: 4,
+    fontWeight: "600",
+  },
+  failedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.errorLight,
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: 4,
+    borderRadius: SIZES.radius.sm,
+    borderWidth: 1,
+    borderColor: COLORS.error,
+  },
+  failedText: {
+    ...FONTS.caption,
+    color: COLORS.error,
+    marginLeft: 4,
+    fontWeight: "600",
+  },
+  initiatedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.infoLight,
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: 4,
+    borderRadius: SIZES.radius.sm,
+    borderWidth: 1,
+    borderColor: COLORS.info,
+  },
+  initiatedText: {
+    ...FONTS.caption,
+    color: COLORS.info,
+    marginLeft: 4,
+    fontWeight: "600",
+  },
+  pendingButton: {
+    backgroundColor: COLORS.warning,
+  },
+  aadhaarActions: {
+    flexDirection: "row",
+  },
+  aadhaarButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: SIZES.padding.xs,
+    borderRadius: SIZES.radius.sm,
+    marginLeft: SIZES.margin.xs,
+  },
+  viewDetailsButton: {
+    backgroundColor: COLORS.infoLight,
+    borderWidth: 1,
+    borderColor: COLORS.info,
+  },
+  viewDetailsText: {
+    ...FONTS.caption,
+    color: COLORS.info,
+    marginLeft: 4,
+    fontWeight: "600",
+  },
+  clearButton: {
+    backgroundColor: COLORS.errorLight,
+    borderWidth: 1,
+    borderColor: COLORS.error,
+  },
+  clearText: {
+    ...FONTS.caption,
+    color: COLORS.error,
+    marginLeft: 4,
+    fontWeight: "600",
+  },
+  statusMessages: {
+    marginTop: SIZES.margin.xs,
+  },
+  aadhaarNote: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin.xs,
+    fontStyle: "italic",
+  },
+  infoNote: {
+    ...FONTS.caption,
+    color: COLORS.info,
+    fontStyle: "italic",
+  },
+  successNote: {
+    ...FONTS.caption,
+    color: COLORS.success,
+    fontWeight: "600",
+  },
+  errorNote: {
+    ...FONTS.caption,
+    color: COLORS.error,
+    fontStyle: "italic",
   },
   // Modal Styles
   modalOverlay: {
     flex: 1,
     backgroundColor: "rgba(0, 0, 0, 0.5)",
-    justifyContent: "center", // 🔥 center vertically
-    alignItems: "center", // 🔥 center horizontally
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SIZES.padding.lg,
   },
   modalContent: {
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.xl,
     padding: SIZES.padding.lg,
-    width: "90%", // 🔥 looks like dialog
-    maxHeight: "80%",
+    width: "100%",
+    maxWidth: 400,
   },
-
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1110,6 +2104,29 @@ const styles = StyleSheet.create({
     ...FONTS.h5,
     color: COLORS.textPrimary,
     flex: 1,
+  },
+  modalSubtitle: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.margin.md,
+  },
+  modalQuestion: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    textAlign: "center",
+    marginVertical: SIZES.margin.lg,
+    fontWeight: "600",
+  },
+  addressPreview: {
+    backgroundColor: COLORS.inputBackground,
+    padding: SIZES.padding.md,
+    borderRadius: SIZES.radius.md,
+    marginBottom: SIZES.margin.lg,
+  },
+  addressText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    marginBottom: SIZES.margin.xs,
   },
   selectedDatePreview: {
     ...FONTS.body,
@@ -1160,27 +2177,29 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     marginTop: SIZES.margin.lg,
   },
-  cancelButton: {
+  wideButton: {
     flex: 1,
+    marginHorizontal: SIZES.margin.xs,
+  },
+  cancelButton: {
     height: SIZES.button.md,
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.radius.md,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: SIZES.margin.sm,
+    paddingHorizontal: SIZES.padding.md,
   },
   cancelButtonText: {
     ...FONTS.button,
     color: COLORS.textSecondary,
   },
   setButton: {
-    flex: 1,
     height: SIZES.button.md,
     backgroundColor: COLORS.primary,
     borderRadius: SIZES.radius.md,
     justifyContent: "center",
     alignItems: "center",
-    marginLeft: SIZES.margin.sm,
+    paddingHorizontal: SIZES.padding.md,
   },
   setButtonText: {
     ...FONTS.button,

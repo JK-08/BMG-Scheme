@@ -22,11 +22,19 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
     bonusAmount,
     nextDueDate,
     pName,
+    schemeClosedSummary
   } = item;
+  
   const summary = item.schemeSummary || {};
   const trans = item.schemaSummaryTransBalance || {};
   const schemeType = summary.schemeType || {};
-
+  
+  // Check if scheme is closed
+  const isSchemeClosed = schemeClosedSummary && 
+    schemeClosedSummary.doClose !== "1900-01-01 00:00:00.0" && 
+    schemeClosedSummary.billNo && 
+    schemeClosedSummary.billNo.trim() !== "";
+  
   const isAmountScheme = schemeType.isAmountScheme;
   const isDigitalScheme = schemeType.isDigitalScheme;
   const isFixedDeposit = schemeType.isFixedDeposit;
@@ -36,14 +44,15 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
   );
   const insPaid = parseInt(trans.insPaid || 0);
 
-  // PAY BUTTON CONDITION
+  // PAY BUTTON CONDITION - Don't show if scheme is closed
   const today = new Date();
   const maturityDt = maturityDate ? new Date(maturityDate) : null;
 
-  const showPayButton =
-    (isAmountScheme && insPaid < totalInstalments && maturityDt && today <= maturityDt) || // same as before
-    (isDigitalScheme && maturityDt && today <= maturityDt) || // show until maturity
-    (isFixedDeposit && insPaid < 1);
+  const showPayButton = !isSchemeClosed && (
+    (isAmountScheme && insPaid < totalInstalments && maturityDt && today <= maturityDt) ||
+    (isDigitalScheme && maturityDt && today <= maturityDt) ||
+    (isFixedDeposit && insPaid < 1)
+  );
 
   const nextDue = nextDueDate
     ? new Date(nextDueDate).toLocaleDateString("en-GB").replace(/\//g, "-")
@@ -54,19 +63,25 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
     : "--";
 
   const amountReceived = parseInt(trans.amtrecd || 0);
+  
+  // Get closed date if scheme is closed
+  const closedDate = isSchemeClosed && schemeClosedSummary.closeDate && 
+    schemeClosedSummary.closeDate !== "1900-01-01 00:00:00.0"
+    ? new Date(schemeClosedSummary.closeDate).toLocaleDateString("en-GB").replace(/\//g, "-")
+    : "--";
 
   // -------------------------------
-  // Send due SMS if within 7 days
+  // Send due SMS if within 7 days (only for active schemes)
   // -------------------------------
   useEffect(() => {
-    if (item && isAmountScheme && item.personalInfo) {
+    if (!isSchemeClosed && item && isAmountScheme && item.personalInfo) {
       const userData = {
         name: item.personalInfo.pName || item.pName || "Customer",
         mobileNumber: item.personalInfo.mobile,
       };
       checkAndSendDueSMS(item, userData);
     }
-  }, [item]);
+  }, [item, isSchemeClosed]);
 
   return (
     <TouchableOpacity
@@ -75,7 +90,8 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
       style={styles.cardWrapper}
     >
       <LinearGradient
-        colors={["#FF5A1F", "#FF6A2E", "#FF5A1F"]}
+        // Change gradient for closed schemes
+        colors={isSchemeClosed ? ["#6B7280", "#9CA3AF", "#6B7280"] : ["#FF5A1F", "#FF6A2E", "#FF5A1F"]}
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.cardContainer}
@@ -83,22 +99,38 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
         <View style={styles.circleLarge} />
         <View style={styles.circleMedium} />
 
+        {/* SCHEME CLOSED BADGE */}
+        {/* {isSchemeClosed && ( 
+          <View style={styles.closedBadge}>
+            <TextDefault style={styles.closedBadgeText}>
+              SCHEME CLOSED
+            </TextDefault>
+          </View>
+        )} */}
+
         <View style={styles.topStatusBar}>
           <TextDefault style={styles.statusLive1}>
             {pName?.length > 20 ? `${pName.substring(0, 20)}...` : pName}
           </TextDefault>
 
           <View>
-            <TextDefault style={styles.statusLive}> Active</TextDefault>
+            <TextDefault style={[
+              styles.statusLive, 
+              isSchemeClosed && styles.statusClosed
+            ]}>
+              {isSchemeClosed ? "Closed" : "Active"}
+            </TextDefault>
           </View>
         </View>
 
         <TextDefault style={styles.schemeName}>
           {summary.schemeName}
+          {isSchemeClosed && " (Closed)"}
         </TextDefault>
 
         <TextDefault style={styles.policyInfo}>
           {groupCode} – {regNo}
+          {isSchemeClosed && schemeClosedSummary.billNo && ` • Bill: ${schemeClosedSummary.billNo}`}
         </TextDefault>
 
         {showPayButton && (
@@ -110,16 +142,31 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
           </TouchableOpacity>
         )}
 
-        {isAmountScheme && nextDueDate != null && nextDueDate !== "" && (
+        {/* Show closed info instead of next due for closed schemes */}
+        {isSchemeClosed ? (
           <View style={styles.nextDueContainer}>
-            <TextDefault style={styles.nextDueLabel}>Next Due Date</TextDefault>
-            <TextDefault style={styles.nextDueValue}>{nextDue}</TextDefault>
+            <TextDefault style={styles.nextDueLabel}>Closed Date</TextDefault>
+            <TextDefault style={styles.nextDueValue}>{closedDate}</TextDefault>
+            {schemeClosedSummary.closedBy && (
+              <TextDefault style={styles.closedByText}>
+                Closed by: {schemeClosedSummary.closedBy || schemeClosedSummary.empName || "Admin"}
+              </TextDefault>
+            )}
           </View>
+        ) : (
+          isAmountScheme && nextDueDate != null && nextDueDate !== "" && (
+            <View style={styles.nextDueContainer}>
+              <TextDefault style={styles.nextDueLabel}>Next Due Date</TextDefault>
+              <TextDefault style={styles.nextDueValue}>{nextDue}</TextDefault>
+            </View>
+          )
         )}
 
         <View style={styles.amountRow}>
           <View style={[styles.infoBox, SHADOWS.sm]}>
-            <TextDefault style={styles.infoLabel}>Total Amount</TextDefault>
+            <TextDefault style={styles.infoLabel}>
+              {isSchemeClosed ? "Final Amount" : "Total Amount"}
+            </TextDefault>
             <TextDefault style={styles.infoValue}>
               ₹{amountReceived.toLocaleString("en-IN")}
             </TextDefault>
@@ -132,6 +179,7 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
             </TextDefault>
           </View>
         </View>
+        
         {schemeType.isDigitalScheme ? (
           <TextDefault style={styles.installmentText}>
             Installments – {insPaid}
@@ -139,13 +187,14 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
         ) : (
           <TextDefault style={styles.installmentText}>
             Installments – {insPaid}/{totalInstalments}
+            {isSchemeClosed && " (Completed)"}
           </TextDefault>
         )}
 
         <View style={styles.maturityContainer1}>
           <View style={styles.maturityContainer}>
             <TextDefault style={styles.maturityLabel}>
-              Maturity Date
+              {isSchemeClosed ? "Original Maturity" : "Maturity Date"}
             </TextDefault>
             <TextDefault style={styles.maturityDate}>{maturity}</TextDefault>
           </View>
@@ -153,7 +202,10 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
           <TouchableOpacity
             style={styles.showMoreButton}
             onPress={() =>
-              navigation.navigate("ProductDescription", { productData: item })
+              navigation.navigate("ProductDescription", { 
+                productData: item,
+                isSchemeClosed: isSchemeClosed 
+              })
             }
           >
             <TextDefault style={styles.showMoreText}>Show More →</TextDefault>
@@ -165,17 +217,12 @@ function ProductCard({ productData, navigation, onPress, onPayNow }) {
 }
 
 const styles = StyleSheet.create({
-  /* --- ALL YOUR ORIGINAL STYLES BELOW (UNCHANGED) --- */
   cardWrapper: {
     width: CARD_WIDTH,
     alignSelf: "center",
-    // marginVertical:10,
     borderRadius: SIZES.radius.xl,
     overflow: "hidden",
-    // ...SHADOWS.lg,
     width: "100%",
-    // marginVertical: 10,
-    // minHeight: moderateScale(500),
   },
   cardContainer: {
     paddingVertical: SIZES.padding.xl,
@@ -202,6 +249,22 @@ const styles = StyleSheet.create({
     bottom: moderateScale(-50),
     right: moderateScale(-40),
   },
+  // Closed badge styles
+  closedBadge: {
+    position: "absolute",
+    top: SIZES.padding.lg,
+    right: SIZES.padding.lg,
+    backgroundColor: COLORS.error,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.xs,
+    borderRadius: SIZES.radius.sm,
+    zIndex: 1,
+  },
+  closedBadgeText: {
+    ...FONTS.caption,
+    color: COLORS.white,
+    fontWeight: "bold",
+  },
   topStatusBar: {
     backgroundColor: COLORS.white,
     flexDirection: "row",
@@ -211,7 +274,6 @@ const styles = StyleSheet.create({
     paddingVertical: SIZES.padding.sm,
     borderRadius: SIZES.radius.md,
     marginBottom: SIZES.margin.lg,
-    // width: "60%",
   },
   statusText: {
     ...FONTS.bodyMedium,
@@ -221,6 +283,9 @@ const styles = StyleSheet.create({
     color: COLORS.success,
     fontFamily: FONTS.family.semiBold,
     alignSelf: "center",
+  },
+  statusClosed: {
+    color: COLORS.error,
   },
   statusLive1: {
     color: COLORS.textPrimary,
@@ -265,6 +330,12 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginTop: SIZES.margin.xs,
   },
+  closedByText: {
+    ...FONTS.caption,
+    color: COLORS.whiteOpacity70,
+    marginTop: SIZES.margin.xs,
+    fontStyle: "italic",
+  },
   amountRow: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -272,8 +343,8 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.margin.xl,
   },
   infoBox: {
-    width: (width - moderateScale(110)) / 2, // perfect responsive width
-    height: moderateScale(80), // fixed height
+    width: (width - moderateScale(110)) / 2,
+    height: moderateScale(80),
     backgroundColor: COLORS.white,
     padding: SIZES.padding.lg,
     borderRadius: SIZES.radius.lg,
@@ -281,7 +352,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     marginHorizontal: SIZES.margin.sm,
   },
-
   infoLabel: {
     ...FONTS.caption,
     color: COLORS.textSecondary,
