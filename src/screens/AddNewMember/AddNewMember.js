@@ -8,7 +8,7 @@ import SchemeDetailsPage from "./SchemeDetailsPage";
 import { API_BASE_URL_OLD, API_BASE_URL } from "../../Config/API";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import smsService from "../../services/SMSService";
-import { sendJoinSchemeNotification } from "../../services/CommonNotificationService"; // NEW IMPORT
+import { sendJoinSchemeNotification } from "../../services/CommonNotificationService";
 import { getAppliedReferralStatus } from "../../services/ReferalService";
 
 const { COLORS } = appTheme;
@@ -27,7 +27,7 @@ const getAllSchemes = async () => {
       throw new Error(`HTTP Error: ${response.status}`);
     }
     const data = await response.json();
-    return data; // Array of schemes
+    return data;
   } catch (error) {
     console.error("Error fetching schemes:", error);
     throw error;
@@ -40,7 +40,19 @@ const AddNewMember = () => {
   const route = useRoute();
 
   // Extract both schemeId and schemeName from route params
-  const { schemeId, schemeName } = route.params || {};
+  const { schemeId: routeSchemeId, schemeName: routeSchemeName } = route.params || {};
+
+  // Debug logs
+  console.log("🚀 AddNewMember mounted");
+  console.log("Route params:", route.params);
+  console.log("routeSchemeId:", routeSchemeId);
+  console.log("routeSchemeName:", routeSchemeName);
+
+  // Use state for scheme data - parse immediately
+  const [selectedScheme, setSelectedScheme] = useState({
+    id: routeSchemeId ? Number(routeSchemeId) : null,
+    name: routeSchemeName || null
+  });
 
   const [token, setToken] = useState(null);
 
@@ -50,10 +62,11 @@ const AddNewMember = () => {
   const [paymentProcessed, setPaymentProcessed] = useState(false);
   const [paymentLoading, setPaymentLoading] = useState(true);
 
-  // NEW STATE: Track payment completion and processing status
+  // Track payment completion and processing status
   const [paymentCompleted, setPaymentCompleted] = useState(false);
-  const [processingPayment, setProcessingPayment] = useState(false); // NEW: For showing loading after WebView closes
+  const [processingPayment, setProcessingPayment] = useState(false);
   const nowDateTime = new Date().toISOString().slice(0, 19).replace("T", " ");
+
   const [memberData, setMemberData] = useState({
     namePrefix: "Mr",
     name: "",
@@ -70,11 +83,15 @@ const AddNewMember = () => {
     email: "",
     panNumber: "",
     aadharNumber: "",
-    dob: null,
+    dateOfBirth: "",
+    anniversaryDate: "",
+    maritalStatus: "",
+    nomeni: "",
+    mobile2: "",
   });
 
   const [schemeData, setSchemeData] = useState({
-    selectedSchemeId: schemeId ? Number(schemeId) : null,
+    selectedSchemeId: selectedScheme.id,
     selectedGroupCodeObj: null,
     selectedCurrentRegNoObj: null,
     amount: "",
@@ -82,6 +99,20 @@ const AddNewMember = () => {
     modePay: "C",
     calculatedWeight: "",
   });
+
+  // Update schemeData when selectedScheme changes
+  useEffect(() => {
+    console.log("🔄 Updating schemeData with selectedScheme:", selectedScheme);
+    setSchemeData(prev => ({
+      ...prev,
+      selectedSchemeId: selectedScheme.id,
+    }));
+
+    // Also fetch scheme options if we have an ID
+    if (selectedScheme.id) {
+      fetchSchemeOptions(selectedScheme.id);
+    }
+  }, [selectedScheme]);
 
   const [schemeOptions, setSchemeOptions] = useState([]);
   const [isFetchingSchemeOptions, setIsFetchingSchemeOptions] = useState(false);
@@ -98,15 +129,15 @@ const AddNewMember = () => {
   const [orderDetails, setOrderDetails] = useState(null);
   const [currentPaymentData, setCurrentPaymentData] = useState(null);
 
-  //Referal
-
+  // Referral
   const [ReferralCode, setReferralCode] = useState(null);
+
   useEffect(() => {
     fetchReferralStatus();
   }, []);
+
   const fetchReferralStatus = async () => {
     const result = await getAppliedReferralStatus();
-
     const referralCode = result?.appliedReferralData?.referral_code;
     console.log("Referral Code:", referralCode);
     setReferralCode(referralCode);
@@ -117,10 +148,9 @@ const AddNewMember = () => {
     fetchAllSchemes();
   }, []);
 
-  // NEW EFFECT: Handle payment completion
+  // Handle payment completion
   useEffect(() => {
     if (paymentCompleted) {
-      // Directly navigate to home after payment completion
       resetFormFields();
       navigation.navigate("MainLanding");
     }
@@ -132,6 +162,17 @@ const AddNewMember = () => {
     try {
       const schemes = await getAllSchemes();
       setAllSchemes(schemes);
+
+      // If we have a route schemeId but no name, try to find the name
+      if (selectedScheme.id && !selectedScheme.name) {
+        const foundScheme = schemes.find((s) => s.SchemeId === selectedScheme.id);
+        if (foundScheme) {
+          setSelectedScheme(prev => ({
+            ...prev,
+            name: foundScheme.schemeName || routeSchemeName
+          }));
+        }
+      }
     } catch (error) {
       console.error("Error fetching all schemes:", error);
       Alert.alert("Error", "Failed to fetch schemes. Please try again.");
@@ -140,49 +181,25 @@ const AddNewMember = () => {
     }
   };
 
-  // Get scheme name based on scheme type logic
+  // Get scheme name with proper fallbacks
   const getSchemeName = (id) => {
-    if (!id) return schemeName || "No Scheme Selected";
+    if (!id) return selectedScheme.name || "No Scheme Selected";
     const numericId = Number(id);
+
+    // First check selectedScheme state
+    if (selectedScheme.id === numericId && selectedScheme.name) {
+      return selectedScheme.name;
+    }
+
+    // Then check allSchemes
     const scheme = allSchemes.find((s) => s.SchemeId === numericId);
+    if (scheme) {
+      return scheme.schemeName || "Unknown Scheme";
+    }
 
-    if (!scheme) return schemeName || "Unknown Scheme";
-
-    // Return the actual scheme name from API response
-    return scheme.schemeName || schemeName || "Unknown Scheme";
+    // Finally fallback to route scheme name
+    return selectedScheme.name || routeSchemeName || "Unknown Scheme";
   };
-
-  // Get scheme short name from API response
-  // const getSchemeShortName = (id) => {
-  //   if (!id) return "";
-  //   const numericId = Number(id);
-  //   const scheme = allSchemes.find((s) => s.SchemeId === numericId);
-
-  //   if (!scheme) return "";
-
-  //   // Return the actual scheme short name from API response
-  //   return scheme.SchemeSName || "";
-  // };
-
-  // Get scheme type for internal logic (this can still use the logic)
-  // const getSchemeType = (id) => {
-  //   if (!id) return null;
-  //   const numericId = Number(id);
-  //   const scheme = allSchemes.find((s) => s.SchemeId === numericId);
-
-  //   if (!scheme) return null;
-
-  //   // Use the logic to determine scheme type without hardcoding names
-  //   if (scheme.WeightLedger === "N" && scheme.FixedIns === "Y") {
-  //     return "AMOUNT_SCHEME";
-  //   } else if (scheme.WeightLedger === "Y" && scheme.FixedIns === "N") {
-  //     return "DIGI_SILVER";
-  //   } else if (scheme.WeightLedger === "N" && scheme.FixedIns === "N") {
-  //     return "FIXED_DEPOSIT";
-  //   } else {
-  //     return "OTHER";
-  //   }
-  // };
 
   // Fetch GROUPCODE and REGNO for selected scheme
   const fetchSchemeOptions = async (schemeId) => {
@@ -223,14 +240,6 @@ const AddNewMember = () => {
   };
 
   useEffect(() => {
-    if (schemeId) {
-      const numericSchemeId = Number(schemeId);
-      setSchemeData((prev) => ({ ...prev, selectedSchemeId: numericSchemeId }));
-      fetchSchemeOptions(numericSchemeId);
-    }
-  }, [schemeId]);
-
-  useEffect(() => {
     (async () => {
       const savedToken = await AsyncStorage.getItem("authToken");
       console.log("🟢 Saved token:", savedToken);
@@ -240,18 +249,36 @@ const AddNewMember = () => {
 
   const handleBack = () => {
     if (showWebView) {
-      // If in payment flow, go back to scheme details
       setShowWebView(false);
       setPaymentUrl("");
       setIsProcessingPayment(false);
-      setProcessingPayment(false); // Reset processing state
+      setProcessingPayment(false);
     } else if (currentStep === 2) {
-      // If in scheme details, go back to member details
       setCurrentStep(1);
     } else {
-      // If in member details, go to main landing
       navigation.navigate("MainLanding");
     }
+  };
+
+  // Function to handle scheme selection from MemberDetailsPage
+  const handleSchemeSelection = (schemeId, schemeName) => {
+    console.log("📋 Scheme selected from MemberDetailsPage:", { schemeId, schemeName });
+
+    // Update selectedScheme state
+    const numericId = Number(schemeId);
+    setSelectedScheme({
+      id: numericId,
+      name: schemeName || getSchemeName(numericId)
+    });
+
+    // Update schemeData
+    setSchemeData(prev => ({
+      ...prev,
+      selectedSchemeId: numericId,
+    }));
+
+    // Fetch options for the new scheme
+    fetchSchemeOptions(numericId);
   };
 
   const getDefaultInitial = (firstName) => {
@@ -259,64 +286,35 @@ const AddNewMember = () => {
     return firstName.trim().charAt(0).toUpperCase();
   };
 
-  const handleNextStep = (memberFormData) => {
-    const errors = {};
+  const handleNextStep = (memberFormData = {}) => {
+    console.log("📋 MemberDetailsPage onSubmit data:", memberFormData);
 
-    // Validate name
-    if (!memberFormData.name?.trim()) {
-      errors.name = "Name is required";
-    }
-
-    // Validate mobile
-    if (!memberFormData.mobile?.trim()) {
-      errors.mobile = "Mobile number is required";
-    } else if (memberFormData.mobile.length !== 10) {
-      errors.mobile = "Mobile number must be 10 digits";
-    }
-
-    // Validate email if provided
-    if (memberFormData.email?.trim()) {
-      const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-      if (!emailRegex.test(memberFormData.email)) {
-        errors.email = "Please enter a valid email address";
-      }
-    }
-
-    // Validate Aadhar number if provided
-    if (memberFormData.aadharNumber?.trim()) {
-      const aadharRegex = /^\d{12}$/;
-      if (!aadharRegex.test(memberFormData.aadharNumber)) {
-        errors.aadharNumber = "Aadhar number must be 12 digits";
-      }
-    }
-
-    // Validate PAN number if provided
-    if (memberFormData.panNumber?.trim()) {
-      const panRegex = /^[A-Z]{5}[0-9]{4}[A-Z]{1}$/;
-      if (!panRegex.test(memberFormData.panNumber.toUpperCase())) {
-        errors.panNumber = "Please enter a valid PAN number";
-      }
-    }
-
-    if (Object.keys(errors).length > 0) {
-      setValidationErrors(errors);
-      Alert.alert(
-        "Validation Error",
-        "Please fill all required fields correctly."
-      );
+    // Hard safety check
+    if (!memberFormData || typeof memberFormData !== "object") {
+      Alert.alert("Error", "Invalid member details submitted");
       return;
     }
 
-    setMemberData(memberFormData);
+    // Check if scheme was selected in MemberDetailsPage
+    if (memberFormData.selectedSchemeId) {
+      const numericId = Number(memberFormData.selectedSchemeId);
+      setSelectedScheme({
+        id: numericId,
+        name: memberFormData.selectedSchemeName || getSchemeName(numericId),
+      });
+    }
+
+    // Store member data safely
+    setMemberData(prev => ({
+      ...prev,
+      ...memberFormData,
+    }));
+
+    // Move to next step
     setCurrentStep(2);
   };
 
-  // In AddNewMember.js, add this:
-useEffect(() => {
-  console.log("Route params received:", route.params);
-  console.log("Scheme ID:", route.params?.schemeId);
-  console.log("Scheme Name:", route.params?.schemeName);
-}, [route.params]);
+
   // Create payment order
   const createPaymentOrder = async (
     amount,
@@ -496,6 +494,7 @@ useEffect(() => {
       console.error("❌ Error storing payment data:", error);
     }
   };
+
   const generateCashPaymentDetails = () => {
     // Generate random 10-digit number for card
     const cardNumber = Math.floor(
@@ -510,7 +509,6 @@ useEffect(() => {
   };
 
   // Submit member data after successful payment
-  // Submit member data after successful payment
   const submitMemberData = async (
     numericSchemeId,
     schemeFormData,
@@ -519,10 +517,12 @@ useEffect(() => {
     paymentResponse = null,
     cashPayment = false // Flag for cash payment
   ) => {
+
+  
     try {
       // 1️⃣ Member Details
       const newMember = {
-        title: "",
+        title: memberData.title || "Mr",   // ✅ FIX
         initial: getDefaultInitial(memberData.name),
         pName: memberData.name || "",
         sName: memberData.surname || "",
@@ -532,19 +532,22 @@ useEffect(() => {
         area: memberData.area || "",
         city: memberData.city || "",
         state: memberData.selectedState || "",
-        country: memberData.country || "India",
-        pinCode: memberData.pincode || "",
+        country: "India",
+        pinCode: memberData.pinCode || "", // ✅ FIX (capital C)
         mobile: memberData.mobile || "",
         idProof: "Aadhaar",
         idProofNo: memberData.aadharNumber || "",
         panNumber: memberData.panNumber || "",
         dob: memberData.dateOfBirth || "",
-        anniversaryDate: memberData.anniversaryDate || "",
+        anniversaryDate: memberData.anniversaryDate
+          ? `${memberData.anniversaryDate} 00:00:00`
+          : "", // ✅ FIX
         email: memberData.email || "",
         upDateTime: nowDateTime,
         userId: "999",
         appVer: "WEB",
       };
+
 
       // 2️⃣ Scheme Summary
       const createSchemeSummary = {
@@ -554,8 +557,9 @@ useEffect(() => {
         joinDate: nowDateTime,
         upDateTime2: nowDateTime,
         openingDate: nowDateTime,
-        userId2: "9999",
+        userId2: "999", // ✅ FIX
       };
+
 
       // 3️⃣ Payment Details (Fail-safe)
       let paymentDetails = {
@@ -580,7 +584,7 @@ useEffect(() => {
         // Online payment from API response
         const resp = paymentResponse.payphiResponse;
         paymentDetails = {
-          chqBankCode: schemeFormData.accCode || resp?.bankCode || "",
+          chqBankCode: schemeFormData.accCode ||"ONLINE",
           chqCardNo: resp?.txnID || "N/A",
           chqBranch: resp?.paymentSubInstType || "N/A",
           chkBank: resp?.paymentMode || "N/A",
@@ -590,20 +594,28 @@ useEffect(() => {
 
       // 4️⃣ Scheme Collection Insert
       const schemeCollectInsert = {
-        amount: parseFloat(schemeFormData.amount || "0"),
-        modePay: schemeFormData.modePay || "C",
-        accCode: schemeFormData.accCode || "CASH",
-        ...paymentDetails,
+        amount: Number(schemeFormData.amount),
+        modePay: schemeFormData.modePay, // "O" or "C"
+        accCode: "1", // must be numeric "1"
+        chqBankCode: "1",
+        chqCardNo: paymentDetails.chqCardNo,
+        chqBranch: paymentDetails.chqBranch,
+        chkBank: paymentDetails.chkBank,
+        chqRtnReason: paymentDetails.chqRtnReason,
       };
+
+      console.log("schemecollect", schemeCollectInsert)
+
 
       // 5️⃣ Final Request Body
       const requestBody = {
         newMember,
         createSchemeSummary,
         schemeCollectInsert,
-        referralCode: ReferralCode || "", // Include referral code here
+        referralCode: ReferralCode || "",
       };
-console.log("Submit Member Data", requestBody);
+
+      console.log("Submit Member Data", requestBody);
       // 6️⃣ Submit API Call
       const submitResponse = await fetch(`${API_BASE_URL_OLD}/member/create`, {
         method: "POST",
@@ -690,7 +702,7 @@ console.log("Submit Member Data", requestBody);
           console.log("❌ SMS sending failed:", smsErr);
         }
 
-        // 3️⃣ NEW: Send Join Scheme Notification
+        // 3️⃣ Send Join Scheme Notification
         try {
           await sendJoinSchemeNotification(
             currentPaymentData.numericSchemeId,
@@ -741,6 +753,7 @@ console.log("Submit Member Data", requestBody);
       setIsProcessingPayment(false);
     }
   };
+
   const handlePaymentFailure = () => {
     // Hide loading and show failure popup
     setProcessingPayment(false);
@@ -761,7 +774,7 @@ console.log("Submit Member Data", requestBody);
   const handleSubmit = async (schemeFormData) => {
     if (isSubmitting || isProcessingPayment) return;
 
-    const numericSchemeId = Number(schemeFormData.selectedSchemeId);
+    const numericSchemeId = selectedScheme.id;
     if (!numericSchemeId || isNaN(numericSchemeId)) {
       Alert.alert("Error", "Please select a valid scheme.");
       return;
@@ -833,7 +846,7 @@ console.log("Submit Member Data", requestBody);
         "BMG JEWELLERS PVT LTD"
       );
 
-      // NEW: Send Join Scheme Notification for cash payment
+      // Send Join Scheme Notification for cash payment
       try {
         await sendJoinSchemeNotification(
           numericSchemeId,
@@ -999,11 +1012,21 @@ console.log("Submit Member Data", requestBody);
       email: "",
       panNumber: "",
       aadharNumber: "",
-      dob: null,
+      dateOfBirth: "",
+      anniversaryDate: "",
+      maritalStatus: "",
+      nomeni: "",
+      mobile2: "",
+    });
+
+    // Reset to original route scheme if available
+    setSelectedScheme({
+      id: routeSchemeId ? Number(routeSchemeId) : null,
+      name: routeSchemeName || null
     });
 
     setSchemeData({
-      selectedSchemeId: schemeId ? Number(schemeId) : null,
+      selectedSchemeId: routeSchemeId ? Number(routeSchemeId) : null,
       selectedGroupCodeObj: null,
       selectedCurrentRegNoObj: null,
       amount: "",
@@ -1018,10 +1041,10 @@ console.log("Submit Member Data", requestBody);
     setPaymentUrl("");
     setPaymentProcessed(false);
     setPaymentCompleted(false);
-    setProcessingPayment(false); // Reset processing state
+    setProcessingPayment(false);
   };
 
-  // NEW: Loading component for payment processing
+  // Loading component for payment processing
   const renderProcessingPayment = () => (
     <View style={styles.processingContainer}>
       <ActivityIndicator size="large" color="#d4af37" />
@@ -1033,18 +1056,15 @@ console.log("Submit Member Data", requestBody);
   );
 
   const renderStep = () => {
-    // If payment is completed, don't render anything (will navigate to home)
     if (paymentCompleted) {
       return null;
     }
 
-    // NEW: Show loading indicator while processing payment after WebView closes
     if (processingPayment) {
       return renderProcessingPayment();
     }
 
     if (showWebView) {
-      // Render WebView for payment
       return (
         <View style={{ flex: 1 }}>
           <WebView
@@ -1069,21 +1089,20 @@ console.log("Submit Member Data", requestBody);
     }
 
     switch (currentStep) {
-     case 1:
-  return (
-    <MemberDetailsPage
-      memberData={memberData}
-      onNext={(memberFormData) => {
-        // Store member data
-        setMemberData(memberFormData);
-        // Navigate to next step
-        setCurrentStep(2);
-      }}
-      onBack={handleBack}
-      validationErrors={validationErrors}
-      setValidationErrors={setValidationErrors}
-    />
-  );
+      case 1:
+        return (
+          <MemberDetailsPage
+            onNext={handleNextStep}
+            onBack={handleBack}
+            onSchemeSelect={handleSchemeSelection}
+            validationErrors={validationErrors}
+            setValidationErrors={setValidationErrors}
+            initialSchemeId={selectedScheme.id}
+            initialSchemeName={selectedScheme.name}
+            allSchemes={allSchemes}
+            isFetchingSchemes={isFetchingSchemes}
+          />
+        );
       case 2:
         return (
           <SchemeDetailsPage
@@ -1093,10 +1112,10 @@ console.log("Submit Member Data", requestBody);
             validationErrors={validationErrors}
             setValidationErrors={setValidationErrors}
             isSubmitting={isSubmitting || isProcessingPayment}
-            API_BASE_URL={API_BASE_URL_OLD}
-            schemes={allSchemes} // Pass dynamically fetched schemes
-            selectedSchemeId={schemeData.selectedSchemeId}
-            schemeName={getSchemeName(schemeData.selectedSchemeId)}
+            API_BASE_URL_OLD={API_BASE_URL_OLD}
+            schemes={allSchemes}
+            selectedSchemeId={selectedScheme.id}
+            schemeName={selectedScheme.name || getSchemeName(selectedScheme.id)}
             schemeOptions={schemeOptions}
             isFetchingSchemeOptions={isFetchingSchemeOptions}
             isFetchingSchemes={isFetchingSchemes}
@@ -1121,7 +1140,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
   },
-  // NEW: Styles for payment processing screen
   processingContainer: {
     flex: 1,
     justifyContent: "center",

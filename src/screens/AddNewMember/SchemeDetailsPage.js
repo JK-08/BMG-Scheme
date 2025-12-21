@@ -2,7 +2,6 @@ import React, { useState, useEffect, useCallback, useRef } from "react";
 import {
   View,
   Text,
-  TextInput,
   TouchableOpacity,
   ScrollView,
   Alert,
@@ -15,12 +14,11 @@ import {
 } from "react-native";
 import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
-import { API_BASE_URL_OLD } from "../../Config/API";
-import CustomPicker from "./CustomPicker";
 
 import DigiSilverScheme from "../../components/Schemes/DigiSilverScheme";
 import AmountScheme from "../../components/Schemes/AmountScheme";
 import FixedDepositScheme from "../../components/Schemes/FixedDepositScheme";
+import { getTranTypes } from "../../services/PaytypeService";
 
 const SchemeDetailsPage = ({
   schemeData,
@@ -29,19 +27,48 @@ const SchemeDetailsPage = ({
   validationErrors = {},
   setValidationErrors,
   isSubmitting,
-  API_BASE_URL,
+  API_BASE_URL_OLD,
   schemes,
   selectedSchemeId,
   schemeName,
+  schemeOptions,
+  isFetchingSchemeOptions,
+  isFetchingSchemes,
 }) => {
   const scrollViewRef = useRef(null);
-  const inputRefs = useRef({});
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [activeInput, setActiveInput] = useState(null);
-
-  const numericSchemeId = Number(selectedSchemeId);
-
   const [isAgreed, setIsAgreed] = useState(false);
+
+  const [tranTypes, setTranTypes] = useState([]);
+  const [isLoadingTranTypes, setIsLoadingTranTypes] = useState(false);
+
+
+  useEffect(() => {
+    const fetchTranTypes = async () => {
+      try {
+        setIsLoadingTranTypes(true);
+        const data = await getTranTypes();
+        setTranTypes(data || []);
+      } catch (error) {
+        console.error("❌ TranType fetch error:", error);
+        Alert.alert("Error", "Unable to load payment modes");
+      } finally {
+        setIsLoadingTranTypes(false);
+      }
+    };
+
+    fetchTranTypes();
+  }, []);
+
+
+  // Use the props directly
+  const numericSchemeId = selectedSchemeId ? Number(selectedSchemeId) : null;
+  const effectiveSchemeName = schemeName || "Select a Scheme";
+
+  console.log("🔍 SchemeDetailsPage - Simplified:");
+  console.log("numericSchemeId:", numericSchemeId);
+  console.log("effectiveSchemeName:", effectiveSchemeName);
 
   const [formData, setFormData] = useState({
     selectedSchemeId: numericSchemeId,
@@ -54,32 +81,36 @@ const SchemeDetailsPage = ({
     ...schemeData,
   });
 
-  const [transactionTypes, setTransactionTypes] = useState([]);
+  // Update formData when scheme changes
+  useEffect(() => {
+    if (numericSchemeId && numericSchemeId !== formData.selectedSchemeId) {
+      console.log("🔄 Updating formData with scheme ID:", numericSchemeId);
+      setFormData(prev => ({
+        ...prev,
+        selectedSchemeId: numericSchemeId,
+        amount: "",
+        accCode: "",
+        selectedGroupCodeObj: null,
+        selectedCurrentRegNoObj: null,
+        calculatedWeight: "",
+      }));
+    }
+  }, [numericSchemeId]);
+
   const MINIMUM_AMOUNT_MAP = {
-    1: 1, // Amount Scheme
-    2: 100, // Digi Silver
+    1: 1,    // Amount Scheme
+    2: 100,  // Digi Silver
     3: 10000, // Fixed Deposit
   };
 
   const minAmount = MINIMUM_AMOUNT_MAP[numericSchemeId] || 0;
 
+  // Keyboard handling
   useEffect(() => {
     const keyboardDidShowListener = Keyboard.addListener(
       "keyboardDidShow",
       (event) => {
         setKeyboardHeight(event.endCoordinates.height);
-        if (activeInput && inputRefs.current[activeInput]) {
-          inputRefs.current[activeInput].measureLayout(
-            scrollViewRef.current.getScrollableNode(),
-            (x, y) => {
-              scrollViewRef.current.scrollTo({
-                y: y + 20,
-                animated: true,
-              });
-            },
-            () => console.log("Error measuring input layout")
-          );
-        }
       }
     );
 
@@ -95,21 +126,7 @@ const SchemeDetailsPage = ({
       keyboardDidShowListener.remove();
       keyboardDidHideListener.remove();
     };
-  }, [activeInput]);
-
-  useEffect(() => {
-    const fetchTransactionTypes = async () => {
-      try {
-        const response = await fetch(`${API_BASE_URL_OLD}/account/getTranType`);
-        if (!response.ok) throw new Error("Network response was not ok.");
-        const data = await response.json();
-        setTransactionTypes(data);
-      } catch (error) {
-        console.error("Error fetching transaction types:", error);
-      }
-    };
-    fetchTransactionTypes();
-  }, [API_BASE_URL_OLD]);
+  }, []);
 
   const updateFormData = (field, value) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
@@ -122,12 +139,16 @@ const SchemeDetailsPage = ({
   const validateStep = () => {
     const errors = {};
 
-    if (!numericSchemeId) {
-      errors.scheme = "Please select a scheme";
+    if (!numericSchemeId || isNaN(numericSchemeId)) {
+      errors.scheme = "Please select a valid scheme";
+      Alert.alert("Error", "No scheme selected. Please go back and select a scheme.");
+      return false;
     }
 
     if (!formData?.amount) {
       errors.amount = "Please enter a valid amount";
+    } else if (Number(formData.amount) < minAmount) {
+      errors.amount = `Minimum amount is ₹${minAmount}`;
     }
 
     if (!formData?.accCode) {
@@ -147,65 +168,68 @@ const SchemeDetailsPage = ({
       return;
     }
 
+    if (!numericSchemeId) {
+      Alert.alert("Error", "No scheme selected. Please go back and select a scheme.");
+      return;
+    }
+
     if (validateStep()) {
-      onSubmit(formData);
+      const dataToSubmit = {
+        ...formData,
+        selectedSchemeId: numericSchemeId
+      };
+      console.log("Submitting scheme data:", dataToSubmit);
+      onSubmit(dataToSubmit);
     } else {
       Alert.alert(
         "Validation Error",
-        "Please fill all required fields correctly in Scheme Details."
+        "Please fill all required fields correctly."
       );
     }
   };
 
   const renderSchemeComponent = () => {
+    if (!numericSchemeId || isNaN(numericSchemeId)) {
+      return (
+        <View style={styles.noSchemeContainer}>
+          <Text style={styles.noSchemeText}>
+            No scheme selected. Please go back and select a scheme.
+          </Text>
+          <TouchableOpacity
+            style={styles.backButtonSmall}
+            onPress={onBack}
+          >
+            <Text style={styles.backButtonTextSmall}>Go Back to Select Scheme</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    const commonProps = {
+      formData,
+      updateFormData,
+      validationErrors,
+      setValidationErrors,
+      isSubmitting,
+      numericSchemeId,
+      schemeName: effectiveSchemeName,
+      schemeOptions,
+      isFetchingSchemeOptions,
+      API_BASE_URL_OLD,
+    };
+
     switch (numericSchemeId) {
       case 1:
-        return (
-          <AmountScheme
-            formData={formData}
-            updateFormData={updateFormData}
-            validationErrors={validationErrors}
-            setValidationErrors={setValidationErrors}
-            isSubmitting={isSubmitting}
-            API_BASE_URL_OLD={API_BASE_URL_OLD}
-            numericSchemeId={numericSchemeId}
-            inputRefs={inputRefs}
-            setActiveInput={setActiveInput}
-          />
-        );
+        return <AmountScheme {...commonProps} />;
       case 2:
-        return (
-          <DigiSilverScheme
-            formData={formData}
-            updateFormData={updateFormData}
-            validationErrors={validationErrors}
-            setValidationErrors={setValidationErrors}
-            isSubmitting={isSubmitting}
-            API_BASE_URL_OLD={API_BASE_URL_OLD}
-            numericSchemeId={numericSchemeId}
-            inputRefs={inputRefs}
-            setActiveInput={setActiveInput}
-          />
-        );
+        return <DigiSilverScheme {...commonProps} />;
       case 3:
-        return (
-          <FixedDepositScheme
-            formData={formData}
-            updateFormData={updateFormData}
-            validationErrors={validationErrors}
-            setValidationErrors={setValidationErrors}
-            isSubmitting={isSubmitting}
-            API_BASE_URL_OLD={API_BASE_URL_OLD}
-            numericSchemeId={numericSchemeId}
-            inputRefs={inputRefs}
-            setActiveInput={setActiveInput}
-          />
-        );
+        return <FixedDepositScheme {...commonProps} />;
       default:
         return (
           <View style={styles.noSchemeContainer}>
             <Text style={styles.noSchemeText}>
-              Please select a valid scheme
+              Scheme ID {numericSchemeId} is not supported
             </Text>
           </View>
         );
@@ -232,71 +256,98 @@ const SchemeDetailsPage = ({
           showsVerticalScrollIndicator={false}
           keyboardShouldPersistTaps="handled"
         >
-          <CommonHeader title={"Scheme Details"} />
+          <CommonHeader title={"Scheme Details"} onBack={onBack} />
 
           <View style={styles.card}>
-            {/* Read-only Scheme */}
+            {/* Read-only Scheme Display */}
             <View style={styles.inputContainer}>
               <Text style={styles.label}>Selected Scheme</Text>
-              <View style={styles.staticValueContainer}>
-                <Text style={styles.staticValueText}>
-                  {schemeName || "No Scheme Selected"}
+              <View style={[
+                styles.staticValueContainer,
+                !numericSchemeId && styles.errorStaticContainer
+              ]}>
+                <Text style={[
+                  styles.staticValueText,
+                  !numericSchemeId && styles.errorText
+                ]}>
+                  {effectiveSchemeName}
                 </Text>
               </View>
-            </View>
-
-            {/* RENDER SCHEME UI */}
-            {renderSchemeComponent()}
-
-            {/* Payment Mode */}
-            <View style={styles.inputContainer}>
-              <View style={styles.labelContainer}>
-                <Text style={styles.label}>Payment Mode</Text>
-                <Text style={styles.asterisk}>*</Text>
-              </View>
-              <CustomPicker
-                selectedValue={formData?.accCode || ""}
-                onValueChange={(itemValue) => {
-                  updateFormData("accCode", itemValue);
-
-                  const selectedType = transactionTypes.find(
-                    (type) => type.ACCOUNT === itemValue
-                  );
-
-                  if (selectedType?.CARDTYPE) {
-                    updateFormData("modePay", selectedType.CARDTYPE);
-                  }
-                }}
-                items={[
-                  { label: "Select Payment Mode", value: "" },
-                  ...transactionTypes.map((type) => ({
-                    label: type.NAME,
-                    value: type.ACCOUNT,
-                  })),
-                ]}
-              />
-
-              {validationErrors?.accCode && (
-                <Text style={styles.errorText}>{validationErrors.accCode}</Text>
+              {!numericSchemeId && (
+                <Text style={styles.errorText}>Please select a scheme</Text>
+              )}
+              {isFetchingSchemes && (
+                <Text style={styles.loadingText}>Loading scheme details...</Text>
               )}
             </View>
 
-            {/* AGREEMENT CHECKBOX */}
-            <TouchableOpacity
-              style={styles.checkboxRow}
-              onPress={() => setIsAgreed(!isAgreed)}
-              activeOpacity={0.7}
-            >
-              <View
-                style={[styles.checkbox, isAgreed && styles.checkboxChecked]}
-              >
-                {isAgreed && <Text style={styles.checkboxTick}>✔</Text>}
-              </View>
+            {/* Render Scheme UI */}
+            {renderSchemeComponent()}
 
-              <Text style={styles.checkboxText}>
-                I agree to the Terms & Conditions and Privacy Policy
-              </Text>
-            </TouchableOpacity>
+            {/* Payment Mode - Show only if scheme is selected */}
+            {/* Payment Mode - Dynamic */}
+            {numericSchemeId && (
+              <View style={styles.inputContainer}>
+                <View style={styles.labelContainer}>
+                  <Text style={styles.label}>Payment Mode</Text>
+                  <Text style={styles.asterisk}>*</Text>
+                </View>
+
+                {isLoadingTranTypes ? (
+                  <ActivityIndicator color={COLORS.primary} />
+                ) : (
+                  <View style={styles.paymentModeContainer}>
+                    {tranTypes.map((item, index) => (
+                      <TouchableOpacity
+                        key={index}
+                        style={[
+                          styles.paymentOption,
+                          formData.accCode === item.NAME &&
+                          styles.paymentOptionSelected,
+                        ]}
+                        onPress={() => {
+                          updateFormData("accCode", item.NAME);
+                          updateFormData("modePay", item.CARDTYPE); // O, C, etc
+                        }}
+                      >
+                        <Text
+                          style={[
+                            styles.paymentOptionText,
+                            formData.accCode === item.NAME &&
+                            styles.paymentOptionTextSelected,
+                          ]}
+                        >
+                          {item.NAME}
+                        </Text>
+                      </TouchableOpacity>
+                    ))}
+                  </View>
+                )}
+
+                {validationErrors?.accCode && (
+                  <Text style={styles.errorText}>{validationErrors.accCode}</Text>
+                )}
+              </View>
+            )}
+
+
+            {/* Agreement Checkbox */}
+            {numericSchemeId && (
+              <TouchableOpacity
+                style={styles.checkboxRow}
+                onPress={() => setIsAgreed(!isAgreed)}
+                activeOpacity={0.7}
+              >
+                <View
+                  style={[styles.checkbox, isAgreed && styles.checkboxChecked]}
+                >
+                  {isAgreed && <Text style={styles.checkboxTick}>✔</Text>}
+                </View>
+                <Text style={styles.checkboxText}>
+                  I agree to the Terms & Conditions and Privacy Policy
+                </Text>
+              </TouchableOpacity>
+            )}
 
             {/* Buttons */}
             <View style={styles.buttonRow}>
@@ -304,13 +355,11 @@ const SchemeDetailsPage = ({
                 style={[
                   styles.button,
                   styles.submitButton,
-                  (isSubmitting ||
-                    !isAgreed ||
-                    Number(formData.amount) < minAmount) &&
-                    styles.buttonDisabled,
+                  (isSubmitting || !isAgreed || !numericSchemeId || Number(formData.amount) < minAmount) &&
+                  styles.buttonDisabled,
                 ]}
                 onPress={handleSubmit}
-                disabled={isSubmitting || Number(formData.amount) < minAmount}
+                disabled={isSubmitting || !numericSchemeId || Number(formData.amount) < minAmount}
                 activeOpacity={0.7}
               >
                 {isSubmitting ? (
@@ -391,6 +440,10 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     backgroundColor: COLORS.inputBackground,
   },
+  errorStaticContainer: {
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.errorLight,
+  },
   staticValueText: {
     ...FONTS.body,
     color: COLORS.textPrimary,
@@ -399,6 +452,66 @@ const styles = StyleSheet.create({
     ...FONTS.caption,
     color: COLORS.error,
     marginTop: SIZES.margin.xs,
+  },
+  loadingText: {
+    ...FONTS.caption,
+    color: COLORS.info,
+    marginTop: SIZES.margin.xs,
+    fontStyle: "italic",
+  },
+  noSchemeContainer: {
+    padding: SIZES.padding.lg,
+    alignItems: "center",
+    justifyContent: "center",
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    borderStyle: "dashed",
+    borderRadius: SIZES.radius.md,
+    marginBottom: SIZES.margin.lg,
+    backgroundColor: COLORS.warningLight,
+  },
+  noSchemeText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    textAlign: "center",
+    marginBottom: SIZES.margin.md,
+  },
+  backButtonSmall: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.padding.lg,
+    paddingVertical: SIZES.padding.sm,
+    borderRadius: SIZES.radius.md,
+  },
+  backButtonTextSmall: {
+    ...FONTS.bodySmall,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  paymentModeContainer: {
+    flexDirection: 'row',
+    gap: SIZES.margin.md,
+  },
+  paymentOption: {
+    flex: 1,
+    height: SIZES.input.height,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    borderRadius: SIZES.radius.md,
+    justifyContent: 'center',
+    alignItems: 'center',
+    backgroundColor: COLORS.inputBackground,
+  },
+  paymentOptionSelected: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primaryLight,
+  },
+  paymentOptionText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+  },
+  paymentOptionTextSelected: {
+    color: COLORS.primary,
+    fontWeight: '600',
   },
   buttonRow: {
     flexDirection: "row",
@@ -438,26 +551,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  loadingText: {
-    ...FONTS.bodySmall,
-    color: COLORS.white,
-    marginLeft: SIZES.margin.sm,
-  },
-  noSchemeContainer: {
-    padding: SIZES.padding.lg,
-    alignItems: "center",
-    justifyContent: "center",
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-    borderStyle: "dashed",
-    borderRadius: SIZES.radius.md,
-    marginBottom: SIZES.margin.lg,
-  },
-  noSchemeText: {
-    ...FONTS.body,
-    color: COLORS.textTertiary,
-    textAlign: "center",
-  },
   checkboxRow: {
     flexDirection: "row",
     alignItems: "center",
@@ -481,7 +574,7 @@ const styles = StyleSheet.create({
   checkboxTick: {
     color: COLORS.white,
     fontSize: SIZES.font.sm,
-    fontWeight: FONTS.weight.bold,
+    fontWeight: 'bold',
   },
   checkboxText: {
     flex: 1,

@@ -47,6 +47,8 @@ const INITIAL_FORM = {
   mobile2: "",
   panNumber: "",
   aadharNumber: "",
+  selectedSchemeId: null,
+  selectedSchemeName: "",
 };
 
 const AADHAAR_STATUS = {
@@ -56,7 +58,6 @@ const AADHAAR_STATUS = {
   VERIFIED: "verified",
   FAILED: "failed",
   EXPIRED: "expired",
-  AUTHENTICATED: "AUTHENTICATED",
 };
 
 const MONTHS = [
@@ -74,7 +75,17 @@ const MONTHS = [
   "December",
 ];
 
-const MemberDetailsPage = ({ onNext, onBack }) => {
+const MemberDetailsPage = ({
+  onNext,
+  onBack,
+  onSchemeSelect,
+  validationErrors,
+  setValidationErrors,
+  initialSchemeId,
+  initialSchemeName,
+  allSchemes,
+  isFetchingSchemes
+}) => {
   const scrollViewRef = useRef(null);
   const inputRefs = useRef({});
   const navigation = useNavigation();
@@ -83,9 +94,8 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   const [keyboardHeight, setKeyboardHeight] = useState(0);
   const [activeInput, setActiveInput] = useState(null);
   const [formData, setFormData] = useState(INITIAL_FORM);
-  const [validationErrors, setValidationErrors] = useState({});
   const [loading, setLoading] = useState(false);
-  const [formDisabled, setFormDisabled] = useState(true); // Lock form until Aadhaar verified
+  const [formDisabled, setFormDisabled] = useState(true);
 
   // Enhanced Aadhaar state management
   const [aadhaarStatus, setAadhaarStatus] = useState(
@@ -98,6 +108,16 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   const [aadhaarData, setAadhaarData] = useState(null);
   const [isCheckingExistingVerification, setIsCheckingExistingVerification] =
     useState(false);
+
+  // Scheme selection state
+  const [selectedScheme, setSelectedScheme] = useState({
+    id: initialSchemeId || null,
+    name: initialSchemeName || "Select a Scheme"
+  });
+
+  // Polling timer ref
+  const pollingTimerRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   // Date picker states
   const [showDatePicker, setShowDatePicker] = useState(null);
@@ -118,9 +138,20 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     (i + 1).toString().padStart(2, "0")
   );
 
+  // Cleanup on unmount
+  useEffect(() => {
+    isMountedRef.current = true;
+    return () => {
+      isMountedRef.current = false;
+      if (pollingTimerRef.current) {
+        clearTimeout(pollingTimerRef.current);
+      }
+    };
+  }, []);
+
   // LOAD SAVED FORM + AADHAAR STATUS
   useEffect(() => {
-    (async () => {
+    const loadInitialData = async () => {
       try {
         const stored = await AsyncStorage.getItem("digigoldMemberForm");
         const savedData = stored ? JSON.parse(stored) : {};
@@ -137,7 +168,17 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
           name: username || savedData.name || "",
           mobile: phone || savedData.mobile || "",
           email: email || savedData.email || "",
+          selectedSchemeId: initialSchemeId || savedData.selectedSchemeId || null,
+          selectedSchemeName: initialSchemeName || savedData.selectedSchemeName || "",
         }));
+
+        // Update selectedScheme state
+        if (initialSchemeId || savedData.selectedSchemeId) {
+          setSelectedScheme({
+            id: initialSchemeId || savedData.selectedSchemeId,
+            name: initialSchemeName || savedData.selectedSchemeName || "Select a Scheme"
+          });
+        }
 
         if (savedData.dateOfBirth) {
           const [year, month, day] = savedData.dateOfBirth.split("-");
@@ -149,47 +190,111 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
       } catch (e) {
         console.error("Load error:", e);
       }
-    })();
-  }, []);
+    };
 
-  // Check for verification ID from WebView
+    loadInitialData();
+  }, [initialSchemeId, initialSchemeName]);
+
+  // Handle route params from WebView
   useEffect(() => {
-    if (route.params?.verificationId) {
-      setAadhaarVerificationId(route.params.verificationId);
-      setAadhaarStatus(AADHAAR_STATUS.PENDING);
-      pollForAadhaarData();
-    }
-  }, [route.params?.verificationId]);
+    console.log("🔄 Route params changed:", route.params);
+
+    const handleVerificationCallback = async () => {
+      if (route.params?.verificationId) {
+        console.log("🎯 Received verification ID from route:", route.params.verificationId);
+
+        const verificationId = route.params.verificationId;
+
+        try {
+          // Save to AsyncStorage first (synchronously)
+          console.log("💾 Saving verification ID immediately:", verificationId);
+          await AsyncStorage.setItem("aadhaarVerificationId", verificationId);
+          await AsyncStorage.setItem("aadhaarVerificationStatus", AADHAAR_STATUS.PENDING);
+
+          // Update state
+          console.log("🔄 Updating state with verification ID:", verificationId);
+          setAadhaarVerificationId(verificationId);
+          setAadhaarStatus(AADHAAR_STATUS.PENDING);
+          setLoading(true);
+
+          // Start polling immediately
+          console.log("🚀 Starting polling for verification ID:", verificationId);
+          pollForAadhaarData();
+
+        } catch (error) {
+          console.error("❌ Error handling verification callback:", error);
+          Alert.alert("Error", "Failed to process verification. Please try again.");
+          setLoading(false);
+        }
+      }
+
+      if (route.params?.verificationFailed) {
+        Alert.alert("Verification Failed", "Aadhaar verification failed. Please try again.");
+        setAadhaarStatus(AADHAAR_STATUS.FAILED);
+        setLoading(false);
+      }
+    };
+
+    handleVerificationCallback();
+  }, [route.params]);
+
+  // In MemberDetailsPage.js, add this useEffect to handle WebView callbacks
+  useEffect(() => {
+    const handleWebViewCallback = () => {
+      if (route.params?.verificationCompleted) {
+        console.log("✅ WebView verification completed:", route.params.verificationId);
+
+        // Start polling for verification data
+        if (route.params.verificationId) {
+          setAadhaarVerificationId(route.params.verificationId);
+          setAadhaarStatus(AADHAAR_STATUS.PENDING);
+          setLoading(true);
+          pollForAadhaarData();
+        }
+      }
+
+      if (route.params?.verificationFailed) {
+        Alert.alert("Verification Failed", "Aadhaar verification failed. Please try again.");
+        setAadhaarStatus(AADHAAR_STATUS.FAILED);
+        setLoading(false);
+      }
+
+      if (route.params?.verificationInitiated) {
+        console.log("Verification was initiated but not completed");
+        // You might want to show a message or start polling here
+      }
+    };
+
+    handleWebViewCallback();
+  }, [route.params]);
 
   // Load Aadhaar status from storage
   const loadAadhaarStatus = async () => {
     try {
-      const [status, savedVerificationId, savedAadhaarData] = await Promise.all(
-        [
-          AsyncStorage.getItem("aadhaarVerificationStatus"),
-          AsyncStorage.getItem("aadhaarVerificationId"),
-          AsyncStorage.getItem("aadhaarData"),
-        ]
-      );
+      const [status, savedVerificationId, savedAadhaarData] = await Promise.all([
+        AsyncStorage.getItem("aadhaarVerificationStatus"),
+        AsyncStorage.getItem("aadhaarVerificationId"),
+        AsyncStorage.getItem("aadhaarData"),
+      ]);
 
-      if (savedVerificationId && savedAadhaarData) {
-        const parsedData = JSON.parse(savedAadhaarData);
-        const savedAadhaarNum = parsedData.uid?.replace(/\D/g, "") || "";
-        const enteredAadhaarNum = formData.aadharNumber.replace(/\D/g, "");
+      console.log("Loaded from storage:", { status, savedVerificationId });
 
-        // Only restore if Aadhaar number matches
-        if (savedAadhaarNum === enteredAadhaarNum || enteredAadhaarNum === "") {
-          setAadhaarVerificationId(savedVerificationId);
+      if (savedVerificationId) {
+        setAadhaarVerificationId(savedVerificationId);
 
-          if (status === AADHAAR_STATUS.VERIFIED) {
-            setAadhaarStatus(AADHAAR_STATUS.VERIFIED);
+        if (status === AADHAAR_STATUS.VERIFIED && savedAadhaarData) {
+          try {
+            const parsedData = JSON.parse(savedAadhaarData);
             setAadhaarData(parsedData);
-            setAadhaarAddress(parsedData.address);
-            setFormDisabled(false); // Unlock form
-          } else if (status === AADHAAR_STATUS.PENDING) {
-            setAadhaarStatus(AADHAAR_STATUS.PENDING);
-            pollForAadhaarData();
+            setAadhaarAddress(parsedData.address || null);
+            setAadhaarStatus(AADHAAR_STATUS.VERIFIED);
+            setFormDisabled(false);
+          } catch (e) {
+            console.error("Error parsing saved Aadhaar data:", e);
           }
+        } else if (status === AADHAAR_STATUS.PENDING) {
+          setAadhaarStatus(AADHAAR_STATUS.PENDING);
+          pollForAadhaarData();
         }
       }
     } catch (error) {
@@ -208,9 +313,11 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
 
         try {
           const savedAadhaarData = await AsyncStorage.getItem("aadhaarData");
-          if (savedAadhaarData) {
+          const savedVerificationId = await AsyncStorage.getItem("aadhaarVerificationId");
+
+          if (savedAadhaarData && savedVerificationId) {
             const parsedData = JSON.parse(savedAadhaarData);
-            const savedAadhaarNum = parsedData.uid?.replace(/\D/g, "");
+            const savedAadhaarNum = parsedData.uid?.replace(/\D/g, "") || "";
             const enteredAadhaarNum = formData.aadharNumber.replace(/\D/g, "");
 
             if (savedAadhaarNum === enteredAadhaarNum) {
@@ -218,31 +325,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
               await loadAadhaarStatus();
             } else {
               // Different Aadhaar number, reset verification
-              setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
-              setAadhaarData(null);
-              setAadhaarAddress(null);
-              setFormDisabled(true);
-              setAadhaarVerificationId("");
-              await AsyncStorage.multiRemove([
-                "aadhaarVerificationId",
-                "aadhaarVerificationStatus",
-                "aadhaarData",
-              ]);
-            }
-          } else {
-            // No saved data, check if we have verification ID
-            const savedStatus = await AsyncStorage.getItem(
-              "aadhaarVerificationStatus"
-            );
-            if (savedStatus === AADHAAR_STATUS.VERIFIED) {
-              // Status says verified but no data, clear it
-              await AsyncStorage.multiRemove([
-                "aadhaarVerificationId",
-                "aadhaarVerificationStatus",
-                "aadhaarData",
-              ]);
-              setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
-              setFormDisabled(true);
+              await resetAadhaarVerification();
             }
           }
         } catch (error) {
@@ -252,7 +335,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         }
       } else if (formData.aadharNumber.length < 12) {
         setFormDisabled(true);
-        setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
       }
     };
 
@@ -271,10 +353,15 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
 
   // SAVE FORM ON CHANGE
   useEffect(() => {
-    AsyncStorage.setItem("digigoldMemberForm", JSON.stringify(formData)).catch(
+    const dataToSave = {
+      ...formData,
+      selectedSchemeId: selectedScheme.id,
+      selectedSchemeName: selectedScheme.name,
+    };
+    AsyncStorage.setItem("digigoldMemberForm", JSON.stringify(dataToSave)).catch(
       (err) => console.error("Save error:", err)
     );
-  }, [formData]);
+  }, [formData, selectedScheme]);
 
   // KEYBOARD HANDLING
   useEffect(() => {
@@ -340,6 +427,21 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     fetchLocation();
   }, [formData.pincode]);
 
+  // Reset Aadhaar verification
+  const resetAadhaarVerification = async () => {
+    setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
+    setAadhaarVerificationId("");
+    setAadhaarData(null);
+    setAadhaarAddress(null);
+    setFormDisabled(true);
+
+    await AsyncStorage.multiRemove([
+      "aadhaarVerificationId",
+      "aadhaarVerificationStatus",
+      "aadhaarData",
+    ]);
+  };
+
   // FIELD UPDATE HANDLER
   const updateField = (field, value) => {
     setFormData((p) => ({ ...p, [field]: value }));
@@ -351,15 +453,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
 
     // Clear Aadhaar verification if Aadhaar number changes
     if (field === "aadharNumber" && aadhaarStatus === AADHAAR_STATUS.VERIFIED) {
-      setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
-      setAadhaarAddress(null);
-      setAadhaarData(null);
-      setFormDisabled(true);
-      AsyncStorage.multiRemove([
-        "aadhaarVerificationId",
-        "aadhaarVerificationStatus",
-        "aadhaarData",
-      ]);
+      resetAadhaarVerification();
     }
   };
 
@@ -379,11 +473,14 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         .toString(36)
         .substring(2, 9)}`;
 
-      setAadhaarVerificationId(verificationId);
+      // Save to AsyncStorage immediately
       await AsyncStorage.multiSet([
         ["aadhaarVerificationId", verificationId],
         ["aadhaarVerificationStatus", AADHAAR_STATUS.VERIFICATION_INITIATED],
       ]);
+
+      // Update state
+      setAadhaarVerificationId(verificationId);
 
       const result = await startDigiLockerFlow({
         verificationId,
@@ -394,7 +491,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         // Open DigiLocker WebView
         navigation.navigate("DigiLockerWebViewScreen", {
           url: result.url,
-          verificationId,
+          verificationId: verificationId,
         });
       } else {
         throw new Error("Failed to start verification");
@@ -403,7 +500,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
       console.error("Verify Aadhaar error:", error);
       setAadhaarStatus(AADHAAR_STATUS.FAILED);
       Alert.alert("Error", "Failed to start Aadhaar verification");
-    } finally {
       setLoading(false);
     }
   };
@@ -414,48 +510,43 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   const pollForAadhaarData = async (attempt = 1) => {
     try {
       if (attempt === 1) {
+        console.log("🔄 Starting polling process...");
         setLoading(true);
         setAadhaarPollingCount(0);
         setAadhaarStatus(AADHAAR_STATUS.PENDING);
-        await AsyncStorage.setItem(
-          "aadhaarVerificationStatus",
-          AADHAAR_STATUS.PENDING
-        );
       }
 
-      if (attempt > MAX_POLL_ATTEMPTS) {
-        setAadhaarStatus(AADHAAR_STATUS.EXPIRED);
-        await AsyncStorage.setItem(
-          "aadhaarVerificationStatus",
-          AADHAAR_STATUS.EXPIRED
-        );
+      // Always get verification ID from AsyncStorage to ensure we have the latest
+      const verificationIdToUse = await AsyncStorage.getItem("aadhaarVerificationId");
+
+      if (!verificationIdToUse) {
+        console.error("❌ No verification ID found for polling");
+        setAadhaarStatus(AADHAAR_STATUS.FAILED);
         setLoading(false);
-        Alert.alert(
-          "Verification Timeout",
-          "Aadhaar verification is taking longer than expected. Please try again."
-        );
+        Alert.alert("Error", "Verification ID not found. Please try again.");
         return;
       }
 
+      console.log(`🔄 Polling attempt ${attempt} with ID:`, verificationIdToUse);
       setAadhaarPollingCount(attempt);
-      const result = await verifyAndFetchAadhaarData(aadhaarVerificationId);
 
-      console.log("Poll result:", result);
+      const result = await verifyAndFetchAadhaarData(verificationIdToUse);
+      console.log("📊 Poll result:", result);
 
       if (result.step === "SUCCESS") {
+        console.log("✅ Verification successful!");
         const fetchedData = result.data;
         const address = extractAddressFromAadhaar(fetchedData);
 
         setAadhaarData(fetchedData);
         setAadhaarAddress(address);
         setAadhaarStatus(AADHAAR_STATUS.VERIFIED);
+        setLoading(false);
 
         await AsyncStorage.multiSet([
           ["aadhaarVerificationStatus", AADHAAR_STATUS.VERIFIED],
           ["aadhaarData", JSON.stringify({ ...fetchedData, address })],
         ]);
-
-        setLoading(false);
 
         // Show address confirmation modal
         setTimeout(() => {
@@ -466,21 +557,29 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
       }
 
       if (result.step === "PENDING") {
-        // Continue polling
-        setTimeout(() => pollForAadhaarData(attempt + 1), POLL_INTERVAL);
+        if (attempt >= MAX_POLL_ATTEMPTS) {
+          console.log("⏰ Polling timeout reached");
+          setAadhaarStatus(AADHAAR_STATUS.EXPIRED);
+          setLoading(false);
+          Alert.alert(
+            "Verification Timeout",
+            "Aadhaar verification is taking longer than expected. Please try again."
+          );
+        } else {
+          // Continue polling
+          console.log("⏳ Still pending, continuing polling...");
+          setTimeout(() => pollForAadhaarData(attempt + 1), POLL_INTERVAL);
+        }
         return;
       }
 
       if (result.step === "FAILED") {
-        throw new Error("Verification failed");
+        throw new Error("Verification failed on server");
       }
+
     } catch (error) {
-      console.error("Polling error:", error);
+      console.error("❌ Polling error:", error);
       setAadhaarStatus(AADHAAR_STATUS.FAILED);
-      await AsyncStorage.setItem(
-        "aadhaarVerificationStatus",
-        AADHAAR_STATUS.FAILED
-      );
       setLoading(false);
       Alert.alert(
         "Verification Failed",
@@ -490,7 +589,6 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   };
 
   const extractAddressFromAadhaar = (aadhaarData) => {
-    // Based on your example response structure
     if (!aadhaarData || !aadhaarData.split_address) {
       return {
         doorNo: "",
@@ -516,18 +614,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   // Clear Aadhaar verification
   const clearAadhaarVerification = async () => {
     try {
-      setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
-      setAadhaarVerificationId("");
-      setAadhaarData(null);
-      setAadhaarAddress(null);
-      setFormDisabled(true);
-
-      await AsyncStorage.multiRemove([
-        "aadhaarVerificationId",
-        "aadhaarVerificationStatus",
-        "aadhaarData",
-      ]);
-
+      await resetAadhaarVerification();
       Alert.alert("Cleared", "Aadhaar verification has been cleared.");
     } catch (error) {
       console.error("Error clearing Aadhaar:", error);
@@ -551,6 +638,54 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
 
   const handleManualAddress = () => {
     setShowAddressConfirmModal(false);
+  };
+
+  // Scheme selection handler
+  const handleSchemeSelection = () => {
+    if (formDisabled) {
+      Alert.alert(
+        "Action Required",
+        "Please verify Aadhaar first to select scheme."
+      );
+      return;
+    }
+
+    if (!allSchemes || allSchemes.length === 0) {
+      Alert.alert("No Schemes", "No schemes available. Please try again later.");
+      return;
+    }
+
+    // Create scheme options for Alert
+    const schemeOptions = allSchemes.map(scheme => ({
+      text: scheme.schemeName || `Scheme ${scheme.SchemeId}`,
+      onPress: () => {
+        const newSelectedScheme = {
+          id: scheme.SchemeId,
+          name: scheme.schemeName || `Scheme ${scheme.SchemeId}`
+        };
+        setSelectedScheme(newSelectedScheme);
+
+        // Update formData
+        setFormData(prev => ({
+          ...prev,
+          selectedSchemeId: scheme.SchemeId,
+          selectedSchemeName: scheme.schemeName || `Scheme ${scheme.SchemeId}`
+        }));
+
+        // Notify parent component
+        if (onSchemeSelect) {
+          onSchemeSelect(scheme.SchemeId, scheme.schemeName);
+        }
+      }
+    }));
+
+    schemeOptions.push({ text: "Cancel", style: "cancel" });
+
+    Alert.alert(
+      "Select Scheme",
+      "Choose a scheme to join:",
+      schemeOptions
+    );
   };
 
   // DATE HANDLERS
@@ -645,88 +780,90 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   };
 
   // VALIDATION
-  const validate = (d) => {
+  const validate = (d = {}) => {
     const errors = {};
 
-    // Check Aadhaar verification first
-    if (aadhaarStatus !== AADHAAR_STATUS.VERIFIED) {
-      errors.aadharNumber = "Please complete Aadhaar verification first";
+    // Safety guard (prevents crashes)
+    if (!d || typeof d !== "object") {
+      errors.form = "Form data missing";
+      setValidationErrors(errors);
       return errors;
     }
 
-    // Name validation
+    /* ---------------- Aadhaar must be verified FIRST ---------------- */
+    if (aadhaarStatus !== AADHAAR_STATUS.VERIFIED) {
+      errors.aadharNumber = "Please complete Aadhaar verification first";
+      setValidationErrors(errors);
+      return errors;
+    }
+
+    /* ---------------- Scheme selection ---------------- */
+    if (!selectedScheme?.id) {
+      errors.scheme = "Please select a scheme";
+      setValidationErrors(errors);
+      return errors; // ⛔ Do NOT show Alert here (UI handles it)
+    }
+
+    /* ---------------- Name ---------------- */
     if (!d.name?.trim()) {
       errors.name = "Name is required";
     } else if (d.name.trim().length < 2) {
       errors.name = "Name must be at least 2 characters";
     }
 
-    // Date of Birth validation
+    /* ---------------- Date of Birth ---------------- */
     if (!d.dateOfBirth?.trim()) {
       errors.dateOfBirth = "Date of Birth is required";
     } else {
       const dob = new Date(d.dateOfBirth);
       const today = new Date();
-      const age = today.getFullYear() - dob.getFullYear();
-      const monthDiff = today.getMonth() - dob.getMonth();
 
-      if (
-        monthDiff < 0 ||
-        (monthDiff === 0 && today.getDate() < dob.getDate())
-      ) {
-        const adjustedAge = age - 1;
-        if (adjustedAge < 18) {
-          errors.dateOfBirth = "You must be at least 18 years old";
-        }
-      } else if (age < 18) {
+      let age = today.getFullYear() - dob.getFullYear();
+      const m = today.getMonth() - dob.getMonth();
+      if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) {
+        age--;
+      }
+
+      if (age < 18) {
         errors.dateOfBirth = "You must be at least 18 years old";
       }
     }
 
-    // Marital Status validation
+    /* ---------------- Marital Status ---------------- */
     if (!d.maritalStatus) {
       errors.maritalStatus = "Marital Status is required";
     }
 
-    // Anniversary Date validation (if married)
-    if (d.maritalStatus === "married" && !d.anniversaryDate?.trim()) {
+    /* ---------------- Anniversary (if married) ---------------- */
+    if (
+      d.maritalStatus === "married" &&
+      !d.anniversaryDate?.trim()
+    ) {
       errors.anniversaryDate = "Anniversary Date is required";
     }
 
-    // Mobile validation
+    /* ---------------- Mobile ---------------- */
     const mobileErr = validateMobile(d.mobile || "");
     if (mobileErr) errors.mobile = mobileErr;
 
-    // Email validation
+    /* ---------------- Email (optional) ---------------- */
     if (d.email?.trim()) {
-      const emailErr = validateEmail(d.email || "");
-      if (emailErr) {
-        errors.email = emailErr;
-      }
+      const emailErr = validateEmail(d.email);
+      if (emailErr) errors.email = emailErr;
     }
 
-    // Address validations
-    if (!d.doorNo?.trim()) {
-      errors.doorNo = "Door No. is required";
-    }
+    /* ---------------- Address ---------------- */
+    if (!d.doorNo?.trim()) errors.doorNo = "Door No. is required";
+    if (!d.street?.trim()) errors.street = "Street is required";
+    if (!d.area?.trim()) errors.area = "Area/Locality is required";
 
-    if (!d.street?.trim()) {
-      errors.street = "Street is required";
-    }
-
-    if (!d.area?.trim()) {
-      errors.area = "Area/Locality is required";
-    }
-
-    // Pincode validation
     const pinErr = validatePincode(d.pincode || "");
     if (pinErr) errors.pincode = pinErr;
 
-    // City/State (auto filled but still required)
     if (!d.city?.trim()) errors.city = "City is required";
     if (!d.state?.trim()) errors.state = "State is required";
 
-    // Nominee validations
+    /* ---------------- Nominee ---------------- */
     if (!d.nomeni?.trim()) {
       errors.nomeni = "Nominee Name is required";
     }
@@ -734,31 +871,30 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
     const nomMobileErr = validateMobile(d.mobile2 || "");
     if (nomMobileErr) errors.mobile2 = nomMobileErr;
 
-    // PAN validation (optional)
+    /* ---------------- PAN (optional) ---------------- */
     if (d.panNumber?.trim()) {
       const panErr = validatePAN(d.panNumber);
       if (panErr) errors.panNumber = panErr;
     }
 
-    // Aadhaar validation
+    /* ---------------- Aadhaar ---------------- */
     if (!d.aadharNumber?.trim()) {
       errors.aadharNumber = "Aadhaar is required";
     } else {
       const aErr = validateAadhaar(d.aadharNumber);
-      if (aErr) {
-        errors.aadharNumber = aErr;
-      }
+      if (aErr) errors.aadharNumber = aErr;
     }
 
     setValidationErrors(errors);
     return errors;
   };
 
-  // NEXT BUTTON
+
+  // NEXT BUTTON - Fixed to properly call onNext
   const handleNext = () => {
     const errors = validate(formData);
-
-    if (Object.keys(errors).length === 0) {
+    
+    if (Object.keys(errors).length === 0 && selectedScheme.id) {
       const transformedData = {
         name: formData.name.trim(),
         mobile: formData.mobile,
@@ -779,12 +915,19 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         aadhaarVerified: aadhaarStatus === AADHAAR_STATUS.VERIFIED,
         nomeni: formData.nomeni.trim(),
         mobile2: formData.mobile2,
+        // Include scheme data
+        selectedSchemeId: selectedScheme.id,
+        selectedSchemeName: selectedScheme.name,
+        // Include aadhaarData if needed
+        aadhaarData: aadhaarData ? JSON.stringify(aadhaarData) : null,
       };
 
-      console.log("Transformed data for AddNewMember:", transformedData);
-      navigation.navigate("SchemeDetailsPage", {
-        memberData: transformedData,
-      });
+      console.log("Transformed data for next step:", transformedData);
+
+      // Call onNext prop
+      if (onNext && typeof onNext === 'function') {
+        onNext(transformedData);
+      }
 
       return;
     }
@@ -802,7 +945,11 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
       }
     }
 
-    Alert.alert("Incomplete Form", "Please fix the highlighted fields.");
+    if (!selectedScheme.id) {
+      Alert.alert("Scheme Required", "Please select a scheme to continue.");
+    } else {
+      Alert.alert("Incomplete Form", "Please fix the highlighted fields.");
+    }
   };
 
   // CLEAR DATA
@@ -819,8 +966,14 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
       mobile: prev.mobile, // Preserve user mobile number
     }));
 
+    setSelectedScheme({
+      id: initialSchemeId || null,
+      name: initialSchemeName || "Select a Scheme"
+    });
+
     setValidationErrors({});
     setAadhaarStatus(AADHAAR_STATUS.NOT_STARTED);
+    setAadhaarVerificationId("");
     setAadhaarAddress(null);
     setAadhaarData(null);
     setFormDisabled(true);
@@ -843,8 +996,8 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
             validationErrors[field] && styles.errorInput,
             isDisabled && styles.disabledInput,
             field === "aadharNumber" &&
-              aadhaarStatus === AADHAAR_STATUS.VERIFIED &&
-              styles.verifiedInput,
+            aadhaarStatus === AADHAAR_STATUS.VERIFIED &&
+            styles.verifiedInput,
           ]}
           value={formData[field]}
           onChangeText={handler || ((t) => updateField(field, t))}
@@ -862,6 +1015,48 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
 
         {validationErrors[field] && (
           <Text style={styles.errorText}>{validationErrors[field]}</Text>
+        )}
+      </View>
+    );
+  };
+
+  // Scheme selector component
+  const renderSchemeSelector = () => {
+    const isDisabled = formDisabled;
+
+    return (
+      <View style={styles.inputGroup}>
+        <Text style={[styles.label, isDisabled && styles.disabledLabel]}>
+          Selected Scheme *
+        </Text>
+        <TouchableOpacity
+          style={[
+            styles.input,
+            !selectedScheme.id && styles.errorInput,
+            isDisabled && styles.disabledInput,
+          ]}
+          onPress={handleSchemeSelection}
+          disabled={isDisabled}
+        >
+          <Text
+            style={[
+              selectedScheme.id ? styles.dateText : styles.placeholderText,
+              isDisabled && styles.disabledText,
+            ]}
+          >
+            {isFetchingSchemes ? "Loading schemes..." : selectedScheme.name}
+          </Text>
+          <MaterialIcons
+            name="arrow-drop-down"
+            size={24}
+            color={isDisabled ? COLORS.inputPlaceholderDisabled : COLORS.textSecondary}
+          />
+        </TouchableOpacity>
+        {!selectedScheme.id && !isDisabled && (
+          <Text style={styles.errorText}>Please select a scheme</Text>
+        )}
+        {isFetchingSchemes && (
+          <Text style={styles.loadingText}>Loading schemes...</Text>
         )}
       </View>
     );
@@ -920,7 +1115,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                   style={[
                     styles.pickerItemText,
                     selectedDate.month === month &&
-                      styles.pickerItemTextSelected,
+                    styles.pickerItemTextSelected,
                   ]}
                 >
                   {MONTHS[parseInt(month) - 1]}
@@ -963,6 +1158,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
   };
 
   // Enhanced Aadhaar verification UI component
+  // Enhanced Aadhaar verification UI component
   const renderAadhaarVerification = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>
@@ -982,8 +1178,8 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
           )}
           {aadhaarStatus === AADHAAR_STATUS.PENDING && (
             <View style={styles.pendingBadge}>
-              <ActivityIndicator size="small" color={COLORS.warning} />
-              <Text style={styles.pendingText}>Verifying...</Text>
+              <MaterialIcons name="hourglass-empty" size={16} color={COLORS.warning} />
+              <Text style={styles.pendingText}>Pending</Text>
             </View>
           )}
           {aadhaarStatus === AADHAAR_STATUS.FAILED && (
@@ -994,12 +1190,20 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
           )}
           {aadhaarStatus === AADHAAR_STATUS.VERIFICATION_INITIATED && (
             <View style={styles.initiatedBadge}>
-              <MaterialIcons
-                name="hourglass-empty"
-                size={16}
-                color={COLORS.info}
-              />
+              <MaterialIcons name="hourglass-empty" size={16} color={COLORS.info} />
               <Text style={styles.initiatedText}>Initiated</Text>
+            </View>
+          )}
+          {aadhaarStatus === AADHAAR_STATUS.NOT_STARTED && (
+            <View style={styles.notStartedBadge}>
+              <MaterialIcons name="info" size={16} color={COLORS.textSecondary} />
+              <Text style={styles.notStartedText}>Not Verified</Text>
+            </View>
+          )}
+          {aadhaarStatus === AADHAAR_STATUS.EXPIRED && (
+            <View style={styles.failedBadge}>
+              <MaterialIcons name="error" size={16} color={COLORS.error} />
+              <Text style={styles.failedText}>Expired</Text>
             </View>
           )}
         </View>
@@ -1036,20 +1240,15 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                       Alert.alert(
                         "Aadhaar Details",
                         `Name: ${aadhaarData.name || "Not available"}\n` +
-                          `DOB: ${aadhaarData.dob || "Not available"}\n` +
-                          `Gender: ${aadhaarData.gender || "Not available"}\n` +
-                          `Address: ${aadhaarAddress?.doorNo || ""}, ${
-                            aadhaarAddress?.street || ""
-                          }, ${aadhaarAddress?.area || ""}`
+                        `DOB: ${aadhaarData.dob || "Not available"}\n` +
+                        `Gender: ${aadhaarData.gender || "Not available"}\n` +
+                        `Address: ${aadhaarAddress?.doorNo || ""}, ${aadhaarAddress?.street || ""
+                        }, ${aadhaarAddress?.area || ""}`
                       );
                     }
                   }}
                 >
-                  <MaterialIcons
-                    name="visibility"
-                    size={16}
-                    color={COLORS.primary}
-                  />
+                  <MaterialIcons name="visibility" size={16} color={COLORS.primary} />
                   <Text style={styles.viewDetailsText}>View</Text>
                 </TouchableOpacity>
                 <TouchableOpacity
@@ -1065,10 +1264,10 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                 style={[
                   styles.verifyButton,
                   loading && styles.verifyButtonDisabled,
-                  aadhaarStatus === AADHAAR_STATUS.PENDING &&
-                    styles.pendingButton,
-                  formData.aadharNumber.length !== 12 &&
-                    styles.verifyButtonDisabled,
+                  aadhaarStatus === AADHAAR_STATUS.PENDING && styles.pendingButton,
+                  (formData.aadharNumber.length !== 12 ||
+                    aadhaarStatus === AADHAAR_STATUS.VERIFICATION_INITIATED ||
+                    aadhaarStatus === AADHAAR_STATUS.PENDING) && styles.verifyButtonDisabled,
                 ]}
                 onPress={verifyAadhaar}
                 disabled={
@@ -1089,13 +1288,10 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                   <Text style={styles.verifyButtonText}>Initializing...</Text>
                 ) : (
                   <>
-                    <MaterialIcons
-                      name="verified-user"
-                      size={18}
-                      color={COLORS.white}
-                    />
+                    <MaterialIcons name="verified-user" size={18} color={COLORS.white} />
                     <Text style={styles.verifyButtonText}>
-                      {aadhaarStatus === AADHAAR_STATUS.FAILED
+                      {aadhaarStatus === AADHAAR_STATUS.FAILED ||
+                        aadhaarStatus === AADHAAR_STATUS.EXPIRED
                         ? "Retry"
                         : "Verify"}
                     </Text>
@@ -1203,6 +1399,13 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         {/* AADHAAR VERIFICATION - Always first */}
         {renderAadhaarVerification()}
 
+        {/* SCHEME SELECTOR - Conditionally locked */}
+        {renderSection(
+          "Scheme Selection",
+          renderSchemeSelector(),
+          formDisabled
+        )}
+
         {/* BASIC DETAILS - Conditionally locked */}
         {renderSection(
           "Basic Details",
@@ -1267,7 +1470,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                   style={[
                     styles.checkbox,
                     formData.maritalStatus === "married" &&
-                      styles.checkboxSelected,
+                    styles.checkboxSelected,
                     formDisabled && styles.disabledCheckbox,
                   ]}
                   onPress={() => handleMaritalStatus("married")}
@@ -1277,7 +1480,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                     style={[
                       styles.checkboxText,
                       formData.maritalStatus === "married" &&
-                        styles.checkboxTextSelected,
+                      styles.checkboxTextSelected,
                       formDisabled && styles.disabledText,
                     ]}
                   >
@@ -1288,7 +1491,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                   style={[
                     styles.checkbox,
                     formData.maritalStatus === "unmarried" &&
-                      styles.checkboxSelected,
+                    styles.checkboxSelected,
                     formDisabled && styles.disabledCheckbox,
                   ]}
                   onPress={() => handleMaritalStatus("unmarried")}
@@ -1298,7 +1501,7 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
                     style={[
                       styles.checkboxText,
                       formData.maritalStatus === "unmarried" &&
-                        styles.checkboxTextSelected,
+                      styles.checkboxTextSelected,
                       formDisabled && styles.disabledText,
                     ]}
                   >
@@ -1573,16 +1776,16 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
         <TouchableOpacity
           style={[
             styles.confirmBtn,
-            (loading || formDisabled) && styles.confirmBtnDisabled,
+            (loading || formDisabled || !selectedScheme.id) && styles.confirmBtnDisabled,
           ]}
           onPress={handleNext}
-          disabled={loading || formDisabled}
+          disabled={loading || formDisabled || !selectedScheme.id}
         >
           {loading ? (
             <ActivityIndicator size="small" color={COLORS.white} />
           ) : (
             <Text style={styles.confirmText}>
-              {formDisabled ? "Verify Aadhaar First" : "Confirm"}
+              {formDisabled ? "Verify Aadhaar First" : !selectedScheme.id ? "Select Scheme First" : "Confirm & Continue"}
             </Text>
           )}
         </TouchableOpacity>
@@ -1668,13 +1871,13 @@ const MemberDetailsPage = ({ onNext, onBack }) => {
               {(aadhaarAddress?.city ||
                 aadhaarAddress?.state ||
                 aadhaarAddress?.pincode) && (
-                <Text style={styles.addressText}>
-                  {aadhaarAddress.city || ""}
-                  {aadhaarAddress.city && aadhaarAddress.state ? ", " : ""}
-                  {aadhaarAddress.state || ""}
-                  {aadhaarAddress.pincode ? ` - ${aadhaarAddress.pincode}` : ""}
-                </Text>
-              )}
+                  <Text style={styles.addressText}>
+                    {aadhaarAddress.city || ""}
+                    {aadhaarAddress.city && aadhaarAddress.state ? ", " : ""}
+                    {aadhaarAddress.state || ""}
+                    {aadhaarAddress.pincode ? ` - ${aadhaarAddress.pincode}` : ""}
+                  </Text>
+                )}
               {!aadhaarAddress?.doorNo &&
                 !aadhaarAddress?.area &&
                 !aadhaarAddress?.city &&
@@ -1904,6 +2107,12 @@ const styles = StyleSheet.create({
     color: COLORS.error,
     marginTop: SIZES.margin.xs,
   },
+  loadingText: {
+    ...FONTS.caption,
+    color: COLORS.info,
+    marginTop: SIZES.margin.xs,
+    fontStyle: "italic",
+  },
   confirmBtn: {
     backgroundColor: COLORS.primary,
     height: SIZES.button.lg,
@@ -1945,6 +2154,22 @@ const styles = StyleSheet.create({
     minHeight: SIZES.input.height,
     justifyContent: "center",
     minWidth: 100,
+  },
+  notStartedBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.inputBackground,
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: 4,
+    borderRadius: SIZES.radius.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  notStartedText: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
+    marginLeft: 4,
+    fontWeight: "600",
   },
   verifyButtonDisabled: {
     backgroundColor: COLORS.disabled,
