@@ -32,6 +32,95 @@ const languageOptions = [
 // Grouped FAQ Data with category icon and color
 const faqSections = [
   {
+    title: "Jewellery Chit Scheme ",
+    icon: "savings",
+    iconColor: "#FF6B35",
+    faqs: [
+      {
+        q: "What plans can I join?",
+        a: "Choose from 3 easy saving options — Lumpsum, Bright, or Smart Pay.",
+      },
+      {
+        q: "What's the scheme period?",
+        a: "All plans run for 330 days. Redeem between Day 331–345.",
+      },
+      {
+        q: "Can I redeem early?",
+        a: "❌ No early redemption. Redeem only after 330 days.",
+      },
+      {
+        q: "What will I get at maturity?",
+        a: "You'll get jewellery worth your total payment + bonus value.",
+      },
+      {
+        q: "What are the bonus benefits?",
+        a: "• Lumpsum: upto Flat 15% Bonus\n• Bright: 1 Month's Instalment\n• Smart Pay: Up to 10% based on payment period",
+      },
+      {
+        q: "What's the minimum amount to join?",
+        a: "• Lumpsum – ₹10,000\n• Bright – ₹1,000 (multiples of ₹1000)\n• Smart Pay – ₹100 per payment",
+      },
+      {
+        q: "Can I pay more than once?",
+        a: "Yes! You can add more anytime (as per your scheme).",
+      },
+      {
+        q: "What if I stop paying?",
+        a: "Bonus and gifts will be forfeited, and gift value will be deducted.",
+      },
+      {
+        q: "Can I switch between schemes?",
+        a: "No. Each scheme is independent.",
+      },
+      {
+        q: "Is my amount based on silver weight?",
+        a: "No, it's treated as advance value (₹), not metal weight.",
+      },
+      {
+        q: "What if my card/passbook is lost?",
+        a: "You can get a replacement with a small charge.",
+      },
+      {
+        q: "What if I forget to redeem?",
+        a: "Schemes not redeemed by Day 345 will lapse automatically.",
+      },
+      {
+        q: "Are taxes included?",
+        a: "No. GST, making & stone charges apply at redemption.",
+      },
+      {
+        q: "How can I make payments?",
+        a: "Pay directly at BMG Jewellers – via cash, UPI, card, or bank transfer.",
+      },
+      {
+        q: "Can I pay after 330 days?",
+        a: "❌ No, payments accepted only within 330 days.",
+      },
+      {
+        q: "Can I take cash instead of jewellery?",
+        a: "No. Redemption is only in jewellery purchase.",
+      },
+      {
+        q: "When is the bonus applied?",
+        a: "Your bonus is added at the time of redemption.",
+      },
+      {
+        q: "Can I join more than one scheme?",
+        a: "Yes! You can enrol in multiple schemes anytime.",
+      },
+      {
+        q: "Who can join the scheme?",
+        a: "Any Indian citizen aged 18 years and above with valid ID proof.",
+      },
+      {
+        q: "What assurance do I get on jewellery?",
+        a: "All items are 92.5 Hallmark Certified Silver from BMG Jewellers – India's Largest Hallmark Silver Showroom.",
+      },
+    ],
+  },
+
+
+  {
     title: "Gold-Polished Silver Jewellery",
     icon: "redeem",
     iconColor: COLORS.primary,
@@ -199,7 +288,97 @@ const faqSections = [
     ],
   },
 ];
+
 const faqSectionsTamil = [
+  {
+    title: "நகை சிட் ஸ்கீம்",
+    icon: "savings",
+    iconColor: "#FF6B35",
+    faqs: [
+      {
+        q: "எந்த திட்டங்களைச் சேரலாம்?",
+        a: "3 எளிய சேமிப்பு விருப்பங்கள் — Lumpsum, Bright, அல்லது Smart Pay.",
+      },
+      {
+        q: "திட்ட காலம் என்ன?",
+        a: "அனைத்து திட்டங்களும் 330 நாட்கள். Day 331–345 க்குள் மீட்டெடுக்கவும்.",
+      },
+      {
+        q: "முன்கூட்டியே மீட்க முடியுமா?",
+        a: "❌ முன்கூட்டியே மீட்பு இல்லை. 330 நாட்களுக்குப் பிறகு மட்டுமே மீட்கவும்.",
+      },
+      {
+        q: "முதிர்வில் என்ன கிடைக்கும்?",
+        a: "உங்கள் மொத்த கட்டணம் + போனஸ் மதிப்புக்கு சமமான நகைகள் கிடைக்கும்.",
+      },
+      {
+        q: "போனஸ் பலன்கள் என்ன?",
+        a: "• Lumpsum: Flat 15% வரை போனஸ்\n• Bright: 1 மாதத்தின் தவணை\n• Smart Pay: கட்டணம் செலுத்தும் காலத்தைப் பொறுத்து 10% வரை",
+      },
+      {
+        q: "சேர குறைந்தபட்ச தொகை என்ன?",
+        a: "• Lumpsum – ₹10,000\n• Bright – ₹1,000 (₹1000 இன் மடங்குகள்)\n• Smart Pay – ஒரு கட்டணத்திற்கு ₹100",
+      },
+      {
+        q: "ஒன்றுக்கு மேற்பட்ட முறை கட்டலாமா?",
+        a: "ஆம்! எந்த நேரத்திலும் அதிகமாகச் சேர்க்கலாம் (உங்கள் திட்டத்திற்கு ஏற்ப).",
+      },
+      {
+        q: "கட்டணம் செலுத்த நிறுத்தினால் என்ன?",
+        a: "போனஸ் மற்றும் பரிசுகள் ரத்து செய்யப்படும், மற்றும் பரிசு மதிப்பு கழிக்கப்படும்.",
+      },
+      {
+        q: "திட்டங்களுக்கிடையே மாற முடியுமா?",
+        a: "இல்லை. ஒவ்வொரு திட்டமும் சுயாதீனமானது.",
+      },
+      {
+        q: "தொகை வெள்ளி எடையை அடிப்படையாகக் கொண்டதா?",
+        a: "இல்லை, இது முன்பண மதிப்பாக (₹) கருதப்படுகிறது, உலோக எடை அல்ல.",
+      },
+      {
+        q: "கார்டு/பாஸ்புக் தொலைந்தால் என்ன செய்வது?",
+        a: "சிறிய கட்டணத்துடன் மாற்றீட்டைப் பெறலாம்.",
+      },
+      {
+        q: "மீட்பதை மறந்துவிட்டால் என்ன?",
+        a: "Day 345 க்குள் மீட்கப்படாத திட்டங்கள் தானாகவே காலாவதியாகும்.",
+      },
+      {
+        q: "வரிகள் சேர்க்கப்பட்டுள்ளதா?",
+        a: "இல்லை. GST, making & stone charges மீட்டெடுப்பின் போது பொருந்தும்.",
+      },
+      {
+        q: "கட்டணங்களை எப்படி செலுத்துவது?",
+        a: "BMG Jewellers இல் நேரடியாக செலுத்தவும் — cash, UPI, card, அல்லது bank transfer மூலம்.",
+      },
+      {
+        q: "330 நாட்களுக்குப் பிறகு கட்டலாமா?",
+        a: "❌ இல்லை, கட்டணங்கள் 330 நாட்களுக்குள் மட்டுமே ஏற்கப்படும்.",
+      },
+      {
+        q: "பணத்திற்குப் பதிலாக பணம் வாங்க முடியுமா?",
+        a: "இல்லை. மீட்பு நகை வாங்குதலில் மட்டுமே.",
+      },
+      {
+        q: "போனஸ் எப்போது சேர்க்கப்படும்?",
+        a: "உங்கள் போனஸ் மீட்டெடுப்பின் போது சேர்க்கப்படும்.",
+      },
+      {
+        q: "ஒன்றுக்கு மேற்பட்ட திட்டங்களில் சேர முடியுமா?",
+        a: "ஆம்! எப்போது வேண்டுமானாலும் பல திட்டங்களில் சேரலாம்.",
+      },
+      {
+        q: "யார் இந்த திட்டத்தில் சேரலாம்?",
+        a: "வயது 18 மற்றும் அதற்கு மேற்பட்ட, சரியான ID சான்றிதழ் உள்ள எந்த இந்திய குடிமகனும்.",
+      },
+      {
+        q: "நகைகள் குறித்து என்ன உத்தரவாதம்?",
+        a: "அனைத்து பொருட்களும் 92.5 Hallmark Certified Silver — BMG Jewellers, இந்தியாவின் மிகப்பெரிய Hallmark Silver Showroom.",
+      },
+    ],
+  },
+
+
   {
     title: "தங்கம் போலிஷ் வெள்ளி நகைகள்",
     icon: "redeem",

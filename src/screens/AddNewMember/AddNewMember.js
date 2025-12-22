@@ -533,8 +533,10 @@ const AddNewMember = () => {
         city: memberData.city || "",
         state: memberData.selectedState || "",
         country: "India",
-        pinCode: memberData.pinCode || "", // ✅ FIX (capital C)
+        pinCode: memberData.pincode || "", // ✅ FIX (capital C)
         mobile: memberData.mobile || "",
+        nomeni: memberData.nomeni,
+        mobile2: memberData.mobile2 || "",
         idProof: "Aadhaar",
         idProofNo: memberData.aadharNumber || "",
         panNumber: memberData.panNumber || "",

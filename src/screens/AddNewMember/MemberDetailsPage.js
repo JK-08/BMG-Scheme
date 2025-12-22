@@ -75,6 +75,66 @@ const MONTHS = [
   "December",
 ];
 
+// Helper functions for Aadhaar data processing
+const extractAllDetailsFromAadhaar = (aadhaarData) => {
+  if (!aadhaarData) {
+    return {
+      name: "",
+      dob: "",
+      gender: "",
+      address: null,
+      rawData: null
+    };
+  }
+
+  // Extract basic details
+  const name = aadhaarData.name || "";
+  const dob = aadhaarData.dob || "";
+  const gender = aadhaarData.gender || "";
+  
+  // Extract and format address
+  const address = aadhaarData.split_address ? {
+    doorNo: aadhaarData.split_address.house || "",
+    street: aadhaarData.split_address.street || "",
+    area: aadhaarData.split_address.vtc || aadhaarData.split_address.locality || "",
+    pincode: aadhaarData.split_address.pincode || "",
+    city: aadhaarData.split_address.dist || aadhaarData.split_address.city || "",
+    state: aadhaarData.split_address.state || "",
+    country: aadhaarData.split_address.country || "India",
+    landmark: aadhaarData.split_address.landmark || "",
+    po: aadhaarData.split_address.po || "",
+    subdist: aadhaarData.split_address.subdist || ""
+  } : null;
+
+  // Extract care_of (father's name)
+  const careOf = aadhaarData.care_of || "";
+  const fatherName = careOf.replace(/^S\/O:\s*/i, "").replace(/^C\/O:\s*/i, "");
+
+  return {
+    name,
+    dob,
+    gender,
+    address,
+    fatherName,
+    rawData: aadhaarData
+  };
+};
+
+const formatAadhaarDate = (dobString) => {
+  if (!dobString) return "";
+  const [day, month, year] = dobString.split("-");
+  return `${year}-${month}-${day}`;
+};
+
+const getGenderDisplay = (genderCode) => {
+  const genderMap = {
+    'M': 'Male',
+    'F': 'Female',
+    'T': 'Transgender'
+  };
+  return genderMap[genderCode] || genderCode;
+};
+
 const MemberDetailsPage = ({
   onNext,
   onBack,
@@ -115,10 +175,6 @@ const MemberDetailsPage = ({
     name: initialSchemeName || "Select a Scheme"
   });
 
-  // Polling timer ref
-  const pollingTimerRef = useRef(null);
-  const isMountedRef = useRef(true);
-
   // Date picker states
   const [showDatePicker, setShowDatePicker] = useState(null);
   const [selectedDate, setSelectedDate] = useState({
@@ -137,6 +193,10 @@ const MemberDetailsPage = ({
   const months = Array.from({ length: 12 }, (_, i) =>
     (i + 1).toString().padStart(2, "0")
   );
+
+  // Polling timer ref
+  const pollingTimerRef = useRef(null);
+  const isMountedRef = useRef(true);
 
   // Cleanup on unmount
   useEffect(() => {
@@ -194,6 +254,7 @@ const MemberDetailsPage = ({
 
     loadInitialData();
   }, [initialSchemeId, initialSchemeName]);
+  
 
   // Handle route params from WebView
   useEffect(() => {
@@ -206,7 +267,7 @@ const MemberDetailsPage = ({
         const verificationId = route.params.verificationId;
 
         try {
-          // Save to AsyncStorage first (synchronously)
+          // Save to AsyncStorage first
           console.log("💾 Saving verification ID immediately:", verificationId);
           await AsyncStorage.setItem("aadhaarVerificationId", verificationId);
           await AsyncStorage.setItem("aadhaarVerificationStatus", AADHAAR_STATUS.PENDING);
@@ -238,36 +299,6 @@ const MemberDetailsPage = ({
     handleVerificationCallback();
   }, [route.params]);
 
-  // In MemberDetailsPage.js, add this useEffect to handle WebView callbacks
-  useEffect(() => {
-    const handleWebViewCallback = () => {
-      if (route.params?.verificationCompleted) {
-        console.log("✅ WebView verification completed:", route.params.verificationId);
-
-        // Start polling for verification data
-        if (route.params.verificationId) {
-          setAadhaarVerificationId(route.params.verificationId);
-          setAadhaarStatus(AADHAAR_STATUS.PENDING);
-          setLoading(true);
-          pollForAadhaarData();
-        }
-      }
-
-      if (route.params?.verificationFailed) {
-        Alert.alert("Verification Failed", "Aadhaar verification failed. Please try again.");
-        setAadhaarStatus(AADHAAR_STATUS.FAILED);
-        setLoading(false);
-      }
-
-      if (route.params?.verificationInitiated) {
-        console.log("Verification was initiated but not completed");
-        // You might want to show a message or start polling here
-      }
-    };
-
-    handleWebViewCallback();
-  }, [route.params]);
-
   // Load Aadhaar status from storage
   const loadAadhaarStatus = async () => {
     try {
@@ -289,6 +320,11 @@ const MemberDetailsPage = ({
             setAadhaarAddress(parsedData.address || null);
             setAadhaarStatus(AADHAAR_STATUS.VERIFIED);
             setFormDisabled(false);
+            
+            // Auto-fill data if we have it
+            if (parsedData) {
+              autoFillFromAadhaar(parsedData);
+            }
           } catch (e) {
             console.error("Error parsing saved Aadhaar data:", e);
           }
@@ -457,6 +493,82 @@ const MemberDetailsPage = ({
     }
   };
 
+  // Auto-fill all details from Aadhaar
+  const autoFillFromAadhaar = (aadhaarData) => {
+    if (!aadhaarData) return;
+
+    const extractedData = extractAllDetailsFromAadhaar(aadhaarData);
+    const address = extractedData.address;
+
+    console.log("📋 Auto-filling details from Aadhaar:", extractedData);
+
+    // Auto-fill name
+    if (extractedData.name) {
+      updateField("name", extractedData.name);
+    }
+
+    // Auto-fill date of birth
+    if (extractedData.dob) {
+      const formattedDOB = formatAadhaarDate(extractedData.dob);
+      updateField("dateOfBirth", formattedDOB);
+      
+      // Also update the selectedDate state for date picker
+      if (formattedDOB) {
+        const [year, month, day] = formattedDOB.split("-");
+        setSelectedDate({ day, month, year });
+      }
+    }
+
+    // Auto-fill address if available
+    if (address) {
+      setFormData((prev) => ({
+        ...prev,
+        doorNo: address.doorNo || "",
+        street: address.street || "",
+        area: address.area || "",
+        pincode: address.pincode || "",
+        city: address.city || "",
+        state: address.state || "",
+      }));
+    }
+
+    // Extract father's name from care_of (can be used for nominee if needed)
+    if (extractedData.fatherName && !formData.nomeni) {
+      // Optionally set nominee as father's name if nominee field is empty
+      updateField("nomeni", extractedData.fatherName);
+      console.log("Father's name available:", extractedData.fatherName);
+    }
+  };
+
+  // Extract address from Aadhaar data
+  const extractAddressFromAadhaar = (aadhaarData) => {
+    if (!aadhaarData || !aadhaarData.split_address) {
+      return {
+        doorNo: "",
+        street: "",
+        area: "",
+        pincode: "",
+        city: "",
+        state: "",
+        country: "India"
+      };
+    }
+
+    const addr = aadhaarData.split_address;
+    return {
+      doorNo: addr.house || "",
+      street: addr.street || "",
+      area: addr.vtc || addr.locality || "",
+      pincode: addr.pincode || "",
+      city: addr.dist || addr.city || "",
+      state: addr.state || "",
+      country: addr.country || "India",
+      landmark: addr.landmark || "",
+      po: addr.po || "",
+      subdist: addr.subdist || ""
+    };
+  };
+
   // Enhanced AADHAAR VERIFICATION HANDLERS
   const verifyAadhaar = async () => {
     const aadhaarErr = validateAadhaar(formData.aadharNumber || "");
@@ -548,6 +660,9 @@ const MemberDetailsPage = ({
           ["aadhaarData", JSON.stringify({ ...fetchedData, address })],
         ]);
 
+        // Auto-fill all details from Aadhaar
+        autoFillFromAadhaar(fetchedData);
+
         // Show address confirmation modal
         setTimeout(() => {
           setShowAddressConfirmModal(true);
@@ -586,29 +701,6 @@ const MemberDetailsPage = ({
         "Unable to verify Aadhaar. Please try again."
       );
     }
-  };
-
-  const extractAddressFromAadhaar = (aadhaarData) => {
-    if (!aadhaarData || !aadhaarData.split_address) {
-      return {
-        doorNo: "",
-        street: "",
-        area: "",
-        pincode: "",
-        city: "",
-        state: "",
-      };
-    }
-
-    const addr = aadhaarData.split_address;
-    return {
-      doorNo: addr.house || "",
-      street: addr.street || "",
-      area: addr.vtc || addr.locality || "",
-      pincode: addr.pincode || "",
-      city: addr.dist || addr.city || "",
-      state: addr.state || "",
-    };
   };
 
   // Clear Aadhaar verification
@@ -705,7 +797,7 @@ const MemberDetailsPage = ({
       const [year, month, day] = formData.anniversaryDate.split("-");
       setSelectedDate({ day, month, year });
     } else {
-      setSelectedDate({ day: "01", month: "01", year: "1990" });
+      setSelectedDate({ day: "", month: "", year: "" });
     }
     setShowDatePicker(type);
   };
@@ -889,7 +981,6 @@ const MemberDetailsPage = ({
     return errors;
   };
 
-
   // NEXT BUTTON - Fixed to properly call onNext
   const handleNext = () => {
     const errors = validate(formData);
@@ -920,6 +1011,8 @@ const MemberDetailsPage = ({
         selectedSchemeName: selectedScheme.name,
         // Include aadhaarData if needed
         aadhaarData: aadhaarData ? JSON.stringify(aadhaarData) : null,
+        // Include extracted father's name if needed
+        fatherName: aadhaarData?.care_of ? aadhaarData.care_of.replace(/^S\/O:\s*/i, "") : "",
       };
 
       console.log("Transformed data for next step:", transformedData);
@@ -1158,7 +1251,6 @@ const MemberDetailsPage = ({
   };
 
   // Enhanced Aadhaar verification UI component
-  // Enhanced Aadhaar verification UI component
   const renderAadhaarVerification = () => (
     <View style={styles.section}>
       <Text style={styles.sectionTitle}>
@@ -1233,24 +1325,25 @@ const MemberDetailsPage = ({
           <View style={styles.aadhaarActions}>
             {aadhaarStatus === AADHAAR_STATUS.VERIFIED ? (
               <>
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={[styles.aadhaarButton, styles.viewDetailsButton]}
                   onPress={() => {
                     if (aadhaarData) {
+                      const extractedData = extractAllDetailsFromAadhaar(aadhaarData);
                       Alert.alert(
                         "Aadhaar Details",
-                        `Name: ${aadhaarData.name || "Not available"}\n` +
-                        `DOB: ${aadhaarData.dob || "Not available"}\n` +
-                        `Gender: ${aadhaarData.gender || "Not available"}\n` +
-                        `Address: ${aadhaarAddress?.doorNo || ""}, ${aadhaarAddress?.street || ""
-                        }, ${aadhaarAddress?.area || ""}`
+                        `Name: ${extractedData.name}\n` +
+                        `DOB: ${extractedData.dob}\n` +
+                        `Gender: ${getGenderDisplay(extractedData.gender)}\n` +
+                        `Father's Name: ${extractedData.fatherName || "Not available"}\n` +
+                        `Address: ${aadhaarAddress?.doorNo || ""}, ${aadhaarAddress?.street || ""}, ${aadhaarAddress?.area || ""}`
                       );
                     }
                   }}
                 >
                   <MaterialIcons name="visibility" size={16} color={COLORS.primary} />
                   <Text style={styles.viewDetailsText}>View</Text>
-                </TouchableOpacity>
+                </TouchableOpacity> */}
                 <TouchableOpacity
                   style={[styles.aadhaarButton, styles.clearButton]}
                   onPress={clearAadhaarVerification}
@@ -1311,7 +1404,7 @@ const MemberDetailsPage = ({
           {aadhaarStatus === AADHAAR_STATUS.NOT_STARTED && (
             <Text style={styles.aadhaarNote}>
               Please enter your 12-digit Aadhaar number and click "Verify" to
-              authenticate via DigiLocker. Other fields will be unlocked after
+              authenticate via DigiLocker. Other fields will be auto-filled after
               successful verification.
             </Text>
           )}
@@ -1328,8 +1421,7 @@ const MemberDetailsPage = ({
           )}
           {aadhaarStatus === AADHAAR_STATUS.VERIFIED && (
             <Text style={styles.successNote}>
-              ✓ Aadhaar successfully verified! You can now fill the remaining
-              details.
+              ✓ Aadhaar successfully verified! Personal details have been auto-filled.
             </Text>
           )}
           {aadhaarStatus === AADHAAR_STATUS.FAILED && (
@@ -1367,6 +1459,126 @@ const MemberDetailsPage = ({
     );
   };
 
+  // Updated address confirmation modal with all Aadhaar details
+  const renderAadhaarDetailsModal = () => (
+    <Modal
+      visible={showAddressConfirmModal}
+      transparent
+      animationType="slide"
+      onRequestClose={handleManualAddress}
+    >
+      <View style={styles.modalOverlay}>
+        <View style={[styles.modalContent, styles.detailsModalContent]}>
+          <View style={styles.modalHeader}>
+            <Text style={styles.modalTitle}>Aadhaar Details Found</Text>
+            <TouchableOpacity onPress={handleManualAddress}>
+              <MaterialIcons
+                name="close"
+                size={24}
+                color={COLORS.textPrimary}
+              />
+            </TouchableOpacity>
+          </View>
+
+          <ScrollView style={styles.detailsScrollView}>
+            {/* Personal Details Section */}
+            <View style={styles.detailsSection}>
+              <Text style={styles.detailsSectionTitle}>Personal Details</Text>
+              {aadhaarData?.name && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Name:</Text>
+                  <Text style={styles.detailValue}>{aadhaarData.name}</Text>
+                </View>
+              )}
+              {aadhaarData?.dob && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Date of Birth:</Text>
+                  <Text style={styles.detailValue}>{aadhaarData.dob}</Text>
+                </View>
+              )}
+              {aadhaarData?.gender && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Gender:</Text>
+                  <Text style={styles.detailValue}>
+                    {getGenderDisplay(aadhaarData.gender)}
+                  </Text>
+                </View>
+              )}
+              {aadhaarData?.care_of && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Father's Name:</Text>
+                  <Text style={styles.detailValue}>
+                    {aadhaarData.care_of.replace(/^S\/O:\s*/i, "")}
+                  </Text>
+                </View>
+              )}
+            </View>
+
+            {/* Address Details Section */}
+            <View style={styles.detailsSection}>
+              <Text style={styles.detailsSectionTitle}>Address Details</Text>
+              {aadhaarAddress?.doorNo && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Door No:</Text>
+                  <Text style={styles.detailValue}>{aadhaarAddress.doorNo}</Text>
+                </View>
+              )}
+              {aadhaarAddress?.street && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Street:</Text>
+                  <Text style={styles.detailValue}>{aadhaarAddress.street}</Text>
+                </View>
+              )}
+              {aadhaarAddress?.area && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>Area/Locality:</Text>
+                  <Text style={styles.detailValue}>{aadhaarAddress.area}</Text>
+                </View>
+              )}
+              {aadhaarAddress?.city && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>City/District:</Text>
+                  <Text style={styles.detailValue}>{aadhaarAddress.city}</Text>
+                </View>
+              )}
+              {aadhaarAddress?.state && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>State:</Text>
+                  <Text style={styles.detailValue}>{aadhaarAddress.state}</Text>
+                </View>
+              )}
+              {aadhaarAddress?.pincode && (
+                <View style={styles.detailRow}>
+                  <Text style={styles.detailLabel}>PIN Code:</Text>
+                  <Text style={styles.detailValue}>{aadhaarAddress.pincode}</Text>
+                </View>
+              )}
+            </View>
+
+            <Text style={styles.modalQuestion}>
+              Would you like to use these details?
+            </Text>
+          </ScrollView>
+
+          <View style={styles.modalButtons}>
+            <TouchableOpacity
+              style={[styles.cancelButton, styles.wideButton]}
+              onPress={handleManualAddress}
+            >
+              <Text style={styles.cancelButtonText}>No, Enter Manually</Text>
+            </TouchableOpacity>
+            <TouchableOpacity
+              style={[styles.setButton, styles.wideButton]}
+              onPress={handleUseAadhaarAddress}
+            >
+              <Text style={styles.setButtonText}>Yes, Use These Details</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -1400,11 +1612,11 @@ const MemberDetailsPage = ({
         {renderAadhaarVerification()}
 
         {/* SCHEME SELECTOR - Conditionally locked */}
-        {renderSection(
+        {/* {renderSection(
           "Scheme Selection",
           renderSchemeSelector(),
           formDisabled
-        )}
+        )} */}
 
         {/* BASIC DETAILS - Conditionally locked */}
         {renderSection(
@@ -1611,7 +1823,7 @@ const MemberDetailsPage = ({
             </View>
 
             {/* Email */}
-            {renderInput("email", "Email", null, true)}
+            {renderInput("email", "Email", null, false)}
           </>,
           formDisabled
         )}
@@ -1835,81 +2047,8 @@ const MemberDetailsPage = ({
         </View>
       </Modal>
 
-      {/* ADDRESS CONFIRMATION MODAL */}
-      <Modal
-        visible={showAddressConfirmModal}
-        transparent
-        animationType="slide"
-        onRequestClose={handleManualAddress}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContent}>
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Aadhaar Address Found</Text>
-              <TouchableOpacity onPress={handleManualAddress}>
-                <MaterialIcons
-                  name="close"
-                  size={24}
-                  color={COLORS.textPrimary}
-                />
-              </TouchableOpacity>
-            </View>
-
-            <Text style={styles.modalSubtitle}>
-              We found your address from Aadhaar:
-            </Text>
-
-            <View style={styles.addressPreview}>
-              {aadhaarAddress?.doorNo ? (
-                <Text style={styles.addressText}>
-                  {aadhaarAddress.doorNo}, {aadhaarAddress.street}
-                </Text>
-              ) : null}
-              {aadhaarAddress?.area ? (
-                <Text style={styles.addressText}>{aadhaarAddress.area}</Text>
-              ) : null}
-              {(aadhaarAddress?.city ||
-                aadhaarAddress?.state ||
-                aadhaarAddress?.pincode) && (
-                  <Text style={styles.addressText}>
-                    {aadhaarAddress.city || ""}
-                    {aadhaarAddress.city && aadhaarAddress.state ? ", " : ""}
-                    {aadhaarAddress.state || ""}
-                    {aadhaarAddress.pincode ? ` - ${aadhaarAddress.pincode}` : ""}
-                  </Text>
-                )}
-              {!aadhaarAddress?.doorNo &&
-                !aadhaarAddress?.area &&
-                !aadhaarAddress?.city &&
-                !aadhaarAddress?.state &&
-                !aadhaarAddress?.pincode && (
-                  <Text style={styles.addressText}>
-                    Address details not available in Aadhaar data
-                  </Text>
-                )}
-            </View>
-
-            <Text style={styles.modalQuestion}>
-              Would you like to use this address?
-            </Text>
-
-            <View style={styles.modalButtons}>
-              <TouchableOpacity
-                style={[styles.cancelButton, styles.wideButton]}
-                onPress={handleManualAddress}
-              >
-                <Text style={styles.cancelButtonText}>No, Enter Manually</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.setButton, styles.wideButton]}
-                onPress={handleUseAadhaarAddress}
-              >
-                <Text style={styles.setButtonText}>Yes, Use This Address</Text>
-              </TouchableOpacity>
-            </View>
-          </View>
-        </View>
-      </Modal>
+      {/* AADHAAR DETAILS CONFIRMATION MODAL */}
+      {renderAadhaarDetailsModal()}
 
       <BottomTab />
     </KeyboardAvoidingView>
@@ -2144,6 +2283,39 @@ const styles = StyleSheet.create({
     flex: 1,
     marginRight: SIZES.margin.sm,
   },
+  aadhaarActions: {
+    flexDirection: "row",
+  },
+  aadhaarButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: SIZES.padding.xs,
+    borderRadius: SIZES.radius.sm,
+    marginLeft: SIZES.margin.xs,
+  },
+  viewDetailsButton: {
+    backgroundColor: COLORS.infoLight,
+    borderWidth: 1,
+    borderColor: COLORS.info,
+  },
+  viewDetailsText: {
+    ...FONTS.caption,
+    color: COLORS.info,
+    marginLeft: 4,
+    fontWeight: "600",
+  },
+  clearButton: {
+    backgroundColor: COLORS.errorLight,
+    borderWidth: 1,
+    borderColor: COLORS.error,
+  },
+  clearText: {
+    ...FONTS.caption,
+    color: COLORS.error,
+    marginLeft: 4,
+    fontWeight: "600",
+  },
   verifyButton: {
     flexDirection: "row",
     alignItems: "center",
@@ -2155,22 +2327,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     minWidth: 100,
   },
-  notStartedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.inputBackground,
-    paddingHorizontal: SIZES.padding.sm,
-    paddingVertical: 4,
-    borderRadius: SIZES.radius.sm,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
-  },
-  notStartedText: {
-    ...FONTS.caption,
-    color: COLORS.textSecondary,
-    marginLeft: 4,
-    fontWeight: "600",
-  },
   verifyButtonDisabled: {
     backgroundColor: COLORS.disabled,
   },
@@ -2179,6 +2335,9 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginLeft: SIZES.margin.xs,
     fontWeight: "600",
+  },
+  pendingButton: {
+    backgroundColor: COLORS.warning,
   },
   verifiedBadge: {
     flexDirection: "row",
@@ -2244,39 +2403,19 @@ const styles = StyleSheet.create({
     marginLeft: 4,
     fontWeight: "600",
   },
-  pendingButton: {
-    backgroundColor: COLORS.warning,
-  },
-  aadhaarActions: {
-    flexDirection: "row",
-  },
-  aadhaarButton: {
+  notStartedBadge: {
     flexDirection: "row",
     alignItems: "center",
+    backgroundColor: COLORS.inputBackground,
     paddingHorizontal: SIZES.padding.sm,
-    paddingVertical: SIZES.padding.xs,
+    paddingVertical: 4,
     borderRadius: SIZES.radius.sm,
-    marginLeft: SIZES.margin.xs,
-  },
-  viewDetailsButton: {
-    backgroundColor: COLORS.infoLight,
     borderWidth: 1,
-    borderColor: COLORS.info,
+    borderColor: COLORS.borderLight,
   },
-  viewDetailsText: {
+  notStartedText: {
     ...FONTS.caption,
-    color: COLORS.info,
-    marginLeft: 4,
-    fontWeight: "600",
-  },
-  clearButton: {
-    backgroundColor: COLORS.errorLight,
-    borderWidth: 1,
-    borderColor: COLORS.error,
-  },
-  clearText: {
-    ...FONTS.caption,
-    color: COLORS.error,
+    color: COLORS.textSecondary,
     marginLeft: 4,
     fontWeight: "600",
   },
@@ -2319,6 +2458,9 @@ const styles = StyleSheet.create({
     width: "100%",
     maxWidth: 400,
   },
+  detailsModalContent: {
+    maxHeight: "80%",
+  },
   modalHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -2329,29 +2471,6 @@ const styles = StyleSheet.create({
     ...FONTS.h5,
     color: COLORS.textPrimary,
     flex: 1,
-  },
-  modalSubtitle: {
-    ...FONTS.body,
-    color: COLORS.textSecondary,
-    marginBottom: SIZES.margin.md,
-  },
-  modalQuestion: {
-    ...FONTS.body,
-    color: COLORS.textPrimary,
-    textAlign: "center",
-    marginVertical: SIZES.margin.lg,
-    fontWeight: "600",
-  },
-  addressPreview: {
-    backgroundColor: COLORS.inputBackground,
-    padding: SIZES.padding.md,
-    borderRadius: SIZES.radius.md,
-    marginBottom: SIZES.margin.lg,
-  },
-  addressText: {
-    ...FONTS.body,
-    color: COLORS.textPrimary,
-    marginBottom: SIZES.margin.xs,
   },
   selectedDatePreview: {
     ...FONTS.body,
@@ -2429,6 +2548,43 @@ const styles = StyleSheet.create({
   setButtonText: {
     ...FONTS.button,
     color: COLORS.white,
+  },
+  // Aadhaar details modal styles
+  detailsScrollView: {
+    maxHeight: 300,
+  },
+  detailsSection: {
+    marginBottom: SIZES.margin.lg,
+  },
+  detailsSectionTitle: {
+    ...FONTS.h6,
+    color: COLORS.primary,
+    marginBottom: SIZES.margin.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    paddingBottom: SIZES.padding.xs,
+  },
+  detailRow: {
+    flexDirection: "row",
+    marginBottom: SIZES.margin.sm,
+  },
+  detailLabel: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    width: 120,
+    fontWeight: "600",
+  },
+  detailValue: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
+  modalQuestion: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    textAlign: "center",
+    marginVertical: SIZES.margin.lg,
+    fontWeight: "600",
   },
 });
 

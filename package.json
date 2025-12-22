@@ -21,7 +21,7 @@
     "@react-navigation/stack": "^7.4.10",
     "babel-preset-expo": "~54.0.0",
     "country-state-city": "^3.2.1",
-    "expo": "~54.0.29",
+    "expo": "~54.0.30",
     "expo-background-fetch": "~14.0.9",
     "expo-blur": "~15.0.8",
     "expo-constants": "~18.0.12",
