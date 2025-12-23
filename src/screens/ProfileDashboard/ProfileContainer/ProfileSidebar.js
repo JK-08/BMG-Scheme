@@ -444,11 +444,11 @@ const DrawerMenu = ({ isVisible, onClose }) => {
       icon: "delete",
       route: "DeleteButton",
     },
-    {
-      label: "Closed Schemes",
-      icon: "archive",
-      route: "ClosedSchemes",
-    },
+    // {
+    //   label: "Closed Schemes",
+    //   icon: "archive",
+    //   route: "ClosedSchemes",
+    // },
   ];
 
   const isActive = (route) => activeRoute === route;

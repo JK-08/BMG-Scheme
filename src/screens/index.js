@@ -43,6 +43,10 @@ import DigiLockerWebViewScreen from './DigiLockerWebview/DigiLockerWebview'
 import DigiLockerStatusScreen from './DigiLockerWebview/DigiLockerStatus'
 import MemberDetailsPage from './AddNewMember/MemberDetailsPage'
 import SchemeDetailsPage from './AddNewMember/SchemeDetailsPage'
+import SmartPayKnowMore from './KnowMore/SmartPayKnowMore'
+import BrightKnowMore from './KnowMore/BrightKnowMore'
+import LumpsumKnowMore from './KnowMore/LumpsumKnowMore'
+
 
 export {
   MainLanding,
@@ -88,5 +92,8 @@ export {
   DigiLockerWebViewScreen,
   DigiLockerStatusScreen,
   MemberDetailsPage,
-  SchemeDetailsPage
+  SchemeDetailsPage,
+  SmartPayKnowMore,
+  BrightKnowMore,
+  LumpsumKnowMore
 }

@@ -32,6 +32,7 @@ const ReceiptPreviewModal = ({
   const [generatingPDF, setGeneratingPDF] = useState(false);
   const [companyData, setCompanyData] = useState(null);
   const [previewData, setPreviewData] = useState(null);
+  const [companyDataLoading, setCompanyDataLoading] = useState(true);
 
   useEffect(() => {
     if (visible && payment) {
@@ -42,10 +43,12 @@ const ReceiptPreviewModal = ({
   const preparePreviewData = async () => {
     try {
       setLoading(true);
+      setCompanyDataLoading(true);
 
-      // First get company data
+      // Fetch fresh company data directly from API (no cache)
       const companyData = await PaymentReceiptPDF.getCompanyData();
       setCompanyData(companyData);
+      setCompanyDataLoading(false);
 
       // Prepare data in the exact format expected by your PDF generator
       const responseData = {
@@ -100,6 +103,7 @@ const ReceiptPreviewModal = ({
         schemeData,
       };
 
+      // This will fetch fresh company data from API
       await PaymentReceiptPDF.generatePDF(responseData);
 
       onClose();
@@ -108,6 +112,21 @@ const ReceiptPreviewModal = ({
       Alert.alert("Error", "Failed to download receipt");
     } finally {
       setGeneratingPDF(false);
+    }
+  };
+
+  // Refresh company data manually if needed
+  const refreshCompanyData = async () => {
+    try {
+      setCompanyDataLoading(true);
+      const freshData = await PaymentReceiptPDF.getCompanyData();
+      setCompanyData(freshData);
+      Alert.alert("Success", "Company data refreshed from API");
+    } catch (error) {
+      console.error("Refresh error:", error);
+      Alert.alert("Error", "Failed to refresh company data");
+    } finally {
+      setCompanyDataLoading(false);
     }
   };
 
@@ -134,81 +153,33 @@ const ReceiptPreviewModal = ({
   };
 
   const numberToWords = (num) => {
-    // Simple implementation - you should use your PaymentReceiptPDF.numberToWords method
-    const ones = [
-      "",
-      "One",
-      "Two",
-      "Three",
-      "Four",
-      "Five",
-      "Six",
-      "Seven",
-      "Eight",
-      "Nine",
-    ];
-    const tens = [
-      "",
-      "",
-      "Twenty",
-      "Thirty",
-      "Forty",
-      "Fifty",
-      "Sixty",
-      "Seventy",
-      "Eighty",
-      "Ninety",
-    ];
-    const teens = [
-      "Ten",
-      "Eleven",
-      "Twelve",
-      "Thirteen",
-      "Fourteen",
-      "Fifteen",
-      "Sixteen",
-      "Seventeen",
-      "Eighteen",
-      "Nineteen",
-    ];
-
-    if (num === 0) return "Zero";
-
-    const toWords = (n) => {
-      if (n < 10) return ones[n];
-      if (n < 20) return teens[n - 10];
-      if (n < 100) {
-        return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
-      }
-      return (
-        ones[Math.floor(n / 100)] +
-        " Hundred " +
-        (n % 100 ? toWords(n % 100) : "")
-      );
-    };
-
-    const crore = Math.floor(num / 10000000);
-    const lakh = Math.floor((num % 10000000) / 100000);
-    const thousand = Math.floor((num % 100000) / 1000);
-    const remainder = num % 1000;
-
-    let result = "";
-    if (crore) result += toWords(crore) + " Crore ";
-    if (lakh) result += toWords(lakh) + " Lakh ";
-    if (thousand) result += toWords(thousand) + " Thousand ";
-    if (remainder) result += toWords(remainder);
-
-    return result.trim() + " Rupees Only";
+    // Use the PaymentReceiptPDF method directly
+    return PaymentReceiptPDF.numberToWords(num);
   };
 
-  if (!payment || !companyData || !previewData) {
+  // Add a refresh button in header or somewhere accessible
+  const EnhancedHeader = () => (
+    <View style={styles.enhancedHeader}>
+      <CommonHeader title="Receipt Preview" />
+      {companyDataLoading && (
+        <View style={styles.companyDataLoading}>
+          <ActivityIndicator size="small" color={COLORS.primary} />
+          <Text style={styles.companyDataLoadingText}>
+            Fetching company data...
+          </Text>
+        </View>
+      )}
+    </View>
+  );
+
+  if (!payment) {
     return (
       <Modal visible={visible} animationType="slide" transparent={false}>
         <SafeAreaView style={styles.container}>
-          <CommonHeader title="Receipt Preview" />
+          <EnhancedHeader />
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color={COLORS.primary} />
-            <Text style={styles.loadingText}>Loading receipt...</Text>
+            <Text style={styles.loadingText}>Loading receipt data...</Text>
           </View>
         </SafeAreaView>
       </Modal>
@@ -223,8 +194,8 @@ const ReceiptPreviewModal = ({
       onRequestClose={onClose}
     >
       <SafeAreaView style={styles.container}>
-        {/* Header */}
-        <CommonHeader title="Receipt Preview" />
+        {/* Enhanced Header with loading indicator */}
+        <EnhancedHeader />
 
         {loading ? (
           <View style={styles.loadingContainer}>
@@ -237,6 +208,7 @@ const ReceiptPreviewModal = ({
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.scrollContent}
           >
+
             {/* Preview Container */}
             <View style={styles.previewContainer}>
               {/* Top Bar */}
@@ -288,6 +260,21 @@ const ReceiptPreviewModal = ({
                       <Text style={styles.companyDetail}>
                         {companyData.cAddress2}
                       </Text>
+                      {companyData.cAddress3 && (
+                        <Text style={styles.companyDetail}>
+                          {companyData.cAddress3}
+                        </Text>
+                      )}
+                      {companyData.cAddress4 && (
+                        <Text style={styles.companyDetail}>
+                          {companyData.cAddress4}
+                        </Text>
+                      )}
+                      {companyData.cPincode && (
+                        <Text style={styles.companyDetail}>
+                          PIN: {companyData.cPincode}
+                        </Text>
+                      )}
                       {companyData.cPhone && (
                         <Text style={styles.companyDetail}>
                           Phone: {companyData.cPhone}
@@ -296,6 +283,11 @@ const ReceiptPreviewModal = ({
                       {companyData.cEmail && (
                         <Text style={styles.companyDetail}>
                           Email: {companyData.cEmail}
+                        </Text>
+                      )}
+                      {companyData.cFax && (
+                        <Text style={styles.companyDetail}>
+                          Fax: {companyData.cFax}
                         </Text>
                       )}
                       {companyData.gstNo ? (
@@ -353,6 +345,9 @@ const ReceiptPreviewModal = ({
                         {previewData.customerInfo.address1 ||
                           customerInfo?.address1 ||
                           "N/A"}
+                        {previewData.customerInfo.address2
+                          ? `, ${previewData.customerInfo.address2}`
+                          : ""}
                       </Text>
                     </Text>
                   </View>
@@ -441,7 +436,7 @@ const ReceiptPreviewModal = ({
               <TouchableOpacity
                 style={[styles.button, styles.downloadButton]}
                 onPress={handleDownload}
-                disabled={generatingPDF}
+                disabled={generatingPDF || companyDataLoading}
               >
                 {generatingPDF ? (
                   <ActivityIndicator size="small" color={COLORS.white} />
@@ -469,6 +464,66 @@ const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.white,
   },
+  enhancedHeader: {
+    position: "relative",
+  },
+  companyDataLoading: {
+    position: "absolute",
+    top: 0,
+    right: 16,
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255, 255, 255, 0.9)",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight,
+  },
+  companyDataLoadingText: {
+    ...FONTS.caption,
+    fontSize: moderateScale(10),
+    color: COLORS.primary,
+    marginLeft: 4,
+  },
+  dataSourceContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    backgroundColor: COLORS.gray50,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.sm,
+    marginHorizontal: SIZES.padding.lg,
+    marginTop: SIZES.padding.sm,
+    borderRadius: SIZES.radius.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  dataSourceText: {
+    ...FONTS.caption,
+    fontSize: moderateScale(11),
+    color: COLORS.textSecondary,
+  },
+  dataSourceHighlight: {
+    fontWeight: FONTS.weight.semiBold,
+    color: COLORS.primary,
+  },
+  refreshButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.white,
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: SIZES.padding.xs,
+    borderRadius: SIZES.radius.xs,
+    borderWidth: 1,
+    borderColor: COLORS.primaryLight,
+  },
+  refreshButtonText: {
+    ...FONTS.caption,
+    fontSize: moderateScale(10),
+    color: COLORS.primary,
+    marginLeft: 4,
+  },
   loadingContainer: {
     flex: 1,
     justifyContent: "center",
@@ -493,7 +548,14 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius.lg,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
-    ...FONTS.shadow,
+    shadowColor: COLORS.shadow,
+    shadowOffset: {
+      width: 0,
+      height: 2,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 4,
+    elevation: 3,
   },
   topBar: {
     height: moderateScale(6),
@@ -522,6 +584,11 @@ const styles = StyleSheet.create({
     alignItems: "center",
     borderWidth: 1,
     borderColor: COLORS.borderLight,
+    overflow: "hidden",
+  },
+  logoImage: {
+    width: "100%",
+    height: "100%",
   },
   infoContainer: {
     flexDirection: "row",
@@ -577,9 +644,6 @@ const styles = StyleSheet.create({
     marginBottom: moderateScale(2),
     lineHeight: moderateScale(14),
   },
-  customerAddress: {
-    // Additional styles if needed
-  },
   paymentTable: {
     borderWidth: 1,
     borderColor: COLORS.borderLight,
@@ -604,11 +668,6 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     paddingHorizontal: moderateScale(4),
   },
-  logoImage: {
-  width: '100%',
-  height: '100%',
-},
-
   tableHeaderText: {
     ...FONTS.caption,
     fontSize: moderateScale(11),

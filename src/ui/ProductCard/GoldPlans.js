@@ -47,13 +47,20 @@ function GoldPlan({
       schemeName,
     });
   };
+const knowMoreScreens = {
+  1: "BrightKnowMore",
+  2: "SmartPayKnowMore",
+  3: "LumpsumKnowMore",
+};
 
-  const handleKnowMore = () => {
-    navigation.navigate("KnowMore", {
-      schemeId,
-      schemeName,
-    });
-  };
+const handleKnowMore = () => {
+  const screenName = knowMoreScreens[schemeId] || "KnowMore";
+
+  navigation.navigate(screenName, {
+    schemeId,
+    schemeName,
+  });
+};
 
   return (
     <View style={[styles.cardContainer, customStyles]}>

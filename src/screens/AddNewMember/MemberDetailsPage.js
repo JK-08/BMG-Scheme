@@ -1804,7 +1804,7 @@ const MemberDetailsPage = ({
                     formDisabled && styles.disabledText,
                   ]}
                   value={formData.mobile}
-                  editable={!formDisabled}
+                  editable={false}
                   keyboardType="numeric"
                   onChangeText={handleMobile}
                   placeholder="Enter Mobile Number"

@@ -626,7 +626,7 @@ const ReferralScreen = () => {
                 <Text style={styles.stepNumberText}>3</Text>
               </View>
               <Text style={styles.stepText}>
-                Earn ₹200 bonus for each successful referral
+                Earn ₹100 bonus for each successful referral
               </Text>
             </View>
             <View style={styles.stepItem}>

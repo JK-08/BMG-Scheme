@@ -45,6 +45,9 @@ function Drawer() {
       <NavigationStack.Screen name="DigiLockerStatusScreen" component={Screen.DigiLockerStatusScreen} />
       <NavigationStack.Screen name="MemberDetailsPage" component={Screen.MemberDetailsPage} />
       <NavigationStack.Screen name="SchemeDetailsPage" component={Screen.SchemeDetailsPage} />
+      <NavigationStack.Screen name="SmartPayKnowMore" component={Screen.SmartPayKnowMore} />
+      <NavigationStack.Screen name="BrightKnowMore" component={Screen.BrightKnowMore} />
+      <NavigationStack.Screen name="LumpsumKnowMore" component={Screen.LumpsumKnowMore} />
     </NavigationStack.Navigator>
   );
 }

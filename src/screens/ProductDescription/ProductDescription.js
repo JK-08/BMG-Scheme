@@ -433,7 +433,7 @@ const renderPaymentHistory = useCallback(
           </View>
           <View style={styles.tableColumn}>
             <Text style={styles.tableHeaderText}>
-              {schemeType === "DIGI_SILVER" ? "Weight" : "Status"}
+              {schemeType === "DIGI_SILVER" ? "Status" : "Status"}
             </Text>
           </View>
           <View style={styles.tableColumnAction}>

@@ -22,24 +22,12 @@ class PaymentReceiptPDF {
   };
 
   // ---------------------------------------------------------------------------
-  // COMPANY DATA MANAGEMENT - IMPROVED ERROR HANDLING
+  // COMPANY DATA MANAGEMENT - ALWAYS FETCH FROM API (NO CACHE)
   // ---------------------------------------------------------------------------
-  static async getCompanyData() {
+  static async getCompanyData(forceRefresh = false) {
     try {
-      console.log("🔄 Fetching company data...");
+      console.log("🔄 Fetching fresh company data from API...");
       console.log("📡 API Endpoint:", this.API_ENDPOINTS.COMPANY);
-
-      // Try to get cached company data first
-      const cachedData = await AsyncStorage.getItem(this.STORAGE_KEYS.COMPANY_DATA);
-      if (cachedData) {
-        console.log("📦 Found cached company data");
-        const parsedData = JSON.parse(cachedData);
-        if (this.isCompanyDataValid(parsedData)) {
-          console.log("✅ Using valid cached company data");
-          return parsedData;
-        }
-        console.log("⚠️ Cached data invalid, fetching fresh...");
-      }
 
       // Fetch fresh data from API with timeout
       console.log("🌐 Making API request...");
@@ -96,13 +84,8 @@ class PaymentReceiptPDF {
           throw new Error("Company data validation failed");
         }
 
-        // Cache the company data
-        await AsyncStorage.setItem(
-          this.STORAGE_KEYS.COMPANY_DATA, 
-          JSON.stringify(companyData)
-        );
-
-        console.log("💾 Company data cached successfully");
+        console.log("✅ Using fresh company data from API");
+        
         return companyData;
       } catch (fetchError) {
         clearTimeout(timeoutId);
@@ -120,31 +103,20 @@ class PaymentReceiptPDF {
         endpoint: this.API_ENDPOINTS.COMPANY
       });
       
-      // Try to get company data from AsyncStorage even if API fails
-      try {
-        const fallbackData = await AsyncStorage.getItem(this.STORAGE_KEYS.COMPANY_DATA);
-        if (fallbackData) {
-          const parsed = JSON.parse(fallbackData);
-          if (this.isCompanyDataValid(parsed)) {
-            console.log("🔄 Using previously cached data as fallback");
-            return parsed;
-          }
-        }
-      } catch (storageError) {
-        console.error("❌ Fallback data retrieval failed:", storageError);
-      }
-      
-      console.log("🔄 Returning default company data");
+      // Only use default data if API completely fails
+      console.log("🔄 API failed, returning default company data");
       return this.getDefaultCompanyData();
     }
   }
 
+  // Simplified validation method
   static isCompanyDataValid(companyData) {
     if (!companyData) {
       console.log("❌ Company data is null/undefined");
       return false;
     }
     
+    // Basic validation - ensure company name exists
     const isValid = companyData && 
            companyData.cname && 
            typeof companyData.cname === 'string' &&
@@ -154,8 +126,7 @@ class PaymentReceiptPDF {
       console.log("❌ Company data validation failed:", {
         hasCname: !!companyData.cname,
         cnameType: typeof companyData.cname,
-        cnameLength: companyData.cname ? companyData.cname.trim().length : 0,
-        data: JSON.stringify(companyData)
+        cnameLength: companyData.cname ? companyData.cname.trim().length : 0
       });
     }
     
@@ -163,7 +134,7 @@ class PaymentReceiptPDF {
   }
 
   static getDefaultCompanyData() {
-    console.log("📄 Using default company data");
+    console.log("📄 Using default company data (API failed)");
     return {
       companyId: "BMG",
       cname: "BMG Jewellers pvt. ltd.,",
@@ -181,9 +152,9 @@ class PaymentReceiptPDF {
     };
   }
 
+  // Remove cache-related methods since we're not caching anymore
   static async clearCachedCompanyData() {
-    await AsyncStorage.removeItem(this.STORAGE_KEYS.COMPANY_DATA);
-    console.log("🗑️ Cleared cached company data");
+    console.log("ℹ️ Caching is disabled - always fetching from API");
   }
 
   // ---------------------------------------------------------------------------
@@ -215,7 +186,7 @@ class PaymentReceiptPDF {
   }
 
   // ---------------------------------------------------------------------------
-  // REST OF THE CODE REMAINS THE SAME (with minor improvements)
+  // REST OF THE CODE REMAINS THE SAME
   // ---------------------------------------------------------------------------
   static async getDirectoryUri() {
     try {
@@ -657,12 +628,12 @@ class PaymentReceiptPDF {
       const [bgBase64, logoBase64, companyData] = await Promise.all([
         this.assetToBase64(this.ASSETS.BACKGROUND),
         this.assetToBase64(this.ASSETS.LOGO),
-        this.getCompanyData()
+        this.getCompanyData() // Always fetches fresh from API
       ]);
 
       console.log("✅ Assets loaded, company data:", {
         companyName: companyData.cname,
-        source: companyData.companyId === "BMG" ? "Default" : "API/Cache"
+        source: "Direct from API (no cache)"
       });
 
       const html = this.generateReceiptHTML({
@@ -738,10 +709,11 @@ class PaymentReceiptPDF {
     }
   }
 
+  // Modified refresh method - just fetches fresh data
   static async refreshCompanyData() {
-    await this.clearCachedCompanyData();
+    console.log("🔄 Refreshing company data from API...");
     const data = await this.getCompanyData();
-    console.log("🔄 Company data refreshed:", data.cname);
+    console.log("✅ Company data refreshed from API:", data.cname);
     return data;
   }
 }
