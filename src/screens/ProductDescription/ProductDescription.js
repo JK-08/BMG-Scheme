@@ -21,6 +21,7 @@ import {
   moderateScale,
   SHADOWS,
 } from "../../utils/AppTheme";
+import ReceiptPreviewModal from '../../components/ReceiptPreviewModal/ReceiptPreviewModal'
 
 const SchemePassbook = ({ navigation, route }) => {
   const { productData } = route.params;
@@ -31,6 +32,28 @@ const SchemePassbook = ({ navigation, route }) => {
     GOLDRATE: 0,
   });
   const [ratesLoading, setRatesLoading] = useState(true);
+
+  const [previewVisible, setPreviewVisible] = useState(false);
+const [selectedPayment, setSelectedPayment] = useState(null);
+
+// Add preview function
+// Update the handlePreviewReceipt function to log data
+const handlePreviewReceipt = useCallback((payment) => {
+  console.log('Previewing payment:', {
+    payment,
+    customerInfo,
+    schemeInfo,
+    productData
+  });
+  setSelectedPayment(payment);
+  setPreviewVisible(true);
+}, [customerInfo, schemeInfo, productData]);
+
+// Close preview function
+const closePreview = useCallback(() => {
+  setPreviewVisible(false);
+  setSelectedPayment(null);
+}, []);
 
   // Fetch current silver and gold rates
   const fetchCurrentRates = useCallback(async () => {
@@ -207,39 +230,40 @@ const SchemePassbook = ({ navigation, route }) => {
   }, [navigation, productData, schemeType]);
 
   // Render payment history card
-  const renderPaymentHistory = useCallback(
-    ({ item }) => {
-      return (
-        <TouchableOpacity style={styles.transactionRow} activeOpacity={0.7}>
-          <View style={styles.transactionLeft}>
-            <Text style={styles.transactionDate}>
-              {formatDate(item.updateTime)}
-            </Text>
-          </View>
-          <View style={styles.transactionMiddle}>
-            <Text style={styles.transactionAmount}>
-              ₹{parseFloat(item.amount || 0).toLocaleString("en-IN")}
-            </Text>
-          </View>
-          <View style={styles.transactionRight}>
-            <Text style={styles.transactionStatus}>
-              {item.weight > 0
-                ? `${parseFloat(item.weight).toFixed(3)}g`
-                : "Paid"}
-            </Text>
-          </View>
-          <TouchableOpacity
-            style={styles.downloadButton}
-            onPress={() => handleDownloadReceipt(item)}
-            activeOpacity={0.7}
-          >
-            <MaterialIcons name="download" size={18} color={COLORS.primary} />
-          </TouchableOpacity>
+const renderPaymentHistory = useCallback(
+  ({ item }) => {
+    return (
+      <TouchableOpacity style={styles.transactionRow} activeOpacity={0.7}>
+        <View style={styles.transactionLeft}>
+          <Text style={styles.transactionDate}>
+            {formatDate(item.updateTime)}
+          </Text>
+        </View>
+        <View style={styles.transactionMiddle}>
+          <Text style={styles.transactionAmount}>
+            ₹{parseFloat(item.amount || 0).toLocaleString("en-IN")}
+          </Text>
+        </View>
+        <View style={styles.transactionRight}>
+          <Text style={styles.transactionStatus}>
+            {item.weight > 0
+              ? `${parseFloat(item.weight).toFixed(3)}g`
+              : "Paid"}
+          </Text>
+        </View>
+        {/* Changed from download to eye icon */}
+        <TouchableOpacity
+          style={styles.previewButton}
+          onPress={() => handlePreviewReceipt(item)}
+          activeOpacity={0.7}
+        >
+          <MaterialIcons name="remove-red-eye" size={18} color={COLORS.primary} />
         </TouchableOpacity>
-      );
-    },
-    [formatDate, handleDownloadReceipt]
-  );
+      </TouchableOpacity>
+    );
+  },
+  [formatDate, handlePreviewReceipt]
+);
 
   // Main Scheme Card Component
   const MainSchemeCard = () => {
@@ -450,34 +474,46 @@ const SchemePassbook = ({ navigation, route }) => {
     );
   };
 
-  return (
-    <ImageBackground
-      source={require("../../assets/image.png")}
-      style={styles.mainBackground}
-      imageStyle={styles.backgroundImageStyle}
-    >
-      <View style={styles.container}>
-        <CommonHeader title="Scheme Passbook" />
+return (
+  <ImageBackground
+    source={require("../../assets/image.png")}
+    style={styles.mainBackground}
+    imageStyle={styles.backgroundImageStyle}
+  >
+    <View style={styles.container}>
+      <CommonHeader title="Scheme Passbook" />
 
-        <ScrollView
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
-            />
-          }
-          contentContainerStyle={styles.scrollViewContent}
-        >
-          <MainSchemeCard />
-          <PaymentHistorySection />
-        </ScrollView>
-        <BottomTab />
-      </View>
-    </ImageBackground>
-  );
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[COLORS.primary]}
+            tintColor={COLORS.primary}
+          />
+        }
+        contentContainerStyle={styles.scrollViewContent}
+      >
+        <MainSchemeCard />
+        <PaymentHistorySection />
+      </ScrollView>
+      
+      {/* Add Receipt Preview Modal */}
+      <ReceiptPreviewModal
+        visible={previewVisible}
+        onClose={closePreview}
+        payment={selectedPayment}
+        schemeInfo={schemeInfo}
+        customerInfo={customerInfo}
+        schemeData={productData}
+      />
+      
+      <BottomTab />
+    </View>
+  </ImageBackground>
+);
+
 };
 
 const styles = StyleSheet.create({
@@ -487,6 +523,12 @@ const styles = StyleSheet.create({
   scrollViewContent: {
     flexGrow: 1,
     paddingBottom: SIZES.padding.md,
+  },
+  previewButton: {  // Changed from downloadButton
+    flex: 0.6,
+    alignItems: "center",
+    justifyContent: "center",
+    padding: SIZES.padding.xs,
   },
 
   // Floating Card Styles

@@ -6,12 +6,10 @@ import {
   Text,
   ImageBackground,
   TouchableOpacity,
-  Animated,
   AccessibilityInfo,
 } from "react-native";
 import { useNavigation, useRoute } from "@react-navigation/native";
 import {
-  scale,
   moderateScale,
   COLORS,
   FONTS,
@@ -23,55 +21,55 @@ import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { SafeAreaView } from "react-native-safe-area-context";
 
 // ==========================================
-// UPDATED SCHEME CONTENT (TAMIL + ENGLISH)
+// UPDATED SCHEME CONTENT (TAMIL + ENGLISH) - NEW DATA
 // ==========================================
 const SCHEME_CONTENT = {
   tamil: {
     smartPay: [
-      "இது ஒரு Flexible திட்டம் — 330 நாட்களுக்குள் எந்நேரமும், எவ்வளவு வேண்டுமானாலும் பணம் செலுத்தலாம்.",
-      "ஒரு பரிவர்த்தனைக்கு குறைந்தபட்ச கட்டணம்: ரூ.100.",
-      "திட்ட காலம்: 330 நாட்கள்.",
-      "போனஸ் அமைப்பு:",
-      "1 – 75 நாட்களில் செலுத்திய பணத்திற்கு 10% போனஸ்.",
-      "76 – 150 நாட்களில் செலுத்திய பணத்திற்கு 7.5% போனஸ்.",
-      "151 – 225 நாட்களில் செலுத்திய பணத்திற்கு 4% போனஸ்.",
-      "226 – 300 நாட்களில் செலுத்திய பணத்திற்கு 1.75% போனஸ்.",
-      "301 – 330 நாட்களில் செலுத்திய பணத்திற்கு 0% போனஸ்.",
-      "கொள்முதல்: திட்டத்தில் சேர்ந்த 331வது நாள் முதல் 345வது நாள் வரை மட்டுமே நகை வாங்க முடியும்.",
+      "வகை: நெகிழ்வான திட்டம் — 330 நாட்களுக்குள் எப்போது வேண்டுமானாலும், எவ்வளவு வேண்டுமானாலும் செலுத்தலாம்",
+      "குறைந்தபட்ச தொகை: பரிவர்த்தனை ஒன்றுக்கு ₹100",
+      "காலவரை: 330 நாட்கள்",
+      "திட்டப்பயன் தொகை அமைப்பு:",
+      "1 – 90 நாட்கள்: 9% நன்மை",
+      "91 – 180 நாட்கள்: 6.5% நன்மை",
+      "181 – 270 நாட்கள்: 3% நன்மை",
+      "271 – 330 நாட்கள்: 1% நன்மை",
+      "திட்டப்பயன் தொகை பயன்படுத்தும் காலம்: 331வது நாள் முதல் 345வது நாள் வரை நகை வாங்கலுக்கு மட்டும்",
+      "நிலையான கொடுப்பனவு பதிவு: குறைந்தபட்சம் 165 நாட்கள் தொகை வைத்திருத்தல்",
     ],
 
     lumpSum: [
-      "ஒரே தடவையில் முதலீடு செய்யும் திட்டம்.",
-      "குறைந்தபட்ச முதலீடு: ₹10,000.",
-      "காலம்: 330 நாட்கள்.",
-      "மெச்சுரிட்டியில் அதிகபட்சம் 16% வரை போனஸ் கிடைக்கும்.",
-      "கொள்முதல்: 331 முதல் 345 நாட்களில் மட்டுமே நகை வாங்க முடியும்.",
+      "வகை: ஒருமுறை மொத்த தொகை செலுத்தும் திட்டம்",
+      "குறைந்தபட்ச தொகை: ₹10,000",
+      "காலவரை: 330 நாட்கள்",
+      "திட்டப்பயன் தொகை: திட்டம் நிறைவு பெறும் நாளில், முன்பணத் தொகையில் அதிகபட்சம் 15% வரை நன்மை",
+      "திட்டப்பயன் தொகை பயன்படுத்தும் காலம்: 331வது நாள் முதல் 345வது நாள் வரை நகை வாங்கலுக்கு மட்டும்",
+      "நிலையான கொடுப்பனவு பதிவு: குறைந்தபட்சம் 165 நாட்கள் தொகை வைத்திருத்தல்",
     ],
 
     bright: [
-      "மாதாந்திர நிலையான கட்டணம் செலுத்தும் திட்டம்.",
-      "குறைந்தபட்சம்: ₹1,000 (₹500 இன் மடங்காக).",
-      "காலம்: 11 மாதங்கள் (சுமார் 330 நாட்கள்).",
-      "மெச்சுரிட்டியில் 1 மாத தவணை மதிப்பிற்கு இணையான போனஸ் கிடைக்கும்.",
-      "கொள்முதல்: 331 முதல் 345 நாட்களில் மட்டுமே நகை வாங்க முடியும்.",
+      "வகை: மாதாந்திர நிலையான தவணை திட்டம்",
+      "குறைந்தபட்ச தொகை: ₹1,000 (₹1000 அளவுகளில் கூடுதலாக செலுத்தலாம்)",
+      "காலவரை: 11 மாதங்கள் (சுமார் 330 நாட்கள்)",
+      "திட்டப்பயன் தொகை: திட்டம் நிறைவு பெறும் நாளில், ஒரு மாத தவணைக்குச் சமமான நன்மை",
+      "திட்டப்பயன் தொகை பயன்படுத்தும் காலம்: 331வது நாள் முதல் 345வது நாள் வரை நகை வாங்கலுக்கு மட்டும்",
+      "நிலையான கொடுப்பனவு பதிவு: குறைந்தபட்சம் 6 தவணைகள் due date-க்கு முன்/தேதி வரை செலுத்தப்பட்டிருத்தல்",
     ],
 
     termsTitle: "பொது விதிமுறைகள்",
     terms: [
-      "இத்திட்டத்தில் சேரும் நபர் இந்திய குடியுரிமை பெற்றவராகவும் 18 வயதிற்கு மேற்பட்டவராகவும் இருக்க வேண்டும்.",
-      "செலுத்தும் அனைத்து தொகைகளும் நகை கொள்முதல் முன் பணமாக மட்டுமே கருதப்படும்.",
-      "திட்ட பயன்தொகை: மொத்த செலுத்திய தொகை + போனஸ்.",
-      "பயன்தொகை 331 முதல் 345 நாட்களில் மட்டுமே பயன்படுத்தலாம்.",
-      "GST, செய்கூலி, ஹால்மார்க் கட்டணம் போன்றவை விதிக்கப்படும்.",
-      "பயன்தொகை BMG நகைகளுக்கே பயன்படுத்தப்படும்.",
-      "330 நாட்கள் கழித்து பணம் செலுத்த அனுமதி இல்லை.",
-      "Default ஆனால் போனஸ் நன்மைகள் ரத்து செய்யப்படும்.",
-      "ரசீது பெறுதல் கட்டாயம்.",
-      "அட்டை/பாஸ்புக் தொலைந்தால் கட்டணம் விதிக்கப்படும்.",
-      "திட்ட மாற்றம் அனுமதி இல்லை.",
-      "நிறுவனத்திற்கு திட்டத்தை திருத்த / ரத்து செய்ய உரிமை உண்டு.",
-      "எல்லா சர்ச்சைகளும் மதுரை நீதிமன்ற அதிகாரத்திற்குட்பட்டவை.",
-      "பயன்தொகை ரொக்கமாக வழங்கப்படாது.",
+      "இத் திட்டத்தில் சேரும் நபர் இந்திய குடிமகனாகவும் குறைந்தது 18 வயது நிறைவடைந்தவறாகவும் இருத்தல்  வேண்டும். திட்டத்தில் இணைய தேவையான அடையாள ஆவணத்தை சமர்ப்பிக்க வேண்டும்.",
+      "வாடிக்கையாளர் செலுத்தும் அனைத்து தொகையும் கொள்முதல் செய்யப்போகும் நகைகள் / பொருள்களுக்கு  ரூபாய் மதிப்பில் முன்பணமாக (Advance Payment) மட்டுமே வரவு வைக்கப்படும். இத்திட்டத்தில் கொள்முதல் செய்யப்போகும் நகைகள்/பொருள்களின் எடையில் வரவு வைக்க முடியாது. அனைத்து திட்டங்களும், நகைகள் வாங்கும் நோக்கத்திற்காக மட்டுமே பயன்படுத்தப்பட முடியும் . இத்திட்டத்தின் கீழ் செலுத்தப்பட்ட தொகைகள் பணமாக திருப்பிச் பெற முடியாது அல்லது பணமாக மாற்றிக் கொள்ள முடியாது.",
+      "இத்திட்டத்தின் காலம் முடிந்ததும், அதற்கான நன்மைகளை பெற வாடிக்கையாளர் தாங்கள் செலுத்திய தொகைக்கான ரசீதுகள் அல்லது சான்றுகளை வைத்திருத்தல் வேண்டும்.",
+      "இத்திட்டத்தின் பயன்தொகையாக , வாடிக்கையாளர் செலுத்திய மொத்த தொகையும் மற்றும்  தகுதியான திட்ட நன்மைகளும் சேர்த்தே கணக்கிடப்படும். இத்திட்டத்தில் சேர்ந்த தினத்திலிருந்து  331வது நாள் முதல் 345வது நாள் வரை நகைகளாகவோ / பொருள்களாகவோ  கொள்முதல் செய்து முடிக்கப்பட வேண்டும்.345 நாட்களுக்குள் நகையாக கொள்முதல் செய்யாவிட்டால் , திட்டமும் அதனுடன் தொடர்புடைய நன்மைகளும் தானாகவே ரத்து செய்யப்படும்.",
+      "திட்டத்தின் கீழ் நகைகள் வாங்கும் போது, ஜி.எஸ்.டி (GST), செய்கூலி கட்டணம் (Making Charges), ஹால்மார்க் கட்டணம் (Hallmarking Charges), கல் கட்டணம் (Stone Charges) மற்றும் பிற பொருத்தமான கட்டணங்கள் தனியாக வசூலிக்கப்படும்.",
+      "திட்டத்தின் பயன்தொகையை  BMG ஜுவல்லர்ஸ் நிறுவனத்தில் இருந்து கோல்ட் பாலிஷ் வெள்ளி நகைகள் மற்றும் வெள்ளி பொருட்கள் வாங்குவதற்காக மட்டுமே பயன்படுத்த முடியும். வாங்கும் நாளில் நிலவும் விலையில் நகைகள் / பொருள்கள் விற்பனை செய்யப்படும்.",
+      "அனைத்து பணப் பரிவர்த்தனைகளுக்கும்  (cash, UPI, கார்டு அல்லது வங்கி பரிமாற்றம்) நேரடியாக BMG ஜுவல்லர்ஸ் நிறுவனத்திற்கு  செய்யப்பட வேண்டும். ஒவ்வொரு பணம் செலுத்துதலுக்கும் செல்லுபடியாகும் ரசீது பெற்றுக்கொள்ளவேண்டும் .வாடிக்கையாளர்கள் பணத்தை நேரத்திற்குள் செலுத்துவது அவர்களின் பொறுப்பாகும். 330 நாட்கள் கடந்த பின் பணம் செலுத்த முடியாது.",
+      "திட்டத்தில் ஏதேனும் தவறுதல் (Default) நிகழ்ந்தால், வழங்கப்பட்ட பரிசுகளின் மதிப்பு வாடிக்கையாளர் செலுத்திய தொகையிலிருந்து கழிக்கப்படும்; மேலும் அனைத்து திட்ட நன்மைகள் அல்லது போனஸ்கள் ரத்து செய்யப்பட்டதாக கருதப்படும். திட்டத்திற்கான விதிமுறைகளின் படி வாடிக்கையாளரின் நிலையான தொகை செலுத்துதலின் அடிப்படையில் வழங்கப்படும் விகிதாசார போனஸ், நிறுவனத்தின் முழுமையான விருப்பதிகாரத்தின் (sole discretion) படி மட்டும் வழங்கப்படும். 'தவறு' (Default) என்பது திட்டத்தை பாதியிலேயே நிறுத்துதல் அல்லது குறிப்பிடப்பட்ட காலத்திற்குள் திட்ட விதிமுறைகளின்படி பணம் செலுத்தத் தவறுதல் ஆகியவற்றைக் குறிக்கிறது.",
+      "ரொக்கப் பணம் (Cash) செலுத்துதலுக்கு, வாடிக்கையாளர் நேரடியாகக் கிளை கவுண்டரில் பணம் செலுத்தி, செல்லுபடியாகும் ரசீதைப் பெற வேண்டும்.",
+      "திட்ட அட்டை (Scheme Card) அல்லது பாஸ்புக் தொலைந்துபோகும் பட்சத்தில், அதற்கான நிர்ணயிக்கப்பட்ட கட்டணத்தைச் (applicable charges) செலுத்திய பிறகு மட்டுமே மாற்று அட்டை அல்லது பாஸ்புக் வழங்கப்படும்.ஒரு திட்டத்திலிருந்து மற்றொரு திட்டத்திற்கு மாற்றுவதற்கு (transfers) அனுமதிக்கப்பட மாட்டாது.",
+      "நிறுவனம் எந்தவொரு முன்னறிவிப்பும் இன்றி, எந்தத் திட்டத்தையும் திருத்துவதற்கோ, நிறுத்தி வைப்பதற்கோ, அல்லது விலக்கிக் கொள்வதற்கோ உரிமை கொண்டுள்ளது. ஏதேனும் சர்ச்சைகள் (disputes) ஏற்பட்டால், அவை மதுரை நீதிமன்றங்களின் அதிகார வரம்பிற்கு உட்பட்டதாகும்.",
+      "திட்டத்தின் பயன்தொகையானது கண்டிப்பாக நகைகள் / பொருட்கள் வாங்குவதற்கு மட்டுமே பயன்படுத்தப்படும்; ரொக்கப் பணம் திரும்ப வழங்கப்பட மாட்டாது (no cash refunds).",
     ],
 
     joinNow: "இப்போது சேரவும்",
@@ -80,50 +78,50 @@ const SCHEME_CONTENT = {
 
   english: {
     smartPay: [
-      "Flexible scheme — Pay any time, any amount within 330 days.",
-      "Minimum Payment per transaction: ₹100.",
-      "Tenure: 330 days.",
-      "Bonus Structure:",
-      "Payments within 1 – 75 days: 10% Bonus.",
-      "Payments within 76 – 150 days: 7.5% Bonus.",
-      "Payments within 151 – 225 days: 4% Bonus.",
-      "Payments within 226 – 300 days: 1.75% Bonus.",
-      "Payments within 301 – 330 days: 0% Bonus.",
-      "Redemption allowed only between the 331st and 345th day.",
+      "Type: Flexible plan — pay any time, any amount within 330 days",
+      "Minimum Payment: ₹100 per transaction",
+      "Tenure: 330 days",
+      "Benefit Structure:",
+      "Amount Paid Within 1 – 90 days: 9% Bonus",
+      "Amount Paid Within 91 – 180 days: 6.5% Bonus",
+      "Amount Paid Within 181 – 270 days: 3% Bonus",
+      "Amount Paid Within 271 – 330 days: 1% Bonus",
+      "Benefit Utilisation Period: Jewellery purchase only between the 331st and 345th day",
+      "Sustained Payment Record: Min. Holding of 165 days",
     ],
 
     lumpSum: [
-      "One-time investment plan.",
-      "Minimum Amount: ₹10,000.",
-      "Tenure: 330 days.",
-      "Bonus: Up to 16% at maturity based on invested value.",
-      "Redemption: Jewellery purchase only between Day 331–345.",
+      "Type: One-time Payment plan",
+      "Minimum Amount: ₹10,000",
+      "Tenure: 330 days",
+      "Benefits: upto 15% on the Advance amount at Scheme Completion",
+      "Benefit Utilisation Period: Jewellery purchase only between the 331st and 345th day",
+      "Sustained Payment Record: Min. Holding of 165 days",
     ],
 
     bright: [
-      "Monthly fixed payment plan.",
-      "Minimum Amount: ₹1,000 (in multiples of ₹500).",
-      "Tenure: 11 months (approx. 330 days).",
-      "Bonus: One month's instalment equivalent bonus at maturity.",
-      "Redemption: Jewellery purchase only between Day 331–345.",
+      "Type: Monthly fixed payment plan",
+      "Minimum Amount: ₹1,000 (and in multiples of ₹1000)",
+      "Tenure: 11 months (approx. 330 days)",
+      "Benefit: Equivalent to 1 month's instalment at Scheme Completion",
+      "Benefit Utilisation Period: Jewellery purchase only between the 331st and 345th day",
+      "Sustained Payment Record: Min. 5 payments paid On/before due date",
     ],
 
     termsTitle: "General Conditions",
     terms: [
-      "Open to Indian citizens aged 18+ with valid ID.",
-      "All payments treated as advance value, not metal weight.",
-      "Eligible Amount = Total paid + bonus.",
-      "Redemption only between Day 331–345.",
-      "GST, making charges, hallmarking charges apply.",
-      "Eligible only for BMG jewellery purchases.",
-      "No payments after 330 days.",
-      "Default cancels bonus benefits.",
-      "Receipt must be collected for cash payments.",
-      "Lost card/passbook will be replaced with charges.",
-      "Scheme transfer not allowed.",
-      "Company has rights to alter or withdraw schemes.",
-      "Disputes under Madurai jurisdiction.",
-      "No cash refund allowed.",
+      "This scheme is open to individuals who are Citizen of India & aged 18 years and above with valid identification proof.",
+      "All amounts paid by the customer are treated as advance payments for purchase in near future, in value (₹) and not in metal weight. All schemes are applicable only for jewellery purchases. Amounts paid under this scheme cannot be withdrawn in cash or converted to cash.",
+      "Customer must retain valid proof of payments to claim scheme benefits after scheme tenure completion.",
+      "Scheme Eligible Amount = Total amount paid + eligible scheme benefits. Must be claimed between the 331st and 345th day from date of joining. If not claimed within 345 days, scheme and related benefits automatically lapse.",
+      "GST, Making charges, Hallmarking Charges, Stone charges, any other charges, etc., are applicable extra at the time of Jewel purchase under the scheme/s.",
+      "Scheme Eligible Amount can be used only to buy Gold-Polish Silver Jewellery and Silver Articles from BMG Jewellers, at the prevailing prices on the date of purchase.",
+      "All payments must be made directly to BMG Jewellers through authorised modes (cash, UPI, card, or bank transfer) with valid receipts issued. Customers are responsible for timely payments, and payment cannot be made after 330 days.",
+      "In the event of any default, the value of any gift issued under the scheme will be deducted from the customer's payments, and all scheme benefits or bonuses shall stand forfeited. The proportionate bonus is subject to customer's Sustained Payment Records and will be granted solely at the discretion of the company. 'Default' refers to discontinuing the scheme or failing to make payments as per plan terms within specified period.",
+      "For Cash payments, customer must pay directly at the branch counter & obtain valid receipt.",
+      "In case the scheme card or passbook is lost, a replacement will be issued upon payment of applicable charges. Scheme transfers or conversions from one plan to another are not permitted.",
+      "The company reserves the right to revise, suspend, or withdraw any scheme without prior notice. All disputes shall be subject to exclusive jurisdiction of the courts located in Madurai, Tamilnadu, India.",
+      "Scheme Eligible Amount is strictly for jewellery purchase; no cash refunds will be issued.",
     ],
 
     joinNow: "Join Now",
@@ -139,17 +137,39 @@ const SchemeSection = React.memo(
     <View style={styles.schemeSection}>
       <Text style={styles.schemeTitle}>{title}</Text>
 
-      {(items ?? []).map((item, index) => (
-        <View key={`${title}-${index}`} style={styles.featureItem}>
-          <Icon
-            name={iconName}
-            size={moderateScale(iconSize)}
-            color={COLORS.primary}
-            style={styles.featureIcon}
-          />
-          <Text style={styles.featureText}>{item}</Text>
-        </View>
-      ))}
+      {(items ?? []).map((item, index) => {
+        // Check if item is a header (contains colon or is just a label)
+        const isHeader = item.includes(":") || 
+                         item.includes("%") || 
+                         item === "Benefit Structure:" ||
+                         item === "திட்டப்பயன் தொகை அமைப்பு:";
+        
+        return (
+          <View key={`${title}-${index}`} style={styles.featureItem}>
+            {isHeader ? (
+              <>
+                <Icon
+                  name="chevron-right"
+                  size={moderateScale(iconSize)}
+                  color={COLORS.primary}
+                  style={styles.featureIcon}
+                />
+                <Text style={[styles.featureText, styles.headerText]}>{item}</Text>
+              </>
+            ) : (
+              <>
+                <Icon
+                  name={iconName}
+                  size={moderateScale(iconSize)}
+                  color={COLORS.primary}
+                  style={styles.featureIcon}
+                />
+                <Text style={styles.featureText}>{item}</Text>
+              </>
+            )}
+          </View>
+        );
+      })}
     </View>
   )
 );
@@ -212,10 +232,10 @@ function KnowMore() {
               {content.terms.map((item, index) => (
                 <View key={`term-${index}`} style={styles.featureItem}>
                   <Icon
-                    name="asterisk"
+                    name="numeric"
                     size={SIZES.icon.xs}
                     color={COLORS.primary}
-                    style={{ marginTop: 4 }}
+                    style={{ marginTop: 4, marginRight: 8 }}
                   />
                   <Text style={styles.featureText}>{item}</Text>
                 </View>
@@ -323,9 +343,14 @@ const styles = StyleSheet.create({
     flexShrink: 1,
     flexWrap: "wrap",
     ...FONTS.body,
-    color: COLORS.textPrimary,
+    color: "#000000",    // Changed to BLACK color
     lineHeight: SIZES.font.md * 1.6,
     textAlign: "left",
+  },
+
+  headerText: {
+    ...FONTS.bodyBold,
+    color: "#000000",    // Changed to BLACK color
   },
 
   termsSection: {
