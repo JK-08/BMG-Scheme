@@ -114,12 +114,6 @@ const BuyPage = () => {
   const [fetchingPaymentType, setFetchingPaymentType] = useState(true);
   const [payTypeResponse, setPayTypeResponse] = useState(null);
   const [showPaymentDropdown, setShowPaymentDropdown] = useState(false);
-  const paymentHistoryList = productData?.paymentHistoryList || [];
-  const remainingDueDates = productData?.remainingDueDates || [];
-  
-  console.log(remainingDueDates,'remainingDueDates')
-
-
 
   // refs
   const isMountedRef = useRef(true);
@@ -628,21 +622,6 @@ const BuyPage = () => {
 
     return false;
   };
-  const formatDate = useCallback((dateString) => {
-      if (!dateString) return "N/A";
-      try {
-        const date = new Date(dateString);
-        if (isNaN(date.getTime())) return "Invalid Date";
-        return date.toLocaleDateString("en-GB", {
-          day: "2-digit",
-          month: "short",
-          year: "numeric",
-        });
-      } catch (error) {
-        return "Invalid Date";
-      }
-    }, []);
-  
 
   // ---------- styles ----------
   const styles = StyleSheet.create({
@@ -808,7 +787,7 @@ const BuyPage = () => {
       marginLeft: SIZES.margin.xs,
     },
     fixedAmountDisplay: {
-      backgroundColor: COLORS.gray50,
+      backgroundColor: COLORS.warningLight,
       borderRadius: SIZES.radius.md,
       padding: SIZES.padding.md,
       borderWidth: 1.5,
@@ -817,7 +796,7 @@ const BuyPage = () => {
       justifyContent: "center",
     },
     amountValue: {
-      ...FONTS.h5,
+      ...FONTS.h3,
       color: COLORS.textPrimary,
       textAlign: "center",
     },
@@ -845,79 +824,17 @@ const BuyPage = () => {
       flexDirection: "row",
       alignItems: "center",
       justifyContent: "center",
+      marginTop: SIZES.margin.md,
       padding: SIZES.padding.sm,
-      marginTop: SIZES.margin.xs,
-  
+      backgroundColor: COLORS.successLight,
+      borderRadius: SIZES.radius.md,
+      borderWidth: 1,
+      borderColor: COLORS.success,
     },
     securityText: {
       ...FONTS.caption,
-      color: COLORS.gray700,
+      color: COLORS.success,
       marginLeft: SIZES.margin.xs,
-    },
-    paymentHistoryList:{
-      display:'flex',
-      alignItems:'center',
-      backgroundColor:COLORS.white,
-      padding:SIZES.base,
-
-
-    },
-    paymentHistoryHeader: {
-      flexDirection: "row",
-      alignItems: "center",
-      marginBottom: 12,
-    },
-
-    sectionIcon: {
-      fontSize: 18,
-      marginRight: 6,
-    },
-
-    sectionTitle: {
-      fontSize: 16,
-      fontWeight: "600",
-    },
-
-    historyCard: {
-      borderWidth: 1,
-      borderColor: "#e5e7eb",
-      borderRadius: 10,
-      padding: 12,
-      marginBottom: 10,
-      backgroundColor: "#fff",
-    },
-
-    paidCard: {
-      borderColor: "#16a34a", // green border
-      backgroundColor: "#f0fdf4",
-    },
-
-    rowBetween: {
-      flexDirection: "row",
-      justifyContent: "space-between",
-      alignItems: "center",
-    },
-
-    dateText: {
-      fontSize: 14,
-      color: "#374151",
-    },
-
-    amountText: {
-      fontSize: 15,
-      fontWeight: "600",
-      color: "#111827",
-    },
-
-    statusText: {
-      marginTop: 6,
-      fontSize: 13,
-      color: "#6b7280",
-    },
-
-    paidText: {
-      color: "#16a34a",
-      fontWeight: "600",
     },
   });
 
@@ -987,88 +904,6 @@ const BuyPage = () => {
             </View>
           </View>
 
-          {paymentHistoryList?.length > 0 && (
-            <>
-              {/* Header – show once */}
-              <View style={styles.paymentHistoryHeader}>
-                <Text style={styles.sectionIcon}>📅</Text>
-                <Text style={styles.sectionTitle}>Payment History</Text>
-              </View>
-
-              {paymentHistoryList.map((item, index) => {
-                const isPaid =true;
-
-                return (
-                  <View
-                    key={index}
-                    style={[
-                      styles.historyCard,
-                      isPaid && styles.paidCard,
-                    ]}
-                  >
-                    {/* Date & Amount Row */}
-                    <View style={styles.rowBetween}>
-                      <Text
-                        style={[
-                          styles.dateText,
-                          isPaid && styles.paidText,
-                        ]}
-                      >
-                        {formatDate(item.updateTime)}
-                      </Text>
-
-                      <Text
-                        style={[
-                          styles.amountText,
-                          isPaid && styles.paidText,
-                        ]}
-                      >
-                        ₹{item.amount}
-                      </Text>
-                    </View>
-
-                    {/* Status */}
-                    {/* <Text
-                      style={[
-                        styles.statusText,
-                        isPaid && styles.paidText,
-                      ]}
-                    >
-                      
-                    </Text> */}
-                  </View>
-                );
-              })}
-            </>
-          )}
-          {remainingDueDates?.length > 0 && (
-            <>
-              <View style={styles.paymentHistoryHeader}>
-                <Text style={styles.sectionIcon}>📅</Text>
-                <Text style={styles.sectionTitle}>Remaining Due Dates</Text>
-              </View>
-
-              {remainingDueDates.map((date, index) => (
-                <View key={index} style={styles.historyCard}>
-                  <View style={styles.rowBetween}>
-                    <Text style={styles.dateText}>
-                      {formatDate(date)}
-                    </Text>
-
-                    <Text style={styles.amountText}>
-                    &#8377; {productInfo.defaultAmount}
-                    </Text>
-                  </View>
-                </View>
-              ))}
-            </>
-          )}
-
-
-
-        
-
-
           {/* Amount Section */}
           <View style={styles.amountSection}>
             <View style={styles.sectionHeader}>
@@ -1126,8 +961,6 @@ const BuyPage = () => {
               </View>
             )}
           </View>
-
-
           
           {/* Proceed Button */}
           <View style={styles.buttonContainer}>
@@ -1160,7 +993,7 @@ const BuyPage = () => {
           {/* Security Badge */}
           {payType !== "CASH" && !fetchingPaymentType && (
             <View style={styles.securityBadge}>
-              <Text style={{ fontSize: SIZES.icon.xs }}>🔒</Text>
+              <Text style={{ fontSize: SIZES.icon.sm }}>🔒</Text>
               <Text style={styles.securityText}>
                 Secure & Encrypted Payment Gateway
               </Text>

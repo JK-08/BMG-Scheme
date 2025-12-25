@@ -32,7 +32,6 @@ import MainHeader from "../../components/MainHeader/MainHeader";
 import { getPhoneDetails } from "../../services/SchemeDetailsService";
 import { getUserData } from "../../utils/AsynchStorageHelper";
 import { getAllSchemes } from "../../services/SchemeNameService";
-import { getRemainingDays } from "../../services/remaingDays";
 
 import {
   registerForPushNotifications,
@@ -208,21 +207,6 @@ function MainLanding() {
   // Track notification initialization
   const notificationInitializedRef = useRef(false);
 
-  const [remainingDate ,setRemainingDate] = useState();
-
-
-  let joinDate;
-  let schemeId;
-  if (productData && productData.length > 0) {
-  
-    schemeId = productData[0].schemeSummary.schemeId;
-
-    // Extract only the date part (YYYY-MM-DD)
-    joinDate = productData[0].joinDate.split('T')[0];
-    console.log(schemeId, 'schemeId');
-  } else {
-    console.log("No product data available");
-  }
   // -------------------- Notifications --------------------
   // In your MainLanding component
   useEffect(() => {
@@ -277,28 +261,6 @@ function MainLanding() {
       return {};
     }
   }, []);
-
-  useEffect(() => {
-    let isMounted = true;
-
-    const fetchRemainingDays = async () => {
-      const response = await getRemainingDays({ joinDate, schemeId });
-      if (response && isMounted) {
-        setRemainingDate(response.remainingDays);
-      }
-    };
-
-    fetchRemainingDays();
-
-    return () => {
-      isMounted = false;
-    };
-  }, [joinDate, schemeId]);
-
-
-  console.log(remainingDate, 'remianingDate')
-
-
 
   const fetchSchemes = useCallback(async () => {
     setSchemesLoading(true);
@@ -439,8 +401,6 @@ function MainLanding() {
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  
-
   // useFocusEffect to refresh when screen focused (keeps previous behavior)
   useFocusEffect(
     useCallback(() => {
@@ -472,10 +432,8 @@ function MainLanding() {
     (item) => {
       return (
         <View style={styles.productCardContainer}>
-          
           <ProductCard
             productData={item}
-            remainingDate={remainingDate}
             navigation={navigation}
             onPress={() => console.log("Pressed", item)}
             onPayNow={() => handlePayNow(item)}

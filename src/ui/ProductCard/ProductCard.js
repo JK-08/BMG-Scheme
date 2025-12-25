@@ -1,24 +1,17 @@
-import React, { useMemo, useRef, useState ,useEffect} from "react";
-import { View, TouchableOpacity, StyleSheet, Dimensions ,Animated } from "react-native";
+import React, { useEffect } from "react";
+import { View, TouchableOpacity, StyleSheet, Dimensions } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { TextDefault } from "../../components";
 import theme from "../../utils/AppTheme";
 import { checkAndSendDueSMS } from "../../utils/SMSHelper";
-import { API_BASE_URL } from "../../Config/API";
 
 const { COLORS, SIZES, FONTS, SHADOWS, moderateScale } = theme;
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width;
 
-function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate }) {
-
+function ProductCard({ productData, navigation, onPress, onPayNow }) {
   const item = Array.isArray(productData) ? productData[0] : productData;
-  const [revealed, setRevealed] = useState(false);
-  const scaleAnim = useRef(new Animated.Value(1)).current;
-  const glowScale = useRef(new Animated.Value(1)).current;
-  const glowOpacity = useRef(new Animated.Value(0.4)).current;
-
   if (!item) return null;
 
   const {
@@ -90,46 +83,6 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
     }
   }, [item, isSchemeClosed]);
 
- 
-  useEffect(() => {
-    if (revealed || remainingDate <= 0) return;
-
-    const pulse = Animated.loop(
-      Animated.parallel([
-        Animated.sequence([
-          Animated.timing(glowScale, {
-            toValue: 1.15,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowScale, {
-            toValue: 1,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-        ]),
-        Animated.sequence([
-          Animated.timing(glowOpacity, {
-            toValue: 0.1,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-          Animated.timing(glowOpacity, {
-            toValue: 0.4,
-            duration: 1200,
-            useNativeDriver: true,
-          }),
-        ]),
-      ])
-    );
-
-    pulse.start();
-    return () => pulse.stop();
-  }, [revealed, remainingDate]);
-
-
-
-
   return (
     <TouchableOpacity
       activeOpacity={0.9}
@@ -155,15 +108,23 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
           </View>
         )} */}
 
-        {/* <View style={styles.topStatusBar}>
-         
+        <View style={styles.topStatusBar}>
+          <TextDefault style={styles.statusLive1}>
+            {pName?.length > 20 ? `${pName.substring(0, 20)}...` : pName}
+          </TextDefault>
 
-          
-        </View> */}
+          <View>
+            <TextDefault style={[
+              styles.statusLive, 
+              isSchemeClosed && styles.statusClosed
+            ]}>
+              {isSchemeClosed ? "Closed" : "Active"}
+            </TextDefault>
+          </View>
+        </View>
 
         <TextDefault style={styles.schemeName}>
-          {pName.toUpperCase()}'S {summary.schemeName}
-
+          {summary.schemeName}
           {isSchemeClosed && " (Closed)"}
         </TextDefault>
 
@@ -177,7 +138,7 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
             style={[styles.payButton, SHADOWS.md]}
             onPress={() => onPayNow?.(item)}
           >
-            <TextDefault style={styles.payButtonText}>Pay Now</TextDefault>
+            <TextDefault style={styles.payButtonText}>PAY</TextDefault>
           </TouchableOpacity>
         )}
 
@@ -210,83 +171,13 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
               ₹{amountReceived.toLocaleString("en-IN")}
             </TextDefault>
           </View>
-          <TouchableOpacity
-            activeOpacity={0.85}
-            onPress={() => {
-              if (remainingDate > 0) {
-                // Small tap feedback
-                Animated.sequence([
-                  Animated.timing(scaleAnim, {
-                    toValue: 0.95,
-                    duration: 80,
-                    useNativeDriver: true,
-                  }),
-                  Animated.timing(scaleAnim, {
-                    toValue: 1,
-                    duration: 80,
-                    useNativeDriver: true,
-                  }),
-                ]).start();
-                return;
-              }
-              setRevealed(true);
-            }}
-          >
-            <Animated.View
-              style={[
-                styles.infoBox,
-                SHADOWS.sm,
-                { transform: [{ scale: scaleAnim }] },
-              ]}
-            >
-              {!revealed ? (
-                <>
-                <View style={{display:'flex' , flexDirection:'column' ,justifyContent:'space-between'}}>
-                  <View style={{ alignItems: "center", justifyContent: "center" }}>
-                    {remainingDate > 0 && (
-                      <Animated.View
-                        style={{
-                          position: "absolute",
-                          width: 52,
-                          height: 52,
-                          borderRadius: 26,
-                          backgroundColor: "#F59E0B",
-                          transform: [{ scale: glowScale }],
-                          opacity: glowOpacity,
-                        }}
-                      />
-                    )}
-                    <MaterialIcons
-                      name="card-giftcard"
-                      size={34}
-                      color="#F59E0B"
-                    />
-                  </View>
-                  <View style={{ alignItems: "center", justifyContent: "center" }}>
-                  <TextDefault style={styles.infoLabel}>Surprise Gift 🎁</TextDefault>
-                  <TextDefault style={styles.infoSub}>
-                    {remainingDate > 0
-                      ? `Unlocks in ${remainingDate} days`
-                      : "Tap to reveal"}
-                  </TextDefault>
-                  </View>
-                </View>
-                </>
-              ) : (
-                <>
-                  <MaterialIcons
-                    name="redeem"
-                    size={34}
-                    color={COLORS.success}
-                  />
-                  <TextDefault style={styles.infoValue}>
-                    ₹{parseInt(bonusAmount || 0).toLocaleString("en-IN")}
-                  </TextDefault>
-                  <TextDefault style={styles.infoSub}>Benefit unlocked ✨</TextDefault>
-                </>
-              )}
-            </Animated.View>
-          </TouchableOpacity>
+
+          <View style={[styles.infoBox, SHADOWS.sm]}>
+            <TextDefault style={styles.infoLabel}>Benefits</TextDefault>
+            <TextDefault style={styles.infoValue}>
+              ₹{parseInt(bonusAmount || 0).toLocaleString("en-IN")}
+            </TextDefault>
+          </View>
         </View>
         
         {schemeType.isDigitalScheme ? (
@@ -319,20 +210,7 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
           >
             <TextDefault style={styles.showMoreText}>Show More →</TextDefault>
           </TouchableOpacity>
-        
         </View>
-        <View style={styles.activeStateContainer}>
-
-          <TextDefault style={[
-            styles.statusLive,
-            isSchemeClosed && styles.statusClosed
-          ]}>
-            {isSchemeClosed ? "Closed" : "Active"}
-          </TextDefault>
-
-
-        </View>
-    
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -438,7 +316,6 @@ const styles = StyleSheet.create({
   payButtonText: {
     ...FONTS.button,
     fontSize: SIZES.font.xxl,
-    textTransform:'capitalize'
   },
   nextDueContainer: {
     alignItems: "center",
@@ -519,23 +396,6 @@ const styles = StyleSheet.create({
   showMoreText: {
     ...FONTS.button,
     fontSize: SIZES.font.lg,
-  },
-  activeStateContainer: {
-    position:'absolute',
-    bottom:10,
-    right:5,
-    backgroundColor: COLORS.white,
-    borderRadius: SIZES.radius.lg,
-    paddingVertical: SIZES.padding.sm,
-    paddingHorizontal: SIZES.padding.lg,
-    alignSelf: "center",
-    marginTop: SIZES.margin.xl,
-  },
-  infoSub: {
-    ...FONTS.caption,
-    color: COLORS.textSecondary,
-    marginTop: SIZES.margin.xs,
-    textAlign: "center",
   },
 });
 
