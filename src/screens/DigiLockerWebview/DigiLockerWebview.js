@@ -1,498 +1,604 @@
-import React, { useState, useEffect, useRef, useCallback } from "react";
+// screens/DigiLockerWebViewScreen.js
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
-  ActivityIndicator,
-  BackHandler,
   StyleSheet,
   SafeAreaView,
-  TouchableOpacity,
+  ActivityIndicator,
+  BackHandler,
   Alert,
-  StatusBar,
-  Platform,
+  Modal,
+  TouchableOpacity,
 } from "react-native";
-import { WebView } from "react-native-webview";
-import { MaterialIcons } from "@expo/vector-icons";
-import AsyncStorage from "@react-native-async-storage/async-storage";
+import { WebView } from 'react-native-webview';
+import { useNavigation, useRoute } from "@react-navigation/native";
+import CommonHeader from "../../components/CommonHeader/CommonHeader";
+import theme from "../../utils/AppTheme";
+import { aadhaarService, AADHAAR_STATUS } from "../../services/DigiLockerService";
 
-export default function DigiLockerWebViewScreen({ route, navigation }) {
-  const { url, verificationId } = route.params;
-  const [loading, setLoading] = useState(true);
-  const [progress, setProgress] = useState(0);
-  const [canGoBack, setCanGoBack] = useState(false);
-  const [title, setTitle] = useState("DigiLocker");
-  const [hasNavigatedBack, setHasNavigatedBack] = useState(false);
+const { COLORS, SIZES, FONTS } = theme;
 
-  // Create a ref for the WebView
+const DigiLockerWebViewScreen = () => {
+  const navigation = useNavigation();
+  const route = useRoute();
   const webViewRef = useRef(null);
+  
+  const { verificationUrl, verificationId, onVerificationComplete } = route.params || {};
+  const [isLoading, setIsLoading] = useState(true);
+  const [hasError, setHasError] = useState(false);
+  const [currentUrl, setCurrentUrl] = useState("");
+  const [showPollingModal, setShowPollingModal] = useState(false);
+  const [pollingStatus, setPollingStatus] = useState("");
+  const [pollingError, setPollingError] = useState("");
+  const [pollingComplete, setPollingComplete] = useState(false);
+  const [hasStartedPolling, setHasStartedPolling] = useState(false);
+  const [callbackDetected, setCallbackDetected] = useState(false);
+  const [webViewLoaded, setWebViewLoaded] = useState(false);
 
-  // Extract verification ID from URL
-  const extractVerificationIdFromUrl = (url) => {
-    try {
-      console.log("🔍 Extracting verification ID from URL:", url);
-
-      // Parse URL
-      const urlObj = new URL(url);
-      const params = new URLSearchParams(urlObj.search);
-
-      // Try different possible parameter names
-      const verificationId =
-        params.get('verification_id') ||
-        params.get('verificationId') ||
-        params.get('verification-id') ||
-        params.get('vid') ||
-        params.get('id');
-
-      console.log("🔍 Found verification ID:", verificationId);
-      return verificationId;
-    } catch (error) {
-      console.error("❌ Error parsing URL:", error);
-
-      // Fallback: try regex extraction
-      const regex = /[?&](?:verification[_-]?id|vid|id)=([^&]+)/i;
-      const match = url.match(regex);
-      if (match) {
-        console.log("🔍 Found verification ID via regex:", match[1]);
-        return decodeURIComponent(match[1]);
-      }
-
-      return null;
-    }
-  };
-
-  // Handle hardware back button
+  // Handle Android back button
   useEffect(() => {
-    const backAction = () => {
-      if (canGoBack && webViewRef.current) {
+    const backHandler = BackHandler.addEventListener('hardwareBackPress', () => {
+      if (webViewRef.current && currentUrl !== verificationUrl) {
         webViewRef.current.goBack();
         return true;
-      } else {
-        if (!hasNavigatedBack) {
-          setHasNavigatedBack(true);
-          // Pass verification status back
-          navigation.navigate("AddNewMember", {
-            screen: "MemberDetailsPage",
-            params: {
-              verificationId: verificationId,
-              verificationInitiated: true,
-            }
-          });
-        }
-        return true;
       }
-    };
+      return false;
+    });
 
-    const backHandler = BackHandler.addEventListener(
-      "hardwareBackPress",
-      backAction
-    );
+    return () => backHandler.remove();
+  }, [currentUrl, verificationUrl]);
 
-    return () => {
-      backHandler.remove();
-    };
-  }, [navigation, verificationId, canGoBack, hasNavigatedBack]);
+  // Auto-start polling after a timeout if no callback detected
+  useEffect(() => {
+    if (webViewLoaded && !hasStartedPolling && !callbackDetected) {
+      const timeoutId = setTimeout(() => {
+        console.log('Auto-checking verification status after timeout');
+        startPolling();
+      }, 120000); // 2 minutes timeout
 
-  // Detect callback URLs more robustly
-  const handleNavigationStateChange = useCallback((navState) => {
-    setLoading(navState.loading);
-    setCanGoBack(navState.canGoBack);
-    setTitle(navState.title || "DigiLocker Verification");
-
-    const currentUrl = navState.url || "";
-    console.log("Current URL:", currentUrl);
-
-    // More comprehensive callback URL detection
-    const isSuccessCallback =
-      currentUrl.includes("bmgjewellers.com") ||
-      currentUrl.includes("success") ||
-      currentUrl.includes("callback?code=") ||
-      currentUrl.includes("digilocker.gov.in/callback") ||
-      currentUrl.includes("verification_complete") ||
-      currentUrl.includes("status=success");
-
-    const isErrorCallback =
-      currentUrl.includes("error") ||
-      currentUrl.includes("failed") ||
-      currentUrl.includes("denied") ||
-      currentUrl.includes("cancelled");
-
-    if (isSuccessCallback && !hasNavigatedBack) {
-      console.log("✅ Success callback detected:", currentUrl);
-
-      // Extract verification ID from URL
-      let extractedVerificationId = extractVerificationIdFromUrl(currentUrl);
-      console.log("✅ Extracted verification ID:", extractedVerificationId);
-
-      // If no verification ID found in URL, use the one from params
-      if (!extractedVerificationId) {
-        console.log("⚠️ No verification ID in URL, using param:", verificationId);
-        extractedVerificationId = verificationId;
-      }
-
-      setHasNavigatedBack(true);
-
-      // IMPORTANT: Save to AsyncStorage immediately before navigating
-      const saveAndNavigate = async () => {
-        try {
-          console.log("💾 Saving verification ID to storage:", extractedVerificationId);
-          await AsyncStorage.multiSet([
-            ["aadhaarVerificationId", extractedVerificationId],
-            ["aadhaarVerificationStatus", "pending"],
-          ]);
-
-          console.log("✅ Saved to storage, navigating back...");
-          // Navigate back to AddNewMember (which hosts MemberDetailsPage)
-          navigation.navigate("AddNewMember", {
-            screen: "MemberDetailsPage",
-            params: {
-              verificationId: extractedVerificationId,
-              verificationCompleted: true,
-              timestamp: Date.now(),
-            }
-          });
-        } catch (error) {
-          console.error("❌ Error saving to storage:", error);
-          // Still navigate even if save fails
-          navigation.navigate("AddNewMember", {
-            screen: "MemberDetailsPage",
-            params: {
-              verificationId: extractedVerificationId,
-              verificationCompleted: true,
-              timestamp: Date.now(),
-            }
-          });
-        }
-      };
-
-      saveAndNavigate();
-
-    } else if (isErrorCallback && !hasNavigatedBack) {
-      console.log("❌ Error callback detected:", currentUrl);
-
-      // Extract verification ID from URL if available
-      const extractedVerificationId = extractVerificationIdFromUrl(currentUrl);
-
-      setHasNavigatedBack(true);
-      Alert.alert(
-        "Verification Cancelled",
-        "Aadhaar verification was cancelled or failed. Please try again.",
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              navigation.navigate("AddNewMember", {
-                screen: "MemberDetailsPage",
-                params: {
-                  verificationId: extractedVerificationId || verificationId,
-                  verificationFailed: true,
-                }
-              });
-            }
-          }
-        ]
-      );
+      return () => clearTimeout(timeoutId);
     }
-  }, [navigation, verificationId, hasNavigatedBack]);
+  }, [webViewLoaded, hasStartedPolling, callbackDetected]);
 
-  const handleLoadProgress = ({ nativeEvent }) => {
-    setProgress(nativeEvent.progress);
-  };
-
-  const handleLoadStart = () => {
-    setLoading(true);
-  };
-
-  const handleLoadEnd = () => {
-    setLoading(false);
-  };
-
-  const handleError = useCallback((syntheticEvent) => {
-    const { nativeEvent } = syntheticEvent;
-    console.error('WebView error:', nativeEvent);
-
-    // Check for specific error types
-    const errorMessage = nativeEvent.description || "Unknown error";
-
-    if (errorMessage.includes("net::ERR_INTERNET_DISCONNECTED") ||
-      errorMessage.includes("net::ERR_CONNECTION_REFUSED")) {
-      Alert.alert(
-        "Connection Error",
-        "Unable to connect to DigiLocker. Please check your internet connection and try again.",
-        [
-          {
-            text: "Go Back",
-            onPress: () => {
-              navigation.navigate("AddNewMember", {
-                screen: "MemberDetailsPage",
-                params: {
-                  verificationId: verificationId,
-                  verificationFailed: true,
-                }
-              });
-            }
-          },
-          {
-            text: "Retry",
-            onPress: () => {
-              webViewRef.current?.reload();
-            }
-          }
-        ]
-      );
-    } else {
-      Alert.alert(
-        "Error Loading Page",
-        "There was an issue loading the DigiLocker page. Please try again.",
-        [
-          {
-            text: "Go Back",
-            onPress: () => {
-              navigation.navigate("AddNewMember", {
-                screen: "MemberDetailsPage",
-                params: {
-                  verificationId: verificationId,
-                  verificationFailed: true,
-                }
-              });
-            }
-          }
-        ]
-      );
-    }
-  }, [navigation, verificationId]);
-
-  const injectJavaScript = `
-    // Inject JavaScript to help with callback detection and verification ID extraction
-    (function() {
-      // Send current URL to React Native when page loads
-      window.ReactNativeWebView.postMessage(JSON.stringify({
-        type: 'PAGE_LOADED',
-        url: window.location.href,
-        title: document.title
-      }));
-      
-      // Monitor for DigiLocker completion
-      window.addEventListener('message', function(event) {
-        console.log('Message received in WebView:', event.data);
-        if (event.data && event.data.type === 'DIGILOCKER_COMPLETE') {
-          window.ReactNativeWebView.postMessage(JSON.stringify({
-            type: 'DIGILOCKER_COMPLETE',
-            data: event.data
-          }));
-        }
-      });
-      
-      // Also check URL parameters on load
-      var urlParams = new URLSearchParams(window.location.search);
-      var verificationId = urlParams.get('verification_id');
-      if (verificationId) {
-        window.ReactNativeWebView.postMessage(JSON.stringify({
-          type: 'VERIFICATION_ID_FOUND',
-          verificationId: verificationId
-        }));
-      }
-    })();
-  `;
-
-  const handleMessage = (event) => {
-    // Handle messages from the WebView
-    const data = event.nativeEvent.data;
+  // Handle successful verification completion
+  const handleVerificationSuccess = async (statusResult) => {
+    console.log('Verification successful with result:', statusResult);
+    
+    setPollingStatus("Verification successful! Fetching details...");
+    
     try {
-      const parsedData = JSON.parse(data);
-      console.log("Message from WebView:", parsedData);
-
-      if (parsedData.type === 'VERIFICATION_ID_FOUND' && !hasNavigatedBack) {
-        console.log("Verification ID found via JavaScript:", parsedData.verificationId);
-        setHasNavigatedBack(true);
-        setTimeout(() => {
-          navigation.navigate("AddNewMember", {
-            screen: "MemberDetailsPage",
-            params: {
-              verificationId: parsedData.verificationId,
-              verificationCompleted: true,
-            }
-          });
-        }, 500);
+      let formData;
+      
+      // Try to get document data first (more complete info)
+      const documentResult = await aadhaarService.getAadhaarDocument(verificationId);
+      
+      if (documentResult.success) {
+        formData = aadhaarService.getFormDataFromAadhaar(documentResult);
+      } else {
+        // Fallback to status API data
+        formData = {
+          pName: statusResult.userDetails?.name || '',
+          dob: aadhaarService.parseAadhaarDate(statusResult.userDetails?.dob) || '',
+          gender: statusResult.userDetails?.gender || '',
+          mobile: statusResult.userDetails?.mobile || '',
+          idProofNo: aadhaarService.formatAadhaarNumber(
+            statusResult.userDetails?.aadhaar || statusResult.userDetails?.uid || ''
+          ),
+          aadhaarVerified: true,
+          aadhaarVerificationId: verificationId,
+          aadhaarStatus: statusResult.status,
+          aadhaarVerifiedAt: new Date().toISOString(),
+        };
       }
-    } catch (e) {
-      console.log("Raw message from WebView:", data);
+      
+      // Add user details from status result if document API didn't have them
+      if (!formData.pName && statusResult.userDetails?.name) {
+        formData.pName = statusResult.userDetails.name;
+      }
+      
+      completeVerification(formData, statusResult.status);
+      
+    } catch (error) {
+      console.error('Error fetching document:', error);
+      // Use minimal data from status
+      const formData = {
+        pName: statusResult.userDetails?.name || '',
+        dob: aadhaarService.parseAadhaarDate(statusResult.userDetails?.dob) || '',
+        gender: statusResult.userDetails?.gender || '',
+        mobile: statusResult.userDetails?.mobile || '',
+        idProofNo: aadhaarService.formatAadhaarNumber(statusResult.userDetails?.aadhaar || ''),
+        aadhaarVerified: true,
+        aadhaarVerificationId: verificationId,
+        aadhaarStatus: statusResult.status,
+        aadhaarVerifiedAt: new Date().toISOString(),
+      };
+      completeVerification(formData, statusResult.status);
     }
   };
 
-  const handleBackPress = () => {
-    if (canGoBack && webViewRef.current) {
-      webViewRef.current.goBack();
-    } else {
-      if (!hasNavigatedBack) {
-        setHasNavigatedBack(true);
-        Alert.alert(
-          "Exit Verification",
-          "Are you sure you want to exit DigiLocker verification?",
-          [
-            {
-              text: "Cancel",
-              style: "cancel"
-            },
-            {
-              text: "Exit",
-              onPress: () => {
-                navigation.navigate("AddNewMember", {
-                  screen: "MemberDetailsPage",
-                  params: {
-                    verificationId: verificationId,
-                    verificationInitiated: true,
+  // Start polling for verification status
+  const startPolling = (source = 'manual') => {
+    if (hasStartedPolling) return; // Prevent multiple polling
+    setHasStartedPolling(true);
+    
+    console.log(`Starting polling (source: ${source}) for verification ID:`, verificationId);
+    
+    setShowPollingModal(true);
+    setPollingStatus("Checking verification status...");
+    
+    aadhaarService.pollVerificationStatus(verificationId, 180000, 2000) // 3 min timeout, 2s interval
+      .then((statusResult) => {
+        console.log('Polling completed:', statusResult);
+        
+        if (statusResult.success || statusResult.hasUserDetails) {
+          handleVerificationSuccess(statusResult);
+        } else {
+          // Handle failure
+          let errorMessage = statusResult.message || "Verification failed";
+          
+          // Provide more specific messages based on status
+          if (statusResult.status === AADHAAR_STATUS.REJECTED) {
+            errorMessage = "Verification was rejected. Please try again.";
+          } else if (statusResult.status === AADHAAR_STATUS.FAILED) {
+            errorMessage = "Verification failed. Please try again.";
+          } else if (statusResult.status === AADHAAR_STATUS.EXPIRED) {
+            errorMessage = "Verification session expired. Please restart the process.";
+          } else if (statusResult.status === 'TIMEOUT') {
+            errorMessage = "Verification timed out. Please check your verification status or try again.";
+          } else if (statusResult.status === AADHAAR_STATUS.INITIATED) {
+            errorMessage = "Verification is still pending. Please complete the process in DigiLocker.";
+          } else if (statusResult.status === AADHAAR_STATUS.PENDING) {
+            errorMessage = "Verification is still pending. Please complete the process in DigiLocker.";
+          }
+          
+          setPollingError(errorMessage);
+          setTimeout(() => {
+            setShowPollingModal(false);
+            Alert.alert(
+              "Verification Status", 
+              errorMessage,
+              [
+                { 
+                  text: "Try Again", 
+                  onPress: () => {
+                    setHasStartedPolling(false);
+                    webViewRef.current?.reload();
                   }
-                });
+                },
+                { 
+                  text: "Check Status Again", 
+                  onPress: () => {
+                    setHasStartedPolling(false);
+                    setShowPollingModal(false);
+                    setTimeout(() => startPolling('retry'), 500);
+                  }
+                },
+                { 
+                  text: "Cancel", 
+                  onPress: () => navigation.goBack(),
+                  style: "cancel" 
+                }
+              ]
+            );
+          }, 1500);
+        }
+      })
+      .catch((error) => {
+        console.error('Polling error:', error);
+        const errorMsg = error.message || "Failed to check verification status";
+        setPollingError(errorMsg);
+        setTimeout(() => {
+          setShowPollingModal(false);
+          Alert.alert(
+            "Error", 
+            errorMsg,
+            [
+              { 
+                text: "Retry", 
+                onPress: () => {
+                  setHasStartedPolling(false);
+                  startPolling('retry');
+                }
+              },
+              { 
+                text: "Cancel", 
+                onPress: () => navigation.goBack(),
+                style: "cancel" 
               }
-            }
-          ]
-        );
+            ]
+          );
+        }, 1500);
+      });
+  };
+
+  const completeVerification = (formData, status) => {
+    setPollingStatus("Verification complete!");
+    setPollingComplete(true);
+    
+    setTimeout(() => {
+      setShowPollingModal(false);
+      
+      // Callback with verified data
+      if (onVerificationComplete) {
+        onVerificationComplete(formData);
       }
+      
+      // Show success and navigate back
+      Alert.alert(
+        "✅ Aadhaar Verified Successfully",
+        "Your Aadhaar has been verified and details have been auto-filled.",
+        [
+          { 
+            text: "OK", 
+            onPress: () => {
+              // Navigate back to form screen
+              navigation.goBack();
+            }
+          }
+        ]
+      );
+    }, 1500);
+  };
+
+  const handleNavigationStateChange = (navState) => {
+    const url = navState.url;
+    setCurrentUrl(url);
+    
+    // Log URL changes for debugging
+    console.log('URL changed:', {
+      url: url.substring(0, 100) + (url.length > 100 ? '...' : ''),
+      loading: navState.loading,
+      title: navState.title
+    });
+    
+    // Enhanced callback detection
+    const isCallbackUrl = detectCallbackUrl(url, navState);
+
+    
+    if (isCallbackUrl && !hasStartedPolling && !showPollingModal) {
+      console.log('Callback detected! URL pattern matched:', isCallbackUrl.reason);
+      setCallbackDetected(true);
+      
+      // Small delay to ensure server has processed the verification
+      setTimeout(() => {
+        startPolling('callback');
+      }, 3000); // Increased delay for server processing
+    }
+    
+    setIsLoading(navState.loading);
+  };
+
+  // Enhanced callback detection function
+  const detectCallbackUrl = (url, navState) => {
+  if (!url) return false;
+
+  const lowerUrl = url.toLowerCase();
+
+  // 1️⃣ Regex-based URL patterns
+  const patterns = [
+    { pattern: /bmgjewellers:\/\/digilocker-callback/, reason: 'Custom app scheme' },
+    { pattern: /digilocker-callback/, reason: 'DigiLocker callback keyword' },
+
+    { pattern: /verification\.cashfree\.com\/.*(complete|success|callback)/, reason: 'Cashfree completion URL' },
+    { pattern: /cashfree\.com\/.*verification/, reason: 'Cashfree verification' },
+
+    { pattern: /digilocker\.gov\.in\/.*(callback|redirect|success)/, reason: 'DigiLocker callback' },
+    { pattern: /dlcallback/, reason: 'DL callback shorthand' },
+
+    { pattern: /\?status=(success|completed|verified)/, reason: 'Status parameter success' },
+    { pattern: /&status=(success|completed|verified)/, reason: 'Status parameter success' },
+    { pattern: /status%3D(success|completed|verified)/, reason: 'Encoded status success' },
+
+    { pattern: /redirect_uri=/, reason: 'Redirect URI parameter' },
+    { pattern: /redirect_to=/, reason: 'Redirect to parameter' },
+  ];
+
+  for (const item of patterns) {
+    if (item.pattern.test(lowerUrl)) {
+      return item;
+    }
+  }
+
+  // 2️⃣ Title-based detection
+  const title = navState?.title?.toLowerCase();
+  if (title && (title.includes('success') || title.includes('verified') || title.includes('complete'))) {
+    return { reason: 'Success title detected' };
+  }
+
+  // 3️⃣ Query parameter detection
+  try {
+    const urlObj = new URL(url);
+    const params = new URLSearchParams(urlObj.search);
+
+    if (
+      params.get('verification_status') === 'success' ||
+      params.get('verification') === 'complete' ||
+      params.get('aadhaar_status') === 'verified'
+    ) {
+      return { reason: 'Success query parameter' };
+    }
+  } catch (e) {
+    // Ignore invalid URL parsing errors
+  }
+
+  return false;
+};
+
+
+  // Handle successful load
+  const handleLoadEnd = () => {
+    setIsLoading(false);
+    setWebViewLoaded(true);
+    
+    // Check if current URL indicates completion
+    const isComplete = detectCallbackUrl(currentUrl);
+    if (isComplete && !hasStartedPolling && !showPollingModal) {
+      console.log('Completion detected on load end:', isComplete.reason);
+      setTimeout(() => {
+        startPolling('load-end');
+      }, 2000);
     }
   };
 
-  const handleReload = () => {
-    webViewRef.current?.reload();
+  // Improved manual check
+  const checkForManualCompletion = () => {
+    Alert.alert(
+      "Check Verification Status",
+      "Have you completed the verification process in DigiLocker?",
+      [
+        { 
+          text: "No, Continue", 
+          style: "cancel" 
+        },
+        { 
+          text: "Yes, I completed it", 
+          onPress: () => startPolling('manual-check')
+        },
+        { 
+          text: "No, Go Back", 
+          onPress: () => navigation.goBack(),
+          style: "destructive"
+        }
+      ]
+    );
   };
+
+  const handleError = (syntheticEvent) => {
+    const { nativeEvent } = syntheticEvent;
+    console.warn('WebView error:', nativeEvent);
+    setHasError(true);
+    setIsLoading(false);
+  };
+
+  const renderLoading = () => (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={COLORS.primary} />
+      <Text style={styles.loadingText}>Loading DigiLocker...</Text>
+    </View>
+  );
+
+  const renderError = () => (
+    <View style={styles.errorContainer}>
+      <Text style={styles.errorIcon}>❌</Text>
+      <Text style={styles.errorTitle}>Failed to Load</Text>
+      <Text style={styles.errorText}>
+        Unable to load DigiLocker verification page.
+      </Text>
+      
+      <TouchableOpacity
+        style={styles.retryButton}
+        onPress={() => {
+          setHasError(false);
+          webViewRef.current?.reload();
+        }}
+      >
+        <Text style={styles.retryButtonText}>Retry Loading</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={styles.manualCheckButton}
+        onPress={checkForManualCompletion}
+      >
+        <Text style={styles.manualCheckButtonText}>Check Verification Status</Text>
+      </TouchableOpacity>
+      
+      <TouchableOpacity
+        style={styles.cancelButton}
+        onPress={() => navigation.goBack()}
+      >
+        <Text style={styles.cancelButtonText}>Cancel</Text>
+      </TouchableOpacity>
+    </View>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
-
-      {/* Header */}
-      <View style={styles.header}>
-        <TouchableOpacity
-          style={styles.backButton}
-          onPress={handleBackPress}
-        >
-          <MaterialIcons name="arrow-back" size={24} color="#007AFF" />
-        </TouchableOpacity>
-
-        <View style={styles.titleContainer}>
-          <Text style={styles.headerTitle} numberOfLines={1}>
-            {title}
-          </Text>
-        </View>
-
-        {/* Reload button */}
-        <TouchableOpacity
-          style={styles.reloadButton}
-          onPress={handleReload}
-        >
-          <MaterialIcons name="refresh" size={24} color="#007AFF" />
-        </TouchableOpacity>
-      </View>
-
-      {/* Progress Bar */}
-      {loading && (
-        <View style={styles.progressBarContainer}>
-          <View
-            style={[
-              styles.progressBar,
-              { width: `${progress * 100}%` }
-            ]}
-          />
-        </View>
-      )}
-
-      {/* WebView */}
-      <WebView
-        ref={webViewRef}
-        source={{ uri: url }}
-        startInLoadingState={true}
-        onNavigationStateChange={handleNavigationStateChange}
-        onLoadProgress={handleLoadProgress}
-        onLoadStart={handleLoadStart}
-        onLoadEnd={handleLoadEnd}
-        onError={handleError}
-        onMessage={handleMessage}
-        injectedJavaScript={injectJavaScript}
-        javaScriptEnabled={true}
-        domStorageEnabled={true}
-        sharedCookiesEnabled={true}
-        allowsBackForwardNavigationGestures={true}
-        allowsInlineMediaPlayback={true}
-        mediaPlaybackRequiresUserAction={false}
-        thirdPartyCookiesEnabled={true}
-        originWhitelist={['*']}
-        mixedContentMode="always"
-        renderLoading={() => (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.loadingText}>
-              Loading DigiLocker...
-            </Text>
-          </View>
-        )}
-        renderError={(errorDomain, errorCode, errorDesc) => (
-          <View style={styles.errorContainer}>
-            <MaterialIcons name="error-outline" size={64} color="#FF3B30" />
-            <Text style={styles.errorTitle}>Unable to Load</Text>
-            <Text style={styles.errorDescription}>
-              {errorDesc || "Please check your internet connection"}
-            </Text>
-            <TouchableOpacity
-              style={styles.retryButton}
-              onPress={() => webViewRef.current?.reload()}
-            >
-              <Text style={styles.retryButtonText}>Retry</Text>
-            </TouchableOpacity>
-          </View>
-        )}
+      <CommonHeader
+        title="DigiLocker Verification"
+        subtitle="Complete your Aadhaar verification"
+        showBackButton={true}
+        onBackPress={() => {
+          if (showPollingModal) {
+            Alert.alert(
+              "Verification in Progress",
+              "Verification check is in progress. Are you sure you want to leave?",
+              [
+                { text: "Continue", style: "cancel" },
+                { 
+                  text: "Leave", 
+                  onPress: () => navigation.goBack(),
+                  style: "destructive" 
+                }
+              ]
+            );
+          } else {
+            checkForManualCompletion();
+          }
+        }}
+        showActionButton={true}
+        actionButtonText="Check Status"
+        onActionPress={checkForManualCompletion}
       />
-
-      {/* Footer */}
-      <View style={styles.footer}>
-        <Text style={styles.footerText}>
-          Complete verification in DigiLocker to continue
+      
+      <View style={styles.infoContainer}>
+        <Text style={styles.infoText}>
+          Complete the verification in DigiLocker. After completion, 
+          we'll automatically check the status.
         </Text>
-        <Text style={styles.footerNote}>
-          You will be redirected back after successful verification
+        <Text style={styles.verificationIdText}>
+          Verification ID: {verificationId}
         </Text>
       </View>
+      
+      {hasError ? (
+        renderError()
+      ) : (
+        <>
+          <WebView
+            ref={webViewRef}
+            source={{ uri: verificationUrl }}
+            style={styles.webview}
+            onNavigationStateChange={handleNavigationStateChange}
+            onError={handleError}
+            onLoadStart={() => setIsLoading(true)}
+            onLoadEnd={handleLoadEnd}
+            startInLoadingState={true}
+            renderLoading={renderLoading}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
+            sharedCookiesEnabled={true}
+            thirdPartyCookiesEnabled={true}
+            allowsBackForwardNavigationGestures={true}
+            userAgent="Mozilla/5.0 (Linux; Android 10; Mobile) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.120 Mobile Safari/537.36"
+            onMessage={(event) => {
+              console.log('WebView message:', event.nativeEvent.data);
+              // You can also check for completion messages from WebView
+              if (event.nativeEvent.data.includes('verification_complete')) {
+                startPolling('webview-message');
+              }
+            }}
+          />
+          
+          {isLoading && !showPollingModal && (
+            <View style={styles.loadingOverlay}>
+              <ActivityIndicator size="large" color={COLORS.primary} />
+              <Text style={styles.loadingOverlayText}>Loading DigiLocker...</Text>
+            </View>
+          )}
+          
+          {/* Polling Status Modal */}
+          <Modal
+            visible={showPollingModal}
+            transparent={true}
+            animationType="fade"
+            onRequestClose={() => {
+              if (!pollingComplete && !pollingError) {
+                Alert.alert(
+                  "Stop Verification Check?",
+                  "Are you sure you want to stop checking verification status?",
+                  [
+                    { text: "Continue", style: "cancel" },
+                    { 
+                      text: "Stop", 
+                      onPress: () => {
+                        setShowPollingModal(false);
+                        setHasStartedPolling(false);
+                        Alert.alert(
+                          "Verification Incomplete",
+                          "Please wait a few moments and check back, or try again if verification doesn't complete.",
+                          [{ text: "OK" }]
+                        );
+                      }
+                    }
+                  ]
+                );
+              }
+            }}
+          >
+            <View style={styles.modalOverlay}>
+              <View style={styles.modalContainer}>
+                {pollingComplete ? (
+                  <>
+                    <View style={styles.successIcon}>
+                      <Text style={styles.successIconText}>✅</Text>
+                    </View>
+                    <Text style={styles.modalTitle}>Verification Complete!</Text>
+                    <Text style={styles.modalText}>
+                      Your Aadhaar has been verified successfully.
+                    </Text>
+                    <Text style={styles.modalSubtext}>
+                      Redirecting to form...
+                    </Text>
+                  </>
+                ) : pollingError ? (
+                  <>
+                    <View style={styles.errorIcon}>
+                      <Text style={styles.errorIconText}>❌</Text>
+                    </View>
+                    <Text style={styles.modalTitle}>Verification Failed</Text>
+                    <Text style={styles.modalText}>{pollingError}</Text>
+                    <TouchableOpacity
+                      style={styles.modalButton}
+                      onPress={() => {
+                        setShowPollingModal(false);
+                        setHasStartedPolling(false);
+                      }}
+                    >
+                      <Text style={styles.modalButtonText}>Close</Text>
+                    </TouchableOpacity>
+                  </>
+                ) : (
+                  <>
+                    <ActivityIndicator size="large" color={COLORS.primary} />
+                    <Text style={styles.modalTitle}>Checking Verification Status</Text>
+                    <Text style={styles.modalText}>{pollingStatus}</Text>
+                    <Text style={styles.modalSubtext}>
+                      This may take a few moments. Please wait...
+                    </Text>
+                    
+                    <View style={styles.progressContainer}>
+                      <View style={styles.progressBar}>
+                        <View style={styles.progressFill} />
+                      </View>
+                      <Text style={styles.progressText}>Processing...</Text>
+                    </View>
+                  </>
+                )}
+              </View>
+            </View>
+          </Modal>
+        </>
+      )}
     </SafeAreaView>
   );
-}
+};
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: '#fff',
+    backgroundColor: COLORS.white,
   },
-  header: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'space-between',
-    paddingHorizontal: 12,
-    paddingVertical: 10,
-    borderBottomWidth: 1,
-    borderBottomColor: '#e0e0e0',
-    backgroundColor: '#f8f9fa',
-  },
-  backButton: {
-    padding: 6,
-    marginRight: 8,
-  },
-  titleContainer: {
+  webview: {
     flex: 1,
-    marginHorizontal: 12,
   },
-  headerTitle: {
-    fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+  infoContainer: {
+    padding: SIZES.padding.md,
+    backgroundColor: COLORS.primaryLight,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  infoText: {
+    ...FONTS.bodySmall,
+    color: COLORS.textSecondary,
     textAlign: 'center',
+    marginBottom: SIZES.margin.xs,
   },
-  reloadButton: {
-    padding: 4,
-  },
-  progressBarContainer: {
-    height: 3,
-    backgroundColor: '#e0e0e0',
-  },
-  progressBar: {
-    height: '100%',
-    backgroundColor: '#007AFF',
+  verificationIdText: {
+    ...FONTS.caption,
+    color: COLORS.primary,
+    textAlign: 'center',
+    fontWeight: '500',
   },
   loadingContainer: {
     position: 'absolute',
@@ -500,63 +606,194 @@ const styles = StyleSheet.create({
     left: 0,
     right: 0,
     bottom: 0,
+    backgroundColor: COLORS.white,
     justifyContent: 'center',
     alignItems: 'center',
-    backgroundColor: 'rgba(255, 255, 255, 0.95)',
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: '#666',
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin.md,
+  },
+  loadingOverlay: {
+    position: 'absolute',
+    top: 120, // Adjusted for info container
+    left: 0,
+    right: 0,
+    backgroundColor: 'rgba(255, 255, 255, 0.9)',
+    padding: SIZES.padding.md,
+    alignItems: 'center',
+    zIndex: 1000,
+  },
+  loadingOverlayText: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin.xs,
+  },
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: 'rgba(0, 0, 0, 0.7)',
+    justifyContent: 'center',
+    alignItems: 'center',
+    padding: SIZES.padding.lg,
+  },
+  modalContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.xl,
+    width: '100%',
+    maxWidth: 400,
+    alignItems: 'center',
+    ...theme.SHADOWS.xl,
+  },
+  successIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.successLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SIZES.margin.lg,
+  },
+  successIconText: {
+    fontSize: 30,
+    color: COLORS.success,
+  },
+  errorIcon: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: COLORS.errorLight,
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginBottom: SIZES.margin.lg,
+  },
+  errorIconText: {
+    fontSize: 30,
+    color: COLORS.error,
+  },
+  modalTitle: {
+    ...FONTS.h5,
+    color: COLORS.textPrimary,
+    marginBottom: SIZES.margin.md,
+    textAlign: 'center',
+  },
+  modalText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SIZES.margin.md,
+    lineHeight: 22,
+  },
+  modalSubtext: {
+    ...FONTS.caption,
+    color: COLORS.textTertiary,
+    textAlign: 'center',
+    fontStyle: 'italic',
+  },
+  modalButton: {
+    backgroundColor: COLORS.primary,
+    paddingVertical: SIZES.padding.md,
+    paddingHorizontal: SIZES.padding.xl,
+    borderRadius: SIZES.radius.md,
+    marginTop: SIZES.margin.md,
+  },
+  modalButtonText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  progressContainer: {
+    width: '100%',
+    marginTop: SIZES.margin.xl,
+    paddingTop: SIZES.padding.lg,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    alignItems: 'center',
+  },
+  progressBar: {
+    width: '100%',
+    height: 6,
+    backgroundColor: COLORS.gray200,
+    borderRadius: 3,
+    overflow: 'hidden',
+    marginBottom: SIZES.margin.md,
+  },
+  progressFill: {
+    height: '100%',
+    width: '60%',
+    backgroundColor: COLORS.primary,
+    borderRadius: 3,
+  },
+  progressText: {
+    ...FONTS.caption,
+    color: COLORS.textTertiary,
   },
   errorContainer: {
     flex: 1,
     justifyContent: 'center',
     alignItems: 'center',
-    padding: 20,
-    backgroundColor: '#fff',
+    padding: SIZES.padding.xl,
+    backgroundColor: COLORS.white,
+  },
+  errorIcon: {
+    fontSize: 60,
+    marginBottom: SIZES.margin.lg,
+    color: COLORS.error,
   },
   errorTitle: {
-    fontSize: 18,
-    fontWeight: '600',
-    color: '#333',
-    marginTop: 16,
-    marginBottom: 8,
-  },
-  errorDescription: {
-    fontSize: 14,
-    color: '#666',
+    ...FONTS.h4,
+    color: COLORS.error,
+    marginBottom: SIZES.margin.md,
     textAlign: 'center',
-    marginBottom: 24,
+  },
+  errorText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    textAlign: 'center',
+    marginBottom: SIZES.margin.xl,
+    lineHeight: 22,
   },
   retryButton: {
-    backgroundColor: '#007AFF',
-    paddingHorizontal: 24,
-    paddingVertical: 12,
-    borderRadius: 8,
-  },
-  retryButtonText: {
-    color: '#fff',
-    fontSize: 16,
-    fontWeight: '600',
-  },
-  footer: {
-    padding: 16,
-    backgroundColor: '#f8f9fa',
-    borderTopWidth: 1,
-    borderTopColor: '#e0e0e0',
+    backgroundColor: COLORS.primary,
+    paddingVertical: SIZES.padding.md,
+    paddingHorizontal: SIZES.padding.xl,
+    borderRadius: SIZES.radius.md,
+    marginBottom: SIZES.margin.md,
+    minWidth: 200,
     alignItems: 'center',
   },
-  footerText: {
-    fontSize: 14,
-    fontWeight: '500',
-    color: '#333',
-    textAlign: 'center',
-    marginBottom: 4,
+  retryButtonText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.white,
+    fontWeight: '600',
   },
-  footerNote: {
-    fontSize: 12,
-    color: '#666',
-    textAlign: 'center',
+  manualCheckButton: {
+    backgroundColor: COLORS.gray200,
+    paddingVertical: SIZES.padding.md,
+    paddingHorizontal: SIZES.padding.xl,
+    borderRadius: SIZES.radius.md,
+    marginBottom: SIZES.margin.md,
+    minWidth: 200,
+    alignItems: 'center',
+  },
+  manualCheckButtonText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.textSecondary,
+    fontWeight: '500',
+  },
+  cancelButton: {
+    paddingVertical: SIZES.padding.md,
+    paddingHorizontal: SIZES.padding.xl,
+    borderRadius: SIZES.radius.md,
+    minWidth: 200,
+    alignItems: 'center',
+  },
+  cancelButtonText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.textTertiary,
+    fontWeight: '500',
   },
 });
+
+export default DigiLockerWebViewScreen;

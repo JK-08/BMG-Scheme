@@ -46,7 +46,8 @@ import SchemeDetailsPage from './AddNewMember/SchemeDetailsPage'
 import SmartPayKnowMore from './KnowMore/SmartPayKnowMore'
 import BrightKnowMore from './KnowMore/BrightKnowMore'
 import LumpsumKnowMore from './KnowMore/LumpsumKnowMore'
-
+import UserRegisterForm from '../components/UserRegisterForm/UserRegisterForm'
+import AadhaarVerificationScreen from '../components/UserRegisterForm/AadhaarVerification'
 
 export {
   MainLanding,
@@ -95,5 +96,7 @@ export {
   SchemeDetailsPage,
   SmartPayKnowMore,
   BrightKnowMore,
-  LumpsumKnowMore
+  LumpsumKnowMore,
+  UserRegisterForm,
+  AadhaarVerificationScreen
 }

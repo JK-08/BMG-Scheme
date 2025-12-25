@@ -24,6 +24,7 @@ import {
   validateReferralCode,
   getAppliedReferralStatus,
 } from "../../services/ReferalService";
+import { fetchReferralSchemes } from "../../services/ReferralAmount";
 import { BottomTab } from "../../components";
 
 const ReferralScreen = () => {
@@ -51,49 +52,9 @@ const ReferralScreen = () => {
   const [redeemModalVisible, setRedeemModalVisible] = useState(false);
   const [isRedeeming, setIsRedeeming] = useState(false);
   
-  // Sample data for redeemable schemes
-  const [redeemableSchemes] = useState([
-    {
-      id: 1,
-      name: "Gold Savings Plan",
-      amount: 2500.00,
-      maturityDate: "2024-03-15",
-      isMatured: true,
-      closingDate: "2024-03-16",
-      status: "matured",
-    },
-    {
-      id: 2,
-      name: "Silver Investment",
-      amount: 1800.50,
-      maturityDate: "2024-04-01",
-      isMatured: false,
-      closingDate: null,
-      status: "active",
-    },
-    {
-      id: 3,
-      name: "Platinum Scheme",
-      amount: 3500.00,
-      maturityDate: "2024-02-28",
-      isMatured: true,
-      closingDate: "2024-02-29",
-      status: "matured",
-    },
-    {
-      id: 4,
-      name: "Basic Savings",
-      amount: 1200.00,
-      maturityDate: "2024-05-20",
-      isMatured: false,
-      closingDate: null,
-      status: "active",
-    },
-  ]);
-
-  const totalRedeemableAmount = redeemableSchemes
-    .filter(scheme => scheme.isMatured)
-    .reduce((total, scheme) => total + scheme.amount, 0);
+  // New state for referral schemes from API
+  const [referralSchemes, setReferralSchemes] = useState([]);
+  const [isLoadingSchemes, setIsLoadingSchemes] = useState(false);
 
   // ===============================
   // LOAD DATA FROM API
@@ -117,11 +78,10 @@ const ReferralScreen = () => {
           // ---- FIRST OBJECT = USER INFO ----
           const userInfo = data[0];
           setReferralCode(userInfo.referral_code || "");
-          console.log("User Info:", userInfo);
           setTotalBonus(userInfo.wallet_balance || 0);
           setUsername(userInfo.username || "");
 
-          // Set referral link from API response if available, otherwise generate dynamically
+          // Set referral link
           setReferralLink(
             userInfo.referralLink ||
               `https://bmgscheme.com/signup?ref=${userInfo.referral_code}`
@@ -150,7 +110,7 @@ const ReferralScreen = () => {
           setReferralHistory(history);
           setTotalReferrals(history.length);
 
-          // Calculate total bonus from history if needed (in case wallet_balance is not provided)
+          // Calculate total bonus from history if needed
           if (!userInfo.wallet_balance && history.length > 0) {
             const totalFromHistory = history.reduce(
               (sum, item) => sum + (item.amount || 0),
@@ -167,6 +127,9 @@ const ReferralScreen = () => {
         setHasAppliedReferral(statusResult.hasAppliedReferral);
         setAppliedReferralData(statusResult.appliedReferralData);
       }
+
+      // Load referral schemes from API
+      await loadReferralSchemes();
     } catch (error) {
       console.error("Load data error:", error);
       Alert.alert("Error", "Something went wrong while loading data");
@@ -177,17 +140,100 @@ const ReferralScreen = () => {
   };
 
   // ===============================
+  // LOAD REFERRAL SCHEMES FROM API
+  // ===============================
+  const loadReferralSchemes = async () => {
+    setIsLoadingSchemes(true);
+    try {
+      const schemesData = await fetchReferralSchemes();
+      
+      // Handle API response format
+      if (Array.isArray(schemesData)) {
+        setReferralSchemes(schemesData);
+      } else if (schemesData && Array.isArray(schemesData.data)) {
+        setReferralSchemes(schemesData.data);
+      } else if (schemesData && schemesData.success && Array.isArray(schemesData.data)) {
+        setReferralSchemes(schemesData.data);
+      } else {
+        console.log("No scheme data found or unexpected format:", schemesData);
+        setReferralSchemes([]);
+      }
+    } catch (error) {
+      console.error("Failed to load referral schemes:", error);
+      // Continue without schemes data - don't show error to user
+      setReferralSchemes([]);
+    } finally {
+      setIsLoadingSchemes(false);
+    }
+  };
+
+  // ===============================
+  // RENDER HOW IT WORKS SECTION WITH DYNAMIC SCHEMES
+  // ===============================
+const renderHowItWorks = () => {
+  const baseSteps = [
+    {
+      number: 1,
+      text: "Share your referral code or link with friends",
+    },
+    {
+      number: 2,
+      text: "Ask them to sign up using your code/link",
+    },
+  ];
+
+  // Dynamic scheme steps
+  const schemeSteps =
+    referralSchemes.length > 0
+      ? referralSchemes.map((scheme, index) => ({
+          number: index + 3,
+          text: `Earn ₹${scheme.referral_amount || 0} bonus for ${scheme.scheme_name || "Unnamed Scheme"}`,
+        }))
+      : [
+          {
+            number: 3,
+            text: "Earn bonus for each successful referral",
+          },
+        ];
+
+  const finalSteps = [
+    ...baseSteps,
+    ...schemeSteps,
+    {
+      number: schemeSteps.length + 3,
+      text: "Redeem your earnings when schemes reach maturity date",
+    },
+  ];
+
+  return (
+    <View style={styles.section}>
+      <Text style={styles.sectionTitle}>How It Works</Text>
+
+      <View style={styles.stepsContainer}>
+        {finalSteps.map((step, index) => (
+          <View key={`step-${index}`} style={styles.stepItem}>
+            <View style={styles.stepNumber}>
+              <Text style={styles.stepNumberText}>{step.number}</Text>
+            </View>
+            <Text style={styles.stepText}>{step.text}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+};
+
+
+  // ===============================
   // REDEEM FUNCTIONALITY
   // ===============================
   const handleRedeemPress = () => {
-    // Show modal with sample data
     setRedeemModalVisible(true);
   };
 
   const handleRedeemScheme = (schemeId) => {
     setIsRedeeming(true);
     
-    // Simulate API call delay
     setTimeout(() => {
       Alert.alert(
         "Success!",
@@ -196,9 +242,6 @@ const ReferralScreen = () => {
           text: "OK",
           onPress: () => {
             setIsRedeeming(false);
-            // In real app, you would update the schemes list
-            // For demo, we'll just close the modal
-            // setRedeemModalVisible(false);
           }
         }]
       );
@@ -206,83 +249,8 @@ const ReferralScreen = () => {
     }, 1500);
   };
 
-  const handleRedeemAll = () => {
-    const maturedSchemes = redeemableSchemes.filter(scheme => scheme.isMatured);
-    
-    if (maturedSchemes.length === 0) {
-      Alert.alert("No Mature Schemes", "You don't have any mature schemes to redeem.");
-      return;
-    }
-
-    Alert.alert(
-      "Redeem All",
-      `Are you sure you want to redeem ₹${totalRedeemableAmount.toFixed(2)} from ${maturedSchemes.length} mature scheme(s)?`,
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Redeem All",
-          onPress: () => {
-            setIsRedeeming(true);
-            
-            // Simulate API call delay
-            setTimeout(() => {
-              Alert.alert(
-                "Success!",
-                `₹${totalRedeemableAmount.toFixed(2)} has been successfully redeemed from all mature schemes and will be transferred to your wallet within 24-48 hours.`,
-                [{
-                  text: "OK",
-                  onPress: () => {
-                    setIsRedeeming(false);
-                    setRedeemModalVisible(false);
-                  }
-                }]
-              );
-              setIsRedeeming(false);
-            }, 1500);
-          }
-        }
-      ]
-    );
-  };
-
-  // Render scheme item in modal
-  const renderSchemeItem = ({ item }) => (
-    <View style={styles.schemeItem}>
-      <View style={styles.schemeInfo}>
-        <Text style={styles.schemeName}>{item.name}</Text>
-        <Text style={styles.schemeDate}>
-          Maturity Date: {new Date(item.maturityDate).toLocaleDateString('en-IN', {
-            day: '2-digit',
-            month: 'short',
-            year: 'numeric'
-          })}
-        </Text>
-        {item.closingDate && (
-          <Text style={styles.schemeClosingDate}>
-            Closed on: {new Date(item.closingDate).toLocaleDateString('en-IN')}
-          </Text>
-        )}
-      </View>
-      <View style={styles.schemeAmountContainer}>
-        <Text style={styles.schemeAmount}>₹{item.amount.toFixed(2)}</Text>
-        <TouchableOpacity
-          style={[
-            styles.redeemButton,
-            !item.isMatured && styles.redeemButtonDisabled
-          ]}
-          onPress={() => handleRedeemScheme(item.id)}
-          disabled={!item.isMatured || isRedeeming}
-        >
-          <Text style={styles.redeemButtonText}>
-            {item.isMatured ? 'Redeem' : 'Not Matured'}
-          </Text>
-        </TouchableOpacity>
-      </View>
-    </View>
-  );
-
   // ===============================
-  // SHARE LINK
+  // SHARE LINK WITH SCHEME INFO
   // ===============================
   const handleShare = async () => {
     if (!referralCode) {
@@ -291,9 +259,17 @@ const ReferralScreen = () => {
     }
 
     try {
+      let schemesInfo = "";
+      if (referralSchemes.length > 0) {
+        schemesInfo = "\n\n🎯 **Available Referral Schemes:**\n";
+        referralSchemes.forEach((scheme, index) => {
+          schemesInfo += `\n• ${scheme.scheme_name || `Scheme ${index + 1}`}: ₹${scheme.referral_amount || 0} + ${scheme.referral_percent || 0}% bonus`;
+        });
+      }
+
       const shareMessage = playStoreLink
-        ? `Join me on BMG Scheme! Use my referral code: ${referralCode} to get bonus.\n\nDownload the app: ${playStoreLink}\n\nSign up with my referral link: ${referralLink}`
-        : `Join me on BMG Scheme! Use my referral code: ${referralCode} to get bonus.\n\nSign up here: ${referralLink}`;
+        ? `Join me on BMG Scheme! Use my referral code: **${referralCode}** to get bonus.${schemesInfo}\n\n📱 Download the app: ${playStoreLink}\n🔗 Sign up with my referral link: ${referralLink}`
+        : `Join me on BMG Scheme! Use my referral code: **${referralCode}** to get bonus.${schemesInfo}\n\n🔗 Sign up here: ${referralLink}`;
 
       await Share.share({
         message: shareMessage,
@@ -429,13 +405,11 @@ const ReferralScreen = () => {
       return;
     }
 
-    // Prevent user from applying their own referral code
     if (enteredCode.trim().toUpperCase() === referralCode?.toUpperCase()) {
       Alert.alert("Invalid Code", "You cannot use your own referral code!");
       return;
     }
 
-    // Validate format before making API call
     const validation = validateReferralCode(enteredCode);
     if (!validation.valid) {
       Alert.alert("Invalid Code", validation.message);
@@ -455,9 +429,7 @@ const ReferralScreen = () => {
             {
               text: "OK",
               onPress: () => {
-                // Clear input
                 setEnteredCode("");
-                // Refresh all data to update UI
                 loadAllData();
               },
             },
@@ -479,6 +451,7 @@ const ReferralScreen = () => {
       setIsSubmitting(false);
     }
   };
+
   // ===============================
   // RENDER HISTORY ITEM
   // ===============================
@@ -534,190 +507,153 @@ const ReferralScreen = () => {
   // ===============================
   return (
     <>
-    <View style={styles.container}>
-      <ScrollView
-        showsVerticalScrollIndicator={false}
-        contentContainerStyle={styles.scrollContent}
-      >
-        <CommonHeader
-          title="Refer & Earn"
-          subtitle="Share your referral code and earn rewards"
-        />
+      <View style={styles.container}>
+        <ScrollView
+          showsVerticalScrollIndicator={false}
+          contentContainerStyle={styles.scrollContent}
+        >
+          <CommonHeader
+            title="Refer & Earn"
+            subtitle="Share your referral code and earn rewards"
+          />
 
-        {/* ===== MY REFERRAL CODE ===== */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>My Referral Code</Text>
+          {/* ===== MY REFERRAL CODE ===== */}
+          <View style={styles.section}>
+            <Text style={styles.sectionTitle}>My Referral Code</Text>
 
-          <View style={styles.codeCard}>
-            <Text style={styles.codeLabel}>Your Referral Code</Text>
-            <Text style={styles.codeText}>{referralCode || "---"}</Text>
-            {username && (
-              <Text style={styles.usernameText}>@{username.trim()}</Text>
-            )}
-          </View>
-
-          <View style={styles.buttonRow}>
-            <TouchableOpacity
-              style={[
-                styles.primaryButton,
-                !referralCode && styles.buttonDisabled,
-              ]}
-              onPress={handleShare}
-              disabled={!referralCode}
-            >
-              <Text style={styles.primaryButtonText}>Share Referral Link</Text>
-            </TouchableOpacity>
-
-            <TouchableOpacity
-              style={[
-                styles.secondaryButton,
-                !referralCode && styles.buttonDisabled,
-              ]}
-              onPress={handleCopyLink}
-              disabled={!referralCode}
-            >
-              <Text style={styles.secondaryButtonText}>Copy Link</Text>
-            </TouchableOpacity>
-          </View>
-
-          {/* Stats with Redeem Button */}
-          <View style={styles.statsRow}>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>₹{totalBonus.toFixed(2)}</Text>
-              <Text style={styles.statLabel}>Total Bonus Earned</Text>
+            <View style={styles.codeCard}>
+              <Text style={styles.codeLabel}>Your Referral Code</Text>
+              <Text style={styles.codeText}>{referralCode || "---"}</Text>
+              {username && (
+                <Text style={styles.usernameText}>@{username.trim()}</Text>
+              )}
             </View>
-            <View style={styles.statCard}>
-              <Text style={styles.statValue}>{totalReferrals}</Text>
-              <Text style={styles.statLabel}>Total Referrals</Text>
-            </View>
-          </View>
 
-          {/* Redeem Button */}
-          <TouchableOpacity
-            style={styles.redeemButtonMain}
-            onPress={handleRedeemPress}
-          >
-            <Text style={styles.redeemButtonMainText}>Redeem Amount</Text>
-          </TouchableOpacity>
-        </View>
-
-        {/* ===== HOW IT WORKS ===== */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>How It Works</Text>
-          <View style={styles.stepsContainer}>
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>1</Text>
-              </View>
-              <Text style={styles.stepText}>
-                Share your referral code or link with friends
-              </Text>
-            </View>
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>2</Text>
-              </View>
-              <Text style={styles.stepText}>
-                Ask them to sign up using your code/link
-              </Text>
-            </View>
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>3</Text>
-              </View>
-              <Text style={styles.stepText}>
-                Earn ₹100 bonus for each successful referral
-              </Text>
-            </View>
-            <View style={styles.stepItem}>
-              <View style={styles.stepNumber}>
-                <Text style={styles.stepNumberText}>4</Text>
-              </View>
-              <Text style={styles.stepText}>
-                Redeem your earnings when schemes reach maturity date
-              </Text>
-            </View>
-          </View>
-        </View>
-
-        {/* ===== APPLIED REFERRAL / INPUT SECTION ===== */}
-        {renderAppliedReferralSection()}
-
-        {/* ===== REFERRAL HISTORY ===== */}
-        <View style={styles.section}>
-          <View style={styles.historyHeader}>
-            <Text style={styles.sectionTitle}>Earnings History</Text>
-            {referralHistory.length > 0 && (
-              <Text style={styles.historyCount}>
-                {totalReferrals} referrals
-              </Text>
-            )}
-          </View>
-
-          {referralHistory.length > 0 ? (
-            <View style={styles.historyContainer}>
-              <FlatList
-                data={referralHistory}
-                renderItem={renderHistoryItem}
-                keyExtractor={(item, index) => `${item.id}-${index}`}
-                scrollEnabled={false}
-                ItemSeparatorComponent={() => <View style={styles.separator} />}
-              />
-            </View>
-          ) : (
-            <View style={styles.emptyState}>
-              <Text style={styles.emptyText}>No referral earnings yet</Text>
-              <Text style={styles.emptySubtext}>
-                Start referring friends to earn rewards!
-              </Text>
-            </View>
-          )}
-        </View>
-      </ScrollView>
-
-      {/* Redeem Modal */}
-      <Modal
-        animationType="slide"
-        transparent={true}
-        visible={redeemModalVisible}
-        onRequestClose={() => setRedeemModalVisible(false)}
-      >
-        <View style={styles.modalOverlay}>
-          <View style={styles.modalContainer}>
-            {/* Modal Header */}
-            <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Redeem Amount</Text>
+            <View style={styles.buttonRow}>
               <TouchableOpacity
-                onPress={() => setRedeemModalVisible(false)}
-                style={styles.closeButton}
+                style={[
+                  styles.primaryButton,
+                  !referralCode && styles.buttonDisabled,
+                ]}
+                onPress={handleShare}
+                disabled={!referralCode}
               >
-                <Text style={styles.closeButtonText}>✕</Text>
+                <Text style={styles.primaryButtonText}>Share Referral Link</Text>
+              </TouchableOpacity>
+
+              <TouchableOpacity
+                style={[
+                  styles.secondaryButton,
+                  !referralCode && styles.buttonDisabled,
+                ]}
+                onPress={handleCopyLink}
+                disabled={!referralCode}
+              >
+                <Text style={styles.secondaryButtonText}>Copy Link</Text>
               </TouchableOpacity>
             </View>
 
-            {/* Total Redeemable Amount */}
-            <View style={styles.totalRedeemableCard}>
-              <Text style={styles.totalRedeemableLabel}>Total Redeemable</Text>
-              <Text style={styles.totalRedeemableAmount}>
-                ₹{totalBonus.toFixed(2)}
-              </Text>
+            {/* Stats with Redeem Button */}
+            <View style={styles.statsRow}>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>₹{totalBonus.toFixed(2)}</Text>
+                <Text style={styles.statLabel}>Total Bonus Earned</Text>
+              </View>
+              <View style={styles.statCard}>
+                <Text style={styles.statValue}>{totalReferrals}</Text>
+                <Text style={styles.statLabel}>Total Referrals</Text>
+              </View>
             </View>
 
+            {/* Redeem Button */}
+            <TouchableOpacity
+              style={styles.redeemButtonMain}
+              onPress={handleRedeemPress}
+            >
+              <Text style={styles.redeemButtonMainText}>Redeem Amount</Text>
+            </TouchableOpacity>
+          </View>
 
-            {/* Important Note */}
-            <View style={styles.redeemNoteContainer}>
-              <Text style={styles.redeemNoteTitle}>Important:</Text>
-              <Text style={styles.redeemNoteText}>
-                • Amount can only be redeemed when scheme reaches maturity date{'\n'}
-                • Redeemed amount will be transferred to your wallet{'\n'}
-                • Processing may take 24-48 hours{'\n'}
-              </Text>
+          {/* ===== HOW IT WORKS ===== */}
+          {renderHowItWorks()}
+
+          {/* ===== APPLIED REFERRAL / INPUT SECTION ===== */}
+          {renderAppliedReferralSection()}
+
+          {/* ===== REFERRAL HISTORY ===== */}
+          <View style={styles.section}>
+            <View style={styles.historyHeader}>
+              <Text style={styles.sectionTitle}>Earnings History</Text>
+              {referralHistory.length > 0 && (
+                <Text style={styles.historyCount}>
+                  {totalReferrals} referrals
+                </Text>
+              )}
+            </View>
+
+            {referralHistory.length > 0 ? (
+              <View style={styles.historyContainer}>
+                <FlatList
+                  data={referralHistory}
+                  renderItem={renderHistoryItem}
+                  keyExtractor={(item, index) => `${item.id}-${index}`}
+                  scrollEnabled={false}
+                  ItemSeparatorComponent={() => <View style={styles.separator} />}
+                />
+              </View>
+            ) : (
+              <View style={styles.emptyState}>
+                <Text style={styles.emptyText}>No referral earnings yet</Text>
+                <Text style={styles.emptySubtext}>
+                  Start referring friends to earn rewards!
+                </Text>
+              </View>
+            )}
+          </View>
+        </ScrollView>
+
+        {/* Redeem Modal */}
+        <Modal
+          animationType="slide"
+          transparent={true}
+          visible={redeemModalVisible}
+          onRequestClose={() => setRedeemModalVisible(false)}
+        >
+          <View style={styles.modalOverlay}>
+            <View style={styles.modalContainer}>
+              {/* Modal Header */}
+              <View style={styles.modalHeader}>
+                <Text style={styles.modalTitle}>Redeem Amount</Text>
+                <TouchableOpacity
+                  onPress={() => setRedeemModalVisible(false)}
+                  style={styles.closeButton}
+                >
+                  <Text style={styles.closeButtonText}>✕</Text>
+                </TouchableOpacity>
+              </View>
+
+              {/* Total Redeemable Amount */}
+              <View style={styles.totalRedeemableCard}>
+                <Text style={styles.totalRedeemableLabel}>Total Redeemable</Text>
+                <Text style={styles.totalRedeemableAmount}>
+                  ₹{totalBonus.toFixed(2)}
+                </Text>
+              </View>
+
+              {/* Important Note */}
+              <View style={styles.redeemNoteContainer}>
+                <Text style={styles.redeemNoteTitle}>Important:</Text>
+                <Text style={styles.redeemNoteText}>
+                  • Amount can only be redeemed when scheme reaches maturity date{'\n'}
+                  • Redeemed amount will be transferred to your wallet{'\n'}
+                  • Processing may take 24-48 hours{'\n'}
+                </Text>
+              </View>
             </View>
           </View>
-        </View>
-      </Modal>
-    </View>
-    <BottomTab screen="ReferralScreen" />
+        </Modal>
+      </View>
+      <BottomTab screen="ReferralScreen" />
     </>
   );
 };
@@ -872,12 +808,13 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 
-  // Steps
+  // Steps Container
   stepsContainer: {
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.md,
     padding: SIZES.padding.lg,
     ...SHADOWS.sm,
+    marginBottom: SIZES.margin.lg,
   },
   stepItem: {
     flexDirection: "row",
@@ -902,6 +839,130 @@ const styles = StyleSheet.create({
     ...FONTS.body,
     color: COLORS.textPrimary,
     flex: 1,
+  },
+
+  // Schemes Container
+  schemesContainer: {
+    marginTop: SIZES.margin.lg,
+  },
+  schemesTitle: {
+    ...FONTS.h5,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.bold,
+    marginBottom: SIZES.margin.md,
+  },
+
+  // Scheme Card
+  schemeCard: {
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.lg,
+    marginBottom: SIZES.margin.md,
+    ...SHADOWS.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+  },
+  schemeHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: SIZES.margin.md,
+  },
+  schemeName: {
+    ...FONTS.bodyLarge,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.bold,
+    flex: 1,
+  },
+  schemeBadge: {
+    backgroundColor: COLORS.secondaryOpacity20,
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: SIZES.padding.xs,
+    borderRadius: SIZES.radius.xs,
+  },
+  schemeBadgeText: {
+    ...FONTS.caption,
+    color: COLORS.secondary,
+    fontFamily: FONTS.family.semiBold,
+  },
+  schemeDetails: {
+    marginBottom: SIZES.margin.md,
+  },
+  schemeDetailRow: {
+    flexDirection: "row",
+    gap: SIZES.margin.md,
+  },
+  schemeDetailItem: {
+    flex: 1,
+    alignItems: "center",
+    padding: SIZES.padding.md,
+    backgroundColor: COLORS.backgroundSecondary,
+    borderRadius: SIZES.radius.sm,
+  },
+  schemeDetailLabel: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.margin.xs,
+    textAlign: "center",
+  },
+  schemeAmount: {
+    ...FONTS.bodyMedium,
+    color: COLORS.success,
+    fontFamily: FONTS.family.bold,
+  },
+  schemePercentage: {
+    ...FONTS.bodyMedium,
+    color: COLORS.primary,
+    fontFamily: FONTS.family.bold,
+  },
+  schemeNote: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
+    fontStyle: "italic",
+    textAlign: "center",
+    paddingTop: SIZES.padding.sm,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+
+  // Loading Schemes
+  loadingSchemes: {
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.xl,
+    alignItems: "center",
+    ...SHADOWS.sm,
+  },
+  loadingText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin.sm,
+  },
+
+  // No Schemes
+  noSchemesContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.lg,
+    alignItems: "center",
+    ...SHADOWS.sm,
+  },
+  noSchemesText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.margin.md,
+    textAlign: "center",
+  },
+  retryButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.padding.lg,
+    paddingVertical: SIZES.padding.sm,
+    borderRadius: SIZES.radius.sm,
+  },
+  retryButtonText: {
+    ...FONTS.bodySmall,
+    color: COLORS.white,
+    fontFamily: FONTS.family.semiBold,
   },
 
   // Input Container
@@ -1157,116 +1218,13 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.margin.xs,
   },
   totalRedeemableAmount: {
-    // ...FONTS.h2,
-    color: COLORS.success,
-    // fontFamily: FONTS.family.bold,
-    marginBottom: SIZES.margin.xs,
-     fontSize: SIZES.heading.h2,
+    fontSize: SIZES.heading.h2,
     lineHeight: SIZES.heading.h2 * 1.3,
-    color: COLORS.textPrimary,
-    letterSpacing: 0.3,
+    color: COLORS.success,
+    fontFamily: FONTS.family.bold,
   },
 
-  schemesListContainer: {
-    flex: 1,
-    paddingHorizontal: SIZES.padding.lg,
-    marginBottom: SIZES.margin.lg,
-  },
-  schemesListTitle: {
-    ...FONTS.bodyMedium,
-    color: COLORS.textPrimary,
-    fontFamily: FONTS.family.semiBold,
-    marginBottom: SIZES.margin.md,
-  },
-  schemesListContent: {
-    paddingBottom: SIZES.padding.sm,
-  },
-  schemeItem: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    paddingVertical: SIZES.padding.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-  },
-  schemeInfo: {
-    flex: 1,
-    marginRight: SIZES.margin.md,
-  },
-  schemeName: {
-    ...FONTS.body,
-    color: COLORS.textPrimary,
-    fontFamily: FONTS.family.medium,
-    marginBottom: 4,
-  },
-  schemeDate: {
-    ...FONTS.caption,
-    color: COLORS.textSecondary,
-    marginBottom: 2,
-  },
-  schemeClosingDate: {
-    ...FONTS.captionSmall,
-    color: COLORS.textTertiary,
-  },
-  schemeAmountContainer: {
-    alignItems: 'flex-end',
-  },
-  schemeAmount: {
-    ...FONTS.bodyLarge,
-    color: COLORS.success,
-    fontFamily: FONTS.family.bold,
-    marginBottom: SIZES.margin.xs,
-  },
-  redeemButton: {
-    backgroundColor: COLORS.success,
-    paddingHorizontal: SIZES.padding.md,
-    paddingVertical: SIZES.padding.xs,
-    borderRadius: SIZES.radius.sm,
-    minWidth: 80,
-    alignItems: 'center',
-  },
-  redeemButtonDisabled: {
-    backgroundColor: COLORS.textTertiary,
-  },
-  redeemButtonText: {
-    ...FONTS.caption,
-    color: COLORS.white,
-    fontFamily: FONTS.family.semiBold,
-  },
-  modalActions: {
-    flexDirection: 'row',
-    gap: SIZES.margin.sm,
-    paddingHorizontal: SIZES.padding.lg,
-    marginBottom: SIZES.margin.lg,
-  },
-  modalCancelButton: {
-    flex: 1,
-    backgroundColor: COLORS.white,
-    borderRadius: SIZES.radius.md,
-    paddingVertical: SIZES.padding.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-    borderWidth: 1,
-    borderColor: COLORS.error,
-  },
-  modalCancelButtonText: {
-    ...FONTS.bodyMedium,
-    color: COLORS.error,
-    fontFamily: FONTS.family.semiBold,
-  },
-  modalRedeemAllButton: {
-    flex: 2,
-    backgroundColor: COLORS.success,
-    borderRadius: SIZES.radius.md,
-    paddingVertical: SIZES.padding.md,
-    alignItems: 'center',
-    justifyContent: 'center',
-  },
-  modalRedeemAllButtonText: {
-    ...FONTS.bodyMedium,
-    color: COLORS.white,
-    fontFamily: FONTS.family.bold,
-  },
+  // Redeem Note
   redeemNoteContainer: {
     backgroundColor: COLORS.warningOpacity10,
     marginHorizontal: SIZES.padding.lg,
@@ -1285,7 +1243,7 @@ const styles = StyleSheet.create({
     ...FONTS.caption,
     color: COLORS.textSecondary,
     lineHeight: 18,
-    fontSize:14
+    fontSize: 14
   },
 });
 

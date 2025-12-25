@@ -5,7 +5,7 @@ import { API_BASE_URL_OLD } from "../Config/API";
  */
 export const fetchReferralSchemes = async () => {
   try {
-    const response = await fetch(`${API_BASE_URL_OLD}/referral-scheme`, {
+    const response = await fetch(`${API_BASE_URL_OLD}/account/referral-scheme`, {
       method: "GET",
       headers: {
         "Content-Type": "application/json",

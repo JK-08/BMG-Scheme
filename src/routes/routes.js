@@ -48,6 +48,8 @@ function Drawer() {
       <NavigationStack.Screen name="SmartPayKnowMore" component={Screen.SmartPayKnowMore} />
       <NavigationStack.Screen name="BrightKnowMore" component={Screen.BrightKnowMore} />
       <NavigationStack.Screen name="LumpsumKnowMore" component={Screen.LumpsumKnowMore} />
+      <NavigationStack.Screen name="UserRegisterForm" component={Screen.UserRegisterForm} />
+      <NavigationStack.Screen name="AadhaarVerification" component={Screen.AadhaarVerificationScreen} />
     </NavigationStack.Navigator>
   );
 }
