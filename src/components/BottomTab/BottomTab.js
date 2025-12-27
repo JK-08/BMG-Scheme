@@ -47,6 +47,19 @@ function BottomTab({ screen }) {
         <Text style={getTextStyle("SCHEMES")}>Schemes</Text>
       </TouchableOpacity>
 
+      {/* Payment */}
+      <TouchableOpacity
+        onPress={() => navigation.navigate("DuePayment")}
+        style={styles.footerBtnContainer}
+        activeOpacity={0.7}
+      >
+        <MaterialCommunityIcons
+          name="cash"
+          size={SIZES.icon.md}
+          color={getIconColor("DuePayment")}
+        />
+        <Text style={getTextStyle("DuePayment")}>Payment</Text>
+      </TouchableOpacity>
       {/* Referral */}
       <TouchableOpacity
         onPress={() => navigation.navigate("ReferralScreen")}

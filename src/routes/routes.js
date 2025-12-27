@@ -50,6 +50,7 @@ function Drawer() {
       <NavigationStack.Screen name="LumpsumKnowMore" component={Screen.LumpsumKnowMore} />
       <NavigationStack.Screen name="UserRegisterForm" component={Screen.UserRegisterForm} />
       <NavigationStack.Screen name="AadhaarVerification" component={Screen.AadhaarVerificationScreen} />
+      <NavigationStack.Screen name="DuePayment" component={Screen.DuePayment} />
     </NavigationStack.Navigator>
   );
 }

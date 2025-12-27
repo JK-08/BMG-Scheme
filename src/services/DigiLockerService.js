@@ -1,18 +1,14 @@
 // services/DigiLockerService.js
-
 import { API_BASE_URL } from "../Config/API";
-
-const CLIENT_ID = "CF1134840D52IN743AJJC738HCF6G";
-const CLIENT_SECRET = "cfsk_ma_prod_dbfedf7ea6516d592b9c5538f716b561_34b0b176";
 
 export const AADHAAR_STATUS = {
   PENDING: 'PENDING',
-  APPROVED: 'APPROVED',
-  AUTHENTICATED: 'AUTHENTICATED',
+  VERIFIED: 'VERIFIED',
   REJECTED: 'REJECTED',
-  FAILED: 'FAILED',
   EXPIRED: 'EXPIRED',
-  SUCCESS: 'SUCCESS'
+  SUCCESS: 'SUCCESS',
+  AUTHENTICATED: 'AUTHENTICATED',
+  APPROVED: 'APPROVED'
 };
 
 class DigiLockerService {
@@ -21,272 +17,139 @@ class DigiLockerService {
   }
 
   /**
-   * Create Aadhaar verification request
+   * Create DigiLocker verification URL
    */
-  async createVerification(params) {
+  async createVerificationUrl(userId, aadhaarNumber) {
     try {
-      console.log('Creating verification with params:', params);
+      const verificationId = this.generateVerificationId();
       
-      const headers = {
-        'Content-Type': 'application/json',
-        'x-client-id': CLIENT_ID,
-        'x-client-secret': CLIENT_SECRET,
-        'Accept': 'application/json',
+      const requestBody = {
+        verification_id: verificationId,
+        document_requested: ["AADHAAR"],
+        redirect_url: "https://bmgjewellers.com",
+        user_flow: "signup",
       };
-      
+
+      console.log('Creating DigiLocker URL:', requestBody);
+
       const response = await fetch(`${this.baseURL}/digilocker/create-url`, {
         method: 'POST',
-        headers: headers,
-        body: JSON.stringify({
-          verification_id: params.verification_id,
-          document_requested: ["AADHAAR"],
-          redirect_url: "https://bmgjewellers.com",
-          user_flow: params.user_flow || 'signup'
-        })
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify(requestBody)
       });
 
-      const responseText = await response.text();
-      console.log('Create UI Response:', responseText);
+      const result = await response.json();
+      console.log('Create URL response:', result);
+      
+      if (response.ok) {
+        const verificationUrl = result.url || 
+                               result.verification_url || 
+                               result.data?.url;
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
+        if (verificationUrl) {
+          return {
+            success: true,
+            verificationId: verificationId,
+            verificationUrl: verificationUrl,
+            message: result.message || 'Verification URL created successfully'
+          };
+        } else {
+          throw new Error('Verification URL not found in response');
+        }
+      } else {
+        throw new Error(result.message || result.error || 'Failed to create verification URL');
       }
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Failed to parse JSON:', parseError);
-        throw new Error('Invalid JSON response from server');
-      }
-
-      return {
-        success: true,
-        data: data,
-        verificationUrl: data.url,
-        referenceId: data.reference_id,
-        status: data.status,
-        verificationId: data.verification_id
-      };
     } catch (error) {
-      console.error('Create verification error:', error);
+      console.error('Create verification URL error:', error);
       return {
         success: false,
         error: error.message,
-        message: 'Failed to initiate Aadhaar verification'
+        message: 'Failed to create DigiLocker verification URL'
       };
     }
   }
 
   /**
-   * Get verification status with improved polling
+   * Check verification status
    */
-  async getVerificationStatus(verificationId) {
+  async checkVerificationStatus(verificationId) {
     try {
-      console.log('Getting status for verification ID:', verificationId);
-      
-      const headers = {
-        'x-client-id': CLIENT_ID,
-        'x-client-secret': CLIENT_SECRET,
-        'Accept': 'application/json',
-      };
-      
+      console.log('Checking status for verificationId:', verificationId);
       const response = await fetch(
         `${this.baseURL}/digilocker/status?verification_id=${verificationId}`,
         {
           method: 'GET',
-          headers: headers
+          headers: {
+            'Content-Type': 'application/json',
+          }
         }
       );
 
-      const responseText = await response.text();
-      console.log('Status Response Raw:', responseText);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
-      }
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Failed to parse JSON:', parseError);
-        throw new Error('Invalid JSON response from server');
-      }
+      const result = await response.json();
+      console.log('Status check response:', result);
       
-      // Check if we have actual user details (not null)
-      const hasUserDetails = data.user_details && 
-        (data.user_details.name !== null || 
-         data.user_details.dob !== null || 
-         data.user_details.gender !== null);
-
-      console.log('Has user details:', hasUserDetails);
-      console.log('User details:', data.user_details);
-      
-      // Extract user details if available
-      let extractedData = null;
-      if (hasUserDetails) {
-        extractedData = {
-          name: data.user_details.name,
-          dob: data.user_details.dob,
-          gender: data.user_details.gender,
-          aadhaar: data.user_details.aadhaar,
-          mobile: data.user_details.mobile,
-          eaadhaar: data.user_details.eaadhaar
+      if (response.ok) {
+        const statusData = result.data || result;
+        
+        // Check if verification is successful
+        const isVerified = statusData.verified || 
+                          statusData.status === 'AUTHENTICATED' || 
+                          statusData.status === 'APPROVED' || 
+                          statusData.status === 'SUCCESS' ||
+                          statusData.status === 'VERIFIED';
+        
+        return {
+          success: true,
+          verified: isVerified,
+          status: statusData.status || 'PENDING',
+          message: result.message || statusData.message,
+          verificationId: verificationId
         };
+      } else {
+        throw new Error(result.message || result.error || 'Failed to check status');
       }
-
-      return {
-        success: true,
-        status: data.status,
-        verificationId: data.verification_id,
-        referenceId: data.reference_id,
-        documentRequested: data.document_requested,
-        documentConsent: data.document_consent,
-        documentConsentValidity: data.document_consent_validity,
-        userDetails: extractedData,
-        hasUserDetails: hasUserDetails,
-        rawData: data
-      };
     } catch (error) {
-      console.error('Get status error:', error);
+      console.error('Check status error:', error);
       return {
         success: false,
         error: error.message,
-        message: 'Failed to fetch verification status'
+        message: 'Failed to check verification status'
       };
     }
   }
 
   /**
-   * Poll for verification status until completed
-   */
-  async pollVerificationStatus(verificationId, timeout = 60000, interval = 2000) {
-    return new Promise(async (resolve, reject) => {
-      const startTime = Date.now();
-      
-      const poll = async () => {
-        try {
-          const statusResult = await this.getVerificationStatus(verificationId);
-          
-          console.log('Polling result:', {
-            status: statusResult.status,
-            hasUserDetails: statusResult.hasUserDetails,
-            userDetails: statusResult.userDetails
-          });
-          
-          // Check if verification is complete
-          if (statusResult.success) {
-            // Success criteria: Either status is AUTHENTICATED/SUCCESS/APPROVED OR we have user details
-            if (
-              [AADHAAR_STATUS.AUTHENTICATED, AADHAAR_STATUS.SUCCESS, AADHAAR_STATUS.APPROVED].includes(statusResult.status) ||
-              statusResult.hasUserDetails
-            ) {
-              console.log('Verification completed successfully');
-              resolve(statusResult);
-              return;
-            }
-            
-            // Check for failure
-            if ([AADHAAR_STATUS.REJECTED, AADHAAR_STATUS.FAILED, AADHAAR_STATUS.EXPIRED].includes(statusResult.status)) {
-              console.log('Verification failed:', statusResult.status);
-              resolve({
-                ...statusResult,
-                success: false,
-                message: `Verification ${statusResult.status.toLowerCase()}`
-              });
-              return;
-            }
-            
-            // Check timeout
-            if (Date.now() - startTime > timeout) {
-              console.log('Polling timeout reached');
-              resolve({
-                success: false,
-                message: 'Verification timeout. Please try again.',
-                status: 'TIMEOUT'
-              });
-              return;
-            }
-            
-            // Continue polling
-            console.log('Still pending, polling again in', interval, 'ms');
-            setTimeout(poll, interval);
-          } else {
-            reject(statusResult);
-          }
-        } catch (error) {
-          reject({
-            success: false,
-            error: error.message,
-            message: 'Polling error'
-          });
-        }
-      };
-      
-      // Start polling
-      poll();
-    });
-  }
-
-  /**
-   * Get Aadhaar document data
+   * Get Aadhaar document data after verification
    */
   async getAadhaarDocument(verificationId) {
     try {
-      console.log('Getting Aadhaar document for verification ID:', verificationId);
-      
-      const headers = {
-        'x-client-id': CLIENT_ID,
-        'x-client-secret': CLIENT_SECRET,
-        'Accept': 'application/json',
-      };
-      
+      console.log('Fetching Aadhaar document for verificationId:', verificationId);
       const response = await fetch(
         `${this.baseURL}/digilocker/document/AADHAAR?verification_id=${verificationId}`,
         {
           method: 'GET',
-          headers: headers
+          headers: {
+            'Content-Type': 'application/json',
+          }
         }
       );
 
-      const responseText = await response.text();
-      console.log('Document Response:', responseText);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}, response: ${responseText}`);
+      const result = await response.json();
+      console.log('Aadhaar document response:', result);
+      
+      if (response.ok) {
+        return {
+          success: true,
+          data: result,
+          message: result.message || 'Aadhaar document fetched successfully'
+        };
+      } else {
+        throw new Error(result.message || result.error || 'Failed to fetch Aadhaar document');
       }
-
-      let data;
-      try {
-        data = JSON.parse(responseText);
-      } catch (parseError) {
-        console.error('Failed to parse JSON:', parseError);
-        throw new Error('Invalid JSON response from server');
-      }
-
-      return {
-        success: true,
-        status: data.status,
-        verificationId: data.verification_id,
-        referenceId: data.reference_id,
-        uid: data.uid,
-        message: data.message,
-        photoLink: data.photo_link,
-        xmlFile: data.xml_file,
-        splitAddress: data.split_address,
-        userDetails: {
-          name: data.name,
-          dob: data.dob,
-          gender: data.gender,
-          yearOfBirth: data.year_of_birth,
-          careOf: data.care_of,
-          uid: data.uid
-        },
-        rawData: data
-      };
     } catch (error) {
-      console.error('Get document error:', error);
+      console.error('Get Aadhaar document error:', error);
       return {
         success: false,
         error: error.message,
@@ -296,165 +159,167 @@ class DigiLockerService {
   }
 
   /**
-   * Check if URL contains verification completion indicators
+   * Complete verification flow - Check status and get document
    */
-  isVerificationComplete(url) {
-    // Check for completion patterns in URL
-    const completionPatterns = [
-      'success',
-      'complete',
-      'verified',
-      'callback',
-      'redirect',
-      'status=success',
-      'status=verified',
-      'digilocker/status', // DigiLocker status page
-      'verification.cashfree.com' // Cashfree verification URL
-    ];
+  async completeVerification(verificationId, originalAadhaarNumber) {
+    try {
+      // Step 1: Check verification status
+      const statusResult = await this.checkVerificationStatus(verificationId);
+      
+      if (!statusResult.success || !statusResult.verified) {
+        return {
+          success: false,
+          verified: false,
+          message: statusResult.message || 'Verification not completed',
+          aadhaarStatus: statusResult.status || 'PENDING'
+        };
+      }
+
+      // Step 2: Get Aadhaar document data
+      const documentResult = await this.getAadhaarDocument(verificationId);
+      
+      if (!documentResult.success) {
+        return {
+          success: false,
+          verified: false,
+          message: documentResult.message || 'Failed to get Aadhaar data',
+          aadhaarStatus: 'VERIFIED_NO_DATA'
+        };
+      }
+
+      const documentData = documentResult.data;
+      
+      // Extract data from the document response
+      const aadhaarNumber = documentData.uid || originalAadhaarNumber;
+      const name = documentData.name || '';
+      const dob = documentData.dob || '';
+      const gender = documentData.gender || '';
+      const address = this.formatAddress(documentData.split_address || {});
+      
+      // Prepare verification data
+      const verificationData = {
+        success: true,
+        verified: true,
+        aadhaarVerified: true,
+        idProofNo: aadhaarNumber,
+        maskedAadhaar: this.formatAadhaarNumber(aadhaarNumber, true),
+        aadhaarVerificationId: verificationId,
+        aadhaarVerifiedAt: new Date().toISOString(),
+        aadhaarStatus: documentData.status || 'VERIFIED',
+        
+        // User details from Aadhaar
+        userDetails: {
+          name: name,
+          dob: dob,
+          gender: this.formatGender(gender),
+          address: address,
+          careOf: documentData.care_of || '',
+          yearOfBirth: documentData.year_of_birth || '',
+          uid: aadhaarNumber
+        },
+        
+        message: 'Aadhaar verified successfully via DigiLocker',
+        documentData: documentData
+      };
+
+      return verificationData;
+
+    } catch (error) {
+      console.error('Complete verification error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: 'Verification process failed',
+        aadhaarVerified: false
+      };
+    }
+  }
+
+  /**
+   * Format address from split_address object
+   */
+  formatAddress(splitAddress) {
+    if (!splitAddress) return '';
     
-    return completionPatterns.some(pattern => 
-      url.toLowerCase().includes(pattern.toLowerCase())
-    );
+    const parts = [
+      splitAddress.house || '',
+      splitAddress.street || '',
+      splitAddress.landmark || '',
+      splitAddress.loc || '',
+      splitAddress.vtc || splitAddress.village || '',
+      splitAddress.po || '',
+      splitAddress.subdist || '',
+      splitAddress.dist || '',
+      splitAddress.state || '',
+      splitAddress.country || '',
+      splitAddress.pincode || ''
+    ].filter(part => part.trim() !== '');
+    
+    return parts.join(', ');
   }
 
   /**
-   * Generate a unique verification ID
+   * Format gender from single character
    */
-  generateVerificationId() {
-    const timestamp = Date.now();
-    const random = Math.random().toString(36).substring(2, 10);
-    return `VER_${timestamp}_${random}`;
+  formatGender(genderChar) {
+    switch(genderChar.toUpperCase()) {
+      case 'M': return 'male';
+      case 'F': return 'female';
+      case 'T': return 'transgender';
+      default: return 'other';
+    }
   }
 
   /**
-   * Format Aadhaar number
+   * Simple verification flow - Just get URL
    */
-  formatAadhaarNumber(aadhaar) {
+  async verifyAadhaar(userId, aadhaarNumber) {
+    try {
+      const urlResult = await this.createVerificationUrl(userId, aadhaarNumber);
+      
+      if (!urlResult.success) {
+        return urlResult;
+      }
+      
+      return {
+        success: true,
+        verificationId: urlResult.verificationId,
+        verificationUrl: urlResult.verificationUrl,
+        message: 'Please open DigiLocker to verify Aadhaar'
+      };
+    } catch (error) {
+      console.error('Verify Aadhaar error:', error);
+      return {
+        success: false,
+        error: error.message,
+        message: 'Failed to start verification'
+      };
+    }
+  }
+
+  /**
+   * Format Aadhaar number with masking
+   */
+  formatAadhaarNumber(aadhaar, mask = false) {
     if (!aadhaar) return '';
     const digits = aadhaar.replace(/\D/g, '');
+    
+    if (mask && digits.length === 12) {
+      return `XXXX XXXX ${digits.substring(8)}`;
+    }
+    
     return digits.replace(/(\d{4})(?=\d)/g, '$1 ').trim();
   }
 
   /**
-   * Parse date from Aadhaar format (DD-MM-YYYY)
+   * Generate verification ID
    */
-  parseAadhaarDate(dob) {
-    if (!dob || !dob.includes('-')) return dob;
-    
-    const parts = dob.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`;
-    }
-    return dob;
-  }
-
-  /**
-   * Extract address from split address data
-   */
-  extractAddress(splitAddress) {
-    if (!splitAddress) return null;
-    
-    return {
-      doorNo: splitAddress.house || '',
-      address1: splitAddress.street || '',
-      address2: `${splitAddress.landmark || ''} ${splitAddress.vtc || ''}`.trim(),
-      area: splitAddress.vtc || splitAddress.subdist || '',
-      city: splitAddress.dist || splitAddress.subdist || '',
-      state: splitAddress.state || '',
-      pinCode: splitAddress.pincode || '',
-      country: splitAddress.country || 'India'
-    };
-  }
-
-  /**
-   * Get status badge details
-   */
-  getStatusDetails(status) {
-    const statusMap = {
-      [AADHAAR_STATUS.PENDING]: {
-        label: 'Pending',
-        color: '#F59E0B',
-        backgroundColor: '#FFFBEB',
-        icon: '⏳',
-        description: 'Waiting for user verification'
-      },
-      [AADHAAR_STATUS.AUTHENTICATED]: {
-        label: 'Authenticated',
-        color: '#10B981',
-        backgroundColor: '#D1FAE5',
-        icon: '✅',
-        description: 'Aadhaar verified successfully'
-      },
-      [AADHAAR_STATUS.APPROVED]: {
-        label: 'Approved',
-        color: '#10B981',
-        backgroundColor: '#D1FAE5',
-        icon: '✅',
-        description: 'Aadhaar approved'
-      },
-      [AADHAAR_STATUS.SUCCESS]: {
-        label: 'Success',
-        color: '#10B981',
-        backgroundColor: '#D1FAE5',
-        icon: '✅',
-        description: 'Aadhaar verification successful'
-      },
-      [AADHAAR_STATUS.REJECTED]: {
-        label: 'Rejected',
-        color: '#EF4444',
-        backgroundColor: '#FEE2E2',
-        icon: '❌',
-        description: 'Aadhaar verification rejected'
-      },
-      [AADHAAR_STATUS.FAILED]: {
-        label: 'Failed',
-        color: '#EF4444',
-        backgroundColor: '#FEE2E2',
-        icon: '⚠️',
-        description: 'Verification process failed'
-      },
-      [AADHAAR_STATUS.EXPIRED]: {
-        label: 'Expired',
-        color: '#6B7280',
-        backgroundColor: '#F3F4F6',
-        icon: '⏰',
-        description: 'Verification link expired'
-      }
-    };
-
-    return statusMap[status] || {
-      label: status || 'Unknown',
-      color: '#6B7280',
-      backgroundColor: '#F3F4F6',
-      icon: '❓',
-      description: 'Status unknown'
-    };
-  }
-
-  /**
-   * Auto-fill form data from Aadhaar verification
-   */
-  getFormDataFromAadhaar(aadhaarData) {
-    const userDetails = aadhaarData.userDetails;
-    const address = this.extractAddress(aadhaarData.splitAddress);
-    
-    return {
-      pName: userDetails?.name || '',
-      dob: this.parseAadhaarDate(userDetails?.dob) || '',
-      gender: userDetails?.gender || '',
-      mobile: userDetails?.mobile || '',
-      idProofNo: this.formatAadhaarNumber(userDetails?.uid || aadhaarData.uid || ''),
-      aadhaarVerified: true,
-      aadhaarVerificationId: aadhaarData.verificationId,
-      aadhaarStatus: aadhaarData.status,
-      aadhaarVerifiedAt: new Date().toISOString(),
-      // Address fields
-      ...(address || {}),
-      // Map care_of to nominee field
-      nomeni: userDetails?.careOf || ''
-    };
+  generateVerificationId() {
+    const timestamp = Date.now();
+    const random = Math.random().toString(36).substring(2, 10);
+    return `VER_${timestamp}_${random}`.toUpperCase();
   }
 }
 
 // Export singleton instance
-export const aadhaarService = new DigiLockerService();
+export const digiLockerService = new DigiLockerService();

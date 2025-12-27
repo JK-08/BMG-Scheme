@@ -81,6 +81,15 @@ const SchemeDetailsPage = ({
     ...schemeData,
   });
 
+  // Auto-select the single payment mode if only one option is available
+  useEffect(() => {
+    if (tranTypes.length === 1 && !formData.accCode) {
+      const singleOption = tranTypes[0];
+      updateFormData("accCode", singleOption.NAME);
+      updateFormData("modePay", singleOption.CARDTYPE);
+    }
+  }, [tranTypes]);
+
   // Update formData when scheme changes
   useEffect(() => {
     if (numericSchemeId && numericSchemeId !== formData.selectedSchemeId) {
@@ -236,6 +245,68 @@ const SchemeDetailsPage = ({
     }
   };
 
+  // Helper function to render payment mode based on number of options
+  const renderPaymentMode = () => {
+    if (isLoadingTranTypes) {
+      return <ActivityIndicator color={COLORS.primary} />;
+    }
+
+    if (tranTypes.length === 0) {
+      return (
+        <Text style={styles.noPaymentText}>
+          No payment modes available
+        </Text>
+      );
+    }
+
+    if (tranTypes.length === 1) {
+      // Single option - show as static display
+      const singleOption = tranTypes[0];
+      return (
+        <View style={styles.singlePaymentContainer}>
+          <View style={styles.singlePaymentDisplay}>
+            <Text style={styles.singlePaymentText}>
+              {singleOption.NAME}
+            </Text>
+          </View>
+          <Text style={styles.singlePaymentNote}>
+            Only one payment mode is available
+          </Text>
+        </View>
+      );
+    }
+
+    // Multiple options - show as selectable buttons
+    return (
+      <View style={styles.paymentModeContainer}>
+        {tranTypes.map((item, index) => (
+          <TouchableOpacity
+            key={index}
+            style={[
+              styles.paymentOption,
+              formData.accCode === item.NAME &&
+              styles.paymentOptionSelected,
+            ]}
+            onPress={() => {
+              updateFormData("accCode", item.NAME);
+              updateFormData("modePay", item.CARDTYPE);
+            }}
+          >
+            <Text
+              style={[
+                styles.paymentOptionText,
+                formData.accCode === item.NAME &&
+                styles.paymentOptionTextSelected,
+              ]}
+            >
+              {item.NAME}
+            </Text>
+          </TouchableOpacity>
+        ))}
+      </View>
+    );
+  };
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -285,7 +356,6 @@ const SchemeDetailsPage = ({
             {renderSchemeComponent()}
 
             {/* Payment Mode - Show only if scheme is selected */}
-            {/* Payment Mode - Dynamic */}
             {numericSchemeId && (
               <View style={styles.inputContainer}>
                 <View style={styles.labelContainer}>
@@ -293,43 +363,13 @@ const SchemeDetailsPage = ({
                   <Text style={styles.asterisk}>*</Text>
                 </View>
 
-                {isLoadingTranTypes ? (
-                  <ActivityIndicator color={COLORS.primary} />
-                ) : (
-                  <View style={styles.paymentModeContainer}>
-                    {tranTypes.map((item, index) => (
-                      <TouchableOpacity
-                        key={index}
-                        style={[
-                          styles.paymentOption,
-                          formData.accCode === item.NAME &&
-                          styles.paymentOptionSelected,
-                        ]}
-                        onPress={() => {
-                          updateFormData("accCode", item.NAME);
-                          updateFormData("modePay", item.CARDTYPE); // O, C, etc
-                        }}
-                      >
-                        <Text
-                          style={[
-                            styles.paymentOptionText,
-                            formData.accCode === item.NAME &&
-                            styles.paymentOptionTextSelected,
-                          ]}
-                        >
-                          {item.NAME}
-                        </Text>
-                      </TouchableOpacity>
-                    ))}
-                  </View>
-                )}
+                {renderPaymentMode()}
 
                 {validationErrors?.accCode && (
                   <Text style={styles.errorText}>{validationErrors.accCode}</Text>
                 )}
               </View>
             )}
-
 
             {/* Agreement Checkbox */}
             {numericSchemeId && (
@@ -487,6 +527,30 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     fontWeight: '600',
   },
+  // Payment Mode Styles
+  singlePaymentContainer: {
+    marginTop: SIZES.margin.xs,
+  },
+  singlePaymentDisplay: {
+    height: SIZES.input.height,
+    borderWidth: 1.5,
+    borderColor: COLORS.success,
+    borderRadius: SIZES.radius.md,
+    paddingHorizontal: SIZES.padding.md,
+    justifyContent: "center",
+    backgroundColor: COLORS.successLight,
+  },
+  singlePaymentText: {
+    ...FONTS.body,
+    color: COLORS.successDark,
+    fontWeight: '600',
+  },
+  singlePaymentNote: {
+    ...FONTS.caption,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin.xs,
+    fontStyle: 'italic',
+  },
   paymentModeContainer: {
     flexDirection: 'row',
     gap: SIZES.margin.md,
@@ -512,6 +576,17 @@ const styles = StyleSheet.create({
   paymentOptionTextSelected: {
     color: COLORS.primary,
     fontWeight: '600',
+  },
+  noPaymentText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    fontStyle: 'italic',
+    textAlign: 'center',
+    padding: SIZES.padding.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+    borderRadius: SIZES.radius.md,
+    backgroundColor: COLORS.background,
   },
   buttonRow: {
     flexDirection: "row",

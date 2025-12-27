@@ -48,6 +48,7 @@ import BrightKnowMore from './KnowMore/BrightKnowMore'
 import LumpsumKnowMore from './KnowMore/LumpsumKnowMore'
 import UserRegisterForm from '../components/UserRegisterForm/UserRegisterForm'
 import AadhaarVerificationScreen from '../components/UserRegisterForm/AadhaarVerification'
+import DuePayment from "../components/DuePayment/DuePayment"
 
 export {
   MainLanding,
@@ -98,5 +99,6 @@ export {
   BrightKnowMore,
   LumpsumKnowMore,
   UserRegisterForm,
-  AadhaarVerificationScreen
+  AadhaarVerificationScreen,
+  DuePayment
 }

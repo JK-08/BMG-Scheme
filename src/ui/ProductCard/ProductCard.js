@@ -304,6 +304,7 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
           >
             <TextDefault style={styles.showMoreText}>Show More →</TextDefault>
           </TouchableOpacity>
+          
         
         </View>
         <View style={styles.activeStateContainer}>
@@ -483,7 +484,7 @@ const styles = StyleSheet.create({
   },
   maturityContainer: {
     alignItems: "center",
-    marginBottom: SIZES.margin.xl,
+    marginBottom: SIZES.margin.xss,
   },
   maturityLabel: {
     ...FONTS.body,
@@ -507,7 +508,7 @@ const styles = StyleSheet.create({
   },
   activeStateContainer: {
     position:'absolute',
-    bottom:10,
+    bottom:8,
     right:5,
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.lg,
