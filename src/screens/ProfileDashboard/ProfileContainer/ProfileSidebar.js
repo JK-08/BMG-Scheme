@@ -876,7 +876,7 @@ const styles = {
 
   /* Settings Container */
   settingsContainer: {
-    borderBottomWidth: 1,
+    // borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.04)",
   },
 

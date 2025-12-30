@@ -145,7 +145,144 @@ const OTPModal = ({ visible, phoneNumber, onVerify, onClose, loading }) => {
   );
 };
 
-// Enhanced CustomInput Component with better verification status
+// Terms and Conditions Modal Component
+const TermsModal = ({ visible, onClose, onAccept }) => {
+  const termsData = [
+    {
+      title: "1. Product Representation",
+      content: [
+        "Images are for reference only. Minor variations in color or finish may occur.",
+        "All products are handcrafted, so slight irregularities are natural.",
+        "For exact details, contact us before ordering.",
+      ],
+    },
+    {
+      title: "2. Pricing",
+      subtitle: "Currency & Taxes",
+      content: ["All prices are in INR and inclusive of GST"],
+      subsections: [
+        {
+          title: "Price Changes",
+          content: [
+            "Prices may change without prior notice",
+            "Final amount charged will be as displayed at checkout.",
+          ],
+        },
+      ],
+    },
+    {
+      title: "3. Payments",
+      content: [
+        "We accept the following payment methods:",
+        "Online Payments",
+        "UPI",
+        "Debit/Credit Cards",
+        "Net Banking",
+        "Cash on Delivery (Selected PIN codes only)",
+        "₹50 COD fee may apply",
+      ],
+    },
+    {
+      title: "4. Product Use & Care",
+      content: [
+        "Handle gold-polished jewellery with care. Avoid water & chemicals.",
+        "Store in a dry pouch when not in use.",
+        "No guarantee for polish durability; depends on usage.",
+        "Ask us for maintenance tips to extend product life.",
+      ],
+    },
+    {
+      title: "5. Limitation of Liability",
+      content: [
+        "We are not liable for:",
+        "Shipping delays or damage",
+        "Force majeure events",
+        "Improper use or care",
+      ],
+    },
+    {
+      title: "6. Intellectual Property",
+      content: [
+        "All content is © and the property of our brand. No part may be:",
+        "Copied or redistributed without permission",
+        "Used commercially",
+        "Altered or modified",
+      ],
+    },
+    {
+      title: "7. Governing Law",
+      content: [
+        "These terms are governed by Indian law.",
+        "Disputes will be settled in Madurai, Tamil Nadu.",
+        "Contact us before placing orders if you have any questions.",
+      ],
+    },
+  ];
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="fade"
+      onRequestClose={onClose}
+    >
+      <TouchableOpacity
+        style={styles.termsModalOverlay}
+        activeOpacity={1}
+        onPress={onClose}
+      >
+        <TouchableOpacity
+          style={styles.termsModalContainer}
+          activeOpacity={1}
+          onPress={(e) => e.stopPropagation()}
+        >
+          <View style={styles.termsModalHeader}>
+            <Text style={styles.termsModalTitle}>Terms & Conditions</Text>
+            <Text style={styles.termsModalSubtitle}>
+              Please read and accept our terms to proceed
+            </Text>
+          </View>
+
+          <ScrollView
+            style={styles.termsContent}
+            showsVerticalScrollIndicator={false}
+          >
+            {termsData.map((term, index) => (
+              <View key={index} style={styles.termSection}>
+                <Text style={styles.termTitle}>{term.title}</Text>
+                {term.subtitle && (
+                  <Text style={styles.termSubtitle}>{term.subtitle}</Text>
+                )}
+                {term.content.map((item, idx) => (
+                  <View key={idx} style={styles.termItem}>
+                    <Text style={styles.termBullet}>•</Text>
+                    <Text style={styles.termText}>{item}</Text>
+                  </View>
+                ))}
+                {term.subsections &&
+                  term.subsections.map((subsection, subIdx) => (
+                    <View key={subIdx} style={styles.subsection}>
+                      <Text style={styles.subsectionTitle}>
+                        {subsection.title}
+                      </Text>
+                      {subsection.content.map((item, itemIdx) => (
+                        <View key={itemIdx} style={styles.termItem}>
+                          <Text style={styles.termBullet}>◦</Text>
+                          <Text style={styles.termText}>{item}</Text>
+                        </View>
+                      ))}
+                    </View>
+                  ))}
+              </View>
+            ))}
+          </ScrollView>
+        </TouchableOpacity>
+      </TouchableOpacity>
+    </Modal>
+  );
+};
+
+// Enhanced CustomInput Component with better verification statu
 const CustomInput = ({
   label,
   value,
@@ -168,40 +305,39 @@ const CustomInput = ({
   onVerifyPress = null, // New: callback for verify button
   isVerifying = false, // New: if verification is in progress
 }) => {
-  
   const getVerificationStatusIcon = () => {
     if (!isAadhaarField || !value || value.length < 12) return null;
-    
-    if (verificationStatus === 'verified' || aadhaarVerified) {
+
+    if (verificationStatus === "verified" || aadhaarVerified) {
       return {
         icon: "✅",
         color: COLORS.success,
-        message: "Verified"
+        message: "Verified",
       };
-    } else if (verificationStatus === 'failed') {
+    } else if (verificationStatus === "failed") {
       return {
         icon: "❌",
         color: COLORS.error,
-        message: "Verification failed"
+        message: "Verification failed",
       };
-    } else if (verificationStatus === 'pending') {
+    } else if (verificationStatus === "pending") {
       return {
         icon: "⏳",
         color: COLORS.warning,
-        message: "Verification pending"
+        message: "Verification pending",
       };
     } else if (value.length === 12 && !error) {
       return {
         icon: "ℹ️",
         color: COLORS.info,
-        message: "Ready for verification"
+        message: "Ready for verification",
       };
     }
     return null;
   };
-  
+
   const status = getVerificationStatusIcon();
-  
+
   return (
     <View style={styles.inputContainer}>
       <View style={styles.labelContainer}>
@@ -223,11 +359,20 @@ const CustomInput = ({
         )}
         {/* Aadhaar verification status */}
         {status && (
-          <View style={[styles.verificationStatus, { backgroundColor: status.color + '20' }]}>
-            <Text style={[styles.verificationStatusIcon, { color: status.color }]}>
+          <View
+            style={[
+              styles.verificationStatus,
+              { backgroundColor: status.color + "20" },
+            ]}
+          >
+            <Text
+              style={[styles.verificationStatusIcon, { color: status.color }]}
+            >
               {status.icon}
             </Text>
-            <Text style={[styles.verificationStatusText, { color: status.color }]}>
+            <Text
+              style={[styles.verificationStatusText, { color: status.color }]}
+            >
               {status.message}
             </Text>
           </View>
@@ -235,17 +380,17 @@ const CustomInput = ({
       </View>
       <View style={styles.inputWithButtonContainer}>
         <TextInput
-          style={[
-            styles.input,
-            error && styles.inputError,
-            !error && value && isValid && styles.inputValid,
-            status && status.icon === "✅" && styles.inputVerified,
-            status && status.icon === "❌" && styles.inputFailed,
-            multiline && styles.inputMultiline,
-            !editable && styles.inputDisabled,
-            isAadhaarField && value.length === 12 && styles.inputAadhaarReady,
-            isAadhaarField && styles.inputWithButton,
-          ]}
+  style={[
+    styles.input,
+    multiline && styles.inputMultiline,
+    error && styles.inputError,
+    !error && value && isValid && styles.inputValid,
+    status && status.icon === '✅' && styles.inputVerified,
+    status && status.icon === '❌' && styles.inputFailed,
+    !editable && styles.inputDisabled,
+    isAadhaarField && styles.inputWithButton,
+    isAadhaarField && value.length === 12 && !error && styles.inputAadhaarReady,
+  ]}
           value={value}
           onChangeText={onChangeText}
           placeholder={placeholder}
@@ -257,21 +402,24 @@ const CustomInput = ({
           maxLength={maxLength}
         />
         {/* Verify Button inside input for Aadhaar */}
-        {isAadhaarField && value && value.length === 12 && !error && !aadhaarVerified && onVerifyPress && (
-          <TouchableOpacity
-            style={styles.verifyButtonInline}
-            onPress={onVerifyPress}
-            disabled={isVerifying}
-          >
-            {isVerifying ? (
-              <ActivityIndicator size="small" color={COLORS.white} />
-            ) : (
-              <Text style={styles.verifyButtonTextInline}>
-                Verify
-              </Text>
-            )}
-          </TouchableOpacity>
-        )}
+        {isAadhaarField &&
+          value &&
+          value.length === 12 &&
+          !error &&
+          !aadhaarVerified &&
+          onVerifyPress && (
+            <TouchableOpacity
+              style={styles.verifyButtonInline}
+              onPress={onVerifyPress}
+              disabled={isVerifying}
+            >
+              {isVerifying ? (
+                <ActivityIndicator size="small" color={COLORS.white} />
+              ) : (
+                <Text style={styles.verifyButtonTextInline}>Verify</Text>
+              )}
+            </TouchableOpacity>
+          )}
       </View>
       {error && (
         <View style={styles.errorContainer}>
@@ -280,31 +428,18 @@ const CustomInput = ({
         </View>
       )}
       {status && status.message && !error && (
-        <View style={[
-          styles.verificationMessage, 
-          { backgroundColor: status.color + '10' }
-        ]}>
-          <Text style={[styles.verificationMessageText, { color: status.color }]}>
+        <View
+          style={[
+            styles.verificationMessage,
+            { backgroundColor: status.color + "10" },
+          ]}
+        >
+          <Text
+            style={[styles.verificationMessageText, { color: status.color }]}
+          >
             {status.message}
           </Text>
         </View>
-      )}
-      {/* Aadhaar verification prompt */}
-      {isAadhaarField && value && value.length === 12 && !error && !aadhaarVerified && !onVerifyPress && (
-        <TouchableOpacity
-          style={styles.verificationPromptContainer}
-          onPress={() => {
-            if (onVerifyPress) onVerifyPress();
-          }}
-        >
-          <View style={styles.promptHeaderInline}>
-            <Text style={styles.promptIconInline}>⚠️</Text>
-            <Text style={styles.promptTitleInline}>Verification Required</Text>
-          </View>
-          <Text style={styles.promptTextInline}>
-            Click here to verify your Aadhaar number via DigiLocker.
-          </Text>
-        </TouchableOpacity>
       )}
     </View>
   );
@@ -362,12 +497,261 @@ const DataRow = ({ label, value }) => (
   </View>
 );
 
+// Use Aadhaar Data Modal Component
+const UseAadhaarDataModal = ({
+  visible,
+  onUseAadhaar,
+  onManualEntry,
+  onCancel,
+}) => (
+  <Modal
+    visible={visible}
+    transparent={true}
+    animationType="fade"
+    onRequestClose={onCancel}
+  >
+    <View style={styles.useAadhaarModalOverlay}>
+      <View style={styles.useAadhaarModalContainer}>
+        <View style={styles.useAadhaarModalHeader}>
+          <Text style={styles.useAadhaarModalIcon}>🔍</Text>
+          <Text style={styles.useAadhaarModalTitle}>
+            Aadhaar Data Available
+          </Text>
+          <Text style={styles.useAadhaarModalSubtitle}>
+            We found verified Aadhaar data. Would you like to auto-fill your
+            profile?
+          </Text>
+        </View>
+
+        <View style={styles.useAadhaarModalContent}>
+          <Text style={styles.useAadhaarModalInfo}>
+            Your Aadhaar contains verified information that can be used to
+            pre-fill:
+          </Text>
+
+          <View style={styles.aadhaarBenefitsList}>
+            <View style={styles.benefitItem}>
+              <Text style={styles.benefitIcon}>✓</Text>
+              <Text style={styles.benefitText}>Full Name</Text>
+            </View>
+            <View style={styles.benefitItem}>
+              <Text style={styles.benefitIcon}>✓</Text>
+              <Text style={styles.benefitText}>Date of Birth</Text>
+            </View>
+            <View style={styles.benefitItem}>
+              <Text style={styles.benefitIcon}>✓</Text>
+              <Text style={styles.benefitText}>Gender</Text>
+            </View>
+            <View style={styles.benefitItem}>
+              <Text style={styles.benefitIcon}>✓</Text>
+              <Text style={styles.benefitText}>Address</Text>
+            </View>
+          </View>
+
+          <View style={styles.useAadhaarModalNote}>
+            <Text style={styles.useAadhaarModalNoteIcon}>ℹ️</Text>
+            <Text style={styles.useAadhaarModalNoteText}>
+              You can always edit any field after auto-fill. Manual entry is
+              also available.
+            </Text>
+          </View>
+        </View>
+
+        <View style={styles.useAadhaarModalActions}>
+          <TouchableOpacity
+            style={[styles.useAadhaarModalButton, styles.useAadhaarButton]}
+            onPress={onUseAadhaar}
+          >
+            <Text style={styles.useAadhaarButtonText}>
+              Yes, Use Aadhaar Data
+            </Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={[styles.useAadhaarModalButton, styles.manualEntryButton]}
+            onPress={onManualEntry}
+          >
+            <Text style={styles.manualEntryButtonText}>Enter Manually</Text>
+          </TouchableOpacity>
+
+          <TouchableOpacity
+            style={styles.useAadhaarModalCancel}
+            onPress={onCancel}
+          >
+            <Text style={styles.useAadhaarModalCancelText}>Cancel</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+    </View>
+  </Modal>
+);
+
+// Data Card Component
+const DataCard = ({ data, onEdit, onVerifyAadhaar }) => {
+  const getMaskedAadhaar = (aadhaar) => {
+    if (!aadhaar || aadhaar.length !== 12) return aadhaar || "Not provided";
+    return `XXXX XXXX ${aadhaar.substring(8)}`;
+  };
+
+  const getVerificationBadge = (verified, status) => {
+    if (verified) {
+      return {
+        text: "✅ Verified",
+        color: COLORS.success,
+        bgColor: COLORS.successLight + "20",
+        icon: "✅",
+      };
+    } else if (status === "pending") {
+      return {
+        text: "⏳ Pending",
+        color: COLORS.warning,
+        bgColor: COLORS.warningLight + "20",
+        icon: "⏳",
+      };
+    } else if (status === "failed" || status === "rejected") {
+      return {
+        text: "❌ Failed",
+        color: COLORS.error,
+        bgColor: COLORS.errorLight + "20",
+        icon: "❌",
+      };
+    } else {
+      return {
+        text: "❌ Not Verified",
+        color: COLORS.error,
+        bgColor: COLORS.errorLight + "20",
+        icon: "❌",
+      };
+    }
+  };
+
+  const badge = getVerificationBadge(data.aadhaarVerified, data.aadhaarStatus);
+
+  return (
+    <View style={styles.card}>
+      <View style={styles.cardHeader}>
+        <View style={styles.cardTitleContainer}>
+          <Text style={styles.cardTitle}>{data.username}</Text>
+          <View
+            style={[styles.statusBadge, { backgroundColor: badge.bgColor }]}
+          >
+            <Text style={[styles.statusText, { color: badge.color }]}>
+              {data.gender === "female"
+                ? "👩 Female"
+                : data.gender === "male"
+                ? "👨 Male"
+                : "Other"}
+            </Text>
+          </View>
+        </View>
+        <View style={styles.cardActions}>
+          <TouchableOpacity
+            style={[styles.actionButton, styles.editButton]}
+            onPress={onEdit}
+          >
+            <Text style={styles.actionButtonText}>✏️ Edit Profile</Text>
+          </TouchableOpacity>
+        </View>
+      </View>
+
+      <View style={styles.cardContent}>
+        <DataRow label="Username" value={data.username} />
+        <DataRow label="Email" value={data.email} />
+        <DataRow label="Phone" value={data.contactNumber || "Not provided"} />
+        <DataRow label="Gender" value={data.gender} />
+        <DataRow
+          label="Date of Birth"
+          value={data.dateOfBirth || "Not provided"}
+        />
+        <DataRow
+          label="Address"
+          value={`${data?.address1 || ""}, ${data?.address2 || ""}, ${
+            data?.city || ""
+          }, ${data?.state || ""}, ${data?.pincode || ""}, ${
+            data?.country || ""
+          }`}
+        />
+        <DataRow
+          label="Wallet Balance"
+          value={`₹${data.walletBalance?.toFixed(2) || "0.00"}`}
+        />
+        <DataRow label="Referral Code" value={data.referralCode || "N/A"} />
+        <DataRow label="Masked Aadhaar" value={data.maskedAadhaar || "N/A"} />
+
+        {/* Enhanced Aadhaar Section */}
+        <View style={styles.aadhaarSection}>
+          <View style={styles.aadhaarHeader}>
+            <Text style={styles.dataLabel}>Aadhaar:</Text>
+            <View
+              style={[
+                styles.verificationBadge,
+                { backgroundColor: badge.bgColor },
+              ]}
+            >
+              <Text
+                style={[styles.verificationBadgeText, { color: badge.color }]}
+              >
+                {badge.icon} {badge.text}
+              </Text>
+            </View>
+          </View>
+
+          <View style={styles.aadhaarDetails}>
+            <Text style={styles.aadhaarValue}>
+              {getMaskedAadhaar(data.idProofNo)}
+            </Text>
+            {!data.aadhaarVerified && data.idProofNo && (
+              <TouchableOpacity
+                style={styles.verifyAadhaarButton}
+                onPress={() => onVerifyAadhaar(data.idProofNo)}
+              >
+                <Text style={styles.verifyAadhaarButtonText}>
+                  Verify Aadhaar
+                </Text>
+              </TouchableOpacity>
+            )}
+          </View>
+
+          {/* Show verification prompt if not verified */}
+          {!data.aadhaarVerified && data.idProofNo && (
+            <View style={styles.verificationPrompt}>
+              <View style={styles.promptHeader}>
+                <Text style={styles.promptIcon}>⚠️</Text>
+                <Text style={styles.promptTitle}>Verification Required</Text>
+              </View>
+              <Text style={styles.promptText}>
+                Your Aadhaar number is entered but not verified. Verify now to
+                complete your KYC and unlock all features.
+              </Text>
+              <View style={styles.benefitsList}>
+                <Text style={styles.benefitItem}>✅ Instant verification</Text>
+                <Text style={styles.benefitItem}>
+                  ✅ Auto-fill your details
+                </Text>
+                <Text style={styles.benefitItem}>✅ Secure & encrypted</Text>
+              </View>
+            </View>
+          )}
+        </View>
+
+        <DataRow
+          label="KYC Verified"
+          value={data.kycVerified ? "✅ Yes" : "❌ No"}
+        />
+        <DataRow
+          label="Terms Accepted"
+          value={data.termsAccepted ? "✅ Yes" : "❌ No"}
+        />
+      </View>
+    </View>
+  );
+};
+
 // Main App Component
 export default function App() {
   const navigation = useNavigation();
   const [userData, setUserData] = useState(null);
   const [showForm, setShowForm] = useState(false);
-  const [showAadhaarModal, setShowAadhaarModal] = useState(false);
   const [isFetchingPincode, setIsFetchingPincode] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
   const [userId, setUserId] = useState(null);
@@ -378,6 +762,9 @@ export default function App() {
   const [fieldValidity, setFieldValidity] = useState({});
   const [isFormDirty, setIsFormDirty] = useState(false);
   const [verificationInProgress, setVerificationInProgress] = useState(false);
+  const [showUseAadhaarModal, setShowUseAadhaarModal] = useState(false);
+  const [useAadhaarData, setUseAadhaarData] = useState(false);
+  const [showTermsModal, setShowTermsModal] = useState(false);
 
   // Track form visibility to prevent flickering
   const formClosingRef = useRef(false);
@@ -412,180 +799,32 @@ export default function App() {
     if (!dateString) return "";
     try {
       const date = new Date(dateString);
-      return date.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric'
+      return date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
       });
     } catch {
       return dateString;
     }
   };
 
-  // Helper function to format date with time
-  const formatDateTime = (dateString) => {
-    if (!dateString) return "N/A";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleDateString('en-IN', {
-        day: '2-digit',
-        month: 'short',
-        year: 'numeric',
-        hour: '2-digit',
-        minute: '2-digit'
-      });
-    } catch {
-      return dateString;
-    }
-  };
+  // Helper function to format DOB from DD-MM-YYYY to YYYY-MM-DD
+  const formatDateOfBirth = (dobString) => {
+    if (!dobString) return "";
 
-  // Data Card Component
-  const DataCard = ({ data, onEdit, onVerifyAadhaar }) => {
-    const getMaskedAadhaar = (aadhaar) => {
-      if (!aadhaar || aadhaar.length !== 12) return aadhaar || "Not provided";
-      return `XXXX XXXX ${aadhaar.substring(8)}`;
-    };
-
-    const getVerificationBadge = (verified, status) => {
-      if (verified) {
-        return {
-          text: "✅ Verified",
-          color: COLORS.success,
-          bgColor: COLORS.successLight + "20",
-          icon: "✅"
-        };
-      } else if (status === "pending") {
-        return {
-          text: "⏳ Pending",
-          color: COLORS.warning,
-          bgColor: COLORS.warningLight + "20",
-          icon: "⏳"
-        };
-      } else if (status === "failed" || status === "rejected") {
-        return {
-          text: "❌ Failed",
-          color: COLORS.error,
-          bgColor: COLORS.errorLight + "20",
-          icon: "❌"
-        };
-      } else {
-        return {
-          text: "❌ Not Verified",
-          color: COLORS.error,
-          bgColor: COLORS.errorLight + "20",
-          icon: "❌"
-        };
+    // Handle DD-MM-YYYY format
+    if (dobString.includes("-")) {
+      const parts = dobString.split("-");
+      if (parts.length === 3) {
+        return `${parts[2]}-${parts[1].padStart(2, "0")}-${parts[0].padStart(
+          2,
+          "0"
+        )}`;
       }
-    };
+    }
 
-    const badge = getVerificationBadge(data.aadhaarVerified, data.aadhaarStatus);
-
-    return (
-      <View style={styles.card}>
-        <View style={styles.cardHeader}>
-          <View style={styles.cardTitleContainer}>
-            <Text style={styles.cardTitle}>{data.username}</Text>
-            <View style={[styles.statusBadge, { backgroundColor: badge.bgColor }]}>
-              <Text style={[styles.statusText, { color: badge.color }]}>
-                {data.gender === "female"
-                  ? "👩 Female"
-                  : data.gender === "male"
-                  ? "👨 Male"
-                  : "Other"}
-              </Text>
-            </View>
-          </View>
-          <View style={styles.cardActions}>
-            <TouchableOpacity
-              style={[styles.actionButton, styles.editButton]}
-              onPress={onEdit}
-            >
-              <Text style={styles.actionButtonText}>✏️ Edit Profile</Text>
-            </TouchableOpacity>
-          </View>
-        </View>
-
-        <View style={styles.cardContent}>
-          <DataRow label="Username" value={data.username} />
-          <DataRow label="Email" value={data.email} />
-          <DataRow label="Phone" value={data.contactNumber || "Not provided"} />
-          <DataRow label="Gender" value={data.gender} />
-          <DataRow
-            label="Date of Birth"
-            value={data.dateOfBirth || "Not provided"}
-          />
-          <DataRow
-            label="Address"
-            value={`${data?.address1 || ""}, ${data?.address2 || ""}, ${
-              data?.city || ""
-            }, ${data?.state || ""}, ${data?.pincode || ""}, ${
-              data?.country || ""
-            }`}
-          />
-          <DataRow
-            label="Wallet Balance"
-            value={`₹${data.walletBalance?.toFixed(2) || "0.00"}`}
-          />
-          <DataRow label="Referral Code" value={data.referralCode || "N/A"} />
-          <DataRow label="Masked Aadhaar" value={data.maskedAadhaar || "N/A"} />
-
-          {/* Enhanced Aadhaar Section */}
-          <View style={styles.aadhaarSection}>
-            <View style={styles.aadhaarHeader}>
-              <Text style={styles.dataLabel}>Aadhaar:</Text>
-              <View style={[styles.verificationBadge, { backgroundColor: badge.bgColor }]}>
-                <Text style={[styles.verificationBadgeText, { color: badge.color }]}>
-                  {badge.icon} {badge.text}
-                </Text>
-              </View>
-            </View>
-            
-            <View style={styles.aadhaarDetails}>
-              {/* <Text style={styles.aadhaarValue}>
-                {getMaskedAadhaar(data.idProofNo)}
-              </Text> */}
-              {!data.aadhaarVerified && data.idProofNo && (
-                <TouchableOpacity
-                  style={styles.verifyAadhaarButton}
-                  onPress={() => onVerifyAadhaar(data.idProofNo)}
-                >
-                  <Text style={styles.verifyAadhaarButtonText}>
-                    Verify Aadhaar
-                  </Text>
-                </TouchableOpacity>
-              )}
-            </View>
-
-            {/* Show verification prompt if not verified */}
-            {!data.aadhaarVerified && data.idProofNo && (
-              <View style={styles.verificationPrompt}>
-                <View style={styles.promptHeader}>
-                  <Text style={styles.promptIcon}>⚠️</Text>
-                  <Text style={styles.promptTitle}>Verification Required</Text>
-                </View>
-                <Text style={styles.promptText}>
-                  Your Aadhaar number is entered but not verified. Verify now to complete your KYC and unlock all features.
-                </Text>
-                <View style={styles.benefitsList}>
-                  <Text style={styles.benefitItem}>✅ Instant verification</Text>
-                  <Text style={styles.benefitItem}>✅ Auto-fill your details</Text>
-                  <Text style={styles.benefitItem}>✅ Secure & encrypted</Text>
-                </View>
-              </View>
-            )}
-          </View>
-
-          <DataRow
-            label="KYC Verified"
-            value={data.kycVerified ? "✅ Yes" : "❌ No"}
-          />
-          <DataRow
-            label="Terms Accepted"
-            value={data.termsAccepted ? "✅ Yes" : "❌ No"}
-          />
-        </View>
-      </View>
-    );
+    return dobString;
   };
 
   useEffect(() => {
@@ -606,280 +845,260 @@ export default function App() {
     loadUserData();
   }, []);
 
-const fetchUserData = async (userId) => {
-  if (!userId) return;
+  const fetchUserData = async (userId) => {
+    if (!userId) return;
 
-  setIsFetchingData(true);
-  try {
-    const response = await fetch(
-      `https://scheme.bmgjewellers.com/api/v1/user/${userId}`
-    );
+    setIsFetchingData(true);
+    try {
+      const response = await fetch(
+        `https://scheme.bmgjewellers.com/api/v1/user/${userId}`
+      );
 
-    if (!response.ok) {
-      throw new Error(`HTTP error! status: ${response.status}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+
+      const result = await response.json();
+      console.log("Fetched user data:", result);
+
+      setUserData(result);
+
+      // Compute KYC status: Both Aadhaar verified AND terms accepted
+      const computedKYC =
+        (result.aadhaarVerified && result.termsAccepted) || false;
+
+      // Initialize form data with fetched data
+      setFormData({
+        email: result.email || "",
+        username: result.username || "",
+        gender: result.gender || "female",
+        contactNumber: result.contactNumber || "",
+        address1: result.address1 || "",
+        address2: result.address2 || "",
+        city: result.city || "",
+        state: result.state || "",
+        pincode: result.pincode || "",
+        country: result.country || "India",
+        dateOfBirth: result.dateOfBirth || "",
+        phoneVerified: result.phoneVerified || false,
+        kycVerified: computedKYC, // Use computed KYC status
+        termsAccepted: result.termsAccepted || false,
+        idProofNo: result.idProofNo || "",
+        aadhaarVerified: result.aadhaarVerified || false,
+        maskedAadhaar: result.maskedAadhaar || "",
+        aadhaarVerificationId: result.aadhaarVerificationId || "",
+        aadhaarVerifiedAt: result.aadhaarVerifiedAt || "",
+        aadhaarStatus: result.aadhaarStatus || "pending",
+      });
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      Alert.alert(
+        "Error",
+        "Failed to fetch user data. Please check your internet connection and try again."
+      );
+    } finally {
+      setIsFetchingData(false);
+    }
+  };
+
+  // Update field function with improved Aadhaar handling
+  const updateField = (field, value) => {
+    // Mark form as dirty
+    if (!isFormDirty) {
+      setIsFormDirty(true);
     }
 
-    const result = await response.json();
-    console.log("Fetched user data:", result);
-
-    setUserData(result);
-
-    // Compute KYC status: Both Aadhaar verified AND terms accepted
-    const computedKYC = (result.aadhaarVerified && result.termsAccepted) || false;
-
-    // Initialize form data with fetched data
-    setFormData({
-      email: result.email || "",
-      username: result.username || "",
-      gender: result.gender || "female",
-      contactNumber: result.contactNumber || "",
-      address1: result.address1 || "",
-      address2: result.address2 || "",
-      city: result.city || "",
-      state: result.state || "",
-      pincode: result.pincode || "",
-      country: result.country || "India",
-      dateOfBirth: result.dateOfBirth || "",
-      phoneVerified: result.phoneVerified || false,
-      kycVerified: computedKYC, // Use computed KYC status
-      termsAccepted: result.termsAccepted || false,
-      idProofNo: result.idProofNo || "",
-      aadhaarVerified: result.aadhaarVerified || false,
-      maskedAadhaar: result.maskedAadhaar || "",
-      aadhaarVerificationId: result.aadhaarVerificationId || "",
-      aadhaarVerifiedAt: result.aadhaarVerifiedAt || "",
-      aadhaarStatus: result.aadhaarStatus || "pending",
-    });
-  } catch (error) {
-    console.error("Error fetching user data:", error);
-    Alert.alert(
-      "Error",
-      "Failed to fetch user data. Please check your internet connection and try again."
-    );
-  } finally {
-    setIsFetchingData(false);
-  }
-};
-// Update field function with improved Aadhaar handling
-const updateField = (field, value) => {
-  // Mark form as dirty
-  if (!isFormDirty) {
-    setIsFormDirty(true);
-  }
-
-  // 🔹 Handle boolean & simple fields directly
-  if (
-    [
-      "termsAccepted",
-      "kycVerified",
-      "gender",
-      "phoneVerified",
-      "aadhaarVerified",
-    ].includes(field)
-  ) {
-    setFormData((prev) => ({ ...prev, [field]: value }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
-    setFieldValidity((prev) => ({ ...prev, [field]: true }));
-    return;
-  }
-
-  let processedValue = value;
-
-  // Handle termsAccepted with KYC logic
-  if (field === "termsAccepted") {
-    const newValue = value;
-    setFormData((prev) => ({ 
-      ...prev, 
-      [field]: newValue,
-      // Set KYC to true only if Aadhaar is verified AND terms are accepted
-      kycVerified: prev.aadhaarVerified && newValue ? true : false
-    }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
-    setFieldValidity((prev) => ({ ...prev, [field]: true, kycVerified: prev.aadhaarVerified && newValue }));
-    return;
-  }
-
-  // Handle aadhaarVerified with KYC logic
-  if (field === "aadhaarVerified") {
-    const newValue = value;
-    setFormData((prev) => ({ 
-      ...prev, 
-      [field]: newValue,
-      // Set KYC to true only if Aadhaar is verified AND terms are accepted
-      kycVerified: newValue && prev.termsAccepted ? true : false
-    }));
-    setErrors((prev) => ({ ...prev, [field]: "" }));
-    setFieldValidity((prev) => ({ ...prev, [field]: true, kycVerified: newValue && prev.termsAccepted }));
-    return;
-  }
-
-  // Apply field-specific formatting
-  if (field === "pincode") {
-    processedValue = value.replace(/[^0-9]/g, "").slice(0, 6);
-  } else if (field === "contactNumber") {
-    processedValue = value.replace(/[^0-9]/g, "").slice(0, 10);
-
-    // Reset phone verification if phone number is changed
-    if (formData.phoneVerified && field === "contactNumber") {
+    // Handle termsAccepted with KYC logic
+    if (field === "termsAccepted") {
+      const newValue = value;
       setFormData((prev) => ({
         ...prev,
-        phoneVerified: false,
+        [field]: newValue,
+        // Set KYC to true only if Aadhaar is verified AND terms are accepted
+        kycVerified: prev.aadhaarVerified && newValue ? true : false,
       }));
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+      setFieldValidity((prev) => ({
+        ...prev,
+        [field]: true,
+        kycVerified: prev.aadhaarVerified && newValue,
+      }));
+      return;
     }
-  } else if (field === "idProofNo") {
-    // Format Aadhaar number
-    processedValue = value.replace(/[^0-9]/g, "").slice(0, 12);
-    
-    // Check if Aadhaar number has changed
-    const previousAadhaar = formData.idProofNo || "";
-    const newAadhaar = processedValue;
-    
-    // If Aadhaar number is completely different (different last 4 digits)
-    const isSameAadhaar = previousAadhaar && newAadhaar && 
-                         previousAadhaar.substring(8) === newAadhaar.substring(8);
-    
-    // Only reset verification if Aadhaar has changed significantly
-    if (formData.aadhaarVerified && field === "idProofNo" && !isSameAadhaar) {
+
+    // Handle aadhaarVerified with KYC logic
+    if (field === "aadhaarVerified") {
+      const newValue = value;
       setFormData((prev) => ({
         ...prev,
-        aadhaarVerified: false,
-        maskedAadhaar: "",
-        aadhaarVerificationId: "",
-        aadhaarVerifiedAt: "",
-        aadhaarStatus: "pending",
-        kycVerified: false, // Reset KYC if Aadhaar changes
+        [field]: newValue,
+        // Set KYC to true only if Aadhaar is verified AND terms are accepted
+        kycVerified: newValue && prev.termsAccepted ? true : false,
       }));
-    }
-    
-    // If user cleared the Aadhaar field
-    if (processedValue === "" && formData.aadhaarVerified) {
-      setFormData((prev) => ({
+      setErrors((prev) => ({ ...prev, [field]: "" }));
+      setFieldValidity((prev) => ({
         ...prev,
-        aadhaarVerified: false,
-        maskedAadhaar: "",
-        aadhaarVerificationId: "",
-        aadhaarVerifiedAt: "",
-        aadhaarStatus: "pending",
-        kycVerified: false,
+        [field]: true,
+        kycVerified: newValue && prev.termsAccepted,
       }));
+      return;
     }
-  }
 
-  // Update form data
-  setFormData({ ...formData, [field]: processedValue });
+    // Handle Aadhaar number input
+    if (field === "idProofNo") {
+      // Format Aadhaar number
+      const processedValue = value.replace(/[^0-9]/g, "").slice(0, 12);
 
-  // Clear error for this field
-  if (errors[field]) {
-    setErrors({ ...errors, [field]: "" });
-  }
+      // Check if Aadhaar number has changed
+      const previousAadhaar = formData.idProofNo || "";
+      const newAadhaar = processedValue;
 
-  // Real-time validation for specific fields
-  const isString = typeof processedValue === "string";
+      // If Aadhaar number is completely different (different last 4 digits)
+      const isSameAadhaar =
+        previousAadhaar &&
+        newAadhaar &&
+        previousAadhaar.substring(8) === newAadhaar.substring(8);
 
-  if (
-    (isString && processedValue.trim()) ||
-    [
-      "email",
-      "username",
-      "address1",
-      "address2",
-      "city",
-      "state",
-      "pincode",
-      "dateOfBirth",
-      "contactNumber",
-      "idProofNo",
-    ].includes(field)
-  ) {
-    let isValid = false;
-    let errorMsg = "";
+      // Only reset verification if Aadhaar has changed significantly
+      if (formData.aadhaarVerified && field === "idProofNo" && !isSameAadhaar) {
+        setFormData((prev) => ({
+          ...prev,
+          [field]: processedValue,
+          aadhaarVerified: false,
+          maskedAadhaar: "",
+          aadhaarVerificationId: "",
+          aadhaarVerifiedAt: "",
+          aadhaarStatus: "pending",
+          kycVerified: false, // Reset KYC if Aadhaar changes
+        }));
+      } else {
+        // Just update the Aadhaar number
+        setFormData((prev) => ({ ...prev, [field]: processedValue }));
+      }
 
-    switch (field) {
-      case "pincode":
-        errorMsg = validatePincode(processedValue);
-        isValid = !errorMsg;
-        if (processedValue.length === 6 && isValid) {
-          fetchCityStateFromPincode(processedValue);
-        }
-        break;
-
-      case "email":
-        errorMsg = validateEmail(processedValue);
-        isValid = !errorMsg;
-        break;
-
-      case "username":
-        errorMsg = validateName(processedValue);
-        isValid = !errorMsg;
-        break;
-
-      case "dateOfBirth":
-        errorMsg = validateDOB(processedValue);
-        isValid = !errorMsg;
-        break;
-
-      case "address1":
-        errorMsg = validateAddressField(processedValue, "Address Line 1");
-        isValid = !errorMsg;
-        break;
-
-      case "address2":
-        errorMsg = validateAddressField(processedValue, "Address Line 2");
-        isValid = !errorMsg;
-        break;
-
-      case "city":
-        errorMsg = validateAddressField(processedValue, "City");
-        isValid = !errorMsg;
-        break;
-
-      case "state":
-        errorMsg = validateAddressField(processedValue, "State");
-        isValid = !errorMsg;
-        break;
-
-      case "contactNumber":
-        errorMsg = validateMobile(processedValue);
-        isValid = !errorMsg;
-        break;
-
-      case "idProofNo":
-        if (processedValue.length > 0) {
-          errorMsg = validateAadhaar(processedValue);
-          isValid = !errorMsg;
-          
-          // Special handling for Aadhaar validation
-          if (processedValue.length === 12 && !errorMsg) {
-            // Check if this Aadhaar was previously verified
-            const wasVerified = formData.aadhaarVerified && 
-                              formData.idProofNo === processedValue;
-            
-            if (wasVerified) {
-              // This is the same Aadhaar that was verified
-              setFieldValidity((prev) => ({ ...prev, [field]: true }));
-            } else {
-              // New or different Aadhaar
-              setFieldValidity((prev) => ({ ...prev, [field]: true }));
-            }
-          }
+      // Validate Aadhaar
+      if (processedValue && processedValue.length === 12) {
+        const aadhaarError = validateAadhaar(processedValue);
+        if (aadhaarError) {
+          setErrors((prev) => ({ ...prev, [field]: aadhaarError }));
+          setFieldValidity((prev) => ({ ...prev, [field]: false }));
         } else {
-          isValid = true; // Empty Aadhaar is valid (optional)
+          setErrors((prev) => ({ ...prev, [field]: "" }));
+          setFieldValidity((prev) => ({ ...prev, [field]: true }));
         }
-        break;
-
-      default:
-        isValid = true;
+      } else {
+        setErrors((prev) => ({ ...prev, [field]: "" }));
+      }
+      return;
     }
 
-    // Update field validity
-    setFieldValidity((prev) => ({ ...prev, [field]: isValid }));
+    // Apply field-specific formatting for other fields
+    let processedValue = value;
 
-    // Update errors if invalid
-    if (!isValid && errorMsg) {
-      setErrors((prev) => ({ ...prev, [field]: errorMsg }));
+    if (field === "pincode") {
+      processedValue = value.replace(/[^0-9]/g, "").slice(0, 6);
+    } else if (field === "contactNumber") {
+      processedValue = value.replace(/[^0-9]/g, "").slice(0, 10);
+
+      // Reset phone verification if phone number is changed
+      if (formData.phoneVerified && field === "contactNumber") {
+        setFormData((prev) => ({
+          ...prev,
+          phoneVerified: false,
+        }));
+      }
     }
-  }
-};
+
+    // Update form data
+    setFormData({ ...formData, [field]: processedValue });
+
+    // Clear error for this field
+    if (errors[field]) {
+      setErrors({ ...errors, [field]: "" });
+    }
+
+    // Real-time validation for specific fields
+    const isString = typeof processedValue === "string";
+
+    if (
+      (isString && processedValue.trim()) ||
+      [
+        "email",
+        "username",
+        "address1",
+        "address2",
+        "city",
+        "state",
+        "pincode",
+        "dateOfBirth",
+        "contactNumber",
+      ].includes(field)
+    ) {
+      let isValid = false;
+      let errorMsg = "";
+
+      switch (field) {
+        case "pincode":
+          errorMsg = validatePincode(processedValue);
+          isValid = !errorMsg;
+          if (processedValue.length === 6 && isValid) {
+            fetchCityStateFromPincode(processedValue);
+          }
+          break;
+
+        case "email":
+          errorMsg = validateEmail(processedValue);
+          isValid = !errorMsg;
+          break;
+
+        case "username":
+          errorMsg = validateName(processedValue);
+          isValid = !errorMsg;
+          break;
+
+        case "dateOfBirth":
+          errorMsg = validateDOB(processedValue);
+          isValid = !errorMsg;
+          break;
+
+        case "address1":
+          errorMsg = validateAddressField(processedValue, "Address Line 1");
+          isValid = !errorMsg;
+          break;
+
+        case "address2":
+          errorMsg = validateAddressField(processedValue, "Address Line 2");
+          isValid = !errorMsg;
+          break;
+
+        case "city":
+          errorMsg = validateAddressField(processedValue, "City");
+          isValid = !errorMsg;
+          break;
+
+        case "state":
+          errorMsg = validateAddressField(processedValue, "State");
+          isValid = !errorMsg;
+          break;
+
+        case "contactNumber":
+          errorMsg = validateMobile(processedValue);
+          isValid = !errorMsg;
+          break;
+
+        default:
+          isValid = true;
+      }
+
+      // Update field validity
+      setFieldValidity((prev) => ({ ...prev, [field]: isValid }));
+
+      // Update errors if invalid
+      if (!isValid && errorMsg) {
+        setErrors((prev) => ({ ...prev, [field]: errorMsg }));
+      }
+    }
+  };
 
   // Function to fetch city/state from PIN code
   const fetchCityStateFromPincode = async (pincode) => {
@@ -940,205 +1159,224 @@ const updateField = (field, value) => {
     }
   };
 
-  const handleVerifyAadhaar = async (aadhaarNumber) => {
-  if (!aadhaarNumber || aadhaarNumber.length !== 12) {
-    Alert.alert("Error", "Please enter a valid 12-digit Aadhaar number");
-    return;
-  }
-
-  try {
-    // Step 1: Get verification URL from backend
-    const result = await digiLockerService.verifyAadhaar(userId, aadhaarNumber);
-    
-    if (!result.success) {
-      Alert.alert("Error", result.message || "Failed to start verification");
+  const handleVerifyAadhaar = async () => {
+    // Check if terms are accepted before verification
+    if (!formData.termsAccepted) {
+      Alert.alert(
+        "Terms Required",
+        "Please accept the Terms and Conditions before verifying Aadhaar.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "View Terms", onPress: () => setShowTermsModal(true) },
+        ]
+      );
       return;
     }
 
-    // Step 2: Navigate to WebView
-    navigation.navigate("DigiLockerWebViewScreen", {
-      verificationUrl: result.verificationUrl,
-      verificationId: result.verificationId,
-      aadhaarNumber: aadhaarNumber,
-      onVerificationComplete: handleVerificationComplete,
-    });
+    const aadhaarNumber = formData.idProofNo;
+    if (!aadhaarNumber || aadhaarNumber.length !== 12) {
+      Alert.alert("Error", "Please enter a valid 12-digit Aadhaar number");
+      return;
+    }
 
-  } catch (error) {
-    console.error("Verification error:", error);
-    Alert.alert("Error", "Failed to start verification. Please try again.");
-  }
-};
+    // Validate Aadhaar format
+    const aadhaarError = validateAadhaar(aadhaarNumber);
+    if (aadhaarError) {
+      Alert.alert("Invalid Aadhaar", aadhaarError);
+      return;
+    }
 
-// In your main app component, update the handleVerificationComplete function
-const handleVerificationComplete = async (result) => {
-  console.log("Verification result:", result);
-  
-  if (result.success && result.aadhaarVerified) {
+    setVerificationInProgress(true);
+
     try {
-      // Extract data from verification result
-      const aadhaarData = result.userDetails || {};
-      const documentData = result.documentData || {};
-      
-      // Format date of birth from DD-MM-YYYY to YYYY-MM-DD
-      const formatDOB = (dobString) => {
-        if (!dobString) return '';
-        
-        // Handle DD-MM-YYYY format
-        if (dobString.includes('-')) {
-          const parts = dobString.split('-');
-          if (parts.length === 3) {
-            return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-          }
-        }
-        
-        return dobString;
-      };
-      
-      // Update form data with verification results
-      const updatedFormData = {
-        ...formData,
-        idProofNo: result.idProofNo || documentData.uid || formData.idProofNo,
-        aadhaarVerified: true,
-        maskedAadhaar: result.maskedAadhaar || digiLockerService.formatAadhaarNumber(result.idProofNo, true),
-        aadhaarVerificationId: result.aadhaarVerificationId,
-        aadhaarVerifiedAt: result.aadhaarVerifiedAt,
-        aadhaarStatus: result.aadhaarStatus || 'VERIFIED',
-        
-        // Auto-fill user details from Aadhaar
-        username: aadhaarData.name || formData.username,
-        dateOfBirth: formatDOB(aadhaarData.dob) || formData.dateOfBirth,
-        gender: aadhaarData.gender || formData.gender,
-        address1: aadhaarData.address || formData.address1,
-        
-        // IMPORTANT: Set KYC to true since Aadhaar is verified AND terms are accepted
-        kycVerified: formData.termsAccepted ? true : false // Only set to true if terms are also accepted
-      };
-      
-      console.log("Updated form data with Aadhaar verification:", updatedFormData);
-      
-      // Update local state
-      setFormData(updatedFormData);
-      setFieldValidity(prev => ({ 
-        ...prev, 
-        idProofNo: true,
-        kycVerified: updatedFormData.kycVerified 
-      }));
-      setErrors(prev => ({ ...prev, idProofNo: "" }));
-      
-      // Prepare data for API update
-      const apiData = {
-        // Include all existing form data
-        email: formData.email,
-        username: updatedFormData.username, // Use name from Aadhaar
-        gender: updatedFormData.gender, // Use gender from Aadhaar
-        contactNumber: formData.contactNumber,
-        address1: updatedFormData.address1, // Use address from Aadhaar
-        address2: formData.address2,
-        city: formData.city,
-        state: formData.state,
-        pincode: formData.pincode,
-        country: formData.country,
-        dateOfBirth: updatedFormData.dateOfBirth, // Use DOB from Aadhaar
-        kycVerified: updatedFormData.kycVerified, // Use the computed KYC status
-        termsAccepted: formData.termsAccepted,
-        
-        // Aadhaar verification fields
-        idProofNo: updatedFormData.idProofNo,
-        aadhaarVerified: true,
-        maskedAadhaar: updatedFormData.maskedAadhaar,
-        aadhaarVerificationId: updatedFormData.aadhaarVerificationId,
-        aadhaarVerifiedAt: updatedFormData.aadhaarVerifiedAt,
-        aadhaarStatus: updatedFormData.aadhaarStatus
-      };
-      
-      console.log("Sending to API:", apiData);
-      
-      // Send to API
-      const response = await fetch(
-        `https://scheme.bmgjewellers.com/api/v1/${userId}/update`,
-        {
-          method: "PATCH",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify(apiData),
-        }
+      // Step 1: Get verification URL from backend
+      const result = await digiLockerService.verifyAadhaar(
+        userId,
+        aadhaarNumber
       );
 
-      if (response.ok) {
-        const responseData = await response.json();
-        console.log("Profile update successful:", responseData);
-        
-        // Refresh user data to sync with server
-        await fetchUserData(userId);
-        
-        // Show success message
-        Alert.alert(
-          "✅ Aadhaar Verified Successfully",
-          `Your Aadhaar has been verified and profile has been updated.\n\nName: ${aadhaarData.name || 'N/A'}\nAadhaar: ${updatedFormData.maskedAadhaar}\nKYC Status: ${updatedFormData.kycVerified ? '✅ Verified' : '❌ Pending Terms'}`,
-          [{ text: "OK" }]
+      if (!result.success) {
+        Alert.alert("Error", result.message || "Failed to start verification");
+        setVerificationInProgress(false);
+        return;
+      }
+
+      // Step 2: Navigate to WebView
+      navigation.navigate("DigiLockerWebViewScreen", {
+        verificationUrl: result.verificationUrl,
+        verificationId: result.verificationId,
+        aadhaarNumber: aadhaarNumber,
+        onVerificationComplete: handleVerificationComplete,
+      });
+    } catch (error) {
+      console.error("Verification error:", error);
+      Alert.alert("Error", "Failed to start verification. Please try again.");
+      setVerificationInProgress(false);
+    }
+  };
+
+  const handleVerificationComplete = async (result) => {
+    console.log("Verification result:", result);
+
+    if (result.success && result.aadhaarVerified) {
+      try {
+        // Extract data from verification result
+        const aadhaarData = result.userDetails || {};
+        const documentData = result.documentData || {};
+
+        // Update form data with verification results
+        const updatedFormData = {
+          ...formData,
+          idProofNo: result.idProofNo || documentData.uid || formData.idProofNo,
+          aadhaarVerified: true,
+          maskedAadhaar:
+            result.maskedAadhaar ||
+            digiLockerService.formatAadhaarNumber(result.idProofNo, true),
+          aadhaarVerificationId: result.aadhaarVerificationId,
+          aadhaarVerifiedAt: result.aadhaarVerifiedAt,
+          aadhaarStatus: result.aadhaarStatus || "VERIFIED",
+
+          // Auto-fill user details from Aadhaar
+          username: aadhaarData.name || formData.username,
+          dateOfBirth:
+            formatDateOfBirth(aadhaarData.dob) || formData.dateOfBirth,
+          gender: aadhaarData.gender || formData.gender,
+          address1: aadhaarData.address || formData.address1,
+
+          // IMPORTANT: Set KYC to true since Aadhaar is verified AND terms are accepted
+          kycVerified: formData.termsAccepted ? true : false, // Only set to true if terms are also accepted
+        };
+
+        console.log(
+          "Updated form data with Aadhaar verification:",
+          updatedFormData
         );
-        
-        // Close the form if it's open
-        if (showForm) {
-          closeFormAndReset();
+
+        // Update local state
+        setFormData(updatedFormData);
+        setFieldValidity((prev) => ({
+          ...prev,
+          idProofNo: true,
+          kycVerified: updatedFormData.kycVerified,
+        }));
+        setErrors((prev) => ({ ...prev, idProofNo: "" }));
+
+        // Prepare data for API update
+        const apiData = {
+          // Include all existing form data
+          email: formData.email,
+          username: updatedFormData.username, // Use name from Aadhaar
+          gender: updatedFormData.gender, // Use gender from Aadhaar
+          contactNumber: formData.contactNumber,
+          address1: updatedFormData.address1, // Use address from Aadhaar
+          address2: formData.address2,
+          city: formData.city,
+          state: formData.state,
+          pincode: formData.pincode,
+          country: formData.country,
+          dateOfBirth: updatedFormData.dateOfBirth, // Use DOB from Aadhaar
+          kycVerified: updatedFormData.kycVerified, // Use the computed KYC status
+          termsAccepted: formData.termsAccepted,
+
+          // Aadhaar verification fields
+          idProofNo: updatedFormData.idProofNo,
+          aadhaarVerified: true,
+          maskedAadhaar: updatedFormData.maskedAadhaar,
+          aadhaarVerificationId: updatedFormData.aadhaarVerificationId,
+          aadhaarVerifiedAt: updatedFormData.aadhaarVerifiedAt,
+          aadhaarStatus: updatedFormData.aadhaarStatus,
+        };
+
+        console.log("Sending to API:", apiData);
+
+        // Send to API
+        const response = await fetch(
+          `https://scheme.bmgjewellers.com/api/v1/${userId}/update`,
+          {
+            method: "PATCH",
+            headers: {
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify(apiData),
+          }
+        );
+
+        if (response.ok) {
+          const responseData = await response.json();
+          console.log("Profile update successful:", responseData);
+
+          // Refresh user data to sync with server
+          await fetchUserData(userId);
+
+          // Show success message
+          Alert.alert(
+            "✅ Aadhaar Verified Successfully",
+            `Your Aadhaar has been verified and profile has been updated.\n\nName: ${
+              aadhaarData.name || "N/A"
+            }\nAadhaar: ${updatedFormData.maskedAadhaar}\nKYC Status: ${
+              updatedFormData.kycVerified ? "✅ Verified" : "❌ Pending Terms"
+            }`,
+            [{ text: "OK" }]
+          );
+
+          // Close the form if it's open
+          if (showForm) {
+            closeFormAndReset();
+          }
+        } else {
+          const errorText = await response.text();
+          console.error("API error response:", errorText);
+
+          // Show success but warn about server update
+          Alert.alert(
+            "✅ Aadhaar Verified",
+            `Your Aadhaar has been verified locally.\n\nName: ${
+              aadhaarData.name || "N/A"
+            }\nAadhaar: ${updatedFormData.maskedAadhaar}\nKYC Status: ${
+              updatedFormData.kycVerified ? "✅ Verified" : "❌ Pending Terms"
+            }\n\nPlease save your profile to update server.`,
+            [{ text: "OK" }]
+          );
         }
-      } else {
-        const errorText = await response.text();
-        console.error("API error response:", errorText);
-        
-        // Show success but warn about server update
+      } catch (error) {
+        console.error("API update error:", error);
         Alert.alert(
           "✅ Aadhaar Verified",
-          `Your Aadhaar has been verified locally.\n\nName: ${aadhaarData.name || 'N/A'}\nAadhaar: ${updatedFormData.maskedAadhaar}\nKYC Status: ${updatedFormData.kycVerified ? '✅ Verified' : '❌ Pending Terms'}\n\nPlease save your profile to update server.`,
+          "Your Aadhaar has been verified locally. Please save your profile to update server.",
           [{ text: "OK" }]
         );
       }
-    } catch (error) {
-      console.error("API update error:", error);
+    } else {
+      // Failed case
       Alert.alert(
-        "✅ Aadhaar Verified",
-        "Your Aadhaar has been verified locally. Please save your profile to update server.",
+        "Verification Failed",
+        result.message || "Aadhaar verification could not be completed.",
         [{ text: "OK" }]
       );
+
+      // Update local state to show failure
+      const updatedFormData = {
+        ...formData,
+        aadhaarVerified: false,
+        aadhaarStatus: result.aadhaarStatus || "FAILED",
+        kycVerified: false, // Reset KYC if verification failed
+      };
+
+      setFormData(updatedFormData);
+      setFieldValidity((prev) => ({
+        ...prev,
+        idProofNo: false,
+        kycVerified: false,
+      }));
+      setErrors((prev) => ({
+        ...prev,
+        idProofNo: "Verification failed. Please try again.",
+      }));
     }
-  } else {
-    // Failed case
-    Alert.alert(
-      "Verification Failed",
-      result.message || "Aadhaar verification could not be completed.",
-      [{ text: "OK" }]
-    );
-    
-    // Update local state to show failure
-    const updatedFormData = {
-      ...formData,
-      aadhaarVerified: false,
-      aadhaarStatus: result.aadhaarStatus || "FAILED",
-      kycVerified: false // Reset KYC if verification failed
-    };
-    
-    setFormData(updatedFormData);
-    setFieldValidity(prev => ({ ...prev, idProofNo: false, kycVerified: false }));
-    setErrors(prev => ({ ...prev, idProofNo: "Verification failed. Please try again." }));
-  }
-  
-  setVerificationInProgress(false);
-};
-// Helper function to format DOB from DD-MM-YYYY to YYYY-MM-DD
-const formatDateOfBirth = (dobString) => {
-  if (!dobString) return '';
-  
-  // Handle DD-MM-YYYY format
-  if (dobString.includes('-')) {
-    const parts = dobString.split('-');
-    if (parts.length === 3) {
-      return `${parts[2]}-${parts[1].padStart(2, '0')}-${parts[0].padStart(2, '0')}`;
-    }
-  }
-  
-  return dobString;
-};
+
+    setVerificationInProgress(false);
+  };
+
   // Function to verify Phone Number via OTP
   const verifyOTP = async (otp) => {
     if (!otp || otp.length !== 6) {
@@ -1277,8 +1515,12 @@ const formatDateOfBirth = (dobString) => {
       newFieldValidity.termsAccepted = false;
     }
 
-    // Aadhaar validation (only if provided)
-    if (formData.idProofNo && formData.idProofNo.trim() !== "") {
+    // Aadhaar validation (only if provided and not already verified)
+    if (
+      formData.idProofNo &&
+      formData.idProofNo.trim() !== "" &&
+      !formData.aadhaarVerified
+    ) {
       const aadhaarError = validateAadhaar(formData.idProofNo);
       if (aadhaarError) {
         newErrors.idProofNo = aadhaarError;
@@ -1334,6 +1576,7 @@ const formatDateOfBirth = (dobString) => {
     // Reset all form-related states
     setShowForm(false);
     setIsFormDirty(false);
+    setUseAadhaarData(false);
 
     // Reset form data to current user data
     if (userData) {
@@ -1370,208 +1613,384 @@ const formatDateOfBirth = (dobString) => {
       formClosingRef.current = false;
     }, 500);
   };
-const handleSubmit = async () => {
-  console.log("=== SUBMIT CLICKED ===");
-  console.log("Current form data:", formData);
 
-  // Validate the form
-  const isValid = validateForm();
+  const handleSubmit = async () => {
+    console.log("=== SUBMIT CLICKED ===");
+    console.log("Current form data:", formData);
 
-  console.log("Form validation result:", isValid);
-
-  if (!isValid) {
-    console.log("❌ Form validation FAILED - NOT saving data");
-    return; // Stop here if validation fails
-  }
-
-  // Check KYC logic: Both Aadhaar verified AND terms accepted
-  if (formData.aadhaarVerified && !formData.termsAccepted) {
-    Alert.alert(
-      "KYC Incomplete",
-      "Your Aadhaar is verified but you need to accept the Terms and Conditions to complete KYC.",
-      [{ text: "OK" }]
-    );
-    return;
-  }
-
-  console.log("✅ Form validation PASSED - Saving data...");
-  
-  // Update KYC status before sending to API
-  const updatedFormData = {
-    ...formData,
-    kycVerified: formData.aadhaarVerified && formData.termsAccepted
-  };
-  
-  setFormData(updatedFormData);
-
-  setIsLoading(true);
-
-  try {
-    // Prepare API request data
-    const apiData = {
-      email: updatedFormData.email,
-      username: updatedFormData.username,
-      gender: updatedFormData.gender,
-      contactNumber: updatedFormData.contactNumber,
-      address1: updatedFormData.address1,
-      address2: updatedFormData.address2,
-      city: updatedFormData.city,
-      state: updatedFormData.state,
-      pincode: updatedFormData.pincode,
-      country: updatedFormData.country,
-      kycVerified: updatedFormData.kycVerified, // Include computed KYC status
-      termsAccepted: updatedFormData.termsAccepted,
-      dateOfBirth: updatedFormData.dateOfBirth,
-      idProofNo: updatedFormData.idProofNo,
-      aadhaarVerified: updatedFormData.aadhaarVerified,
-      maskedAadhaar: updatedFormData.maskedAadhaar,
-      aadhaarVerificationId: updatedFormData.aadhaarVerificationId,
-      aadhaarStatus: updatedFormData.aadhaarStatus,
-    };
-
-    console.log("Sending data to API:", apiData);
-    if (!userId) {
-      Alert.alert("Error", "User ID not found. Please login again.");
-      setIsLoading(false);
+    // First check if terms are accepted
+    if (!formData.termsAccepted) {
+      Alert.alert(
+        "Terms Required",
+        "You must accept the Terms and Conditions before updating your profile.",
+        [
+          { text: "Cancel", style: "cancel" },
+          { text: "View Terms", onPress: () => setShowTermsModal(true) },
+        ]
+      );
       return;
     }
 
-    // Make PATCH request to your API
-    const response = await fetch(
-      `https://scheme.bmgjewellers.com/api/v1/${userId}/update`,
-      {
-        method: "PATCH",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(apiData),
-      }
-    );
+    // Validate the form
+    const isValid = validateForm();
 
-    const result = await response.json();
+    console.log("Form validation result:", isValid);
 
-    if (response.ok) {
-      console.log("API Response:", result);
+    if (!isValid) {
+      console.log("❌ Form validation FAILED - NOT saving data");
+      return; // Stop here if validation fails
+    }
 
-      // Check if OTP is sent
-      if (result.otpSent === true) {
-        console.log("OTP sent to phone number");
-
-        // Save the phone number to verify and user ID
-        setPhoneToVerify(updatedFormData.contactNumber);
-
-        // Show OTP modal
-        setShowOTPModal(true);
-
-        // Keep the form open until OTP verification
-        setIsLoading(false); // Stop loading since we're waiting for OTP
-      } else {
-        // No OTP required - direct update success
-        // Refresh user data after successful update
-        await fetchUserData(userId);
-
-        // Close form and show success
-        closeFormAndReset();
-
-        Alert.alert(
-          "Success ✅", 
-          updatedFormData.kycVerified 
-            ? "Profile updated successfully! KYC is now verified." 
-            : "Profile updated successfully!"
-        );
-      }
-    } else {
-      console.error("API Error:", result);
+    // Check KYC logic: Both Aadhaar verified AND terms accepted
+    if (formData.aadhaarVerified && !formData.termsAccepted) {
       Alert.alert(
-        "API Error",
-        result.message || "Failed to save data. Please try again."
+        "KYC Incomplete",
+        "Your Aadhaar is verified but you need to accept the Terms and Conditions to complete KYC.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    console.log("✅ Form validation PASSED - Saving data...");
+
+    // Update KYC status before sending to API
+    const updatedFormData = {
+      ...formData,
+      kycVerified: formData.aadhaarVerified && formData.termsAccepted,
+    };
+
+    setFormData(updatedFormData);
+
+    setIsLoading(true);
+
+    try {
+      // Prepare API request data
+      const apiData = {
+        email: updatedFormData.email,
+        username: updatedFormData.username,
+        gender: updatedFormData.gender,
+        contactNumber: updatedFormData.contactNumber,
+        address1: updatedFormData.address1,
+        address2: updatedFormData.address2,
+        city: updatedFormData.city,
+        state: updatedFormData.state,
+        pincode: updatedFormData.pincode,
+        country: updatedFormData.country,
+        kycVerified: updatedFormData.kycVerified, // Include computed KYC status
+        termsAccepted: updatedFormData.termsAccepted,
+        dateOfBirth: updatedFormData.dateOfBirth,
+        idProofNo: updatedFormData.idProofNo,
+        aadhaarVerified: updatedFormData.aadhaarVerified,
+        maskedAadhaar: updatedFormData.maskedAadhaar,
+        aadhaarVerificationId: updatedFormData.aadhaarVerificationId,
+        aadhaarStatus: updatedFormData.aadhaarStatus,
+      };
+
+      console.log("Sending data to API:", apiData);
+      if (!userId) {
+        Alert.alert("Error", "User ID not found. Please login again.");
+        setIsLoading(false);
+        return;
+      }
+
+      // Make PATCH request to your API
+      const response = await fetch(
+        `https://scheme.bmgjewellers.com/api/v1/${userId}/update`,
+        {
+          method: "PATCH",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify(apiData),
+        }
+      );
+
+      const result = await response.json();
+
+      if (response.ok) {
+        console.log("API Response:", result);
+
+        // Check if OTP is sent
+        if (result.otpSent === true) {
+          console.log("OTP sent to phone number");
+
+          // Save the phone number to verify and user ID
+          setPhoneToVerify(updatedFormData.contactNumber);
+
+          // Show OTP modal
+          setShowOTPModal(true);
+
+          // Keep the form open until OTP verification
+          setIsLoading(false); // Stop loading since we're waiting for OTP
+        } else {
+          // No OTP required - direct update success
+          // Refresh user data after successful update
+          await fetchUserData(userId);
+
+          // Close form and show success
+          closeFormAndReset();
+
+          Alert.alert(
+            "Success ✅",
+            updatedFormData.kycVerified
+              ? "Profile updated successfully! KYC is now verified."
+              : "Profile updated successfully!"
+          );
+        }
+      } else {
+        console.error("API Error:", result);
+        Alert.alert(
+          "API Error",
+          result.message || "Failed to save data. Please try again."
+        );
+        setIsLoading(false);
+      }
+    } catch (error) {
+      console.error("Network Error:", error);
+      Alert.alert(
+        "Network Error",
+        "Please check your internet connection and try again."
       );
       setIsLoading(false);
     }
-  } catch (error) {
-    console.error("Network Error:", error);
-    Alert.alert(
-      "Network Error",
-      "Please check your internet connection and try again."
-    );
-    setIsLoading(false);
-  }
-};
+  };
 
   const resetForm = () => {
     closeFormAndReset();
     setShowOTPModal(false);
   };
 
-const handleEdit = () => {
-  // Reset form data to current user data before opening
-  if (userData) {
-    setFormData({
-      email: userData.email || "",
-      username: userData.username || "",
-      gender: userData.gender || "female",
-      contactNumber: userData.contactNumber || "",
-      address1: userData.address1 || "",
-      address2: userData.address2 || "",
-      city: userData.city || "",
-      state: userData.state || "",
-      pincode: userData.pincode || "",
-      country: userData.country || "India",
-      dateOfBirth: userData.dateOfBirth || "",
-      phoneVerified: userData.phoneVerified || false,
-      kycVerified: userData.kycVerified || false,
-      termsAccepted: userData.termsAccepted || false,
-      idProofNo: userData.idProofNo || "",
-      aadhaarVerified: userData.aadhaarVerified || false,
-      maskedAadhaar: userData.maskedAadhaar || "",
-      aadhaarVerificationId: userData.aadhaarVerificationId || "",
-      aadhaarVerifiedAt: userData.aadhaarVerifiedAt || "",
-      aadhaarStatus: userData.aadhaarStatus || "pending",
-    });
-    
-    // Set field validity based on verification status
-    setFieldValidity(prev => ({
-      ...prev,
-      idProofNo: userData.aadhaarVerified || false
-    }));
-  }
-  setErrors({});
-  setIsFormDirty(false);
-  setShowForm(true);
-};
+  const handleEdit = () => {
+    if (userData && userData.aadhaarVerified && userData.idProofNo) {
+      // Show modal asking if user wants to use Aadhaar data
+      setShowUseAadhaarModal(true);
+    } else {
+      // No verified Aadhaar, proceed with normal edit
+      openEditForm(false);
+    }
+  };
 
+  const openEditForm = (useAadhaarDataFlag) => {
+    setUseAadhaarData(useAadhaarDataFlag);
 
-// In your main profile component, update the handleVerifyAadhaar function:
-// const handleVerifyAadhaar = (existingAadhaar = "") => {
-//   // If Aadhaar number is already entered in form, use it
-//   const aadhaarToVerify = existingAadhaar || formData.idProofNo;
-  
-//   if (!aadhaarToVerify || aadhaarToVerify.length !== 12) {
-//     // If no Aadhaar is entered, navigate to verification screen
-//     navigation.navigate("AadhaarVerification", {
-//       aadhaarNumber: "",
-//       userId: userId,
-//       onVerificationComplete: handleAadhaarVerificationComplete,
-//       sourceScreen: "profile", // Add this
-//     });
-//   } else {
-//     // Validate the existing Aadhaar
-//     const validationError = validateAadhaar(aadhaarToVerify);
-    
-//     if (validationError) {
-//       Alert.alert("Validation Error", validationError);
-//       return;
-//     }
-    
-//     // Navigate directly to verification screen with the Aadhaar
-//     navigation.navigate("AadhaarVerification", {
-//       aadhaarNumber: aadhaarToVerify,
-//       userId: userId,
-//       onVerificationComplete: handleAadhaarVerificationComplete,
-//       sourceScreen: "profile", // Add this
-//     });
-//   }
-// };
+    // Reset form data to current user data before opening
+    if (userData) {
+      const initialFormData = {
+        email: userData.email || "",
+        username: userData.username || "",
+        gender: userData.gender || "female",
+        contactNumber: userData.contactNumber || "",
+        address1: userData.address1 || "",
+        address2: userData.address2 || "",
+        city: userData.city || "",
+        state: userData.state || "",
+        pincode: userData.pincode || "",
+        country: userData.country || "India",
+        dateOfBirth: userData.dateOfBirth || "",
+        phoneVerified: userData.phoneVerified || false,
+        kycVerified: userData.kycVerified || false,
+        termsAccepted: userData.termsAccepted || false,
+        idProofNo: userData.idProofNo || "",
+        aadhaarVerified: userData.aadhaarVerified || false,
+        maskedAadhaar: userData.maskedAadhaar || "",
+        aadhaarVerificationId: userData.aadhaarVerificationId || "",
+        aadhaarVerifiedAt: userData.aadhaarVerifiedAt || "",
+        aadhaarStatus: userData.aadhaarStatus || "pending",
+      };
+
+      // If user wants to use Aadhaar data, fetch and populate from Aadhaar
+      if (useAadhaarDataFlag && userData.aadhaarVerified) {
+        Alert.alert(
+          "Using Aadhaar Data",
+          "Your verified Aadhaar data will be used to pre-fill the form. You can still edit any field."
+        );
+      }
+
+      setFormData(initialFormData);
+
+      // Set field validity based on verification status
+      setFieldValidity((prev) => ({
+        ...prev,
+        idProofNo: userData.aadhaarVerified || false,
+      }));
+    }
+
+    setErrors({});
+    setIsFormDirty(false);
+    setShowUseAadhaarModal(false);
+    setShowForm(true);
+  };
+
+  // Updated renderAadhaarField function - Hide input if Aadhaar is verified
+  const renderAadhaarField = () => {
+    if (formData.aadhaarVerified && formData.idProofNo) {
+      // Show verified Aadhaar information only (no input)
+      return (
+        <View style={styles.verifiedAadhaarContainer}>
+          <View style={styles.verifiedAadhaarHeader}>
+            <Text style={styles.verifiedAadhaarLabel}>Aadhaar Number</Text>
+            <View style={styles.verifiedBadge}>
+              <Text style={styles.verifiedBadgeText}>✅ Verified</Text>
+            </View>
+          </View>
+
+          <View style={styles.verifiedAadhaarContent}>
+            <Text style={styles.verifiedAadhaarNumber}>
+              {formData.maskedAadhaar ||
+                `XXXX XXXX ${formData.idProofNo.slice(8)}`}
+            </Text>
+
+            <View style={styles.verificationDetails}>
+              {formData.aadhaarVerificationId && (
+                <Text style={styles.verificationId}>
+                  Verification ID: {formData.aadhaarVerificationId}
+                </Text>
+              )}
+              {formData.aadhaarVerifiedAt && (
+                <Text style={styles.verificationDate}>
+                  Verified on:{" "}
+                  {formatVerificationDate(formData.aadhaarVerifiedAt)}
+                </Text>
+              )}
+            </View>
+          </View>
+
+          <TouchableOpacity
+            style={styles.changeAadhaarButton}
+            onPress={() => {
+              Alert.alert(
+                "Change Aadhaar?",
+                "If you change your Aadhaar number, the current verification will be reset and you'll need to verify again.",
+                [
+                  { text: "Cancel", style: "cancel" },
+                  {
+                    text: "Change",
+                    onPress: () => {
+                      setFormData((prev) => ({
+                        ...prev,
+                        aadhaarVerified: false,
+                        idProofNo: "",
+                        maskedAadhaar: "",
+                        aadhaarVerificationId: "",
+                        aadhaarVerifiedAt: "",
+                        aadhaarStatus: "pending",
+                        kycVerified: false,
+                      }));
+                    },
+                  },
+                ]
+              );
+            }}
+          >
+            <Text style={styles.changeAadhaarButtonText}>Change Aadhaar</Text>
+          </TouchableOpacity>
+        </View>
+      );
+    }
+
+    // Show Aadhaar input field if not verified
+    return (
+      <View style={styles.aadhaarFieldContainer}>
+        <View style={styles.aadhaarInputHeader}>
+          <Text style={styles.inputLabel}>Aadhaar Number</Text>
+          <Text style={styles.requiredIndicator}> *</Text>
+          <Text style={styles.aadhaarNote}>Enter 12-digit Aadhaar number</Text>
+        </View>
+
+        <View style={styles.aadhaarInputContainer}>
+          <TextInput
+            style={[
+              styles.input,
+              styles.aadhaarInput,
+              formData.idProofNo &&
+                formData.idProofNo.length === 12 &&
+                !errors.idProofNo &&
+                styles.inputAadhaarReady,
+              errors.idProofNo && styles.inputError,
+            ]}
+            value={formData.idProofNo}
+            onChangeText={(v) => updateField("idProofNo", v)}
+            placeholder="12-digit Aadhaar number"
+            keyboardType="number-pad"
+            maxLength={12}
+            editable={!formData.aadhaarVerified}
+          />
+
+          {formData.idProofNo &&
+  formData.idProofNo.length === 12 &&
+  !errors.idProofNo &&
+  !formData.aadhaarVerified && (
+    <View style={styles.aadhaarActions}>
+      {formData.termsAccepted ? (
+        <TouchableOpacity
+          style={styles.verifyButtonFull}
+          onPress={handleVerifyAadhaar}
+          disabled={verificationInProgress}
+        >
+          {verificationInProgress ? (
+            <ActivityIndicator size="small" color={COLORS.white} />
+          ) : (
+            <>
+              <Text style={styles.verifyButtonText}>🔐 Verify via DigiLocker</Text>
+            </>
+          )}
+        </TouchableOpacity>
+      ) : (
+        <View style={styles.termsRequiredContainer}>
+          <Text style={styles.termsRequiredIcon}>⚠️</Text>
+          <Text style={styles.termsRequiredText}>
+            Accept terms above to verify Aadhaar
+          </Text>
+          <TouchableOpacity
+            style={styles.termsRequiredButton}
+            onPress={() => setShowTermsModal(true)}
+          >
+            <Text style={styles.termsRequiredButtonText}>VIEW</Text>
+          </TouchableOpacity>
+        </View>
+      )}
+    </View>
+  )}
+        </View>
+
+        {errors.idProofNo && (
+          <View style={styles.errorContainer}>
+            <Text style={styles.errorIcon}>⚠️</Text>
+            <Text style={styles.errorText}>{errors.idProofNo}</Text>
+          </View>
+        )}
+{formData.idProofNo && formData.idProofNo.length === 12 && !errors.idProofNo && (
+  <View style={[
+    styles.kycStatusContainer,
+    formData.aadhaarVerified && formData.termsAccepted 
+      ? styles.kycStatusComplete 
+      : styles.kycStatusPending
+  ]}>
+    <Text style={[
+      styles.kycStatusIcon,
+      formData.aadhaarVerified && formData.termsAccepted 
+        ? { color: COLORS.success } 
+        : { color: COLORS.warning }
+    ]}>
+      {formData.aadhaarVerified && formData.termsAccepted ? '✅' : '⚠️'}
+    </Text>
+    <Text style={[
+      styles.kycStatusText,
+      formData.aadhaarVerified && formData.termsAccepted 
+        ? styles.kycStatusTextComplete 
+        : styles.kycStatusTextPending
+    ]}>
+      {formData.aadhaarVerified && formData.termsAccepted
+        ? 'KYC Complete - Aadhaar & Terms Verified'
+        : formData.aadhaarVerified
+        ? 'Aadhaar Verified- Accept Terms for KYC'
+        : 'Aadhaar Ready - Verify & Accept Terms for KYC'}
+    </Text>
+  </View>
+)}
+      </View>
+    );
+  };
 
   // Gender selection component
   const GenderSelector = () => (
@@ -1611,106 +2030,53 @@ const handleEdit = () => {
     </View>
   );
 
-  // Terms and conditions checkbox
-// Terms and conditions checkbox
-const TermsCheckbox = () => (
-  <View style={styles.termsContainer}>
-    <TouchableOpacity
-      style={[
-        styles.checkbox,
-        formData.termsAccepted && styles.checkboxChecked,
-      ]}
-      onPress={() => updateField("termsAccepted", !formData.termsAccepted)}
-    >
-      {formData.termsAccepted && <Text style={styles.checkmark}>✓</Text>}
-    </TouchableOpacity>
-    <View style={styles.termsTextContainer}>
-      <Text style={styles.termsText}>
-        I agree to the Terms and Conditions and Privacy Policy
-      </Text>
-      {formData.aadhaarVerified && !formData.termsAccepted && (
-        <Text style={styles.kycWarningText}>
-          ⚠️ Accept terms to complete KYC verification
-        </Text>
-      )}
-      {formData.aadhaarVerified && formData.termsAccepted && (
-        <Text style={styles.kycSuccessText}>
-          ✅ KYC verification complete
-        </Text>
-      )}
-    </View>
-    {errors.termsAccepted && (
-      <View style={styles.errorContainer}>
-        <Text style={styles.errorIcon}>⚠️</Text>
-        <Text style={styles.errorText}>{errors.termsAccepted}</Text>
+  // Terms and conditions checkbox with question mark
+  const TermsCheckbox = () => (
+    <View style={styles.termsContainer}>
+      <View style={styles.termsHeader}>
+        <Text style={styles.termsLabel}>Terms and Conditions *</Text>
+        <TouchableOpacity
+          style={styles.termsHelpButton}
+          onPress={() => setShowTermsModal(true)}
+        >
+          <Text style={styles.termsHelpText}>❓</Text>
+        </TouchableOpacity>
       </View>
-    )}
-  </View>
-);
 
-const renderAadhaarField = () => (
-  <View style={styles.aadhaarFieldContainer}>
-    <CustomInput
-      label="Aadhaar Number"
-      value={formData.idProofNo}
-      onChangeText={(v) => updateField("idProofNo", v)}
-      placeholder="12-digit Aadhaar number"
-      keyboardType="number-pad"
-      maxLength={12}
-      isAadhaarField={true}
-      aadhaarVerified={formData.aadhaarVerified}
-      verificationStatus={
-        formData.aadhaarVerified ? "verified" : 
-        formData.aadhaarStatus === "failed" ? "failed" :
-        formData.idProofNo && formData.idProofNo.length === 12 ? "pending" : null
-      }
-    />
-    
-    {formData.idProofNo && formData.idProofNo.length >= 12 && !formData.aadhaarVerified && (
-      <TouchableOpacity
-        style={styles.verifyButton}
-        onPress={() => handleVerifyAadhaar(formData.idProofNo)}
-        disabled={verificationInProgress}
-      >
-        {verificationInProgress ? (
-          <ActivityIndicator size="small" color={COLORS.white} />
-        ) : (
-          <Text style={styles.verifyButtonText}>
-            Verify via DigiLocker
+      <View style={styles.termsCheckboxRow}>
+        <TouchableOpacity
+          style={[
+            styles.checkbox,
+            formData.termsAccepted && styles.checkboxChecked,
+          ]}
+          onPress={() => updateField("termsAccepted", !formData.termsAccepted)}
+        >
+          {formData.termsAccepted && <Text style={styles.checkmark}>✓</Text>}
+        </TouchableOpacity>
+        <View style={styles.termsTextContainer}>
+          <Text style={styles.termsText}>
+            I agree to the Terms and Conditions and Privacy Policy
           </Text>
-        )}
-      </TouchableOpacity>
-    )}
-    
-    {formData.aadhaarVerified && formData.maskedAadhaar && (
-      <View style={styles.verifiedContainer}>
-        <View style={styles.verifiedHeader}>
-          <Text style={styles.verifiedText}>✅ Verified via DigiLocker</Text>
-          {formData.aadhaarVerificationId && (
-            <Text style={styles.verificationId}>
-              Verification ID: {formData.aadhaarVerificationId}
+          {formData.aadhaarVerified && !formData.termsAccepted && (
+            <Text style={styles.kycWarningText}>
+              ⚠️ Accept terms to complete KYC verification
+            </Text>
+          )}
+          {formData.aadhaarVerified && formData.termsAccepted && (
+            <Text style={styles.kycSuccessText}>
+              ✅ KYC verification complete
             </Text>
           )}
         </View>
-        <Text style={styles.maskedAadhaar}>
-          {formData.maskedAadhaar}
-        </Text>
-        {formData.aadhaarVerifiedAt && (
-          <Text style={styles.verifiedDate}>
-            Verified on: {formatVerificationDate(formData.aadhaarVerifiedAt)}
-          </Text>
-        )}
-        
-        {/* Show KYC status */}
-        {formData.kycVerified && (
-          <View style={styles.kycStatusContainer}>
-            <Text style={styles.kycStatusText}>✅ KYC Verified</Text>
-          </View>
-        )}
       </View>
-    )}
-  </View>
-);
+      {errors.termsAccepted && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorText}>{errors.termsAccepted}</Text>
+        </View>
+      )}
+    </View>
+  );
 
   // Loading state
   if (isFetchingData) {
@@ -1724,6 +2090,24 @@ const renderAadhaarField = () => (
 
   return (
     <View style={styles.container}>
+      {/* Terms and Conditions Modal */}
+      <TermsModal
+        visible={showTermsModal}
+        onClose={() => setShowTermsModal(false)}
+        onAccept={() => {
+          updateField("termsAccepted", true);
+          setShowTermsModal(false);
+        }}
+      />
+
+      {/* Use Aadhaar Data Modal */}
+      <UseAadhaarDataModal
+        visible={showUseAadhaarModal}
+        onUseAadhaar={() => openEditForm(true)}
+        onManualEntry={() => openEditForm(false)}
+        onCancel={() => setShowUseAadhaarModal(false)}
+      />
+
       {/* OTP Modal */}
       <OTPModal
         visible={showOTPModal}
@@ -1735,15 +2119,13 @@ const renderAadhaarField = () => (
         }}
         loading={verifyingOTP}
       />
-    
+
       {/* Header */}
       <CommonHeader
         title="User Profile Management"
         subtitle={userData ? `Welcome, ${userData.username}` : "Loading..."}
       />
-      
-      
-      
+
       {/* Form Modal */}
       <Modal
         visible={showForm}
@@ -1755,7 +2137,11 @@ const renderAadhaarField = () => (
         <View style={styles.modalContainer}>
           <CommonHeader
             title="Edit Your Profile"
-            subtitle="Update your information below. Fields marked with * are required."
+            subtitle={
+              useAadhaarData
+                ? "Using verified Aadhaar data. You can edit any field."
+                : "Update your information below. Fields marked with * are required."
+            }
             showBackButton={true}
             onBackPress={resetForm}
           />
@@ -1765,6 +2151,16 @@ const renderAadhaarField = () => (
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.formContent}
           >
+            {/* Show message if using Aadhaar data */}
+            {useAadhaarData && (
+              <View style={styles.aadhaarDataNotice}>
+                <Text style={styles.aadhaarDataNoticeIcon}>✅</Text>
+                <Text style={styles.aadhaarDataNoticeText}>
+                  Using verified Aadhaar data. All fields are editable.
+                </Text>
+              </View>
+            )}
+
             {/* Personal Information Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -1826,7 +2222,7 @@ const renderAadhaarField = () => (
                 isValid={fieldValidity.dateOfBirth}
               />
 
-              {/* Aadhaar Field with Enhanced Verification Status */}
+              {/* Aadhaar Field - Conditional rendering */}
               {renderAadhaarField()}
             </View>
 
@@ -1943,13 +2339,13 @@ const renderAadhaarField = () => (
                 variant="primary"
                 style={styles.saveButton}
                 loading={isLoading}
-                disabled={isLoading}
+                disabled={isLoading || !formData.termsAccepted} // Disable if terms not accepted
               />
             </View>
           </ScrollView>
         </View>
       </Modal>
-      
+
       {/* User Profile Card */}
       <ScrollView
         style={styles.listContainer}
@@ -1994,6 +2390,111 @@ const styles = StyleSheet.create({
     ...FONTS.body,
     color: COLORS.textSecondary,
     marginTop: SIZES.margin.md,
+  },
+
+  // Terms Modal Styles
+  termsModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SIZES.padding.lg,
+  },
+  termsModalContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.xl,
+    width: "100%",
+    maxWidth: 500,
+    maxHeight: "80%",
+    ...SHADOWS.xl,
+  },
+  termsModalHeader: {
+    alignItems: "center",
+    marginBottom: SIZES.margin.lg,
+  },
+  termsModalTitle: {
+    ...FONTS.h4,
+    color: COLORS.primary,
+    marginBottom: SIZES.margin.xs,
+    textAlign: "center",
+  },
+  termsModalSubtitle: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    textAlign: "center",
+  },
+  termsContent: {
+    maxHeight: 400,
+    marginBottom: SIZES.margin.lg,
+  },
+  termSection: {
+    marginBottom: SIZES.margin.lg,
+    paddingBottom: SIZES.padding.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+  },
+  termTitle: {
+    ...FONTS.h6,
+    color: COLORS.textPrimary,
+    marginBottom: SIZES.margin.xs,
+    fontWeight: FONTS.weight.bold,
+  },
+  termSubtitle: {
+    ...FONTS.bodyMedium,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.margin.sm,
+    fontStyle: "italic",
+  },
+  termItem: {
+    flexDirection: "row",
+    marginBottom: SIZES.margin.xs,
+    paddingLeft: SIZES.padding.sm,
+  },
+  termBullet: {
+    marginRight: SIZES.margin.sm,
+    color: COLORS.textSecondary,
+  },
+  termText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    flex: 1,
+    lineHeight: 20,
+  },
+  subsection: {
+    marginLeft: SIZES.margin.md,
+    marginTop: SIZES.margin.sm,
+  },
+  subsectionTitle: {
+    ...FONTS.bodyMedium,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.margin.xs,
+    fontWeight: FONTS.weight.medium,
+  },
+  termsModalActions: {
+    gap: SIZES.margin.md,
+  },
+  termsButton: {
+    paddingVertical: SIZES.padding.lg,
+    borderRadius: SIZES.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.sm,
+  },
+  acceptButton: {
+    backgroundColor: COLORS.success,
+  },
+  declineButton: {
+    backgroundColor: COLORS.error,
+  },
+  acceptButtonText: {
+    ...FONTS.button,
+    color: COLORS.white,
+    fontWeight: FONTS.weight.bold,
+  },
+  declineButtonText: {
+    ...FONTS.button,
+    color: COLORS.white,
   },
 
   // OTP Modal Styles
@@ -2087,18 +2588,6 @@ const styles = StyleSheet.create({
     backgroundColor: COLORS.backgroundSecondary,
   },
 
-  // Add Button
-  addButtonContainer: {
-    padding: SIZES.padding.lg,
-    backgroundColor: COLORS.white,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-  },
-  addButton: {
-    ...COMMON_STYLES.button.gold,
-    paddingVertical: SIZES.padding.lg,
-  },
-
   // Modal
   modalContainer: {
     flex: 1,
@@ -2135,164 +2624,259 @@ const styles = StyleSheet.create({
   aadhaarFieldContainer: {
     marginBottom: SIZES.margin.lg,
   },
-
-  // BEFORE VERIFICATION - Warning Styles
-  verificationPromptContainer: {
-    backgroundColor: COLORS.warningLight + "10",
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.lg,
-    marginTop: SIZES.margin.sm,
-    borderWidth: 1,
-    borderColor: COLORS.warning + "30",
-  },
-  promptHeaderInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  aadhaarInputHeader: {
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: SIZES.margin.xs,
+    flexWrap: "wrap",
   },
-  promptIconInline: {
-    marginRight: SIZES.margin.xs,
+  aadhaarNote: {
+    ...FONTS.caption,
+    color: COLORS.textTertiary,
+    marginLeft: SIZES.margin.sm,
+    flex: 1,
   },
-  promptTitleInline: {
-    ...FONTS.bodyMedium,
+  aadhaarInputContainer: {
+    position: "relative",
+  },
+  aadhaarInput: {
+    paddingRight: 120, // Space for verify button
+  },
+  aadhaarActions: {
+    position: "absolute",
+    right: SIZES.padding.sm,
+    top: 10,
+  },
+  verifyButtonFull: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.sm,
+    borderRadius: SIZES.radius.sm,
+    minWidth: 120,
+    alignItems: "center",
+  },
+  termsRequiredText: {
+    ...FONTS.caption,
     color: COLORS.warning,
-    fontWeight: FONTS.weight.bold,
+    backgroundColor: COLORS.warning + "10",
+    padding: SIZES.padding.xs,
+    borderRadius: SIZES.radius.sm,
+    textAlign: "center",
   },
-  promptTextInline: {
+  aadhaarStatusContainer: {
+    marginTop: SIZES.margin.xs,
+    padding: SIZES.padding.xs,
+    borderRadius: SIZES.radius.sm,
+    backgroundColor: COLORS.primary + "10",
+  },
+  aadhaarStatusText: {
+    ...FONTS.caption,
+    color: COLORS.primary,
+    textAlign: "center",
+  },
+
+  // Use Aadhaar Data Modal Styles
+  useAadhaarModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.6)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SIZES.padding.lg,
+  },
+  useAadhaarModalContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.xl,
+    width: "100%",
+    maxWidth: 400,
+    ...SHADOWS.xl,
+  },
+  useAadhaarModalHeader: {
+    alignItems: "center",
+    marginBottom: SIZES.margin.xl,
+  },
+  useAadhaarModalIcon: {
+    fontSize: SIZES.font.xxxl,
+    marginBottom: SIZES.margin.md,
+  },
+  useAadhaarModalTitle: {
+    ...FONTS.h4,
+    color: COLORS.textPrimary,
+    marginBottom: SIZES.margin.xs,
+    textAlign: "center",
+  },
+  useAadhaarModalSubtitle: {
     ...FONTS.body,
     color: COLORS.textSecondary,
-    marginBottom: SIZES.margin.md,
-    lineHeight: 18,
+    textAlign: "center",
+    lineHeight: 20,
   },
-  verifyAadhaarButtonInline: {
-    backgroundColor: COLORS.primary,
-    paddingVertical: SIZES.padding.md,
-    paddingHorizontal: SIZES.padding.lg,
-    borderRadius: SIZES.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+  useAadhaarModalContent: {
+    marginBottom: SIZES.margin.xl,
+  },
+  useAadhaarModalInfo: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
     marginBottom: SIZES.margin.md,
+    textAlign: "center",
+  },
+  aadhaarBenefitsList: {
+    backgroundColor: COLORS.successLight + "10",
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginBottom: SIZES.margin.lg,
+    borderWidth: 1,
+    borderColor: COLORS.success + "20",
+  },
+  benefitItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: SIZES.margin.xs,
+  },
+  benefitIcon: {
+    color: COLORS.success,
+    marginRight: SIZES.margin.sm,
+    fontSize: SIZES.font.md,
+  },
+  benefitText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
+  useAadhaarModalNote: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    backgroundColor: COLORS.infoLight + "10",
+    borderRadius: SIZES.radius.sm,
+    padding: SIZES.padding.md,
+  },
+  useAadhaarModalNoteIcon: {
+    marginRight: SIZES.margin.sm,
+    marginTop: 2,
+  },
+  useAadhaarModalNoteText: {
+    ...FONTS.caption,
+    color: COLORS.info,
+    flex: 1,
+    lineHeight: 16,
+  },
+  useAadhaarModalActions: {
+    gap: SIZES.margin.md,
+  },
+  useAadhaarModalButton: {
+    paddingVertical: SIZES.padding.lg,
+    borderRadius: SIZES.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
     ...SHADOWS.sm,
   },
-  verifyButtonContent: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    justifyContent: 'center',
+  useAadhaarButton: {
+    backgroundColor: COLORS.primary,
   },
-  verifyIcon: {
-    marginRight: SIZES.margin.sm,
+  manualEntryButton: {
+    backgroundColor: COLORS.white,
+    borderWidth: 2,
+    borderColor: COLORS.primary,
   },
-  verifyAadhaarButtonTextInline: {
+  useAadhaarButtonText: {
     ...FONTS.button,
     color: COLORS.white,
     fontWeight: FONTS.weight.bold,
   },
-  verificationBenefits: {
-    marginTop: SIZES.margin.lg,
-    paddingTop: SIZES.padding.md,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-  },
-  benefitsTitle: {
-    ...FONTS.bodyMedium,
-    color: COLORS.textPrimary,
+  manualEntryButtonText: {
+    ...FONTS.button,
+    color: COLORS.primary,
     fontWeight: FONTS.weight.bold,
-    marginBottom: SIZES.margin.sm,
   },
-  benefitItemInline: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: SIZES.margin.xs,
+  useAadhaarModalCancel: {
+    alignItems: "center",
+    paddingVertical: SIZES.padding.md,
   },
-  benefitIcon: {
-    marginRight: SIZES.margin.xs,
-  },
-  benefitText: {
+  useAadhaarModalCancelText: {
     ...FONTS.body,
     color: COLORS.textSecondary,
-    fontSize: 13,
   },
 
-  // AFTER VERIFICATION - Success Styles
-  verifiedContainer: {
+  // Verified Aadhaar Container (when Aadhaar is verified)
+  verifiedAadhaarContainer: {
+    marginBottom: SIZES.margin.lg,
     backgroundColor: COLORS.successLight + "10",
     borderRadius: SIZES.radius.md,
     padding: SIZES.padding.lg,
-    marginTop: SIZES.margin.sm,
     borderWidth: 2,
-    borderColor: COLORS.success + "30",
+    borderColor: COLORS.success + "20",
   },
-  verifiedHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  verifiedAadhaarHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     marginBottom: SIZES.margin.md,
   },
-  successBadge: {
-    flexDirection: 'row',
-    alignItems: 'center',
+  verifiedAadhaarLabel: {
+    ...FONTS.bodyMedium,
+    color: COLORS.textPrimary,
+    fontWeight: FONTS.weight.bold,
+  },
+  verifiedBadge: {
     backgroundColor: COLORS.success + "20",
     paddingHorizontal: SIZES.padding.md,
     paddingVertical: SIZES.padding.xs,
     borderRadius: SIZES.radius.sm,
   },
-  successIconLarge: {
-    marginRight: SIZES.margin.xs,
-  },
-  successText: {
-    ...FONTS.bodyMedium,
+  verifiedBadgeText: {
+    ...FONTS.caption,
     color: COLORS.success,
     fontWeight: FONTS.weight.bold,
   },
-  verifiedDate: {
-    ...FONTS.caption,
-    color: COLORS.textTertiary,
+  verifiedAadhaarContent: {
+    marginBottom: SIZES.margin.md,
   },
-  verifiedAadhaarText: {
-    ...FONTS.h6,
+  verifiedAadhaarNumber: {
+    ...FONTS.h4,
     color: COLORS.textPrimary,
-    fontWeight: FONTS.weight.bold,
-    marginBottom: SIZES.margin.md,
-    textAlign: 'center',
+    textAlign: "center",
     letterSpacing: 1,
-  },
-  verificationIdContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
     marginBottom: SIZES.margin.md,
-    padding: SIZES.padding.sm,
+    fontWeight: FONTS.weight.bold,
+  },
+  verificationDetails: {
+    alignItems: "center",
+    gap: SIZES.margin.xs,
+  },
+  changeAadhaarButton: {
+    paddingVertical: SIZES.padding.md,
+    paddingHorizontal: SIZES.padding.lg,
     backgroundColor: COLORS.white,
-    borderRadius: SIZES.radius.sm,
     borderWidth: 1,
     borderColor: COLORS.border,
+    borderRadius: SIZES.radius.md,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  verificationIdLabel: {
-    ...FONTS.caption,
+  changeAadhaarButtonText: {
+    ...FONTS.body,
     color: COLORS.textSecondary,
-    marginRight: SIZES.margin.xs,
-  },
-  verificationIdValue: {
-    ...FONTS.caption,
-    color: COLORS.textPrimary,
     fontWeight: FONTS.weight.medium,
-    flex: 1,
   },
-  verificationNote: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    padding: SIZES.padding.sm,
-    backgroundColor: COLORS.infoLight + "10",
-    borderRadius: SIZES.radius.sm,
+
+  // Aadhaar Data Notice
+  aadhaarDataNotice: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.successLight + "20",
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginBottom: SIZES.margin.lg,
   },
-  noteIcon: {
+  aadhaarDataNoticeIcon: {
     marginRight: SIZES.margin.sm,
-    marginTop: 2,
+    fontSize: SIZES.font.md,
   },
-  noteText: {
-    ...FONTS.caption,
-    color: COLORS.textSecondary,
+  aadhaarDataNoticeText: {
+    ...FONTS.body,
+    color: COLORS.success,
     flex: 1,
-    lineHeight: 16,
+    fontWeight: FONTS.weight.medium,
   },
 
   // Inputs
@@ -2323,45 +2907,44 @@ const styles = StyleSheet.create({
     fontSize: SIZES.font.md,
     fontWeight: "bold",
   },
-  // Add these styles to your StyleSheet
-verificationStatus: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  paddingHorizontal: SIZES.padding.sm,
-  paddingVertical: 2,
-  borderRadius: SIZES.radius.xs,
-  marginLeft: SIZES.margin.sm,
-},
-verificationStatusIcon: {
-  marginRight: 4,
-  fontSize: SIZES.font.xs,
-},
-verificationStatusText: {
-  ...FONTS.caption,
-  fontSize: 10,
-  fontWeight: FONTS.weight.medium,
-},
-inputVerified: {
-  borderColor: COLORS.success,
-  backgroundColor: COLORS.success + '10',
-  borderWidth: 2,
-},
-inputFailed: {
-  borderColor: COLORS.error,
-  backgroundColor: COLORS.error + '10',
-  borderWidth: 2,
-},
-verificationMessage: {
-  padding: SIZES.padding.xs,
-  borderRadius: SIZES.radius.sm,
-  marginTop: SIZES.margin.xs,
-  alignItems: 'center',
-},
-verificationMessageText: {
-  ...FONTS.caption,
-  fontSize: 11,
-  textAlign: 'center',
-},
+  verificationStatus: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: 2,
+    borderRadius: SIZES.radius.xs,
+    marginLeft: SIZES.margin.sm,
+  },
+  verificationStatusIcon: {
+    marginRight: 4,
+    fontSize: SIZES.font.xs,
+  },
+  verificationStatusText: {
+    ...FONTS.caption,
+    fontSize: 10,
+    fontWeight: FONTS.weight.medium,
+  },
+  inputVerified: {
+    borderColor: COLORS.success,
+    backgroundColor: COLORS.success + "10",
+    borderWidth: 2,
+  },
+  inputFailed: {
+    borderColor: COLORS.error,
+    backgroundColor: COLORS.error + "10",
+    borderWidth: 2,
+  },
+  verificationMessage: {
+    padding: SIZES.padding.xs,
+    borderRadius: SIZES.radius.sm,
+    marginTop: SIZES.margin.xs,
+    alignItems: "center",
+  },
+  verificationMessageText: {
+    ...FONTS.caption,
+    fontSize: 11,
+    textAlign: "center",
+  },
   invalidIcon: {
     color: COLORS.error,
     fontSize: SIZES.font.md,
@@ -2400,6 +2983,72 @@ verificationMessageText: {
     flex: 1,
   },
 
+  // Terms Container
+  termsContainer: {
+    marginBottom: SIZES.margin.lg,
+  },
+  termsHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: SIZES.margin.sm,
+  },
+  termsLabel: {
+    ...FONTS.bodyMedium,
+    color: COLORS.textPrimary,
+  },
+  termsHelpButton: {
+    marginLeft: SIZES.margin.xs,
+    padding: 2,
+  },
+  termsHelpText: {
+    fontSize: SIZES.font.md,
+    color: COLORS.primary,
+  },
+  termsCheckboxRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  checkbox: {
+    width: 24,
+    height: 24,
+    borderRadius: SIZES.radius.xs,
+    borderWidth: 2,
+    borderColor: COLORS.border,
+    marginRight: SIZES.margin.sm,
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  checkboxChecked: {
+    backgroundColor: COLORS.primary,
+    borderColor: COLORS.primary,
+  },
+  checkmark: {
+    color: COLORS.white,
+    fontSize: SIZES.font.md,
+    fontWeight: "bold",
+  },
+  termsTextContainer: {
+    flex: 1,
+  },
+  termsText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    flex: 1,
+  },
+  kycWarningText: {
+    ...FONTS.caption,
+    color: COLORS.warning,
+    marginTop: SIZES.margin.xs,
+    fontSize: 12,
+  },
+  kycSuccessText: {
+    ...FONTS.caption,
+    color: COLORS.success,
+    marginTop: SIZES.margin.xs,
+    fontSize: 12,
+    fontWeight: FONTS.weight.medium,
+  },
+
   // Gender Selector
   genderContainer: {
     marginBottom: SIZES.margin.lg,
@@ -2435,37 +3084,6 @@ verificationMessageText: {
   genderOptionTextSelected: {
     color: COLORS.white,
     fontWeight: FONTS.weight.bold,
-  },
-
-  // Terms Checkbox
-  termsContainer: {
-    flexDirection: "row",
-    alignItems: "flex-start",
-    marginBottom: SIZES.margin.lg,
-  },
-  checkbox: {
-    width: 24,
-    height: 24,
-    borderRadius: SIZES.radius.xs,
-    borderWidth: 2,
-    borderColor: COLORS.border,
-    marginRight: SIZES.margin.sm,
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  checkboxChecked: {
-    backgroundColor: COLORS.primary,
-    borderColor: COLORS.primary,
-  },
-  checkmark: {
-    color: COLORS.white,
-    fontSize: SIZES.font.md,
-    fontWeight: "bold",
-  },
-  termsText: {
-    ...FONTS.body,
-    color: COLORS.textPrimary,
-    flex: 1,
   },
 
   // Row Layout
@@ -2529,6 +3147,11 @@ verificationMessageText: {
   },
   buttonTextDisabled: {
     color: COLORS.textDisabled,
+  },
+  verifyButtonText: {
+    ...FONTS.caption,
+    color: COLORS.white,
+    fontWeight: FONTS.weight.bold,
   },
 
   // Form Actions
@@ -2635,11 +3258,6 @@ verificationMessageText: {
     alignItems: "center",
     marginBottom: SIZES.margin.xs,
   },
-  dataLabel: {
-    ...FONTS.bodyMedium,
-    color: COLORS.textSecondary,
-    width: 120,
-  },
   verificationBadge: {
     paddingHorizontal: SIZES.padding.sm,
     paddingVertical: 4,
@@ -2656,75 +3274,6 @@ verificationMessageText: {
     justifyContent: "space-between",
     marginTop: SIZES.margin.xs,
   },
-  // Add these styles to your StyleSheet
-verifyButton: {
-  backgroundColor: COLORS.primary,
-  paddingVertical: SIZES.padding.md,
-  paddingHorizontal: SIZES.padding.lg,
-  borderRadius: SIZES.radius.md,
-  alignItems: 'center',
-  justifyContent: 'center',
-  marginTop: SIZES.margin.sm,
-  ...SHADOWS.sm,
-},
-verifyButtonText: {
-  ...FONTS.button,
-  color: COLORS.white,
-  fontWeight: FONTS.weight.bold,
-},
-verifiedContainer: {
-  backgroundColor: COLORS.successLight + "10",
-  borderRadius: SIZES.radius.md,
-  padding: SIZES.padding.md,
-  marginTop: SIZES.margin.sm,
-  borderWidth: 1,
-  borderColor: COLORS.success + "30",
-},
-verifiedHeader: {
-  flexDirection: 'row',
-  justifyContent: 'space-between',
-  alignItems: 'center',
-  marginBottom: SIZES.margin.sm,
-  flexWrap: 'wrap',
-},
-verifiedText: {
-  ...FONTS.bodyMedium,
-  color: COLORS.success,
-  fontWeight: FONTS.weight.bold,
-},
-maskedAadhaar: {
-  ...FONTS.h6,
-  color: COLORS.textPrimary,
-  fontWeight: FONTS.weight.bold,
-  textAlign: 'center',
-  letterSpacing: 1,
-  marginVertical: SIZES.margin.xs,
-},
-verificationId: {
-  ...FONTS.caption,
-  color: COLORS.textSecondary,
-  fontSize: 10,
-  textAlign: 'right',
-},
-verifiedDate: {
-  ...FONTS.caption,
-  color: COLORS.textSecondary,
-  textAlign: 'center',
-  fontSize: 12,
-  marginTop: SIZES.margin.xs,
-},
-kycStatusContainer: {
-  backgroundColor: COLORS.info + "20",
-  padding: SIZES.padding.sm,
-  borderRadius: SIZES.radius.sm,
-  marginTop: SIZES.margin.sm,
-  alignItems: 'center',
-},
-kycStatusText: {
-  ...FONTS.caption,
-  color: COLORS.info,
-  fontWeight: FONTS.weight.medium,
-},
   aadhaarValue: {
     ...FONTS.body,
     color: COLORS.textPrimary,
@@ -2743,47 +3292,6 @@ kycStatusText: {
     fontWeight: FONTS.weight.medium,
   },
 
-  // Verification Details in Card
-  verificationDetails: {
-    backgroundColor: COLORS.successLight + "10",
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.md,
-    marginTop: SIZES.margin.sm,
-    borderWidth: 1,
-    borderColor: COLORS.success + "30",
-  },
-  verificationDetailRow: {
-    flexDirection: 'row',
-    marginBottom: SIZES.margin.xs,
-  },
-  verificationDetailLabel: {
-    ...FONTS.caption,
-    color: COLORS.textSecondary,
-    width: 100,
-  },
-  verificationDetailValue: {
-    ...FONTS.caption,
-    color: COLORS.textPrimary,
-    flex: 1,
-    fontWeight: FONTS.weight.medium,
-  },
-  verificationSuccessNote: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginTop: SIZES.margin.sm,
-    paddingTop: SIZES.padding.sm,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.success + "20",
-  },
-  successIcon: {
-    marginRight: SIZES.margin.xs,
-  },
-  successNoteText: {
-    ...FONTS.caption,
-    color: COLORS.success,
-    flex: 1,
-  },
-
   // Verification Prompt in Card
   verificationPrompt: {
     backgroundColor: COLORS.warningLight + "10",
@@ -2794,8 +3302,8 @@ kycStatusText: {
     borderColor: COLORS.warning + "30",
   },
   promptHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
     marginBottom: SIZES.margin.xs,
   },
   promptIcon: {
@@ -2848,65 +3356,715 @@ kycStatusText: {
   emptyStateButton: {
     minWidth: 200,
   },
-  // Add these styles to your StyleSheet
-verifyButton: {
-  backgroundColor: COLORS.primary,
-  paddingVertical: SIZES.padding.md,
-  paddingHorizontal: SIZES.padding.lg,
+
+  // Input with button container
+  inputWithButtonContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  inputWithButton: {
+    flex: 1,
+  },
+  verifyButtonInline: {
+    position: "absolute",
+    right: SIZES.padding.sm,
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.sm,
+    borderRadius: SIZES.radius.sm,
+  },
+  verifyButtonTextInline: {
+    ...FONTS.caption,
+    color: COLORS.white,
+    fontWeight: FONTS.weight.medium,
+  },
+  inputAadhaarReady: {
+    borderColor: COLORS.primary,
+    backgroundColor: COLORS.primary + "10",
+  },
+  termsModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.7)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SIZES.padding.lg,
+  },
+  termsModalContainer: {
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.xl,
+    width: "100%",
+    maxWidth: 500,
+    maxHeight: "80%",
+    ...SHADOWS.xl,
+  },
+  // Input Container
+inputContainer: {
+  marginBottom: SIZES.margin.lg,
+  position: 'relative',
+},
+labelContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: SIZES.margin.xs,
+  flexWrap: 'wrap',
+},
+inputLabel: {
+  ...FONTS.bodyMedium,
+  color: COLORS.textPrimary,
+  fontSize: 14,
+  fontWeight: FONTS.weight.medium,
+},
+requiredIndicator: {
+  ...FONTS.bodyMedium,
+  color: COLORS.error,
+  fontSize: 14,
+  fontWeight: FONTS.weight.bold,
+},
+
+// Main Input Styling
+input: {
+  backgroundColor: COLORS.white,
+  borderWidth: 1.5,
+  borderColor: COLORS.border,
   borderRadius: SIZES.radius.md,
+  paddingHorizontal: SIZES.padding.md,
+  paddingVertical: SIZES.padding.md,
+  fontSize: 15,
+  color: COLORS.textPrimary,
+  minHeight: 48,
+  ...SHADOWS.xs,
+},
+inputError: {
+  borderColor: COLORS.error,
+  backgroundColor: COLORS.error + '08',
+  borderWidth: 1.5,
+},
+inputValid: {
+  borderColor: COLORS.success,
+  backgroundColor: COLORS.success + '05',
+},
+inputVerified: {
+  borderColor: COLORS.success,
+  backgroundColor: COLORS.success + '08',
+  borderWidth: 2,
+},
+inputFailed: {
+  borderColor: COLORS.error,
+  backgroundColor: COLORS.error + '08',
+  borderWidth: 2,
+},
+inputDisabled: {
+  backgroundColor: COLORS.disabled,
+  borderColor: COLORS.border,
+  color: COLORS.textDisabled,
+  opacity: 0.7,
+},
+inputMultiline: {
+  minHeight: 100,
+  paddingTop: SIZES.padding.md,
+  textAlignVertical: 'top',
+  lineHeight: 20,
+},
+
+// Input with button (for Aadhaar)
+inputWithButtonContainer: {
+  position: 'relative',
+},
+inputWithButton: {
+  paddingRight: 100, // Space for inline verify button
+},
+verifyButtonInline: {
+  position: 'absolute',
+  right: 8,
+  top: 8,
+  backgroundColor: COLORS.primary,
+  paddingHorizontal: SIZES.padding.md,
+  paddingVertical: SIZES.padding.sm,
+  borderRadius: SIZES.radius.sm,
+  height: 32,
+  justifyContent: 'center',
+  alignItems: 'center',
+  minWidth: 70,
+  ...SHADOWS.sm,
+},
+verifyButtonTextInline: {
+  ...FONTS.caption,
+  color: COLORS.white,
+  fontWeight: FONTS.weight.bold,
+  fontSize: 12,
+},
+
+// Aadhaar specific styles
+inputAadhaarReady: {
+  borderColor: COLORS.primary,
+  backgroundColor: COLORS.primary + '08',
+  borderWidth: 1.5,
+},
+aadhaarInput: {
+  paddingRight: 120,
+},
+
+// Error and Validation Styles
+errorContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginTop: SIZES.margin.xs,
+  paddingHorizontal: 2,
+},
+errorIcon: {
+  marginRight: SIZES.margin.xs,
+  fontSize: 12,
+},
+errorText: {
+  ...FONTS.caption,
+  color: COLORS.error,
+  fontSize: 12,
+  flex: 1,
+},
+validationIconContainer: {
+  marginLeft: SIZES.margin.sm,
+  backgroundColor: COLORS.success + '20',
+  width: 20,
+  height: 20,
+  borderRadius: 10,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+validIcon: {
+  color: COLORS.success,
+  fontSize: 12,
+  fontWeight: 'bold',
+},
+invalidIcon: {
+  color: COLORS.error,
+  fontSize: 12,
+  fontWeight: 'bold',
+},
+
+// Loading Indicator
+loadingIndicator: {
+  marginLeft: SIZES.margin.sm,
+},
+
+// Verification Status
+verificationStatus: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  paddingHorizontal: SIZES.padding.sm,
+  paddingVertical: 2,
+  borderRadius: SIZES.radius.xs,
+  marginLeft: SIZES.margin.sm,
+  backgroundColor: 'transparent',
+},
+verificationStatusIcon: {
+  marginRight: 4,
+  fontSize: 10,
+},
+verificationStatusText: {
+  ...FONTS.caption,
+  fontSize: 10,
+  fontWeight: FONTS.weight.medium,
+},
+verificationMessage: {
+  padding: SIZES.padding.xs,
+  borderRadius: SIZES.radius.sm,
+  marginTop: SIZES.margin.xs,
+  alignItems: 'center',
+  borderWidth: 1,
+  borderColor: 'transparent',
+},
+verificationMessageText: {
+  ...FONTS.caption,
+  fontSize: 11,
+  textAlign: 'center',
+},
+
+// Placeholder color
+inputPlaceholder: {
+  color: COLORS.inputPlaceholder || '#999',
+},
+
+// Focus state (you can add this dynamically)
+inputFocus: {
+  borderColor: COLORS.primary,
+  backgroundColor: COLORS.white,
+  ...SHADOWS.sm,
+},
+// Add to your existing styles:
+
+// Section spacing
+section: {
+  marginBottom: SIZES.margin.xl,
+  backgroundColor: COLORS.white,
+  borderRadius: SIZES.radius.lg,
+  padding: SIZES.padding.lg,
+  ...SHADOWS.sm,
+},
+
+// Form content spacing
+formContent: {
+  padding: SIZES.padding.lg,
+  paddingBottom: SIZES.padding.xxxl,
+  gap: SIZES.margin.lg,
+},
+
+// Row layout for city/state inputs
+row: {
+  flexDirection: 'row',
+  marginHorizontal: -SIZES.margin.xs,
+  marginBottom: SIZES.margin.md,
+},
+halfInput: {
+  flex: 1,
+  marginHorizontal: SIZES.margin.xs,
+},
+
+// Gender selector improvements
+genderContainer: {
+  marginBottom: SIZES.margin.lg,
+  backgroundColor: COLORS.white,
+  borderRadius: SIZES.radius.md,
+  padding: SIZES.padding.md,
+  borderWidth: 1,
+  borderColor: COLORS.borderLight,
+},
+genderLabel: {
+  ...FONTS.bodyMedium,
+  color: COLORS.textPrimary,
+  marginBottom: SIZES.margin.sm,
+  fontSize: 14,
+  fontWeight: FONTS.weight.medium,
+},
+genderOptions: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  gap: SIZES.margin.xs,
+},
+genderOption: {
+  flex: 1,
+  paddingVertical: SIZES.padding.sm,
+  paddingHorizontal: SIZES.padding.xs,
+  borderRadius: SIZES.radius.sm,
+  borderWidth: 1.5,
+  borderColor: COLORS.border,
+  alignItems: 'center',
+  backgroundColor: COLORS.white,
+},
+genderOptionSelected: {
+  backgroundColor: COLORS.primary + '10',
+  borderColor: COLORS.primary,
+},
+genderOptionText: {
+  ...FONTS.caption,
+  color: COLORS.textSecondary,
+  fontSize: 13,
+},
+genderOptionTextSelected: {
+  color: COLORS.primary,
+  fontWeight: FONTS.weight.bold,
+},
+
+// Terms checkbox improvements
+termsContainer: {
+  marginBottom: SIZES.margin.lg,
+  backgroundColor: COLORS.white,
+  borderRadius: SIZES.radius.md,
+  padding: SIZES.padding.md,
+  borderWidth: 1,
+  borderColor: COLORS.borderLight,
+},
+termsHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: SIZES.margin.sm,
+},
+termsLabel: {
+  ...FONTS.bodyMedium,
+  color: COLORS.textPrimary,
+  fontSize: 14,
+  fontWeight: FONTS.weight.medium,
+},
+termsCheckboxRow: {
+  flexDirection: 'row',
+  alignItems: 'flex-start',
+},
+checkbox: {
+  width: 22,
+  height: 22,
+  borderRadius: SIZES.radius.xs,
+  borderWidth: 2,
+  borderColor: COLORS.border,
+  marginRight: SIZES.margin.sm,
+  marginTop: 2,
   alignItems: 'center',
   justifyContent: 'center',
-  marginTop: SIZES.margin.sm,
+  backgroundColor: COLORS.white,
+},
+checkboxChecked: {
+  backgroundColor: COLORS.primary,
+  borderColor: COLORS.primary,
+},
+checkmark: {
+  color: COLORS.white,
+  fontSize: SIZES.font.sm,
+  fontWeight: 'bold',
+},
+// In your styles object:
+input: {
+  backgroundColor: COLORS.white,
+  borderWidth: 1.5,
+  borderColor: COLORS.border,
+  borderRadius: SIZES.radius.md,
+  paddingHorizontal: SIZES.padding.md,
+  paddingVertical: SIZES.padding.md,
+  fontSize: 15,
+  color: COLORS.textPrimary,
+  minHeight: 48,
+  ...SHADOWS.xs,
+},
+inputMultiline: {
+  minHeight: 100,
+  paddingTop: SIZES.padding.md,
+  textAlignVertical: 'top',
+  lineHeight: 20,
+},
+inputError: {
+  borderColor: COLORS.error,
+  backgroundColor: COLORS.error + '08',
+  borderWidth: 1.5,
+},
+inputValid: {
+  borderColor: COLORS.success,
+  backgroundColor: COLORS.success + '05',
+},
+inputVerified: {
+  borderColor: COLORS.success,
+  backgroundColor: COLORS.success + '08',
+  borderWidth: 2,
+},
+inputFailed: {
+  borderColor: COLORS.error,
+  backgroundColor: COLORS.error + '08',
+  borderWidth: 2,
+},
+inputDisabled: {
+  backgroundColor: COLORS.disabled,
+  borderColor: COLORS.border,
+  color: COLORS.textDisabled,
+  opacity: 0.7,
+},
+inputWithButton: {
+  paddingRight: 100, // Make room for verify button
+},
+inputAadhaarReady: {
+  borderColor: COLORS.primary,
+  backgroundColor: COLORS.primary + '08',
+  borderWidth: 1.5,
+},
+// Add these styles to your existing styles object:
+
+// Aadhaar field specific styles
+aadhaarFieldContainer: {
+  marginBottom: SIZES.margin.lg,
+  backgroundColor: COLORS.white,
+  borderRadius: SIZES.radius.md,
+  padding: SIZES.padding.md,
+  borderWidth: 1,
+  borderColor: COLORS.borderLight,
+  ...SHADOWS.xs,
+},
+aadhaarInputHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: SIZES.margin.sm,
+  flexWrap: 'wrap',
+},
+aadhaarNote: {
+  ...FONTS.caption,
+  color: COLORS.textTertiary,
+  marginLeft: SIZES.margin.sm,
+  fontSize: 12,
+  flex: 1,
+},
+aadhaarInputContainer: {
+  position: 'relative',
+  marginBottom: SIZES.margin.xs,
+},
+aadhaarInput: {
+  paddingRight: 140, // Extra space for verify button
+  fontSize: 16,
+  letterSpacing: 1,
+  fontWeight: FONTS.weight.medium,
+},
+aadhaarActions: {
+  position: 'absolute',
+  right: 0,
+  top: 0,
+  height: '100%',
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+verifyButtonFull: {
+  backgroundColor: COLORS.primary,
+  paddingHorizontal: SIZES.padding.md,
+  paddingVertical: SIZES.padding.sm + 2,
+  borderRadius: SIZES.radius.sm,
+  minWidth: 140,
+  alignItems: 'center',
+  justifyContent: 'center',
+  flexDirection: 'row',
+  gap: SIZES.margin.xs,
   ...SHADOWS.sm,
 },
 verifyButtonText: {
-  ...FONTS.button,
+  ...FONTS.caption,
   color: COLORS.white,
   fontWeight: FONTS.weight.bold,
+  fontSize: 12,
 },
-verifiedContainer: {
-  backgroundColor: COLORS.successLight + "10",
-  borderRadius: SIZES.radius.md,
-  padding: SIZES.padding.md,
-  marginTop: SIZES.margin.sm,
+termsRequiredContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  backgroundColor: COLORS.warning + '15',
+  borderRadius: SIZES.radius.sm,
+  padding: SIZES.padding.sm,
   borderWidth: 1,
-  borderColor: COLORS.success + "30",
+  borderColor: COLORS.warning + '30',
 },
-verifiedText: {
-  ...FONTS.bodyMedium,
-  color: COLORS.success,
-  fontWeight: FONTS.weight.bold,
-  marginBottom: SIZES.margin.xs,
+termsRequiredIcon: {
+  marginRight: SIZES.margin.xs,
+  color: COLORS.warning,
+  fontSize: 12,
 },
-maskedAadhaar: {
-  ...FONTS.h6,
-  color: COLORS.textPrimary,
-  fontWeight: FONTS.weight.bold,
-  textAlign: 'center',
-  letterSpacing: 1,
-  marginBottom: SIZES.margin.xs,
-},
-// Add these styles to your StyleSheet
-termsTextContainer: {
-  flex: 1,
-},
-kycWarningText: {
+termsRequiredText: {
   ...FONTS.caption,
   color: COLORS.warning,
-  marginTop: SIZES.margin.xs,
-  fontSize: 12,
-},
-kycSuccessText: {
-  ...FONTS.caption,
-  color: COLORS.success,
-  marginTop: SIZES.margin.xs,
   fontSize: 12,
   fontWeight: FONTS.weight.medium,
+  flex: 1,
+},
+termsRequiredButton: {
+  marginLeft: SIZES.margin.xs,
+  backgroundColor: COLORS.warning,
+  paddingHorizontal: SIZES.padding.sm,
+  paddingVertical: 4,
+  borderRadius: SIZES.radius.xs,
+},
+termsRequiredButtonText: {
+  ...FONTS.caption,
+  color: COLORS.white,
+  fontSize: 10,
+  fontWeight: FONTS.weight.bold,
+},
+aadhaarStatusContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  justifyContent: 'space-between',
+  marginTop: SIZES.margin.sm,
+  padding: SIZES.padding.sm,
+  borderRadius: SIZES.radius.sm,
+  backgroundColor: COLORS.primary + '08',
+  borderWidth: 1,
+  borderColor: COLORS.primary + '20',
+},
+aadhaarStatusText: {
+  ...FONTS.caption,
+  color: COLORS.primary,
+  fontSize: 12,
+  fontWeight: FONTS.weight.medium,
+},
+aadhaarStatusIcon: {
+  marginRight: SIZES.margin.xs,
+  fontSize: 12,
+},
+
+// Enhanced verification status styles
+verificationPrompt: {
+  backgroundColor: COLORS.info + '10',
+  borderRadius: SIZES.radius.md,
+  padding: SIZES.padding.md,
+  marginTop: SIZES.margin.md,
+  borderWidth: 1,
+  borderColor: COLORS.info + '30',
+},
+verificationPromptHeader: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: SIZES.margin.xs,
+},
+verificationPromptIcon: {
+  marginRight: SIZES.margin.xs,
+  color: COLORS.info,
+  fontSize: 14,
+},
+verificationPromptTitle: {
+  ...FONTS.caption,
+  color: COLORS.info,
+  fontWeight: FONTS.weight.bold,
+  fontSize: 13,
+},
+verificationPromptText: {
+  ...FONTS.caption,
+  color: COLORS.textSecondary,
+  fontSize: 12,
+  lineHeight: 16,
+  marginBottom: SIZES.margin.xs,
+},
+verificationBenefitsList: {
+  marginLeft: SIZES.margin.sm,
+},
+verificationBenefitItem: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginBottom: 2,
+},
+verificationBenefitIcon: {
+  marginRight: SIZES.margin.xs,
+  color: COLORS.success,
+  fontSize: 10,
+},
+verificationBenefitText: {
+  ...FONTS.caption,
+  color: COLORS.textSecondary,
+  fontSize: 11,
+},
+
+// Verified Aadhaar display styles
+verifiedAadhaarContainer: {
+  marginBottom: SIZES.margin.lg,
+  backgroundColor: COLORS.success + '08',
+  borderRadius: SIZES.radius.md,
+  padding: SIZES.padding.lg,
+  borderWidth: 2,
+  borderColor: COLORS.success + '20',
+  ...SHADOWS.sm,
+},
+verifiedAadhaarHeader: {
+  flexDirection: 'row',
+  justifyContent: 'space-between',
+  alignItems: 'center',
+  marginBottom: SIZES.margin.md,
+},
+verifiedAadhaarLabel: {
+  ...FONTS.bodyMedium,
+  color: COLORS.textPrimary,
+  fontWeight: FONTS.weight.bold,
+  fontSize: 15,
+},
+verifiedBadge: {
+  backgroundColor: COLORS.success + '20',
+  paddingHorizontal: SIZES.padding.md,
+  paddingVertical: SIZES.padding.xs,
+  borderRadius: SIZES.radius.sm,
+  flexDirection: 'row',
+  alignItems: 'center',
+  gap: SIZES.margin.xs,
+},
+verifiedBadgeText: {
+  ...FONTS.caption,
+  color: COLORS.success,
+  fontWeight: FONTS.weight.bold,
+  fontSize: 12,
+},
+verifiedAadhaarContent: {
+  marginBottom: SIZES.margin.md,
+  alignItems: 'center',
+},
+verifiedAadhaarNumber: {
+  ...FONTS.h4,
+  color: COLORS.textPrimary,
+  textAlign: 'center',
+  letterSpacing: 2,
+  marginBottom: SIZES.margin.md,
+  fontWeight: FONTS.weight.bold,
+  fontSize: 20,
+},
+verificationDetails: {
+  alignItems: 'center',
+  gap: SIZES.margin.xs,
+  marginTop: SIZES.margin.sm,
 },
 verificationId: {
   ...FONTS.caption,
   color: COLORS.textSecondary,
-  textAlign: 'center',
+  fontSize: 11,
+  backgroundColor: COLORS.gray100,
+  paddingHorizontal: SIZES.padding.sm,
+  paddingVertical: 2,
+  borderRadius: SIZES.radius.xs,
+},
+verificationDate: {
+  ...FONTS.caption,
+  color: COLORS.success,
   fontSize: 12,
+  fontWeight: FONTS.weight.medium,
+},
+changeAadhaarButton: {
+  paddingVertical: SIZES.padding.sm,
+  paddingHorizontal: SIZES.padding.lg,
+  backgroundColor: COLORS.white,
+  borderWidth: 1.5,
+  borderColor: COLORS.border,
+  borderRadius: SIZES.radius.md,
+  alignItems: 'center',
+  justifyContent: 'center',
+  ...SHADOWS.xs,
+},
+changeAadhaarButtonText: {
+  ...FONTS.caption,
+  color: COLORS.textSecondary,
+  fontWeight: FONTS.weight.medium,
+  fontSize: 13,
+},
+
+// KYC status indicator
+kycStatusContainer: {
+  flexDirection: 'row',
+  alignItems: 'center',
+  marginTop: SIZES.margin.sm,
+  padding: SIZES.padding.sm,
+  borderRadius: SIZES.radius.sm,
+},
+kycStatusComplete: {
+  backgroundColor: COLORS.success + '10',
+  borderWidth: 1,
+  borderColor: COLORS.success + '20',
+},
+kycStatusPending: {
+  backgroundColor: COLORS.warning + '10',
+  borderWidth: 1,
+  borderColor: COLORS.warning + '20',
+},
+kycStatusIcon: {
+  marginRight: SIZES.margin.xs,
+  fontSize: 12,
+},
+kycStatusText: {
+  ...FONTS.caption,
+  fontSize: 12,
+  fontWeight: FONTS.weight.medium,
+},
+kycStatusTextComplete: {
+  color: COLORS.success,
+},
+kycStatusTextPending: {
+  color: COLORS.warning,
+},
+
+// Add these to enhance existing styles
+termsHelpButton: {
+  marginLeft: SIZES.margin.xs,
+  backgroundColor: COLORS.primary + '10',
+  width: 22,
+  height: 22,
+  borderRadius: 11,
+  justifyContent: 'center',
+  alignItems: 'center',
+},
+termsHelpText: {
+  fontSize: SIZES.font.sm,
+  color: COLORS.primary,
+  fontWeight: 'bold',
 },
 });

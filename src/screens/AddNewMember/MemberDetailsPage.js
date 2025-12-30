@@ -1709,7 +1709,7 @@ const MemberDetailsPage = ({
               <Text style={styles.label}>Anniversary Date *</Text>
               <TouchableOpacity
                 style={[
-                  styles.input,
+                  styles.input1,
                   validationErrors.anniversaryDate && styles.errorInput,
                 ]}
                 onPress={() => openDatePicker("anniversary")}

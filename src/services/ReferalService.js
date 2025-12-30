@@ -90,45 +90,44 @@ export const getAppliedReferralStatus = async () => {
 // 3️⃣ Apply Friend's Referral Code
 // --------------------------------------------------------
 export const applyReferralCode = async (referralCode) => {
-  console.log("🔵 [applyReferralCode] STEP 1: Function started");
-  console.log("🔵 STEP 2: Input referralCode →", referralCode);
-
   try {
     const userId = await AsyncStorage.getItem("userId");
-    console.log("🔵 STEP 3: UserId →", userId);
 
     if (!userId) {
-      console.log("🔴 STEP 4: User not logged in");
       return { success: false, message: "User not logged in" };
     }
 
     if (!referralCode || referralCode.trim() === "") {
-      console.log("🔴 STEP 5: Invalid referral code");
       return { success: false, message: "Invalid referral code" };
     }
 
     const cleanReferralCode = referralCode.trim().toUpperCase();
-    console.log("🔵 STEP 6: Cleaned referral code →", cleanReferralCode);
 
     const url = `${API_BASE_URL}/referral/check?userId=${userId}&referralCode=${cleanReferralCode}`;
-    console.log("🔵 STEP 7: API URL →", url);
 
     const response = await fetch(url, { method: "POST" });
-    console.log("🔵 STEP 8: Response status →", response.status);
-
     const data = await response.json();
-    console.log("🔵 STEP 9: Response data →", data);
 
-    if (response.ok) {
-      console.log("🟢 STEP 10: Referral applied successfully");
-      return { success: true, data };
-    } else {
-      console.log("🔴 STEP 11: Failed to apply referral");
-      return { success: false, data };
+    // ✅ HANDLE BACKEND STATUS
+    if (response.ok && data.status === "allowed") {
+      return {
+        success: true,
+        message: data.message || "Referral applied successfully",
+        data,
+      };
     }
+
+    // ❌ BACKEND REJECTION (your case)
+    return {
+      success: false,
+      message: data.message || "Referral code is invalid",
+      status: data.status,
+    };
   } catch (error) {
-    console.log("🔴 STEP 12: Catch error →", error);
-    return { success: false, message: "Network error" };
+    return {
+      success: false,
+      message: "Network error. Please try again.",
+    };
   }
 };
 

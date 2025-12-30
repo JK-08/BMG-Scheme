@@ -325,7 +325,7 @@ const renderPaymentHistory = useCallback(
                   </View>
                 ) : null}
 
-                <View style={[styles.dataRow, { alignItems: "flex-start" }]}>
+                {/* <View style={[styles.dataRow, { alignItems: "flex-start" }]}>
                   <Text style={styles.dataLabel}>Benefit Amount</Text>
                   <Text style={styles.dataValue}>
                     ₹
@@ -333,7 +333,7 @@ const renderPaymentHistory = useCallback(
                       Number(productData?.bonusAmount || 0)
                     ).toLocaleString("en-IN")}
                   </Text>
-                </View>
+                </View> */}
               </View>
             ) : null}
 
@@ -357,7 +357,7 @@ const renderPaymentHistory = useCallback(
                   </View>
                 ) : null}
 
-                {productData?.bonusAmount ? (
+                {/* {productData?.bonusAmount ? (
                   <View style={[styles.dataRow, { alignItems: "flex-end" }]}>
                     <Text style={styles.dataLabel}>Eligible Amount</Text>
                     <Text style={styles.dataValue}>
@@ -368,7 +368,7 @@ const renderPaymentHistory = useCallback(
                       ).toLocaleString("en-IN")}
                     </Text>
                   </View>
-                ) : null}
+                ) : null} */}
               </View>
             ) : null}
           </View>

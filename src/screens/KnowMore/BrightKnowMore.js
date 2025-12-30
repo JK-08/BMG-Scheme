@@ -61,7 +61,7 @@ const SCHEME_CONTENT = {
       "Tenure: 11 months (approx. 330 days)",
       "Benefit: Equivalent to 1 month's instalment at Scheme Completion",
       "Benefit Utilisation Period: Jewellery purchase only between the 331st and 345th day",
-      "Sustained Payment Record: Min. 5 payments paid On/before due date",
+      "Sustained Payment Record: Min. 6 payments paid On/before due date",
     ],
 
     termsTitle: "General Conditions",
