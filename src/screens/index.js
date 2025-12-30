@@ -49,6 +49,7 @@ import LumpsumKnowMore from './KnowMore/LumpsumKnowMore'
 import UserRegisterForm from '../components/UserRegisterForm/UserRegisterForm'
 import AadhaarVerificationScreen from '../components/UserRegisterForm/AadhaarVerification'
 import DuePayment from "../components/DuePayment/DuePayment"
+import SchemeListPage from './MyRedeemption/MyRedeemption'
 
 export {
   MainLanding,
@@ -100,5 +101,6 @@ export {
   LumpsumKnowMore,
   UserRegisterForm,
   AadhaarVerificationScreen,
-  DuePayment
+  DuePayment,
+  SchemeListPage
 }

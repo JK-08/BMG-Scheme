@@ -38,10 +38,6 @@ const SCHEME_CONTENT = {
       "நிலையான கொடுப்பனவு பதிவு: குறைந்தபட்சம் 165 நாட்கள் தொகை வைத்திருத்தல்",
     ],
 
-  
-
-   
-
     termsTitle: "பொது விதிமுறைகள்",
     terms: [
       "இத் திட்டத்தில் சேரும் நபர் இந்திய குடிமகனாகவும் குறைந்தது 18 வயது நிறைவடைந்தவறாகவும் இருத்தல்  வேண்டும். திட்டத்தில் இணைய தேவையான அடையாள ஆவணத்தை சமர்ப்பிக்க வேண்டும்.",
@@ -76,7 +72,6 @@ const SCHEME_CONTENT = {
       "Sustained Payment Record: Min. Holding of 165 days",
     ],
 
-  
     termsTitle: "General Conditions",
     terms: [
       "This scheme is open to individuals who are Citizen of India & aged 18 years and above with valid identification proof.",
@@ -108,11 +103,12 @@ const SchemeSection = React.memo(
 
       {(items ?? []).map((item, index) => {
         // Check if item is a header (contains colon or is just a label)
-        const isHeader = item.includes(":") || 
-                         item.includes("%") || 
-                         item === "Benefit Structure:" ||
-                         item === "திட்டப்பயன் தொகை அமைப்பு:";
-        
+        const isHeader =
+          item.includes(":") ||
+          item.includes("%") ||
+          item === "Benefit Structure:" ||
+          item === "திட்டப்பயன் தொகை அமைப்பு:";
+
         return (
           <View key={`${title}-${index}`} style={styles.featureItem}>
             {isHeader ? (
@@ -123,7 +119,9 @@ const SchemeSection = React.memo(
                   color={COLORS.primary}
                   style={styles.featureIcon}
                 />
-                <Text style={[styles.featureText, styles.headerText]}>{item}</Text>
+                <Text style={[styles.featureText, styles.headerText]}>
+                  {item}
+                </Text>
               </>
             ) : (
               <>
@@ -183,7 +181,11 @@ function SmartPayKnowMore() {
               onPress={toggleLanguage}
               activeOpacity={0.8}
             >
-              <Icon name="translate" size={SIZES.icon.sm} color={COLORS.white} />
+              <Icon
+                name="translate"
+                size={SIZES.icon.sm}
+                color={COLORS.white}
+              />
               <Text style={styles.languageButtonText}>
                 {isEnglish ? "தமிழ்" : "English"}
               </Text>
@@ -191,7 +193,7 @@ function SmartPayKnowMore() {
 
             {/* Scheme Sections */}
             <SchemeSection title="BMG SMART PAY" items={content.smartPay} />
-          
+
 
             {/* Terms */}
             <View style={styles.termsSection}>
@@ -200,8 +202,8 @@ function SmartPayKnowMore() {
               {content.terms.map((item, index) => (
                 <View key={`term-${index}`} style={styles.featureItem}>
                   <Icon
-                    name="numeric"
-                    size={SIZES.icon.xs}
+                    name="circle-small"
+                    size={moderateScale(28)}
                     color={COLORS.primary}
                     style={{ marginTop: 4, marginRight: 8 }}
                   />
@@ -307,18 +309,18 @@ const styles = StyleSheet.create({
 
   featureText: {
     flex: 1,
-    minWidth: 0,        // ensures wrapping on all phones
+    minWidth: 0, // ensures wrapping on all phones
     flexShrink: 1,
     flexWrap: "wrap",
     ...FONTS.body,
-    color: "#000000",    // Changed to BLACK color
+    color: "#000000", // Changed to BLACK color
     lineHeight: SIZES.font.md * 1.6,
     textAlign: "left",
   },
 
   headerText: {
     ...FONTS.bodyBold,
-    color: "#000000",    // Changed to BLACK color
+    color: "#000000", // Changed to BLACK color
   },
 
   termsSection: {

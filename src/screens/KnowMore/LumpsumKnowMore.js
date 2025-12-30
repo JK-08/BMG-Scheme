@@ -194,12 +194,12 @@ function LumpsumKnowMore() {
 
               {content.terms.map((item, index) => (
                 <View key={`term-${index}`} style={styles.featureItem}>
-                  <Icon
-                    name="numeric"
-                    size={SIZES.icon.xs}
-                    color={COLORS.primary}
-                    style={{ marginTop: 4, marginRight: 8 }}
-                  />
+                   <Icon
+                                      name="circle-small"
+                                      size={moderateScale(28)}
+                                      color={COLORS.primary}
+                                      style={{ marginTop: 4, marginRight: 8 }}
+                                    />
                   <Text style={styles.featureText}>{item}</Text>
                 </View>
               ))}

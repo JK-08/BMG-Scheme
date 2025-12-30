@@ -35,7 +35,9 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
   const summary = item.schemeSummary || {};
   const trans = item.schemaSummaryTransBalance || {};
   const schemeType = summary.schemeType || {};
-  
+  console.log("remainingDate:", remainingDate);
+
+
   // Check if scheme is closed
   const isSchemeClosed = schemeClosedSummary && 
     schemeClosedSummary.doClose !== "1900-01-01 00:00:00.0" && 
@@ -231,11 +233,7 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
                     {remainingDate > 0 && (
                       <Animated.View
                         style={{
-                          position: "absolute",
-                          width: 52,
-                          height: 52,
-                          borderRadius: 26,
-                          backgroundColor: "#F59E0B",
+                          position: "absolute",                 
                           transform: [{ scale: glowScale }],
                           opacity: glowOpacity,
                         }}

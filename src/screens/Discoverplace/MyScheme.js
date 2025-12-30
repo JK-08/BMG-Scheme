@@ -3,13 +3,11 @@ import {
   View,
   FlatList,
   ImageBackground,
-  Alert,
   StyleSheet,
   RefreshControl,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { SafeAreaView } from "react-native-safe-area-context";
-import { useNavigation } from "@react-navigation/native";
 import styles from "./styles";
 import BottomTab from "../../components/BottomTab/BottomTab";
 import { TextDefault } from "../../components";
@@ -20,32 +18,34 @@ import { getPhoneDetails } from "../../services/SchemeDetailsService";
 import { getAllSchemes } from "../../services/SchemeNameService";
 import { COLORS } from "../../utils/Theme";
 
-
-      
-
 function DiscoverPlace({ navigation }) {
   const [productData, setProductData] = useState([]);
   const [schemeRules, setSchemeRules] = useState({});
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
-  const [refreshing, setRefreshing] = useState(false);
   const [initialLoad, setInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
+const handlePayNow = (item) => {
+  const paymentData = {
+    regNo: item.regno,
+    groupCode: item.groupcode,
+    customerName: item.pname,
+    amount: item.schemeSummary?.amount || 0,
+    schemeName: item.schemeSummary?.schemeName,
+    schemes: productData,
+  };
 
-  const handlePayNow = (item) => {
-        navigation.navigate("Buy", {
-          productData: item,
-          paymentData: {
-            regNo: item.regno,
-            groupCode: item.groupcode,
-            customerName: item.pname,
-            amount: item.schemeSummary?.amount || 0,
-            schemeName: item.schemeSummary?.schemeName,
-            schemes: productData, // or other relevant schemes list
-          },
-        });
-      };
+  console.log("🔵 handlePayNow item:", item);
+  console.log("🟢 paymentData:", paymentData);
+
+  navigation.navigate("Buy", {
+    productData: item,
+    paymentData,
+  });
+};
+
+
 
   // Fetch all scheme rules once
   const fetchSchemeRules = async () => {
@@ -91,8 +91,6 @@ function DiscoverPlace({ navigation }) {
         setProductData([]);
         return;
       }
-
-
 
       const processedProducts = accounts.map((item) => {
         const currentDate = new Date();
@@ -156,13 +154,16 @@ function DiscoverPlace({ navigation }) {
         };
       });
 
+      console.log("Processed Products:", processedProducts);
       setProductData(processedProducts);
       setError(null);
     } catch (err) {
+      console.error("Error fetching data:", err);
       setError(`Failed to fetch data: ${err.message}`);
     } finally {
-      if (isRefresh) setIsRefreshing(false);
-      else {
+      if (isRefresh) {
+        setIsRefreshing(false);
+      } else {
         setLoading(false);
         setInitialLoad(false);
       }
@@ -175,13 +176,18 @@ function DiscoverPlace({ navigation }) {
 
   const onRefresh = () => fetchPhoneSearchData(true);
 
-  const renderProductCard = ({ item }) => (
+const renderProductCard = ({ item }) => {
+  console.log("Rendering ProductCard for", item.regNo, "- remainingDays:", item.remainingDays);
+  
+  return (
     <ProductCard
       productData={item}
       navigation={navigation}
       onPayNow={() => handlePayNow(item)}
+      remainingDate={item.remainingDays || 0} // This is what you need to add
     />
   );
+};
 
   const renderContent = () => {
     if (initialLoad && loading) {

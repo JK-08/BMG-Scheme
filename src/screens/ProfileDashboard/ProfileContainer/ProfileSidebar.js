@@ -46,12 +46,14 @@ const DrawerMenu = ({ isVisible, onClose }) => {
   const [userData, setUserData] = useState({});
   const [activeRoute, setActiveRoute] = useState(null);
   const [uploading, setUploading] = useState(false);
+  const [showSettings, setShowSettings] = useState(false); // New state for settings submenu
 
   // Animated values
   const slideAnim = useRef(new Animated.Value(width)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const profileY = useRef(new Animated.Value(20)).current;
   const profileOpacity = useRef(new Animated.Value(0)).current;
+  const settingsAnim = useRef(new Animated.Value(0)).current; // Animation for settings submenu
 
   /* -------------------------
      Fetch stored user + profile picture
@@ -159,8 +161,20 @@ const DrawerMenu = ({ isVisible, onClose }) => {
           useNativeDriver: true,
         }),
       ]).start();
+      
+      // Close settings submenu when drawer closes
+      setShowSettings(false);
     }
   }, [isVisible]);
+
+  // Animate settings submenu
+  useEffect(() => {
+    Animated.timing(settingsAnim, {
+      toValue: showSettings ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false, // Height animation requires non-native driver
+    }).start();
+  }, [showSettings]);
 
   /* -------------------------
      PanResponder: swipe-left to close
@@ -425,29 +439,50 @@ const DrawerMenu = ({ isVisible, onClose }) => {
     }
   };
 
+  const toggleSettings = () => {
+    setShowSettings(!showSettings);
+  };
+
   /* -------------------------
      Menu items
   ------------------------- */
   const menuItems = [
+    {
+      label: "Register MySelf",
+      icon: "description",
+      route: "UserRegisterForm",
+    },
+    {
+      label: "My Redeemption",
+      icon: "card-giftcard",
+      route: "SchemeListPage",
+    },
     { label: "About", icon: "info", route: "AboutPage" },
-    { label: "FAQ", icon: "support-agent", route: "FAQPage" },
-    { label: "Reset MPIN", icon: "settings", route: "ResetMpin" },
-    { label: "Help Center", icon: "help-center", route: "HelpCenter" },
     { label: "Privacy Policy", icon: "privacy-tip", route: "PrivacyPolicy" },
     {
       label: "Terms & Conditions",
       icon: "description",
       route: "TermsandCondition",
     },
+    { label: "Help Center", icon: "help-center", route: "HelpCenter" },
+    { label: "FAQ", icon: "support-agent", route: "FAQPage" },
+  ];
+
+  const settingsItems = [
+    {
+      label: "Update Profile Picture",
+      icon: "photo-camera",
+      action: handleProfilePictureUpdate,
+    },
+    {
+      label: "Reset MPIN",
+      icon: "lock-reset",
+      route: "ResetMpin",
+    },
     {
       label: "Account Delete",
       icon: "delete",
       route: "DeleteButton",
-    },
-    {
-      label: "Register Form",
-      icon: "description",
-      route: "UserRegisterForm",
     },
   ];
 
@@ -591,6 +626,70 @@ const DrawerMenu = ({ isVisible, onClose }) => {
                 </TouchableOpacity>
               );
             })}
+
+            {/* Settings Item with expandable submenu */}
+            <View style={styles.settingsContainer}>
+              <TouchableOpacity
+                style={styles.menuItem}
+                onPress={toggleSettings}
+              >
+                <View style={styles.menuItemContent}>
+                  <MaterialIcons
+                    name={showSettings ? "settings" : "settings"}
+                    size={moderateScale(22)}
+                    color={COLORS.textPrimary}
+                  />
+                  <TextDefault style={styles.menuItemText}>
+                    Settings
+                  </TextDefault>
+                  <MaterialIcons
+                    name={showSettings ? "expand-less" : "expand-more"}
+                    size={moderateScale(22)}
+                    color={COLORS.textSecondary}
+                  />
+                </View>
+              </TouchableOpacity>
+
+              {/* Settings Submenu */}
+              <Animated.View
+                style={[
+                  styles.submenuContainer,
+                  {
+                    maxHeight: settingsAnim.interpolate({
+                      inputRange: [0, 1],
+                      outputRange: [0, 180], // Adjust based on number of items
+                    }),
+                    opacity: settingsAnim,
+                  },
+                ]}
+              >
+                {settingsItems.map((item, index) => (
+                  <TouchableOpacity
+                    key={index}
+                    style={styles.submenuItem}
+                    onPress={() => {
+                      if (item.action) {
+                        item.action();
+                      } else if (item.route) {
+                        handleMenuNavigate(item.route);
+                      }
+                    }}
+                  >
+                    <View style={styles.submenuItemContent}>
+                      <MaterialIcons
+                        name={item.icon}
+                        size={moderateScale(18)}
+                        color={COLORS.textPrimary}
+                        style={styles.submenuIcon}
+                      />
+                      <TextDefault style={styles.submenuItemText}>
+                        {item.label}
+                      </TextDefault>
+                    </View>
+                  </TouchableOpacity>
+                ))}
+              </Animated.View>
+            </View>
 
             <View style={{ height: 8 }} />
 
@@ -775,6 +874,40 @@ const styles = {
     flex: 1,
   },
 
+  /* Settings Container */
+  settingsContainer: {
+    borderBottomWidth: 1,
+    borderBottomColor: "rgba(0,0,0,0.04)",
+  },
+
+  /* Submenu Styles */
+  submenuContainer: {
+    overflow: "hidden",
+    backgroundColor: "rgba(0,0,0,0.02)",
+    borderBottomLeftRadius: 8,
+    borderBottomRightRadius: 8,
+    marginHorizontal: SIZES.padding.lg,
+    marginBottom: SIZES.padding.sm,
+  },
+  submenuItem: {
+    paddingVertical: SIZES.padding.md,
+    paddingHorizontal: SIZES.padding.xl,
+    borderBottomWidth: 0.5,
+    borderBottomColor: "rgba(0,0,0,0.05)",
+  },
+  submenuItemContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: SIZES.padding.md,
+  },
+  submenuIcon: {
+    marginRight: SIZES.padding.md,
+  },
+  submenuItemText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+  },
+
   /* Footer */
   footer: {
     marginTop: SIZES.padding.lg,
@@ -788,19 +921,20 @@ const styles = {
     marginBottom: SIZES.padding.md,
   },
   brandBadge: {
-    backgroundColor: "rgba(255, 255, 255, 0.7)",
+    // backgroundColor: "rgba(255, 255, 255, 0.7)",
     paddingVertical: 8,
     paddingHorizontal: 16,
     borderRadius: 20,
     alignItems: "center",
     justifyContent: "center",
     shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+    // shadowOffset: { width: 0, height: 2 },
+    // shadowOpacity: 0.1,
+    // shadowRadius: 4,
+    // elevation: 3,
     borderWidth: 1,
     borderColor: "rgba(0,0,0,0.05)",
+    marginLeft: 120
   },
   brandLine1: {
     fontSize: 14,

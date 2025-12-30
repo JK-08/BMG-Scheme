@@ -40,7 +40,8 @@ const AddNewMember = () => {
   const route = useRoute();
 
   // Extract both schemeId and schemeName from route params
-  const { schemeId: routeSchemeId, schemeName: routeSchemeName } = route.params || {};
+  const { schemeId: routeSchemeId, schemeName: routeSchemeName } =
+    route.params || {};
 
   // Debug logs
   console.log("🚀 AddNewMember mounted");
@@ -51,7 +52,7 @@ const AddNewMember = () => {
   // Use state for scheme data - parse immediately
   const [selectedScheme, setSelectedScheme] = useState({
     id: routeSchemeId ? Number(routeSchemeId) : null,
-    name: routeSchemeName || null
+    name: routeSchemeName || null,
   });
 
   const [token, setToken] = useState(null);
@@ -65,30 +66,10 @@ const AddNewMember = () => {
   // Track payment completion and processing status
   const [paymentCompleted, setPaymentCompleted] = useState(false);
   const [processingPayment, setProcessingPayment] = useState(false);
-  const nowDateTime = new Date().toISOString().slice(0, 19).replace("T", " ");
+  const nowDateTime = new Date().toISOString().slice(0, 10) + " 00:00:00";
 
-  const [memberData, setMemberData] = useState({
-    namePrefix: "Mr",
-    name: "",
-    surname: "",
-    doorNo: "",
-    address1: "",
-    address2: "",
-    area: "",
-    city: "",
-    pincode: "",
-    selectedState: "",
-    country: "India",
-    mobile: "",
-    email: "",
-    panNumber: "",
-    aadharNumber: "",
-    dateOfBirth: "",
-    anniversaryDate: "",
-    maritalStatus: "",
-    nomeni: "",
-    mobile2: "",
-  });
+  // Store transformed data from MemberDetailsPage
+  const [transformedMemberData, setTransformedMemberData] = useState(null);
 
   const [schemeData, setSchemeData] = useState({
     selectedSchemeId: selectedScheme.id,
@@ -103,7 +84,7 @@ const AddNewMember = () => {
   // Update schemeData when selectedScheme changes
   useEffect(() => {
     console.log("🔄 Updating schemeData with selectedScheme:", selectedScheme);
-    setSchemeData(prev => ({
+    setSchemeData((prev) => ({
       ...prev,
       selectedSchemeId: selectedScheme.id,
     }));
@@ -165,11 +146,13 @@ const AddNewMember = () => {
 
       // If we have a route schemeId but no name, try to find the name
       if (selectedScheme.id && !selectedScheme.name) {
-        const foundScheme = schemes.find((s) => s.SchemeId === selectedScheme.id);
+        const foundScheme = schemes.find(
+          (s) => s.SchemeId === selectedScheme.id
+        );
         if (foundScheme) {
-          setSelectedScheme(prev => ({
+          setSelectedScheme((prev) => ({
             ...prev,
-            name: foundScheme.schemeName || routeSchemeName
+            name: foundScheme.schemeName || routeSchemeName,
           }));
         }
       }
@@ -262,17 +245,20 @@ const AddNewMember = () => {
 
   // Function to handle scheme selection from MemberDetailsPage
   const handleSchemeSelection = (schemeId, schemeName) => {
-    console.log("📋 Scheme selected from MemberDetailsPage:", { schemeId, schemeName });
+    console.log("📋 Scheme selected from MemberDetailsPage:", {
+      schemeId,
+      schemeName,
+    });
 
     // Update selectedScheme state
     const numericId = Number(schemeId);
     setSelectedScheme({
       id: numericId,
-      name: schemeName || getSchemeName(numericId)
+      name: schemeName || getSchemeName(numericId),
     });
 
     // Update schemeData
-    setSchemeData(prev => ({
+    setSchemeData((prev) => ({
       ...prev,
       selectedSchemeId: numericId,
     }));
@@ -281,19 +267,12 @@ const AddNewMember = () => {
     fetchSchemeOptions(numericId);
   };
 
-  const getDefaultInitial = (firstName) => {
-    if (!firstName || firstName.trim().length === 0) return "";
-    return firstName.trim().charAt(0).toUpperCase();
-  };
-
   const handleNextStep = (memberFormData = {}) => {
     console.log("📋 MemberDetailsPage onSubmit data:", memberFormData);
 
-    // Hard safety check
-    if (!memberFormData || typeof memberFormData !== "object") {
-      Alert.alert("Error", "Invalid member details submitted");
-      return;
-    }
+    // Store the transformed data directly as-is
+    // The MemberDetailsPage already sends transformed data with correct field names
+    setTransformedMemberData(memberFormData);
 
     // Check if scheme was selected in MemberDetailsPage
     if (memberFormData.selectedSchemeId) {
@@ -304,16 +283,9 @@ const AddNewMember = () => {
       });
     }
 
-    // Store member data safely
-    setMemberData(prev => ({
-      ...prev,
-      ...memberFormData,
-    }));
-
     // Move to next step
     setCurrentStep(2);
   };
-
 
   // Create payment order
   const createPaymentOrder = async (
@@ -337,7 +309,7 @@ const AddNewMember = () => {
       console.log("Creating payment order with payload:", orderPayload);
 
       const response = await fetch(
-        `https://scheme.bmgjewellers.com/api/orders/create`,
+        `https://scheme.bmgjewellers.com/api/v1/orders/create`,
         {
           method: "POST",
           headers: {
@@ -508,136 +480,212 @@ const AddNewMember = () => {
     return { cardNumber, rtnReason };
   };
 
-  // Submit member data after successful payment
-  const submitMemberData = async (
-    numericSchemeId,
-    schemeFormData,
-    groupCode,
-    regNo,
-    paymentResponse = null,
-    cashPayment = false // Flag for cash payment
-  ) => {
-
-  
-    try {
-      // 1️⃣ Member Details
-      const newMember = {
-        title: memberData.title || "Mr",   // ✅ FIX
-        initial: getDefaultInitial(memberData.name),
-        pName: memberData.name || "",
-        sName: memberData.surname || "",
-        doorNo: memberData.doorNo || "",
-        address1: memberData.address1 || "",
-        address2: memberData.address2 || "",
-        area: memberData.area || "",
-        city: memberData.city || "",
-        state: memberData.selectedState || "",
-        country: "India",
-        pinCode: memberData.pincode || "", // ✅ FIX (capital C)
-        mobile: memberData.mobile || "",
-        nomeni: memberData.nomeni,
-        mobile2: memberData.mobile2 || "",
-        idProof: "Aadhaar",
-        idProofNo: memberData.aadharNumber || "",
-        panNumber: memberData.panNumber || "",
-        dob: memberData.dateOfBirth || "",
-        anniversaryDate: memberData.anniversaryDate
-          ? `${memberData.anniversaryDate} 00:00:00`
-          : "", // ✅ FIX
-        email: memberData.email || "",
-        upDateTime: nowDateTime,
-        userId: "999",
-        appVer: "WEB",
-      };
-
-
-      // 2️⃣ Scheme Summary
-      const createSchemeSummary = {
-        schemeId: numericSchemeId,
-        groupCode,
-        regNo,
-        joinDate: nowDateTime,
-        upDateTime2: nowDateTime,
-        openingDate: nowDateTime,
-        userId2: "999", // ✅ FIX
-      };
-
-
-      // 3️⃣ Payment Details (Fail-safe)
-      let paymentDetails = {
-        chqBankCode: "",
-        chqCardNo: "",
-        chqBranch: "",
-        chkBank: "",
-        chqRtnReason: "",
-      };
-
-      if (cashPayment) {
-        // Cash payment defaults
-        const { cardNumber, rtnReason } = generateCashPaymentDetails();
-        paymentDetails = {
-          chqBankCode: schemeFormData.accCode || "CASH",
-          chqCardNo: cardNumber || "0000000000",
-          chqBranch: "Received",
-          chkBank: "CASH",
-          chqRtnReason: rtnReason || "CASH-000000",
-        };
-      } else if (paymentResponse?.payphiResponse) {
-        // Online payment from API response
-        const resp = paymentResponse.payphiResponse;
-        paymentDetails = {
-          chqBankCode: schemeFormData.accCode ||"ONLINE",
-          chqCardNo: resp?.txnID || "N/A",
-          chqBranch: resp?.paymentSubInstType || "N/A",
-          chkBank: resp?.paymentMode || "N/A",
-          chqRtnReason: resp?.merchantTxnNo || "N/A",
-        };
-      }
-
-      // 4️⃣ Scheme Collection Insert
-      const schemeCollectInsert = {
-        amount: Number(schemeFormData.amount),
-        modePay: schemeFormData.modePay, // "O" or "C"
-        accCode: "1", // must be numeric "1"
-        chqBankCode: "1",
-        chqCardNo: paymentDetails.chqCardNo,
-        chqBranch: paymentDetails.chqBranch,
-        chkBank: paymentDetails.chkBank,
-        chqRtnReason: paymentDetails.chqRtnReason,
-      };
-
-      console.log("schemecollect", schemeCollectInsert)
-
-
-      // 5️⃣ Final Request Body
-      const requestBody = {
-        newMember,
-        createSchemeSummary,
-        schemeCollectInsert,
-        referralCode: ReferralCode || "",
-      };
-
-      console.log("Submit Member Data", requestBody);
-      // 6️⃣ Submit API Call
-      const submitResponse = await fetch(`${API_BASE_URL_OLD}/member/create`, {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          Accept: "application/json",
-        },
-        body: JSON.stringify(requestBody),
-      });
-
-      if (!submitResponse.ok) throw new Error(`HTTP ${submitResponse.status}`);
-      const responseData = await submitResponse.json();
-      console.log("✅ Member Create API Response:", responseData);
-
-      return true;
-    } catch (error) {
-      console.error("❌ Error submitting member data:", error);
-      throw error;
+const submitMemberData = async (
+  numericSchemeId,
+  schemeFormData,
+  groupCode,
+  regNo,
+  paymentResponse = null,
+  cashPayment = false
+) => {
+  try {
+    if (!transformedMemberData) {
+      throw new Error("No member data available");
     }
-  };
+
+    const memberData = transformedMemberData;
+
+    console.log("📊 Transformed memberData:", memberData);
+
+    // Validate required fields
+    if (!memberData.pName || memberData.pName.trim() === "") {
+      throw new Error("Member name is required");
+    }
+
+    if (!memberData.mobile || memberData.mobile.length < 10) {
+      throw new Error("Valid mobile number is required");
+    }
+
+    if (!memberData.aadharNumber || memberData.aadharNumber.replace(/\s/g, "").length < 12) {
+      throw new Error("Valid Aadhaar number is required");
+    }
+
+    if (!memberData.dateOfBirth) {
+      throw new Error("Date of Birth is required");
+    }
+
+    // ✅ Construct newMember object EXACTLY as Postman
+    const newMember = {
+      title: memberData.title || "Mr",
+      initial: memberData.initial || (memberData.pName ? memberData.pName.charAt(0).toUpperCase() : ""),
+      pName: memberData.pName || "",
+      sName: memberData.sName || "",
+      
+      // Address details - Use the fields from transformed data
+      doorNo: memberData.doorNo || "",
+      address1: memberData.address1 || "",
+      address2: memberData.address2 || "",
+      area: memberData.area || "",
+      city: memberData.city || "",
+      state: memberData.selectedState || memberData.state || "",
+      country: "India",
+      pinCode: memberData.pincode || "",
+
+      // Contact details
+      mobile: memberData.mobile || "",
+      mobile2: memberData.mobile2 || "",
+
+      // Email
+      email: memberData.email || "",
+
+      // Nominee details - CRITICAL: Use exact field names from MemberDetailsPage
+      nomeni: memberData.nomeni || memberData.nomeni || "",
+      nomineeMobile: memberData.mobile2 || memberData.mobile || "",
+      nomineeRelationship: memberData.nomineeRelationship || "Spouse",
+      nomAddr1: memberData.nomAddr1 || memberData.address1 || "",
+      nomAddr2: memberData.nomAddr2 || memberData.address2 || "",
+      nomCity: memberData.nomCity || memberData.city || "",
+      nomState: memberData.nomState || memberData.state || "",
+      nomPincode: memberData.nomPincode || memberData.pincode || "",
+      nomCountry: memberData.nomCountry || "India",
+
+      // Nominee Aadhaar details from DigiLocker
+      nomineeName: memberData.nomineeName || memberData.nomeni || "",
+      nomineeDOB: memberData.nomineeDOB || "",
+      nomineeGender: memberData.nomineeGender || "",
+      nomineeCareOf: memberData.nomineeCareOf || "",
+      nomineeYearOfBirth: memberData.nomineeYearOfBirth || "",
+
+      // ID Proof
+      idProof: "Aadhaar",
+      idProofNo: (memberData.aadharNumber || "").replace(/\s/g, ""),
+      aadhaarMasked: memberData.aadhaarMasked || "XXXX-XXXX-XXXX",
+      panNumber: memberData.panNumber || "",
+
+      // Personal details
+      dob: memberData.dateOfBirth || "",
+      anniversaryDate: memberData.anniversaryDate 
+        ? `${memberData.anniversaryDate} 00:00:00`
+        : "",
+      maritalStatus: memberData.maritalStatus || "",
+
+      // Verification flags - IMPORTANT: These must be booleans
+      mobileVerified: memberData.mobileVerified !== undefined ? memberData.mobileVerified : true,
+      aadhaarVerified: memberData.aadhaarVerified !== undefined ? memberData.aadhaarVerified : true,
+      nomineeMobileVerified: memberData.nomineeMobileVerified !== undefined ? memberData.nomineeMobileVerified : !!memberData.mobile2,
+      nomineeAadhaarVerified: memberData.nomineeAadhaarVerified !== undefined ? memberData.nomineeAadhaarVerified : false,
+
+      // System fields
+      upDateTime: nowDateTime,
+      userId: "999",
+      appVer: "WEB",
+    };
+
+    // ✅ Construct createSchemeSummary
+    const createSchemeSummary = {
+      schemeId: numericSchemeId,
+      groupCode: groupCode || "BMA",
+      regNo: regNo || generateRandomRegNo(),
+      joinDate: nowDateTime,
+      upDateTime2: nowDateTime,
+      openingDate: nowDateTime,
+      userId2: "999",
+    };
+
+    // ✅ Construct schemeCollectInsert
+    let schemeCollectInsert = {
+      amount: Number(schemeFormData.amount),
+      modePay: schemeFormData.modePay, // "C" for cash, "O" for online
+      accCode: "1",
+      chqBankCode: "1",
+      chqCardNo: "",
+      chqBranch: "",
+      chkBank: "",
+      chqRtnReason: "",
+    };
+
+    // Set payment-specific fields
+    if (cashPayment) {
+      const { cardNumber, rtnReason } = generateCashPaymentDetails();
+      schemeCollectInsert.chqCardNo = cardNumber;
+      schemeCollectInsert.chqBranch = "Received";
+      schemeCollectInsert.chkBank = "CASH";
+      schemeCollectInsert.chqRtnReason = rtnReason;
+    } else if (paymentResponse?.payphiResponse) {
+      const resp = paymentResponse.payphiResponse;
+      schemeCollectInsert.chqCardNo = resp?.txnID || "N/A";
+      schemeCollectInsert.chqBranch = resp?.paymentSubInstType || "N/A";
+      schemeCollectInsert.chkBank = resp?.paymentMode || "N/A";
+      schemeCollectInsert.chqRtnReason = resp?.merchantTxnNo || "N/A";
+    }
+
+    // ✅ Final request body
+    const requestBody = {
+      newMember,
+      createSchemeSummary,
+      schemeCollectInsert,
+      referralCode: ReferralCode || "",
+    };
+
+    // Log the complete request for debugging
+    console.log(
+      "📤 FINAL REQUEST BODY:",
+      JSON.stringify(requestBody, null, 2)
+    );
+
+    // ✅ Make API call
+    const submitResponse = await fetch(`${API_BASE_URL_OLD}/member/create`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Accept: "application/json",
+      },
+      body: JSON.stringify(requestBody),
+    });
+
+    const responseText = await submitResponse.text();
+    console.log("📥 API Response:", responseText);
+
+    if (!submitResponse.ok) {
+      throw new Error(`HTTP ${submitResponse.status}: ${responseText}`);
+    }
+
+    const responseData = JSON.parse(responseText);
+    console.log("✅ Success Response:", responseData);
+
+    // Send SMS notification
+    try {
+      await smsService.sendWelcomeSMS(
+        memberData.mobile,
+        memberData.pName,
+        getSchemeName(numericSchemeId),
+        schemeFormData.amount,
+        new Date().toISOString().slice(0, 10),
+        "BMG JEWELLERS PVT LTD"
+      );
+      console.log("✅ Welcome SMS sent successfully");
+    } catch (smsError) {
+      console.warn("⚠️ Failed to send welcome SMS:", smsError);
+    }
+
+    // Send join scheme notification
+    try {
+      await sendJoinSchemeNotification(
+        numericSchemeId,
+        parseFloat(schemeFormData.amount),
+        getSchemeName(numericSchemeId)
+      );
+      console.log("✅ Join scheme notification sent");
+    } catch (notifErr) {
+      console.warn("⚠️ Failed to send notification:", notifErr);
+    }
+
+    return true;
+  } catch (error) {
+    console.error("❌ Error submitting member data:", error);
+    throw error;
+  }
+};
 
   // Handle WebView navigation changes
   const handleWebViewNavigation = (navState) => {
@@ -688,33 +736,6 @@ const AddNewMember = () => {
           currentPaymentData.regNo,
           paymentStatus // Pass the payment status response
         );
-
-        // 2️⃣ Send Welcome SMS
-        try {
-          await smsService.sendWelcomeSMS(
-            memberData.mobile,
-            memberData.name,
-            getSchemeName(currentPaymentData.numericSchemeId),
-            currentPaymentData.schemeData.amount,
-            new Date().toISOString().slice(0, 10),
-            "BMG JEWELLERS PVT LTD"
-          );
-          console.log("📩 Welcome SMS sent");
-        } catch (smsErr) {
-          console.log("❌ SMS sending failed:", smsErr);
-        }
-
-        // 3️⃣ Send Join Scheme Notification
-        try {
-          await sendJoinSchemeNotification(
-            currentPaymentData.numericSchemeId,
-            parseFloat(currentPaymentData.schemeData.amount),
-            getSchemeName(currentPaymentData.numericSchemeId)
-          );
-          console.log("🔔 Join Scheme Notification sent");
-        } catch (notifErr) {
-          console.log("❌ Notification sending failed:", notifErr);
-        }
 
         // Hide loading and show success popup
         setProcessingPayment(false);
@@ -800,89 +821,148 @@ const AddNewMember = () => {
     await processOnlinePayment(schemeFormData, numericSchemeId);
   };
 
-  const processCashPayment = async (schemeFormData, numericSchemeId) => {
-    setIsSubmitting(true);
-    try {
-      const response = await fetch(
-        `${API_BASE_URL_OLD}/member/schemeid?schemeId=${numericSchemeId}`
-      );
-      if (!response.ok) throw new Error(`HTTP ${response.status}`);
-      const apiData = await response.json();
-      if (!apiData || apiData.length === 0)
-        throw new Error("No scheme data returned from API.");
+const processCashPayment = async (schemeFormData, numericSchemeId) => {
+  setIsSubmitting(true);
+  
+  try {
+    console.log("💰 Starting cash payment process...");
+    console.log("Scheme ID:", numericSchemeId);
+    console.log("Scheme Form Data:", schemeFormData);
 
-      let selectedRecord;
-
-      if (schemeFormData.amount) {
-        selectedRecord = apiData.find(
-          (item) =>
-            parseFloat(item.AMOUNT || 0) === parseFloat(schemeFormData.amount)
-        );
-      }
-
-      if (!selectedRecord) selectedRecord = apiData[0];
-
-      const groupCode = selectedRecord.GROUPCODE;
-      const regNo =
-        selectedRecord.CURRENTREGNO ||
-        selectedRecord.REGNO ||
-        generateRandomRegNo();
-
-      // ✅ Submit member data for CASH payment
-      await submitMemberData(
-        numericSchemeId,
-        schemeFormData,
-        groupCode,
-        regNo,
-        null, // no online payment
-        true // cash payment flag
-      );
-
-      // Send welcome SMS
-      await smsService.sendWelcomeSMS(
-        memberData.mobile,
-        memberData.name,
-        getSchemeName(numericSchemeId),
-        schemeFormData.amount,
-        new Date().toISOString().slice(0, 10),
-        "BMG JEWELLERS PVT LTD"
-      );
-
-      // Send Join Scheme Notification for cash payment
-      try {
-        await sendJoinSchemeNotification(
-          numericSchemeId,
-          parseFloat(schemeFormData.amount),
-          getSchemeName(numericSchemeId)
-        );
-        console.log("🔔 Join Scheme Notification sent (Cash)");
-      } catch (notifErr) {
-        console.log("❌ Notification sending failed:", notifErr);
-      }
-
-      Alert.alert(
-        "Success",
-        `Member added successfully to ${getSchemeName(numericSchemeId)}!`,
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              resetFormFields();
-              navigation.navigate("MainLanding");
-            },
-          },
-        ]
-      );
-    } catch (error) {
-      console.error("Error during member creation (cash):", error);
-      Alert.alert(
-        "Submission Error",
-        error.message || "Failed to create member. Please try again."
-      );
-    } finally {
+    if (!transformedMemberData) {
+      Alert.alert("Error", "Member data is missing. Please go back and fill member details.");
       setIsSubmitting(false);
+      return;
     }
-  };
+
+    // 1. Fetch scheme details
+    console.log("🔍 Fetching scheme details...");
+    const response = await fetch(
+      `${API_BASE_URL_OLD}/member/schemeid?schemeId=${numericSchemeId}`
+    );
+    
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error("API Error Response:", errorText);
+      throw new Error(`Failed to fetch scheme details: HTTP ${response.status}`);
+    }
+    
+    const apiData = await response.json();
+    console.log("Scheme API Data:", apiData);
+    
+    if (!apiData || apiData.length === 0) {
+      throw new Error("No scheme data available for the selected scheme.");
+    }
+
+    // 2. Select appropriate scheme record
+    let selectedRecord;
+    const targetAmount = parseFloat(schemeFormData.amount);
+
+    if (targetAmount > 0) {
+      // Try exact match
+      selectedRecord = apiData.find(
+        (item) => parseFloat(item.AMOUNT || 0) === targetAmount
+      );
+      
+      // If no exact match, find the closest amount
+      if (!selectedRecord) {
+        selectedRecord = apiData.find(
+          (item) => parseFloat(item.AMOUNT || 0) > 0
+        );
+      }
+    }
+
+    // Fallback to first record
+    if (!selectedRecord) {
+      selectedRecord = apiData[0];
+    }
+
+    console.log("Selected Scheme Record:", selectedRecord);
+
+    const groupCode = selectedRecord.GROUPCODE || "BMA"; // Default fallback
+    const regNo = selectedRecord.CURRENTREGNO || 
+                  selectedRecord.REGNO || 
+                  generateRandomRegNo();
+
+    console.log("Group Code:", groupCode);
+    console.log("Reg No:", regNo);
+
+    // 3. Submit member data
+    console.log("📤 Submitting member data...");
+    const success = await submitMemberData(
+      numericSchemeId,
+      schemeFormData,
+      groupCode,
+      regNo,
+      null, // No online payment response
+      true  // Cash payment flag
+    );
+
+    if (!success) {
+      throw new Error("Member data submission failed.");
+    }
+
+    // 5. Show success message
+    console.log("🎉 Cash payment process completed successfully");
+    
+    Alert.alert(
+      "Success",
+      `Member "${transformedMemberData.pName}" has been successfully added to "${getSchemeName(numericSchemeId)}" scheme!`,
+      [
+        {
+          text: "OK",
+          onPress: () => {
+            resetFormFields();
+            navigation.navigate("MainLanding");
+          },
+        },
+      ]
+    );
+
+  } catch (error) {
+    console.error("❌ Error during cash payment process:", error);
+    
+    let errorMessage = "Failed to create member. Please try again.";
+    
+    // Provide more specific error messages
+    if (error.message.includes("mobile")) {
+      errorMessage = "Mobile number validation failed. Please check the number.";
+    } else if (error.message.includes("Aadhaar")) {
+      errorMessage = "Aadhaar number validation failed. Please check the number.";
+    } else if (error.message.includes("HTTP")) {
+      errorMessage = "Network error. Please check your connection.";
+    } else if (error.message.includes("scheme data")) {
+      errorMessage = "Selected scheme is not available. Please try another scheme.";
+    } else if (error.message.includes("already exists")) {
+      errorMessage = "Member with these details already exists.";
+    } else if (error.message.includes("Member name")) {
+      errorMessage = "Member name is required.";
+    } else if (error.message.includes("Date of Birth")) {
+      errorMessage = "Date of Birth is required.";
+    }
+    
+    Alert.alert(
+      "Submission Error",
+      errorMessage,
+      [
+        {
+          text: "Retry",
+          onPress: () => {
+            // Optional: Retry logic
+            setIsSubmitting(false);
+          }
+        },
+        {
+          text: "Cancel",
+          onPress: () => setIsSubmitting(false),
+          style: "cancel"
+        }
+      ]
+    );
+  } finally {
+    setIsSubmitting(false);
+  }
+};
 
   const processOnlinePayment = async (schemeFormData, numericSchemeId) => {
     setIsProcessingPayment(true);
@@ -919,8 +999,8 @@ const AddNewMember = () => {
         generateRandomRegNo();
 
       // Prepare data for payment flow
-      const defaultName = `${memberData.name} ${memberData.surname}`.trim();
-      const defaultContact = memberData.mobile;
+      const defaultName = transformedMemberData ? `${transformedMemberData.pName} ${transformedMemberData.sName}`.trim() : "Customer";
+      const defaultContact = transformedMemberData?.mobile || "";
       const amount = schemeFormData.amount;
 
       // Step 1: Create payment order
@@ -962,12 +1042,12 @@ const AddNewMember = () => {
           schemeId: numericSchemeId,
           schemeName: getSchemeName(numericSchemeId),
         },
-        personalInfo: {
-          name: memberData.name,
-          surname: memberData.surname,
-          mobile: memberData.mobile,
-          email: memberData.email,
-        },
+        personalInfo: transformedMemberData ? {
+          name: transformedMemberData.pName,
+          surname: transformedMemberData.sName,
+          mobile: transformedMemberData.mobile,
+          email: transformedMemberData.email,
+        } : {},
       };
 
       // Store data for later use
@@ -998,33 +1078,13 @@ const AddNewMember = () => {
   };
 
   const resetFormFields = () => {
-    setMemberData({
-      namePrefix: "Mr",
-      name: "",
-      surname: "",
-      doorNo: "",
-      address1: "",
-      address2: "",
-      area: "",
-      city: "",
-      pincode: "",
-      selectedState: "",
-      country: "India",
-      mobile: "",
-      email: "",
-      panNumber: "",
-      aadharNumber: "",
-      dateOfBirth: "",
-      anniversaryDate: "",
-      maritalStatus: "",
-      nomeni: "",
-      mobile2: "",
-    });
+    // Clear transformed member data
+    setTransformedMemberData(null);
 
     // Reset to original route scheme if available
     setSelectedScheme({
       id: routeSchemeId ? Number(routeSchemeId) : null,
-      name: routeSchemeName || null
+      name: routeSchemeName || null,
     });
 
     setSchemeData({

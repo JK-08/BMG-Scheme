@@ -25,10 +25,6 @@ import { SafeAreaView } from "react-native-safe-area-context";
 // ==========================================
 const SCHEME_CONTENT = {
   tamil: {
-  
-
-   
-
     bright: [
       "வகை: மாதாந்திர நிலையான தவணை திட்டம்",
       "குறைந்தபட்ச தொகை: ₹1,000 (₹1000 அளவுகளில் கூடுதலாக செலுத்தலாம்)",
@@ -59,7 +55,6 @@ const SCHEME_CONTENT = {
   },
 
   english: {
-
     bright: [
       "Type: Monthly fixed payment plan",
       "Minimum Amount: ₹1,000 (and in multiples of ₹1000)",
@@ -100,11 +95,12 @@ const SchemeSection = React.memo(
 
       {(items ?? []).map((item, index) => {
         // Check if item is a header (contains colon or is just a label)
-        const isHeader = item.includes(":") || 
-                         item.includes("%") || 
-                         item === "Benefit Structure:" ||
-                         item === "திட்டப்பயன் தொகை அமைப்பு:";
-        
+        const isHeader =
+          item.includes(":") ||
+          item.includes("%") ||
+          item === "Benefit Structure:" ||
+          item === "திட்டப்பயன் தொகை அமைப்பு:";
+
         return (
           <View key={`${title}-${index}`} style={styles.featureItem}>
             {isHeader ? (
@@ -115,7 +111,9 @@ const SchemeSection = React.memo(
                   color={COLORS.primary}
                   style={styles.featureIcon}
                 />
-                <Text style={[styles.featureText, styles.headerText]}>{item}</Text>
+                <Text style={[styles.featureText, styles.headerText]}>
+                  {item}
+                </Text>
               </>
             ) : (
               <>
@@ -175,14 +173,18 @@ function BrightKnowMore() {
               onPress={toggleLanguage}
               activeOpacity={0.8}
             >
-              <Icon name="translate" size={SIZES.icon.sm} color={COLORS.white} />
+              <Icon
+                name="translate"
+                size={SIZES.icon.sm}
+                color={COLORS.white}
+              />
               <Text style={styles.languageButtonText}>
                 {isEnglish ? "தமிழ்" : "English"}
               </Text>
             </TouchableOpacity>
 
             {/* Scheme Sections */}
-           
+
             <SchemeSection title="BMG BRIGHT" items={content.bright} />
 
             {/* Terms */}
@@ -192,11 +194,12 @@ function BrightKnowMore() {
               {content.terms.map((item, index) => (
                 <View key={`term-${index}`} style={styles.featureItem}>
                   <Icon
-                    name="numeric"
-                    size={SIZES.icon.xs}
+                    name="circle-small"
+                    size={moderateScale(28)}
                     color={COLORS.primary}
                     style={{ marginTop: 4, marginRight: 8 }}
                   />
+
                   <Text style={styles.featureText}>{item}</Text>
                 </View>
               ))}
@@ -299,18 +302,18 @@ const styles = StyleSheet.create({
 
   featureText: {
     flex: 1,
-    minWidth: 0,        // ensures wrapping on all phones
+    minWidth: 0, // ensures wrapping on all phones
     flexShrink: 1,
     flexWrap: "wrap",
     ...FONTS.body,
-    color: "#000000",    // Changed to BLACK color
+    color: "#000000", // Changed to BLACK color
     lineHeight: SIZES.font.md * 1.6,
     textAlign: "left",
   },
 
   headerText: {
     ...FONTS.bodyBold,
-    color: "#000000",    // Changed to BLACK color
+    color: "#000000", // Changed to BLACK color
   },
 
   termsSection: {

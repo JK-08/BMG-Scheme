@@ -207,8 +207,26 @@ function MainLanding() {
   // Track notification initialization
   const notificationInitializedRef = useRef(false);
 
+  // Function to fetch remaining days for a scheme
+  const fetchRemainingDays = useCallback(async (schemeId, joinDate) => {
+    try {
+      const response = await fetch(
+        `${BASE_URL}/api/v1/scheme-bonus/all_remainingDays?schemeId=${schemeId}&joinDate=${joinDate}`
+      );
+      
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      
+      const data = await response.json();
+      return data.remainingDays || 0;
+    } catch (error) {
+      console.log("Error fetching remaining days:", error);
+      return 0; // Return 0 if there's an error
+    }
+  }, []);
+
   // -------------------- Notifications --------------------
-  // In your MainLanding component
   useEffect(() => {
     const initNotifications = async () => {
       try {
@@ -318,7 +336,7 @@ function MainLanding() {
         }
 
         // Process product data with scheme rules
-        const processed = accounts.map((item) => {
+        const processedPromises = accounts.map(async (item) => {
           const schemeName = item.schemeSummary?.schemeName?.trim();
           const schemeRule = rules[schemeName] || {};
 
@@ -346,12 +364,24 @@ function MainLanding() {
               0
             ) || 0;
 
+          // Fetch remaining days from API
+          let remainingDays = 0;
+          const schemeId = item.schemeSummary?.schemeId;
+          const joinDate = item.schemeSummary?.joinDate || item.joinDate;
+          
+          if (schemeId && joinDate) {
+            // Format joinDate if needed (YYYY-MM-DD format)
+            const formattedJoinDate = joinDate.split('T')[0]; // Remove time part if exists
+            remainingDays = await fetchRemainingDays(schemeId, formattedJoinDate);
+          }
+
           return {
             ...item,
             status: "Active",
             regno: item.regNo,
             groupcode: item.groupCode,
             pname: item.pname || item.personalInfo?.pName,
+            remainingDays: remainingDays, // Use the fetched remaining days
 
             // Enhanced scheme summary with API rules
             schemeSummary: {
@@ -377,6 +407,10 @@ function MainLanding() {
           };
         });
 
+        // Wait for all remaining days to be fetched
+        const processed = await Promise.all(processedPromises);
+
+        console.log("Processed product data with remainingDays:", processed);
         setProductData(processed);
       } catch (err) {
         console.log("Error in fetchProductData:", err);
@@ -390,24 +424,21 @@ function MainLanding() {
         }
       }
     },
-    [fetchSchemeRules]
+    [fetchSchemeRules, fetchRemainingDays]
   );
 
   // Initial load
   useEffect(() => {
     fetchProductData(false);
     fetchSchemes();
-    // intentionally empty deps to match original behavior
-    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
-  // useFocusEffect to refresh when screen focused (keeps previous behavior)
+  // useFocusEffect to refresh when screen focused
   useFocusEffect(
     useCallback(() => {
       if (!initialLoad) {
         fetchProductData(true);
       }
-      // no cleanup needed other than preserving previous behavior
     }, [initialLoad, fetchProductData])
   );
 
@@ -430,6 +461,7 @@ function MainLanding() {
 
   const renderProductCard = useCallback(
     (item) => {
+      console.log("Rendering ProductCard with remainingDays:", item.remainingDays);
       return (
         <View style={styles.productCardContainer}>
           <ProductCard
@@ -437,6 +469,7 @@ function MainLanding() {
             navigation={navigation}
             onPress={() => console.log("Pressed", item)}
             onPayNow={() => handlePayNow(item)}
+            remainingDate={item.remainingDays || 0} // Pass remaining days to ProductCard
           />
         </View>
       );
@@ -444,7 +477,7 @@ function MainLanding() {
     [navigation, handlePayNow]
   );
 
-  // Memoized header component to avoid recreating on each render
+  // Memoized header component
   const HeaderComponent = useMemo(
     () => (
       <MainLandingHeader
@@ -505,7 +538,6 @@ const MainLandingHeader = React.memo(function MainLandingHeader({
   schemesError,
   renderProductCard,
 }) {
-  // stable renderer for schemes list to avoid inline component recreation
   const renderSchemeItem = useCallback(
     (scheme) => (
       <View style={styles.goldPlanContainer}>
