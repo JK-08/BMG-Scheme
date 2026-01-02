@@ -39,6 +39,7 @@ import {
   removeNotificationListeners,
   sendLocalNotification,
 } from "../../utils/Notification";
+import { API_BASE_URL } from "../../Config/API";
 
 const { width: SCREEN_WIDTH } = Dimensions.get("window");
 const BASE_URL = "https://scheme.bmgjewellers.com";
@@ -211,7 +212,7 @@ function MainLanding() {
   const fetchRemainingDays = useCallback(async (schemeId, joinDate) => {
     try {
       const response = await fetch(
-        `${BASE_URL}/api/v1/scheme-bonus/all_remainingDays?schemeId=${schemeId}&joinDate=${joinDate}`
+        `${API_BASE_URL}/scheme-bonus/all_remainingDays?schemeId=${schemeId}&joinDate=${joinDate}`
       );
       
       if (!response.ok) {

@@ -287,7 +287,7 @@ const BuyPage = () => {
 
       // API call
       const response = await fetch(
-        `https://scheme.bmgjewellers.com/api/orders/create`,
+        `${API_BASE_URL}/orders/create`,
         {
           method: "POST",
           headers: {

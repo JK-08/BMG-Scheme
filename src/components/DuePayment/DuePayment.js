@@ -15,6 +15,7 @@ import CommonHeader from "../CommonHeader/CommonHeader";
 import BottomTab from "../BottomTab/BottomTab";
 import { useNavigation } from "@react-navigation/native";
 import { getAllSchemes } from "../../services/SchemeNameService";
+import { API_BASE_URL_OLD } from "../../Config/API";
 
 const SchemeDetailsScreen = ({ route }) => {
   const navigation = useNavigation();
@@ -26,7 +27,7 @@ const SchemeDetailsScreen = ({ route }) => {
 
   // Phone number from your API endpoint
   const phoneNumber = "7603905056";
-  const API_URL = `https://scheme.bmgjewellers.com/v1/api/account/phone_details?phoneNo=${phoneNumber}`;
+  const API_URL = `${API_BASE_URL_OLD}/account/phone_details?phoneNo=${phoneNumber}`;
 
   // Fetch scheme rules
   const fetchSchemeRules = async () => {

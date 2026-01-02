@@ -177,7 +177,7 @@ const PaymentWebView = () => {
       };
 
       const response = await fetch(
-        "https://scheme.bmgjewellers.com/api/v1/payment/status",
+        `${API_BASE_URL}/payment/status`,
         {
           method: "POST",
           headers: {

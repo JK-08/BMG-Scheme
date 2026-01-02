@@ -1,5 +1,11 @@
-import React, { useMemo, useRef, useState ,useEffect} from "react";
-import { View, TouchableOpacity, StyleSheet, Dimensions ,Animated } from "react-native";
+import React, { useMemo, useRef, useState, useEffect } from "react";
+import {
+  View,
+  TouchableOpacity,
+  StyleSheet,
+  Dimensions,
+  Animated,
+} from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import MaterialIcons from "react-native-vector-icons/MaterialIcons";
 import { TextDefault } from "../../components";
@@ -11,8 +17,13 @@ const { COLORS, SIZES, FONTS, SHADOWS, moderateScale } = theme;
 const { width } = Dimensions.get("window");
 const CARD_WIDTH = width;
 
-function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate }) {
-
+function ProductCard({
+  productData,
+  navigation,
+  onPress,
+  onPayNow,
+  remainingDate,
+}) {
   const item = Array.isArray(productData) ? productData[0] : productData;
   const [revealed, setRevealed] = useState(false);
   const scaleAnim = useRef(new Animated.Value(1)).current;
@@ -29,21 +40,21 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
     bonusAmount,
     nextDueDate,
     pName,
-    schemeClosedSummary
+    schemeClosedSummary,
   } = item;
-  
+
   const summary = item.schemeSummary || {};
   const trans = item.schemaSummaryTransBalance || {};
   const schemeType = summary.schemeType || {};
   console.log("remainingDate:", remainingDate);
 
-
   // Check if scheme is closed
-  const isSchemeClosed = schemeClosedSummary && 
-    schemeClosedSummary.doClose !== "1900-01-01 00:00:00.0" && 
-    schemeClosedSummary.billNo && 
+  const isSchemeClosed =
+    schemeClosedSummary &&
+    schemeClosedSummary.doClose !== "1900-01-01 00:00:00.0" &&
+    schemeClosedSummary.billNo &&
     schemeClosedSummary.billNo.trim() !== "";
-  
+
   const isAmountScheme = schemeType.isAmountScheme;
   const isDigitalScheme = schemeType.isDigitalScheme;
   const isFixedDeposit = schemeType.isFixedDeposit;
@@ -57,11 +68,14 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
   const today = new Date();
   const maturityDt = maturityDate ? new Date(maturityDate) : null;
 
-  const showPayButton = !isSchemeClosed && (
-    (isAmountScheme && insPaid < totalInstalments && maturityDt && today <= maturityDt) ||
-    (isDigitalScheme && maturityDt && today <= maturityDt) ||
-    (isFixedDeposit && insPaid < 1)
-  );
+  const showPayButton =
+    !isSchemeClosed &&
+    ((isAmountScheme &&
+      insPaid < totalInstalments &&
+      maturityDt &&
+      today <= maturityDt) ||
+      (isDigitalScheme && maturityDt && today <= maturityDt) ||
+      (isFixedDeposit && insPaid < 1));
 
   const nextDue = nextDueDate
     ? new Date(nextDueDate).toLocaleDateString("en-GB").replace(/\//g, "-")
@@ -72,12 +86,16 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
     : "--";
 
   const amountReceived = parseInt(trans.amtrecd || 0);
-  
+
   // Get closed date if scheme is closed
-  const closedDate = isSchemeClosed && schemeClosedSummary.closeDate && 
+  const closedDate =
+    isSchemeClosed &&
+    schemeClosedSummary.closeDate &&
     schemeClosedSummary.closeDate !== "1900-01-01 00:00:00.0"
-    ? new Date(schemeClosedSummary.closeDate).toLocaleDateString("en-GB").replace(/\//g, "-")
-    : "--";
+      ? new Date(schemeClosedSummary.closeDate)
+          .toLocaleDateString("en-GB")
+          .replace(/\//g, "-")
+      : "--";
 
   // -------------------------------
   // Send due SMS if within 7 days (only for active schemes)
@@ -92,7 +110,6 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
     }
   }, [item, isSchemeClosed]);
 
- 
   useEffect(() => {
     if (revealed || remainingDate <= 0) return;
 
@@ -129,9 +146,6 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
     return () => pulse.stop();
   }, [revealed, remainingDate]);
 
-
-
-
   return (
     <TouchableOpacity
       activeOpacity={0.9}
@@ -140,7 +154,11 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
     >
       <LinearGradient
         // Change gradient for closed schemes
-        colors={isSchemeClosed ? ["#6B7280", "#9CA3AF", "#6B7280"] : ["#FF5A1F", "#FF6A2E", "#FF5A1F"]}
+        colors={
+          isSchemeClosed
+            ? ["#6B7280", "#9CA3AF", "#6B7280"]
+            : ["#FF5A1F", "#FF6A2E", "#FF5A1F"]
+        }
         start={{ x: 0, y: 0 }}
         end={{ x: 1, y: 1 }}
         style={styles.cardContainer}
@@ -149,15 +167,23 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
         <View style={styles.circleMedium} />
 
         <TextDefault style={styles.schemeName}>
-          {pName.toUpperCase()}'S {summary.schemeName}
-
+          {pName.length > 17
+            ? `${pName.substring(0, 17).toUpperCase()}...`
+            : pName.toUpperCase()}
           {isSchemeClosed && " (Closed)"}
         </TextDefault>
 
-        <TextDefault style={styles.policyInfo}>
-          {groupCode} – {regNo}
-          {isSchemeClosed && schemeClosedSummary.billNo && ` • Bill: ${schemeClosedSummary.billNo}`}
-        </TextDefault>
+        <View style={styles.schemeDetails}>
+          <TextDefault style={styles.policyInfo}>
+            {summary.schemeName}
+          </TextDefault>
+          <TextDefault style={styles.policyInfo}>
+            {groupCode} – {regNo}
+            {isSchemeClosed &&
+              schemeClosedSummary.billNo &&
+              ` • Bill: ${schemeClosedSummary.billNo}`}
+          </TextDefault>
+        </View>
 
         {showPayButton && (
           <TouchableOpacity
@@ -175,14 +201,21 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
             <TextDefault style={styles.nextDueValue}>{closedDate}</TextDefault>
             {schemeClosedSummary.closedBy && (
               <TextDefault style={styles.closedByText}>
-                Closed by: {schemeClosedSummary.closedBy || schemeClosedSummary.empName || "Admin"}
+                Closed by:{" "}
+                {schemeClosedSummary.closedBy ||
+                  schemeClosedSummary.empName ||
+                  "Admin"}
               </TextDefault>
             )}
           </View>
         ) : (
-          isAmountScheme && nextDueDate != null && nextDueDate !== "" && (
+          isAmountScheme &&
+          nextDueDate != null &&
+          nextDueDate !== "" && (
             <View style={styles.nextDueContainer}>
-              <TextDefault style={styles.nextDueLabel}>Next Due Date</TextDefault>
+              <TextDefault style={styles.nextDueLabel}>
+                Next Due Date
+              </TextDefault>
               <TextDefault style={styles.nextDueValue}>{nextDue}</TextDefault>
             </View>
           )
@@ -228,32 +261,42 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
             >
               {!revealed ? (
                 <>
-                <View style={{display:'flex' , flexDirection:'column' ,justifyContent:'space-between'}}>
-                  <View style={{ alignItems: "center", justifyContent: "center" }}>
-                    {remainingDate > 0 && (
-                      <Animated.View
-                        style={{
-                          position: "absolute",                 
-                          transform: [{ scale: glowScale }],
-                          opacity: glowOpacity,
-                        }}
+                  <View
+                    style={{
+                      display: "flex",
+                      flexDirection: "column",
+                      justifyContent: "space-between",
+                    }}
+                  >
+                    <View
+                      style={{ alignItems: "center", justifyContent: "center" }}
+                    >
+                      {remainingDate > 0 && (
+                        <Animated.View
+                          style={{
+                            position: "absolute",
+                            transform: [{ scale: glowScale }],
+                            opacity: glowOpacity,
+                          }}
+                        />
+                      )}
+                      <MaterialIcons
+                        name="card-giftcard"
+                        size={34}
+                        color="#F59E0B"
                       />
-                    )}
-                    <MaterialIcons
-                      name="card-giftcard"
-                      size={34}
-                      color="#F59E0B"
-                    />
+                    </View>
+                    <View
+                      style={{ alignItems: "center", justifyContent: "center" }}
+                    >
+                      {/* <TextDefault style={styles.infoLabel}>Surprise Gift 🎁</TextDefault> */}
+                      <TextDefault style={styles.infoSub}>
+                        {remainingDate > 0
+                          ? `Unlocks in ${remainingDate} days`
+                          : "Tap to reveal"}
+                      </TextDefault>
+                    </View>
                   </View>
-                  <View style={{ alignItems: "center", justifyContent: "center" }}>
-                  <TextDefault style={styles.infoLabel}>Surprise Gift 🎁</TextDefault>
-                  <TextDefault style={styles.infoSub}>
-                    {remainingDate > 0
-                      ? `Unlocks in ${remainingDate} days`
-                      : "Tap to reveal"}
-                  </TextDefault>
-                  </View>
-                </View>
                 </>
               ) : (
                 <>
@@ -265,13 +308,15 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
                   <TextDefault style={styles.infoValue}>
                     ₹{parseInt(bonusAmount || 0).toLocaleString("en-IN")}
                   </TextDefault>
-                  <TextDefault style={styles.infoSub}>Benefit unlocked ✨</TextDefault>
+                  <TextDefault style={styles.infoSub}>
+                    Benefit unlocked ✨
+                  </TextDefault>
                 </>
               )}
             </Animated.View>
           </TouchableOpacity>
         </View>
-        
+
         {schemeType.isDigitalScheme ? (
           <TextDefault style={styles.installmentText}>
             Installments – {insPaid}
@@ -294,29 +339,22 @@ function ProductCard({ productData, navigation, onPress, onPayNow ,remainingDate
           <TouchableOpacity
             style={styles.showMoreButton}
             onPress={() =>
-              navigation.navigate("ProductDescription", { 
+              navigation.navigate("ProductDescription", {
                 productData: item,
-                isSchemeClosed: isSchemeClosed 
+                isSchemeClosed: isSchemeClosed,
               })
             }
           >
             <TextDefault style={styles.showMoreText}>Show More →</TextDefault>
           </TouchableOpacity>
-          
-        
         </View>
         <View style={styles.activeStateContainer}>
-
-          <TextDefault style={[
-            styles.statusLive,
-            isSchemeClosed && styles.statusClosed
-          ]}>
+          <TextDefault
+            style={[styles.statusLive, isSchemeClosed && styles.statusClosed]}
+          >
             {isSchemeClosed ? "Closed" : "Active"}
           </TextDefault>
-
-
         </View>
-    
       </LinearGradient>
     </TouchableOpacity>
   );
@@ -398,6 +436,12 @@ const styles = StyleSheet.create({
     ...FONTS.h6,
     alignSelf: "center",
   },
+  schemeDetails: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 10,
+  },
   schemeName: {
     ...FONTS.h3,
     color: COLORS.white,
@@ -405,7 +449,7 @@ const styles = StyleSheet.create({
     marginBottom: SIZES.margin.xs,
   },
   policyInfo: {
-    ...FONTS.bodyLarge,
+    ...FONTS.h5,
     color: COLORS.white,
     textAlign: "center",
     opacity: 0.9,
@@ -422,7 +466,7 @@ const styles = StyleSheet.create({
   payButtonText: {
     ...FONTS.button,
     fontSize: SIZES.font.xxl,
-    textTransform:'capitalize'
+    textTransform: "capitalize",
   },
   nextDueContainer: {
     alignItems: "center",
@@ -505,9 +549,9 @@ const styles = StyleSheet.create({
     fontSize: SIZES.font.lg,
   },
   activeStateContainer: {
-    position:'absolute',
-    bottom:8,
-    right:5,
+    position: "absolute",
+    bottom: 8,
+    right: 5,
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.lg,
     paddingVertical: SIZES.padding.sm,
@@ -516,7 +560,7 @@ const styles = StyleSheet.create({
     marginTop: SIZES.margin.xl,
   },
   infoSub: {
-    ...FONTS.caption,
+    ...FONTS.caption+1,
     color: COLORS.textSecondary,
     marginTop: SIZES.margin.xs,
     textAlign: "center",

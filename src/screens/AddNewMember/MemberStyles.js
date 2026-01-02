@@ -1,4 +1,5 @@
-import { StyleSheet } from "react-native";
+// styles.js
+import { StyleSheet, Platform } from "react-native";
 import { SHADOWS, COLORS, SIZES, FONTS } from "../../utils/AppTheme";
 
 export const styles = StyleSheet.create({
@@ -6,25 +7,20 @@ export const styles = StyleSheet.create({
     flex: 1,
     backgroundColor: COLORS.background,
   },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.background,
+  },
+  loadingText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin.md,
+  },
   scrollContent: {
     padding: SIZES.padding.lg,
   },
-  modeBadge: {
-  flexDirection: 'row',
-  alignItems: 'center',
-  backgroundColor: COLORS.primary + '10',
-  paddingHorizontal: 8,
-  paddingVertical: 4,
-  borderRadius: 12,
-  alignSelf: 'flex-start',
-  marginTop: 4,
-},
-modeText: {
-  fontSize: 12,
-  color: COLORS.primary,
-  marginLeft: 4,
-  fontWeight: '500',
-},
   header: {
     backgroundColor: COLORS.primary,
     padding: SIZES.padding.lg,
@@ -38,6 +34,7 @@ modeText: {
     position: "absolute",
     left: SIZES.padding.lg,
     top: SIZES.padding.lg,
+    zIndex: 1,
   },
   clearBtn: {
     position: "absolute",
@@ -46,16 +43,19 @@ modeText: {
     backgroundColor: COLORS.primaryDark,
     padding: SIZES.padding.xs,
     borderRadius: SIZES.radius.full,
+    zIndex: 1,
   },
   headerTitle: {
     ...FONTS.h4,
     color: COLORS.white,
     marginTop: SIZES.margin.sm,
+    textAlign: "center",
   },
   headerSubtitle: {
     ...FONTS.bodySmall,
     color: COLORS.white,
     marginTop: SIZES.margin.xs,
+    textAlign: "center",
   },
   section: {
     backgroundColor: COLORS.white,
@@ -66,31 +66,42 @@ modeText: {
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
-  lockedSection: {
-    opacity: 0.7,
-    backgroundColor: COLORS.inputBackground,
-  },
-  sectionHeader: {
-    marginBottom: SIZES.margin.md,
-  },
   sectionTitle: {
     ...FONTS.h5,
     color: COLORS.textPrimary,
+    marginBottom: SIZES.margin.md,
   },
-  lockedTitle: {
+  subSectionTitle: {
+    ...FONTS.h6,
     color: COLORS.textSecondary,
+    marginBottom: SIZES.margin.sm,
+    marginTop: SIZES.margin.md,
+    fontWeight: "600",
   },
-  lockedMessage: {
-    ...FONTS.caption,
-    color: COLORS.warning,
-    marginTop: SIZES.margin.xs,
-    fontStyle: "italic",
+  autoFillTitle: {
+    ...FONTS.h6,
+    color: COLORS.success,
+    marginBottom: SIZES.margin.sm,
+    marginTop: SIZES.margin.md,
+    fontWeight: "600",
   },
   optionalNote: {
     ...FONTS.caption,
     color: COLORS.textSecondary,
     fontStyle: "italic",
     marginBottom: SIZES.margin.md,
+  },
+  input1: {
+    height: SIZES.input.height,
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.md,
+    paddingHorizontal: SIZES.padding.xl,
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    borderWidth: 1.5,
+    borderColor: COLORS.border,
+    flexDirection: "row",
+    alignItems: "center",
   },
   inputGroup: {
     marginBottom: SIZES.margin.md,
@@ -100,39 +111,19 @@ modeText: {
     color: COLORS.textPrimary,
     marginBottom: SIZES.margin.xs,
   },
-  disabledLabel: {
-    color: COLORS.textSecondary,
-  },
   input: {
     height: SIZES.input.height,
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.radius.md,
     paddingHorizontal: SIZES.padding.md,
-    justifyContent: "center",
     ...FONTS.body,
     color: COLORS.textPrimary,
     borderWidth: 1.5,
     borderColor: COLORS.border,
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "space-between",
-  },
-  disabledInput: {
-    backgroundColor: COLORS.inputBackground,
-    borderColor: COLORS.borderLight,
-    opacity: 0.7,
   },
   errorInput: {
     borderColor: COLORS.error,
     borderWidth: 2,
-  },
-  verifiedInput: {
-    borderColor: COLORS.success,
-    backgroundColor: COLORS.successLight,
-  },
-  pendingInput: {
-    borderColor: COLORS.warning,
-    backgroundColor: COLORS.warningLight,
   },
   dateText: {
     ...FONTS.body,
@@ -143,9 +134,6 @@ modeText: {
     ...FONTS.body,
     color: COLORS.inputPlaceholder,
     flex: 1,
-  },
-  disabledText: {
-    color: COLORS.inputPlaceholderDisabled,
   },
   dateIcon: {
     marginLeft: SIZES.margin.sm,
@@ -165,11 +153,6 @@ modeText: {
     justifyContent: "center",
     alignItems: "center",
     marginHorizontal: SIZES.margin.xs,
-  },
-  disabledCheckbox: {
-    backgroundColor: COLORS.inputBackground,
-    borderColor: COLORS.borderLight,
-    opacity: 0.7,
   },
   checkboxSelected: {
     backgroundColor: COLORS.primary,
@@ -208,11 +191,17 @@ modeText: {
     color: COLORS.error,
     marginTop: SIZES.margin.xs,
   },
-  loadingText: {
+  infoText: {
     ...FONTS.caption,
     color: COLORS.info,
     marginTop: SIZES.margin.xs,
     fontStyle: "italic",
+  },
+  successText: {
+    ...FONTS.caption,
+    color: COLORS.success,
+    marginTop: SIZES.margin.xs,
+    fontWeight: "600",
   },
   confirmBtn: {
     backgroundColor: COLORS.primary,
@@ -231,12 +220,6 @@ modeText: {
     color: COLORS.white,
   },
   // Aadhaar specific styles
-  aadhaarHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-    marginBottom: SIZES.margin.xs,
-  },
   aadhaarContainer: {
     flexDirection: "row",
     alignItems: "center",
@@ -245,165 +228,172 @@ modeText: {
     flex: 1,
     marginRight: SIZES.margin.sm,
   },
-  aadhaarActions: {
-    flexDirection: "row",
-  },
-  aadhaarButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    paddingHorizontal: SIZES.padding.sm,
-    paddingVertical: SIZES.padding.xs,
-    borderRadius: SIZES.radius.sm,
-    marginLeft: SIZES.margin.xs,
-  },
-  viewDetailsButton: {
-    backgroundColor: COLORS.infoLight,
-    borderWidth: 1,
-    borderColor: COLORS.info,
-  },
-  viewDetailsText: {
-    ...FONTS.caption,
-    color: COLORS.info,
-    marginLeft: 4,
-    fontWeight: "600",
-  },
-  clearButton: {
-    backgroundColor: COLORS.errorLight,
-    borderWidth: 1,
-    borderColor: COLORS.error,
-  },
-  clearText: {
-    ...FONTS.caption,
-    color: COLORS.error,
-    marginLeft: 4,
-    fontWeight: "600",
-  },
   verifyButton: {
-    flexDirection: "row",
-    alignItems: "center",
     backgroundColor: COLORS.primary,
     paddingHorizontal: SIZES.padding.md,
     paddingVertical: SIZES.padding.sm,
     borderRadius: SIZES.radius.md,
-    minHeight: SIZES.input.height,
-    justifyContent: "center",
-    minWidth: 100,
-  },
-  verifyButtonDisabled: {
-    backgroundColor: COLORS.disabled,
+    minWidth: 80,
+    alignItems: "center",
   },
   verifyButtonText: {
     ...FONTS.bodySmall,
     color: COLORS.white,
-    marginLeft: SIZES.margin.xs,
     fontWeight: "600",
   },
-  pendingButton: {
-    backgroundColor: COLORS.warning,
-  },
-  verifiedBadge: {
+  verificationStatus: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: COLORS.successLight,
-    paddingHorizontal: SIZES.padding.sm,
-    paddingVertical: 4,
-    borderRadius: SIZES.radius.sm,
-    borderWidth: 1,
-    borderColor: COLORS.success,
+    marginTop: SIZES.margin.xs,
   },
-  verifiedText: {
-    ...FONTS.caption,
-    color: COLORS.success,
-    marginLeft: 4,
-    fontWeight: "600",
-  },
-  pendingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.warningLight,
-    paddingHorizontal: SIZES.padding.sm,
-    paddingVertical: 4,
-    borderRadius: SIZES.radius.sm,
-    borderWidth: 1,
-    borderColor: COLORS.warning,
-  },
-  pendingText: {
-    ...FONTS.caption,
-    color: COLORS.warning,
-    marginLeft: 4,
-    fontWeight: "600",
-  },
-  failedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.errorLight,
-    paddingHorizontal: SIZES.padding.sm,
-    paddingVertical: 4,
-    borderRadius: SIZES.radius.sm,
-    borderWidth: 1,
-    borderColor: COLORS.error,
-  },
-  failedText: {
-    ...FONTS.caption,
-    color: COLORS.error,
-    marginLeft: 4,
-    fontWeight: "600",
-  },
-  initiatedBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: COLORS.infoLight,
-    paddingHorizontal: SIZES.padding.sm,
-    paddingVertical: 4,
-    borderRadius: SIZES.radius.sm,
-    borderWidth: 1,
-    borderColor: COLORS.info,
-  },
-  initiatedText: {
+  verifyingText: {
     ...FONTS.caption,
     color: COLORS.info,
-    marginLeft: 4,
-    fontWeight: "600",
+    marginLeft: SIZES.margin.xs,
   },
-  notStartedBadge: {
+  // Consent Modal Styles
+  consentModalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+    padding: SIZES.padding.lg,
+  },
+  consentModalContent: {
+    backgroundColor: COLORS.white,
+    borderRadius: 16,
+    width: "100%",
+    maxWidth: 400,
+    maxHeight: "80%",
+    overflow: "hidden",
+    ...SHADOWS.lg,
+  },
+  consentModalHeader: {
     flexDirection: "row",
     alignItems: "center",
+    padding: 20,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    position: "relative",
+  },
+  consentModalTitle: {
+    ...FONTS.h5,
+    color: COLORS.textPrimary,
+    marginLeft: 12,
+    flex: 1,
+  },
+  consentModalClose: {
+    padding: 4,
+  },
+  consentModalBody: {
+    padding: 20,
+  },
+  consentModalButtons: {
+    flexDirection: "row",
+    padding: 16,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+  },
+  consentCancelButton: {
+    flex: 1,
+    padding: 14,
     backgroundColor: COLORS.inputBackground,
-    paddingHorizontal: SIZES.padding.sm,
-    paddingVertical: 4,
-    borderRadius: SIZES.radius.sm,
+    borderRadius: 10,
+    alignItems: "center",
+    marginRight: 10,
+  },
+  consentCancelButtonText: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    fontWeight: "600",
+  },
+  consentConfirmButton: {
+    flex: 1,
+    padding: 14,
+    backgroundColor: COLORS.primary,
+    borderRadius: 10,
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    marginLeft: 10,
+  },
+  consentConfirmButtonText: {
+    ...FONTS.body,
+    color: COLORS.white,
+    fontWeight: "600",
+    marginLeft: 8,
+  },
+  // Consent Form Specific Styles
+  consentTitle: {
+    ...FONTS.h6,
+    color: COLORS.primary,
+    marginBottom: 16,
+    textAlign: "center",
+    fontWeight: "600",
+  },
+  consentText: {
+    ...FONTS.bodySmall,
+    color: COLORS.textPrimary,
+    marginBottom: 12,
+    lineHeight: 20,
+  },
+  aadhaarComparisonContainer: {
+    backgroundColor: COLORS.inputBackground,
+    padding: 16,
+    borderRadius: 8,
+    marginVertical: 16,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
-  notStartedText: {
-    ...FONTS.caption,
-    color: COLORS.textSecondary,
-    marginLeft: 4,
+  comparisonTitle: {
+    ...FONTS.label,
+    color: COLORS.textPrimary,
+    marginBottom: 12,
     fontWeight: "600",
   },
-  statusMessages: {
-    marginTop: SIZES.margin.xs,
+  comparisonRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    marginBottom: 8,
   },
-  aadhaarNote: {
-    ...FONTS.caption,
+  comparisonLabel: {
+    ...FONTS.bodySmall,
     color: COLORS.textSecondary,
-    marginTop: SIZES.margin.xs,
-    fontStyle: "italic",
   },
-  infoNote: {
-    ...FONTS.caption,
-    color: COLORS.info,
-    fontStyle: "italic",
-  },
-  successNote: {
-    ...FONTS.caption,
-    color: COLORS.success,
+  comparisonValue: {
+    ...FONTS.bodySmall,
+    color: COLORS.textPrimary,
+    fontFamily: Platform.OS === "ios" ? "Courier" : "monospace",
     fontWeight: "600",
   },
-  errorNote: {
+  aadhaarWarning: {
     ...FONTS.caption,
     color: COLORS.error,
-    fontStyle: "italic",
+    marginTop: 12,
+    fontWeight: "600",
+    textAlign: "center",
+  },
+  confirmationCheckboxContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: COLORS.inputBackground,
+    padding: 12,
+    borderRadius: 8,
+    marginTop: 16,
+    marginBottom: 8,
+  },
+  checkboxIconContainer: {
+    marginRight: 10,
+  },
+  confirmationText: {
+    ...FONTS.bodySmall,
+    color: COLORS.textPrimary,
+    flex: 1,
+    lineHeight: 20,
+  },
+  consentConfirmButtonDisabled: {
+    backgroundColor: COLORS.disabled,
+    opacity: 0.7,
   },
   // Modal Styles
   modalOverlay: {
@@ -419,8 +409,6 @@ modeText: {
     padding: SIZES.padding.lg,
     width: "100%",
     maxWidth: 400,
-  },
-  detailsModalContent: {
     maxHeight: "80%",
   },
   modalHeader: {
@@ -483,69 +471,75 @@ modeText: {
     justifyContent: "space-between",
     marginTop: SIZES.margin.lg,
   },
-  wideButton: {
-    flex: 1,
-    marginHorizontal: SIZES.margin.xs,
-  },
   cancelButton: {
+    flex: 1,
     height: SIZES.button.md,
     backgroundColor: COLORS.inputBackground,
     borderRadius: SIZES.radius.md,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: SIZES.padding.md,
+    marginRight: SIZES.margin.sm,
   },
   cancelButtonText: {
     ...FONTS.button,
     color: COLORS.textSecondary,
   },
   setButton: {
+    flex: 1,
     height: SIZES.button.md,
     backgroundColor: COLORS.primary,
     borderRadius: SIZES.radius.md,
     justifyContent: "center",
     alignItems: "center",
-    paddingHorizontal: SIZES.padding.md,
+    marginLeft: SIZES.margin.sm,
   },
   setButtonText: {
     ...FONTS.button,
     color: COLORS.white,
   },
-  // Aadhaar details modal styles
-  detailsScrollView: {
-    maxHeight: 300,
+  // WebView Styles
+  webViewContainer: {
+    flex: 1,
+    backgroundColor: COLORS.background,
   },
-  detailsSection: {
-    marginBottom: SIZES.margin.lg,
-  },
-  detailsSectionTitle: {
-    ...FONTS.h6,
-    color: COLORS.primary,
-    marginBottom: SIZES.margin.md,
-    borderBottomWidth: 1,
-    borderBottomColor: COLORS.borderLight,
-    paddingBottom: SIZES.padding.xs,
-  },
-  detailRow: {
+  webViewHeader: {
+    backgroundColor: COLORS.primary,
     flexDirection: "row",
-    marginBottom: SIZES.margin.sm,
+    alignItems: "center",
+    justifyContent: "space-between",
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.sm,
+    paddingTop: Platform.OS === "ios" ? SIZES.padding.xl : SIZES.padding.sm,
   },
-  detailLabel: {
-    ...FONTS.body,
-    color: COLORS.textSecondary,
-    width: 120,
+  webViewBackButton: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  webViewBackText: {
+    ...FONTS.bodySmall,
+    color: COLORS.white,
+    marginLeft: SIZES.margin.xs,
+  },
+  webViewTitle: {
+    ...FONTS.h6,
+    color: COLORS.white,
     fontWeight: "600",
   },
-  detailValue: {
-    ...FONTS.body,
-    color: COLORS.textPrimary,
+  webViewPlaceholder: {
+    width: 60,
+  },
+  webView: {
     flex: 1,
   },
-  modalQuestion: {
+  webViewLoading: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: COLORS.background,
+  },
+  webViewLoadingText: {
     ...FONTS.body,
-    color: COLORS.textPrimary,
-    textAlign: "center",
-    marginVertical: SIZES.margin.lg,
-    fontWeight: "600",
+    color: COLORS.textSecondary,
+    marginTop: SIZES.margin.md,
   },
 });

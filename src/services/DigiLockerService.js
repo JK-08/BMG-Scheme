@@ -14,7 +14,7 @@ export const AADHAAR_STATUS = {
 
 class DigiLockerService {
   constructor() {
-    this.baseURL = API_BASE_URL || 'https://scheme.bmgjewellers.com/api/v1';
+    this.baseURL = API_BASE_URL;
   }
 
   /**

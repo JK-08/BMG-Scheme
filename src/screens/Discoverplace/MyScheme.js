@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback } from "react";
 import {
   View,
   FlatList,
@@ -17,6 +17,10 @@ import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { getPhoneDetails } from "../../services/SchemeDetailsService";
 import { getAllSchemes } from "../../services/SchemeNameService";
 import { COLORS } from "../../utils/Theme";
+import { API_BASE_URL } from "../../Config/API";
+
+// Add your BASE_URL
+const BASE_URL = API_BASE_URL;
 
 function DiscoverPlace({ navigation }) {
   const [productData, setProductData] = useState([]);
@@ -25,6 +29,79 @@ function DiscoverPlace({ navigation }) {
   const [error, setError] = useState(null);
   const [initialLoad, setInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Enhanced fetchRemainingDays function with date formatting
+  const fetchRemainingDays = useCallback(async (schemeId, joinDate) => {
+    try {
+      console.log(`📡 Fetching remaining days for schemeId: ${schemeId}, joinDate: ${joinDate}`);
+      
+      // Format joinDate to YYYY-MM-DD if needed
+      let formattedDate = joinDate;
+      
+      // If joinDate is not in YYYY-MM-DD format, convert it
+      if (joinDate && !/^\d{4}-\d{2}-\d{2}$/.test(joinDate)) {
+        const dateObj = new Date(joinDate);
+        if (!isNaN(dateObj)) {
+          formattedDate = dateObj.toISOString().split('T')[0];
+          console.log(`📅 Formatted date from ${joinDate} to ${formattedDate}`);
+        }
+      }
+      
+      // Format the URL
+      const url = `${BASE_URL}/scheme-bonus/all_remainingDays?schemeId=${encodeURIComponent(schemeId)}&joinDate=${encodeURIComponent(formattedDate)}`;
+      
+      console.log(`🔗 Request URL: ${url}`);
+      
+      const response = await fetch(url, {
+        method: 'GET',
+        headers: {
+          'Accept': 'application/json',
+          'Content-Type': 'application/json',
+        },
+      });
+      
+      if (response.ok) {
+        const data = await response.json();
+        console.log(`✅ Success response for scheme ${schemeId}:`, data);
+        return data.remainingDays || 0;
+      } else {
+        console.log(`❌ Server error ${response.status} for scheme ${schemeId}`);
+        return null; // Return null to indicate API failure
+      }
+    } catch (error) {
+      console.log(`❌ Network error for scheme ${schemeId}:`, error.message || error);
+      return null; // Return null to indicate network failure
+    }
+  }, []);
+
+  // Function to calculate remaining days locally as fallback
+  const calculateRemainingDaysLocally = (joinDate, totalDays = 165) => {
+    try {
+      if (!joinDate) return totalDays;
+      
+      // Parse join date
+      const joinDateObj = new Date(joinDate);
+      if (isNaN(joinDateObj)) return totalDays;
+      
+      // Get current date (reset time to midnight for accurate day calculation)
+      const today = new Date();
+      today.setHours(0, 0, 0, 0);
+      
+      // Calculate elapsed days
+      const timeDiff = today.getTime() - joinDateObj.getTime();
+      const elapsedDays = Math.floor(timeDiff / (1000 * 3600 * 24));
+      
+      // Calculate remaining days
+      const remainingDays = Math.max(0, totalDays - elapsedDays);
+      
+      console.log(`🧮 Local calculation: joinDate=${joinDate}, elapsedDays=${elapsedDays}, remainingDays=${remainingDays}`);
+      
+      return remainingDays;
+    } catch (error) {
+      console.log("❌ Error in local calculation:", error);
+      return totalDays; // Return default total days
+    }
+  };
 
 const handlePayNow = (item) => {
   const paymentData = {
@@ -69,6 +146,104 @@ const handlePayNow = (item) => {
     }
   };
 
+  // Fetch remaining days for each product
+  const fetchRemainingDaysForProducts = async (products) => {
+    try {
+      console.log(`🔄 Fetching remaining days for ${products.length} products`);
+      
+      // First, try to get data from API
+      const apiPromises = products.map(async (product, index) => {
+        try {
+          // Add a small delay to avoid overwhelming the server
+          if (index > 0) {
+            await new Promise(resolve => setTimeout(resolve, 200));
+          }
+          
+          // Get schemeId and joinDate from product
+          const schemeId = product.schemeId || 
+                          product.schemeSummary?.schemeId || 
+                          product.schemeSummary?.schemeid;
+          
+          const joinDate = product.joinDate || 
+                          product.schemeSummary?.joinDate || 
+                          product.schemeSummary?.Startdate ||
+                          product.schemeSummary?.startdate ||
+                          product.schemeSummary?.startDate;
+          
+          if (!schemeId || !joinDate) {
+            console.log(`⚠️ Missing data for product ${product.regNo}: schemeId=${schemeId}, joinDate=${joinDate}`);
+            return {
+              product,
+              apiResult: null,
+            };
+          }
+          
+          console.log(`📤 Calling API for product ${product.regNo}: schemeId=${schemeId}, joinDate=${joinDate}`);
+          const apiResult = await fetchRemainingDays(schemeId, joinDate);
+          
+          return {
+            product,
+            apiResult,
+          };
+        } catch (err) {
+          console.log(`❌ API error for product ${product.regNo}:`, err);
+          return {
+            product,
+            apiResult: null,
+          };
+        }
+      });
+      
+      const apiResults = await Promise.all(apiPromises);
+      
+      // Process results with fallback to local calculation
+      const updatedProducts = apiResults.map(({ product, apiResult }) => {
+        const joinDate = product.joinDate || 
+                        product.schemeSummary?.joinDate || 
+                        product.schemeSummary?.Startdate ||
+                        product.schemeSummary?.startdate ||
+                        product.schemeSummary?.startDate;
+        
+        let remainingDays;
+        
+        if (apiResult !== null && apiResult !== undefined) {
+          // Use API result if successful
+          remainingDays = apiResult;
+          console.log(`✅ Product ${product.regNo}: API returned ${remainingDays} days`);
+        } else {
+          // Fallback to local calculation
+          remainingDays = calculateRemainingDaysLocally(joinDate, 165);
+          console.log(`🔄 Product ${product.regNo}: Using local calculation: ${remainingDays} days`);
+        }
+        
+        return {
+          ...product,
+          remainingDays,
+        };
+      });
+      
+      console.log(`🎉 Finished processing remaining days for all products`);
+      return updatedProducts;
+    } catch (err) {
+      console.log("❌ Error in fetchRemainingDaysForProducts:", err);
+      // Fallback: calculate locally for all products
+      return products.map(product => {
+        const joinDate = product.joinDate || 
+                        product.schemeSummary?.joinDate || 
+                        product.schemeSummary?.Startdate ||
+                        product.schemeSummary?.startdate ||
+                        product.schemeSummary?.startDate;
+        
+        const remainingDays = calculateRemainingDaysLocally(joinDate, 165);
+        
+        return {
+          ...product,
+          remainingDays,
+        };
+      });
+    }
+  };
+
   const fetchPhoneSearchData = async (isRefresh = false) => {
     try {
       if (isRefresh) setIsRefreshing(true);
@@ -79,6 +254,8 @@ const handlePayNow = (item) => {
         setError("Phone number not found");
         return;
       }
+
+      console.log("📱 Fetching data for phone:", storedPhoneNumber);
 
       // Fetch scheme rules first
       const rules = await fetchSchemeRules();
@@ -117,6 +294,19 @@ const handlePayNow = (item) => {
           schemeRule.WeightLedger !== "Y" &&
           parseInt(schemeRule.Instalment) > 1;
 
+        // Extract dates for debugging
+        const joinDate = item.joinDate || 
+                        item.schemeSummary?.joinDate || 
+                        item.schemeSummary?.Startdate ||
+                        item.schemeSummary?.startdate ||
+                        item.schemeSummary?.startDate;
+
+        console.log(`📅 Product ${item.regNo} dates:`, {
+          joinDate,
+          maturityDate: item.maturityDate,
+          schemeStartDate: item.schemeSummary?.Startdate,
+        });
+
         return {
           ...item,
           status,
@@ -124,6 +314,8 @@ const handlePayNow = (item) => {
           groupcode: item.groupCode,
           pname: item.pname || item.personalInfo?.pName,
           maturitydate: item.maturityDate,
+          joinDate, // Store joinDate for easy access
+          remainingDays: 0, // Initialize
 
           /* 🔥 SCHEME SUMMARY WITH API RULES */
           schemeSummary: {
@@ -154,11 +346,19 @@ const handlePayNow = (item) => {
         };
       });
 
-      console.log("Processed Products:", processedProducts);
-      setProductData(processedProducts);
+      // Fetch remaining days for all products
+      console.log("🔄 Starting to fetch remaining days...");
+      const productsWithRemainingDays = await fetchRemainingDaysForProducts(processedProducts);
+      
+      console.log("✅ Final products with remaining days:");
+      productsWithRemainingDays.forEach(p => {
+        console.log(`   - ${p.regNo}: ${p.remainingDays} days (joinDate: ${p.joinDate})`);
+      });
+      
+      setProductData(productsWithRemainingDays);
       setError(null);
     } catch (err) {
-      console.error("Error fetching data:", err);
+      console.error("❌ Error fetching data:", err);
       setError(`Failed to fetch data: ${err.message}`);
     } finally {
       if (isRefresh) {
@@ -176,18 +376,18 @@ const handlePayNow = (item) => {
 
   const onRefresh = () => fetchPhoneSearchData(true);
 
-const renderProductCard = ({ item }) => {
-  console.log("Rendering ProductCard for", item.regNo, "- remainingDays:", item.remainingDays);
-  
-  return (
-    <ProductCard
-      productData={item}
-      navigation={navigation}
-      onPayNow={() => handlePayNow(item)}
-      remainingDate={item.remainingDays || 0} // This is what you need to add
-    />
-  );
-};
+  const renderProductCard = ({ item }) => {
+    console.log("🎨 Rendering ProductCard for", item.regNo, "- remainingDays:", item.remainingDays);
+    
+    return (
+      <ProductCard
+        productData={item}
+        navigation={navigation}
+        onPayNow={() => handlePayNow(item)}
+        remainingDate={item.remainingDays || 161} // Pass the calculated remaining days
+      />
+    );
+  };
 
   const renderContent = () => {
     if (initialLoad && loading) {

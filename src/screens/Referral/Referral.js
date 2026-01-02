@@ -644,9 +644,12 @@ const renderHowItWorks = () => {
               <View style={styles.redeemNoteContainer}>
                 <Text style={styles.redeemNoteTitle}>Important:</Text>
                 <Text style={styles.redeemNoteText}>
-                  • Amount can only be redeemed when scheme reaches maturity date{'\n'}
-                  • Redeemed amount will be transferred to your wallet{'\n'}
-                  • Processing may take 24-48 hours{'\n'}
+                  • Reward money is applicable only for purchases of ₹10,000 and above. {'\n\n'}
+                  • Redemption is subject to eligibility, validity period, and the company’s reward policy.{'\n\n'}
+                  • The company reserves the right to modify or withdraw the reward scheme without prior notice{'\n\n'}
+                  • Amount can only be redeemed when scheme reaches maturity date{'\n\n'}
+                  • Redeemed amount will be transferred to your wallet{'\n\n'}
+                  • Processing may take 24-48 hours{'\n\n'}
                 </Text>
               </View>
             </View>

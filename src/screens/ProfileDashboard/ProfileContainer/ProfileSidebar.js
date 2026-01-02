@@ -453,10 +453,21 @@ const DrawerMenu = ({ isVisible, onClose }) => {
       route: "UserRegisterForm",
     },
     {
+      label: "My Rewards",
+      icon: "card-giftcard",
+      route: "Rewards",
+    },
+    {
+      label: "Pay Now",
+      icon: "",
+      route: "DuePayment",
+    },
+    {
       label: "My Redeemption",
       icon: "card-giftcard",
       route: "SchemeListPage",
     },
+    
     { label: "About", icon: "info", route: "AboutPage" },
     { label: "Privacy Policy", icon: "privacy-tip", route: "PrivacyPolicy" },
     {

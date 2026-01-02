@@ -1,5 +1,6 @@
-// services/bannerService.js
-const API_BASE_URL = "https://scheme.bmgjewellers.com/api/v1";
+
+
+import { API_BASE_URL } from "../Config/API";
 
 export const bannerService = {
   async getBanners() {

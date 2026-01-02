@@ -58,7 +58,7 @@ function BottomTab({ screen }) {
           size={SIZES.icon.md}
           color={getIconColor("DuePayment")}
         />
-        <Text style={getTextStyle("DuePayment")}>Payment</Text>
+        <Text style={getTextStyle("DuePayment")}>Pay Now</Text>
       </TouchableOpacity>
       {/* Referral */}
       <TouchableOpacity

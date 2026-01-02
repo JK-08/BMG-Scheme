@@ -22,7 +22,7 @@ import {
   SHADOWS,
 } from "../../utils/AppTheme";
 import ReceiptPreviewModal from '../../components/ReceiptPreviewModal/ReceiptPreviewModal'
-
+import { API_BASE_URL_OLD } from "../../Config/API";
 const SchemePassbook = ({ navigation, route }) => {
   const { productData } = route.params;
 
@@ -60,7 +60,7 @@ const closePreview = useCallback(() => {
     try {
       setRatesLoading(true);
       const response = await fetch(
-        "https://scheme.bmgjewellers.com/v1/api/account/todayrate"
+        `${API_BASE_URL_OLD}/account/todayrate`
       );
 
       if (!response.ok) {
