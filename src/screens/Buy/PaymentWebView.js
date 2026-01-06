@@ -14,6 +14,7 @@ import { useRoute, useNavigation } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { insertSchemeCollection } from "../../services/InstallmentUpdateService";
 import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
+import { API_BASE_URL } from "../../Config/API";
 
 const PaymentWebView = () => {
   const route = useRoute();

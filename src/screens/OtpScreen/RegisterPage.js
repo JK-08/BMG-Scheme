@@ -34,9 +34,13 @@ function RegisterPage({ navigation }) {
     username: "",
     email: "",
     phone: "",
-    password: ""
+    password: "",
+    referralCode: ""
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [showReferralInput, setShowReferralInput] = useState(false);
+  const [referralApplied, setReferralApplied] = useState(false);
+  const [referralError, setReferralError] = useState("");
   const [errors, setErrors] = useState({
     username: "",
     email: "",
@@ -116,6 +120,21 @@ function RegisterPage({ navigation }) {
     
     if (fieldName === "phone") {
       processedValue = value.replace(/\D/g, "").slice(0, 10);
+    } else if (fieldName === "referralCode") {
+      // Convert to uppercase and remove spaces
+      processedValue = value.trim().toUpperCase();
+      // Clear any referral error when user types
+      setReferralError("");
+      
+      // Auto-mark as applied if it has minimum length
+      if (processedValue.length >= 4) {
+        setReferralApplied(true);
+      } else {
+        setReferralApplied(false);
+        if (processedValue.length > 0) {
+          setReferralError("Referral code must be at least 4 characters");
+        }
+      }
     }
 
     setFormData(prev => ({ ...prev, [fieldName]: processedValue }));
@@ -133,6 +152,15 @@ function RegisterPage({ navigation }) {
   const togglePasswordVisibility = useCallback(() => {
     setShowPassword(prev => !prev);
   }, []);
+
+  const toggleReferralInput = useCallback(() => {
+    setShowReferralInput(prev => !prev);
+    if (showReferralInput) {
+      setFormData(prev => ({ ...prev, referralCode: "" }));
+      setReferralApplied(false);
+      setReferralError("");
+    }
+  }, [showReferralInput]);
 
   // ✅ Handle Google Sign-In
   const handleGoogleSignIn = useCallback(async () => {
@@ -171,7 +199,11 @@ function RegisterPage({ navigation }) {
   // ✅ Google Auth to backend
   const handleGoogleAuthentication = useCallback(async (idToken, userInfo = null) => {
     try {
-      const payload = { idToken, userInfo };
+      const payload = { 
+        idToken, 
+        userInfo, 
+        used_referral_code: formData.referralCode.trim() || "" 
+      };
       const response = await userService.googleLogin(payload);
 
       if (response.success && response.data) {
@@ -197,21 +229,27 @@ function RegisterPage({ navigation }) {
       console.error("Google authentication error:", error);
       showToast("Authentication failed. Please try again.");
     }
-  }, [navigation]);
+  }, [navigation, formData.referralCode]);
 
   const validateAllFields = useCallback(() => {
     const allTouched = Object.keys(formData).reduce((acc, key) => {
-      acc[key] = true;
+      if (key !== "referralCode") {
+        acc[key] = true;
+      }
       return acc;
     }, {});
     setTouched(allTouched);
 
     Object.keys(formData).forEach(key => {
-      validateField(key, formData[key]);
+      if (key !== "referralCode") {
+        validateField(key, formData[key]);
+      }
     });
 
     return Object.values(errors).every(error => error === "") && 
-           Object.values(formData).every(value => value.trim() !== "");
+           Object.values(formData).every(value => 
+             value === formData.referralCode || value.trim() !== ""
+           );
   }, [formData, errors, validateField]);
 
   const handleRegister = useCallback(async () => {
@@ -220,16 +258,30 @@ function RegisterPage({ navigation }) {
       return;
     }
 
+    // Validate referral code if entered
+    if (formData.referralCode.trim() && formData.referralCode.trim().length < 4) {
+      setReferralError("Referral code must be at least 4 characters");
+      showToast("Please enter a valid referral code");
+      return;
+    }
+
     setLoading(true);
 
     try {
-      const res = await userService.registerUser({
-        username: formData.username,
-        email: formData.email,
+      const registrationData = {
+        username: formData.username.trim(),
+        email: formData.email.trim().toLowerCase(),
         contactNumber: formData.phone,
         password: formData.password,
         hashKey: appHash || "",
-      });
+        used_referral_code: formData.referralCode.trim() || ""
+      };
+
+      console.log("📤 Sending registration data:", registrationData);
+
+      const res = await userService.registerUser(registrationData);
+
+      console.log("📥 Registration response:", res);
 
       if (res.success) {
         await AsyncStorage.setItem(
@@ -240,9 +292,11 @@ function RegisterPage({ navigation }) {
             phone: formData.phone,
             password: formData.password,
             appHash,
+            used_referral_code: formData.referralCode || ""
           })
         );
 
+        console.log("✅ Registration successful!");
         showToast("Registration successful! OTP sent.");
         navigation.navigate("OTP", {
           phoneNumber: formData.phone,
@@ -252,7 +306,8 @@ function RegisterPage({ navigation }) {
         handleRegistrationError(res.error, res.details);
       }
     } catch (error) {
-      console.error("Registration error:", error);
+      console.error("🚨 Registration error:", error);
+      console.error("🚨 Error response:", error.response?.data);
       showToast("Registration failed. Please try again.");
     } finally {
       setLoading(false);
@@ -395,7 +450,7 @@ function RegisterPage({ navigation }) {
             <View style={styles.container}>
               <View style={styles.logoContainer}>
                 <Image
-                  source={require("../../assets/image/final-logo.jpg")}
+                  source={require("../../assets/image/logo08.jpeg")}
                   style={styles.logoImage}
                 />
               </View>
@@ -473,6 +528,51 @@ function RegisterPage({ navigation }) {
                 {errors.password ? (
                   <Text style={styles.errorText}>{errors.password}</Text>
                 ) : null}
+
+                {/* Referral Code Section */}
+                <TouchableOpacity
+                  style={styles.referralToggleContainer}
+                  onPress={toggleReferralInput}
+                >
+                  <Text style={styles.referralToggleText}>
+                    {showReferralInput ? "Cancel referral code" : "Have a referral code?"}
+                  </Text>
+                  <Image
+                    source={require("../../assets/icons/down.png")}
+                    style={[
+                      styles.chevronIcon,
+                      showReferralInput && styles.chevronIconRotated
+                    ]}
+                  />
+                </TouchableOpacity>
+
+                {showReferralInput && (
+                  <View style={styles.referralContainer}>
+                    <View style={[
+                      styles.referralInputContainer,
+                      referralError && styles.inputError,
+                      referralApplied && styles.referralApplied
+                    ]}>
+                      <TextInput
+                        style={styles.referralInput}
+                        value={formData.referralCode}
+                        onChangeText={(value) => handleFieldChange("referralCode", value)}
+                        placeholder="Enter referral code"
+                        placeholderTextColor={COLORS.textTertiary}
+                        autoCapitalize="characters"
+                        maxLength={20}
+                      />
+                    </View>
+                    {referralError ? (
+                      <Text style={styles.errorText}>{referralError}</Text>
+                    ) : null}
+                    {referralApplied && formData.referralCode.length >= 10 ? (
+                      <Text style={styles.referralSuccessText}>
+                        Referral code will be applied
+                      </Text>
+                    ) : null}
+                  </View>
+                )}
 
                 {/* Register Button */}
                 <TouchableOpacity

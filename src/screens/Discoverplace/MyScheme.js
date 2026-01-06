@@ -16,11 +16,8 @@ import ProductCardSkeleton from "../../components/SkeletonLoader/ProductCardSkel
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { getPhoneDetails } from "../../services/SchemeDetailsService";
 import { getAllSchemes } from "../../services/SchemeNameService";
+import { getRemainingDaysData } from "../../services/Remainingdays"; // Import the new service
 import { COLORS } from "../../utils/Theme";
-import { API_BASE_URL } from "../../Config/API";
-
-// Add your BASE_URL
-const BASE_URL = API_BASE_URL;
 
 function DiscoverPlace({ navigation }) {
   const [productData, setProductData] = useState([]);
@@ -30,99 +27,75 @@ function DiscoverPlace({ navigation }) {
   const [initialLoad, setInitialLoad] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
 
-  // Enhanced fetchRemainingDays function with date formatting
-  const fetchRemainingDays = useCallback(async (schemeId, joinDate) => {
-    try {
-      console.log(`📡 Fetching remaining days for schemeId: ${schemeId}, joinDate: ${joinDate}`);
-      
-      // Format joinDate to YYYY-MM-DD if needed
-      let formattedDate = joinDate;
-      
-      // If joinDate is not in YYYY-MM-DD format, convert it
-      if (joinDate && !/^\d{4}-\d{2}-\d{2}$/.test(joinDate)) {
+  // Enhanced fetchRemainingDays function using the new service
+const fetchRemainingDays = useCallback(async (schemeId, joinDate) => {
+  try {
+    console.log(`📡 Fetching remaining days for schemeId: ${schemeId}, joinDate: ${joinDate}`);
+    
+    // Format joinDate to YYYY-MM-DD format
+    let formattedDate = joinDate;
+    
+    // Convert to YYYY-MM-DD format if needed
+    if (joinDate) {
+      // Handle ISO format (2025-12-29T00:00:00)
+      if (joinDate.includes('T')) {
+        formattedDate = joinDate.split('T')[0];
+      } 
+      // Handle if it's not in YYYY-MM-DD format
+      else if (!/^\d{4}-\d{2}-\d{2}$/.test(joinDate)) {
         const dateObj = new Date(joinDate);
-        if (!isNaN(dateObj)) {
+        if (!isNaN(dateObj.getTime())) {
           formattedDate = dateObj.toISOString().split('T')[0];
-          console.log(`📅 Formatted date from ${joinDate} to ${formattedDate}`);
         }
       }
-      
-      // Format the URL
-      const url = `${BASE_URL}/scheme-bonus/all_remainingDays?schemeId=${encodeURIComponent(schemeId)}&joinDate=${encodeURIComponent(formattedDate)}`;
-      
-      console.log(`🔗 Request URL: ${url}`);
-      
-      const response = await fetch(url, {
-        method: 'GET',
-        headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
-        },
-      });
-      
-      if (response.ok) {
-        const data = await response.json();
-        console.log(`✅ Success response for scheme ${schemeId}:`, data);
-        return data.remainingDays || 0;
-      } else {
-        console.log(`❌ Server error ${response.status} for scheme ${schemeId}`);
-        return null; // Return null to indicate API failure
-      }
-    } catch (error) {
-      console.log(`❌ Network error for scheme ${schemeId}:`, error.message || error);
-      return null; // Return null to indicate network failure
     }
-  }, []);
-
-  // Function to calculate remaining days locally as fallback
-  const calculateRemainingDaysLocally = (joinDate, totalDays = 165) => {
-    try {
-      if (!joinDate) return totalDays;
-      
-      // Parse join date
-      const joinDateObj = new Date(joinDate);
-      if (isNaN(joinDateObj)) return totalDays;
-      
-      // Get current date (reset time to midnight for accurate day calculation)
-      const today = new Date();
-      today.setHours(0, 0, 0, 0);
-      
-      // Calculate elapsed days
-      const timeDiff = today.getTime() - joinDateObj.getTime();
-      const elapsedDays = Math.floor(timeDiff / (1000 * 3600 * 24));
-      
-      // Calculate remaining days
-      const remainingDays = Math.max(0, totalDays - elapsedDays);
-      
-      console.log(`🧮 Local calculation: joinDate=${joinDate}, elapsedDays=${elapsedDays}, remainingDays=${remainingDays}`);
-      
-      return remainingDays;
-    } catch (error) {
-      console.log("❌ Error in local calculation:", error);
-      return totalDays; // Return default total days
+    
+    console.log(`🔗 Calling API: schemeId=${schemeId}, joinDate=${formattedDate}`);
+    
+    // Use your API endpoint
+    const apiUrl = `https://scheme.bmgjewellers.com/api/v1/scheme-bonus/all_remainingDays?schemeId=${schemeId}&joinDate=${formattedDate}`;
+    
+    console.log(`🌐 API URL: ${apiUrl}`);
+    
+    // Make API call
+    const response = await fetch(apiUrl);
+    
+    if (!response.ok) {
+      throw new Error(`API error: ${response.status}`);
     }
+    
+    const data = await response.json();
+    
+    // Log only what we need
+    console.log(`✅ API Success - remainingDays: ${data.remainingDays}`);
+    
+    // Return ONLY the remainingDays value (not the whole object)
+    return data.remainingDays || 0;
+    
+  } catch (error) {
+    console.error(`❌ Error in fetchRemainingDays:`, error.message || error);
+    return 0; // Return 0 on error
+  }
+}, []);
+
+  const handlePayNow = (item) => {
+    const paymentData = {
+      regNo: item.regno,
+      groupCode: item.groupcode,
+      customerName: item.pname,
+      amount: item.schemeSummary?.amount || 0,
+      schemeName: item.schemeSummary?.schemeName,
+      schemes: productData,
+    };
+
+    console.log("🔵 handlePayNow item:", item);
+    console.log("🟢 paymentData:", paymentData);
+
+    navigation.navigate("Buy", {
+      productData: item,
+      paymentData,
+    });
   };
-
-const handlePayNow = (item) => {
-  const paymentData = {
-    regNo: item.regno,
-    groupCode: item.groupcode,
-    customerName: item.pname,
-    amount: item.schemeSummary?.amount || 0,
-    schemeName: item.schemeSummary?.schemeName,
-    schemes: productData,
-  };
-
-  console.log("🔵 handlePayNow item:", item);
-  console.log("🟢 paymentData:", paymentData);
-
-  navigation.navigate("Buy", {
-    productData: item,
-    paymentData,
-  });
-};
-
-
 
   // Fetch all scheme rules once
   const fetchSchemeRules = async () => {
@@ -151,7 +124,6 @@ const handlePayNow = (item) => {
     try {
       console.log(`🔄 Fetching remaining days for ${products.length} products`);
       
-      // First, try to get data from API
       const apiPromises = products.map(async (product, index) => {
         try {
           // Add a small delay to avoid overwhelming the server
@@ -196,25 +168,12 @@ const handlePayNow = (item) => {
       
       const apiResults = await Promise.all(apiPromises);
       
-      // Process results with fallback to local calculation
+      // Process results - only use API results
       const updatedProducts = apiResults.map(({ product, apiResult }) => {
-        const joinDate = product.joinDate || 
-                        product.schemeSummary?.joinDate || 
-                        product.schemeSummary?.Startdate ||
-                        product.schemeSummary?.startdate ||
-                        product.schemeSummary?.startDate;
+        // Use API result if available, otherwise keep existing remainingDays or default to 0
+        const remainingDays = (apiResult !== null && apiResult !== undefined) ? apiResult : 0;
         
-        let remainingDays;
-        
-        if (apiResult !== null && apiResult !== undefined) {
-          // Use API result if successful
-          remainingDays = apiResult;
-          console.log(`✅ Product ${product.regNo}: API returned ${remainingDays} days`);
-        } else {
-          // Fallback to local calculation
-          remainingDays = calculateRemainingDaysLocally(joinDate, 165);
-          console.log(`🔄 Product ${product.regNo}: Using local calculation: ${remainingDays} days`);
-        }
+        console.log(`📊 Product ${product.regNo}: API returned ${remainingDays} days`);
         
         return {
           ...product,
@@ -222,25 +181,15 @@ const handlePayNow = (item) => {
         };
       });
       
-      console.log(`🎉 Finished processing remaining days for all products`);
+      console.log(`🎉 Finished fetching remaining days for all products`);
       return updatedProducts;
     } catch (err) {
       console.log("❌ Error in fetchRemainingDaysForProducts:", err);
-      // Fallback: calculate locally for all products
-      return products.map(product => {
-        const joinDate = product.joinDate || 
-                        product.schemeSummary?.joinDate || 
-                        product.schemeSummary?.Startdate ||
-                        product.schemeSummary?.startdate ||
-                        product.schemeSummary?.startDate;
-        
-        const remainingDays = calculateRemainingDaysLocally(joinDate, 165);
-        
-        return {
-          ...product,
-          remainingDays,
-        };
-      });
+      // Return products without remaining days update on error
+      return products.map(product => ({
+        ...product,
+        remainingDays: 0, // Set to 0 on API failure
+      }));
     }
   };
 
@@ -346,8 +295,8 @@ const handlePayNow = (item) => {
         };
       });
 
-      // Fetch remaining days for all products
-      console.log("🔄 Starting to fetch remaining days...");
+      // Fetch remaining days for all products from API only
+      console.log("🔄 Starting to fetch remaining days from API...");
       const productsWithRemainingDays = await fetchRemainingDaysForProducts(processedProducts);
       
       console.log("✅ Final products with remaining days:");
@@ -384,7 +333,7 @@ const handlePayNow = (item) => {
         productData={item}
         navigation={navigation}
         onPayNow={() => handlePayNow(item)}
-        remainingDate={item.remainingDays || 161} // Pass the calculated remaining days
+        remainingDate={item.remainingDays || 0} // Pass the API fetched remaining days
       />
     );
   };

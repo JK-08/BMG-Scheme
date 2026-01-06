@@ -1,635 +1,628 @@
-import React, { useState, useMemo, useCallback } from 'react';
-import { 
-  View, 
-  Text, 
-  ScrollView, 
-  TouchableOpacity, 
+import React, { useEffect, useState } from "react";
+import {
+  View,
+  Text,
+  ScrollView,
   StyleSheet,
+  ActivityIndicator,
+  RefreshControl,
+  TouchableOpacity,
+  Share,
+  Alert,
   Dimensions,
-  RefreshControl 
-} from 'react-native';
-import { Ionicons, MaterialCommunityIcons, FontAwesome5 } from '@expo/vector-icons';
-import { LinearGradient } from 'expo-linear-gradient';
-import theme, { COLORS, SIZES, FONTS, SHADOWS } from '../../utils/AppTheme';
-import { BottomTab } from '../../components';
-import CommonHeader from '../../components/CommonHeader/CommonHeader';
+} from "react-native";
+import Icon from "react-native-vector-icons/MaterialIcons";
+import IconFA from "react-native-vector-icons/FontAwesome5";
+import { LinearGradient } from "expo-linear-gradient";
+import { getReferralDetails } from "../../services/ReferralAmount";
+import theme from "../../utils/AppTheme";
+import CommonHeader from "../../components/CommonHeader/CommonHeader";
 
+const { width } = Dimensions.get("window");
 
-const { width } = Dimensions.get('window');
-
-const RewardsPage = () => {
-  const [activeTab, setActiveTab] = useState('available');
+const ReferralScreen = () => {
+  const [referralData, setReferralData] = useState(null);
+  const [earnedHistory, setEarnedHistory] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const userPoints = 2450;
+  const [error, setError] = useState(null);
 
-  // Memoized rewards data
-  const rewardsData = useMemo(() => ({
-    available: [
-      { 
-        id: 1, 
-        title: '0.5g Gold', 
-        points: 2500, 
-        icon: 'gold', 
-        iconFamily: 'MaterialCommunityIcons',
-        type: 'gold', 
-        discount: '10% OFF',
-        colors: COLORS.gradient.gold
-      },
-      { 
-        id: 2, 
-        title: '₹500 Cashback', 
-        points: 2000, 
-        icon: 'gift', 
-        iconFamily: 'Ionicons',
-        type: 'cash', 
-        discount: 'Popular',
-        colors: COLORS.gradient.success
-      },
-      { 
-        id: 3, 
-        title: '1g Gold', 
-        points: 5000, 
-        icon: 'trophy', 
-        iconFamily: 'Ionicons',
-        type: 'gold', 
-        discount: '15% OFF',
-        colors: COLORS.gradient.gold
-      },
-      { 
-        id: 4, 
-        title: 'Premium Member', 
-        points: 3000, 
-        icon: 'crown', 
-        iconFamily: 'MaterialCommunityIcons',
-        type: 'premium', 
-        discount: 'New',
-        colors: ['#9C27B0', '#7B1FA2']
-      },
-      { 
-        id: 5, 
-        title: '₹1000 Voucher', 
-        points: 3500, 
-        icon: 'ticket', 
-        iconFamily: 'Ionicons',
-        type: 'voucher', 
-        discount: '',
-        colors: COLORS.gradient.primary
-      },
-      { 
-        id: 6, 
-        title: 'Double Points', 
-        points: 1500, 
-        icon: 'flash', 
-        iconFamily: 'Ionicons',
-        type: 'boost', 
-        discount: 'Limited',
-        colors: COLORS.gradient.warm
-      },
-    ],
-    redeemed: [
-      { id: 7, title: '₹200 Cashback', points: 1000, date: '15 Nov 2024', status: 'Completed' },
-      { id: 8, title: '0.5g Gold', points: 2500, date: '10 Nov 2024', status: 'Processing' },
-    ]
-  }), []);
+  useEffect(() => {
+    loadReferralData();
+  }, []);
 
-  // Memoized icon renderer
-  const renderIcon = useCallback((iconFamily, iconName, size = SIZES.icon.lg, color = COLORS.white) => {
-    const iconProps = { name: iconName, size, color };
-    
-    switch(iconFamily) {
-      case 'Ionicons':
-        return <Ionicons {...iconProps} />;
-      case 'MaterialCommunityIcons':
-        return <MaterialCommunityIcons {...iconProps} />;
-      case 'FontAwesome5':
-        return <FontAwesome5 {...iconProps} />;
-      default:
-        return <Ionicons {...iconProps} />;
+  const loadReferralData = async () => {
+    try {
+      setLoading(true);
+      setError(null);
+      const result = await getReferralDetails();
+
+      if (result.success) {
+        setReferralData(result.userReferralData);
+        setEarnedHistory(result.earnedHistory || []);
+      } else {
+        setError(result.message || "Failed to load referral data");
+      }
+    } catch (err) {
+      setError(err.message || "An error occurred");
+    } finally {
+      setLoading(false);
+      setRefreshing(false);
     }
-  }, []);
+  };
 
-  // Memoized progress calculation
-  const progressPercentage = useMemo(() => 
-    Math.min((userPoints / 5000) * 100, 100), [userPoints]
-  );
-
-  const pointsToNextTier = useMemo(() => 
-    5000 - userPoints, [userPoints]
-  );
-
-  const onRefresh = useCallback(() => {
+  const onRefresh = async () => {
     setRefreshing(true);
-    // Simulate API call
-    setTimeout(() => setRefreshing(false), 1500);
-  }, []);
+    await loadReferralData();
+  };
 
-  const handleRedeem = useCallback((reward) => {
-    console.log('Redeeming reward:', reward.title);
-    // Add redemption logic here
-  }, []);
 
-  const handleEarnPoints = useCallback(() => {
-    console.log('Navigate to earn points screen');
-    // Navigation logic here
-  }, []);
+  const shareReferralLink = async () => {
+    if (!referralData?.playStoreLink) return;
 
-  // Render reward card for available tab
-  const renderRewardCard = useCallback((reward) => (
-    <View key={reward.id} style={styles.rewardCard}>
-      <View style={styles.cardHeader}>
-        <LinearGradient
-          colors={reward.colors}
-          style={styles.iconContainer}
-        >
-          {renderIcon(reward.iconFamily, reward.icon)}
-        </LinearGradient>
-        {reward.discount && (
-          <LinearGradient
-            colors={COLORS.gradient.brand}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.badge}
-          >
-            <Text style={styles.badgeText}>{reward.discount}</Text>
-          </LinearGradient>
-        )}
+    try {
+      await Share.share({
+        message: `Join me on Digi Gold! Use my code: ${referralData.referral_code}\n${referralData.playStoreLink}`,
+        title: "Join Digi Gold",
+      });
+    } catch (error) {
+      Alert.alert("Error", "Failed to share referral link");
+    }
+  };
+
+  const formatDate = (dateString) => {
+    if (!dateString) return "N/A";
+    const date = new Date(dateString);
+    return date.toLocaleDateString("en-IN", {
+      day: "2-digit",
+      month: "short",
+    });
+  };
+
+  const formatAmount = (amount) => {
+    return `₹${parseFloat(amount || 0).toFixed(2)}`;
+  };
+
+  // Stats Data
+  const stats = [
+    {
+      label: "Total Earnings",
+      value: formatAmount(referralData?.totalCreditedAmount),
+      icon: "trending-up",
+      color: "#10B981",
+    },
+    {
+      label: "Wallet Balance",
+      value: formatAmount(referralData?.wallet_balance),
+      icon: "account-balance-wallet",
+      color: theme.COLORS.primary || "#0F766E",
+    },
+    {
+      label: "Total Referrals",
+      value: earnedHistory.length.toString(),
+      icon: "people",
+      color: "#3B82F6",
+    },
+    {
+      label: "Total Rewards",
+      value: formatAmount(referralData?.totalNewMemberReward),
+      icon: "card-giftcard",
+      color: "#8B5CF6",
+    },
+  ];
+
+  // Steps Data
+  const steps = [
+    { icon: "person-add", text: "Share your referral code" },
+    { icon: "download", text: "Friend installs app" },
+    { icon: "verified", text: "First purchase made" },
+    { icon: "account-balance-wallet", text: "Earn rewards instantly" },
+  ];
+
+  // Loading State
+  if (loading && !refreshing) {
+    return (
+      <View style={styles.centeredContainer}>
+        <ActivityIndicator size="large" color="#0F766E" />
+        <Text style={styles.loadingText}>Loading referral data...</Text>
       </View>
-      
-      <Text style={styles.rewardTitle}>{reward.title}</Text>
-      
-      <View style={styles.pointsInfo}>
-        <Ionicons name="star" size={SIZES.icon.sm} color={COLORS.secondary} />
-        <Text style={styles.pointsText}>{reward.points.toLocaleString()} points</Text>
-      </View>
-      
-      <View style={styles.cardFooter}>
-        {reward.points <= userPoints ? (
-          <Text style={styles.availableText}>✓ Available</Text>
-        ) : (
-          <Text style={styles.needMoreText}>
-            Need {(reward.points - userPoints).toLocaleString()} more
-          </Text>
-        )}
-        
-        <TouchableOpacity
-          disabled={reward.points > userPoints}
-          onPress={() => handleRedeem(reward)}
-          style={[
-            styles.redeemButton,
-            reward.points > userPoints && styles.redeemButtonDisabled
-          ]}
-        >
-          <LinearGradient
-            colors={reward.points <= userPoints ? COLORS.gradient.brand : [COLORS.gray300, COLORS.gray400]}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 0 }}
-            style={styles.redeemGradient}
-          >
-            <Text style={[
-              styles.redeemText,
-              reward.points > userPoints && styles.redeemTextDisabled
-            ]}>
-              Redeem
-            </Text>
-            <Ionicons 
-              name="chevron-forward" 
-              size={SIZES.icon.sm} 
-              color={reward.points <= userPoints ? COLORS.white : COLORS.gray600} 
-            />
-          </LinearGradient>
+    );
+  }
+
+  // Error State
+  if (error) {
+    return (
+      <View style={styles.centeredContainer}>
+        <Icon name="error-outline" size={48} color="#EF4444" />
+        <Text style={styles.errorText}>{error}</Text>
+        <TouchableOpacity style={styles.retryButton} onPress={loadReferralData}>
+          <Icon name="refresh" size={18} color="#FFFFFF" />
+          <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
-    </View>
-  ), [userPoints, renderIcon, handleRedeem]);
-
-  // Render redeemed card for redeemed tab
-  const renderRedeemedCard = useCallback((reward) => (
-    <View key={reward.id} style={styles.redeemedCard}>
-      <View style={styles.redeemedContent}>
-        <Text style={styles.redeemedTitle}>{reward.title}</Text>
-        <Text style={styles.redeemedDate}>{reward.date}</Text>
-        <View style={styles.pointsInfo}>
-          <Ionicons name="star" size={SIZES.icon.sm} color={COLORS.gray400} />
-          <Text style={styles.redeemedPoints}>{reward.points.toLocaleString()} points</Text>
-        </View>
-      </View>
-      <View style={[
-        styles.statusBadge,
-        reward.status === 'Completed' ? styles.statusCompleted : styles.statusProcessing
-      ]}>
-        <Text style={[
-          styles.statusText,
-          reward.status === 'Completed' ? styles.statusTextCompleted : styles.statusTextProcessing
-        ]}>
-          {reward.status}
-        </Text>
-      </View>
-    </View>
-  ), []);
+    );
+  }
 
   return (
-    <>
-      <View style={styles.container}>
-        <ScrollView 
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[COLORS.primary]}
-              tintColor={COLORS.primary}
-            />
-          }
-        >
-          <CommonHeader title="My Rewards" />
-          
-          {/* Header with Gradient */}
-          <LinearGradient
-            colors={COLORS.gradient.brand}
-            start={{ x: 0, y: 0 }}
-            end={{ x: 1, y: 1 }}
-            style={styles.header}
-          >
-            <Text style={styles.headerTitle}>My Rewards</Text>
-            <Text style={styles.headerSubtitle}>Redeem your points for exciting rewards</Text>
-            
-            {/* Points Card */}
-            <View style={styles.pointsCard}>
-              <View style={styles.pointsContent}>
-                <View style={styles.pointsLeft}>
-                  <Text style={styles.pointsLabel}>Available Points</Text>
-                  <View style={styles.pointsRow}>
-                    <Text style={styles.pointsValue}>{userPoints.toLocaleString()}</Text>
-                    <Ionicons name="star" size={SIZES.icon.lg} color={COLORS.secondary} />
-                  </View>
-                </View>
-                <View style={styles.trophyContainer}>
-                  <Ionicons name="trophy" size={SIZES.icon.xxxl} color={COLORS.white} />
-                </View>
-              </View>
-              
-              <View style={styles.progressBarContainer}>
-                <View style={[styles.progressBar, { width: `${progressPercentage}%` }]} />
-              </View>
-              <Text style={styles.progressText}>
-                {pointsToNextTier > 0 ? `${pointsToNextTier} points to next tier` : 'Max tier reached!'}
-              </Text>
-            </View>
-          </LinearGradient>
+    <View style={styles.container}>
+      <CommonHeader title="My Rewards" />
 
-          {/* Tabs */}
-          <View style={styles.tabsContainer}>
-            <View style={styles.tabsWrapper}>
-              {['available', 'redeemed'].map((tab) => (
-                <TouchableOpacity
-                  key={tab}
-                  onPress={() => setActiveTab(tab)}
-                  style={styles.tabButton}
-                  activeOpacity={0.7}
-                >
-                  <LinearGradient
-                    colors={activeTab === tab ? COLORS.gradient.brand : [COLORS.transparent, COLORS.transparent]}
-                    start={{ x: 0, y: 0 }}
-                    end={{ x: 1, y: 0 }}
-                    style={[styles.tabGradient, activeTab !== tab && styles.tabInactive]}
-                  >
-                    <Text style={[
-                      styles.tabText, 
-                      activeTab !== tab && styles.tabTextInactive
-                    ]}>
-                      {tab === 'available' ? 'Available Rewards' : 'Redeemed'}
-                    </Text>
-                  </LinearGradient>
-                </TouchableOpacity>
-              ))}
-            </View>
+      <ScrollView
+        style={styles.scrollView}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={["#0F766E"]}
+            tintColor="#0F766E"
+          />
+        }
+        showsVerticalScrollIndicator={false}
+      >
+        <View style={styles.content}>
+          {/* Stats Grid */}
+          <View style={styles.statsGrid}>
+            {stats.map((stat, index) => (
+              <View key={index} style={styles.statCard}>
+                <View style={[styles.statIcon, { backgroundColor: `${stat.color}15` }]}>
+                  <Icon name={stat.icon} size={20} color={stat.color} />
+                </View>
+                <Text style={[styles.statValue, { color: stat.color }]}>
+                  {stat.value}
+                </Text>
+                <Text style={styles.statLabel}>{stat.label}</Text>
+              </View>
+            ))}
           </View>
 
-          {/* Content */}
-          <View style={styles.content}>
-            {activeTab === 'available' ? (
-              <View style={styles.rewardsGrid}>
-                {rewardsData.available.map(renderRewardCard)}
+          {/* Referral Code Card - Reduced Height */}
+          <View style={styles.referralCard}>
+            <LinearGradient
+              colors={["#FF7A4D", "#E64310"]}
+              start={{ x: 0, y: 0 }}
+              end={{ x: 1, y: 1 }}
+              style={styles.referralGradient}
+            >
+              <Text style={styles.referralTitle}>Your Referral Code</Text>
+              
+              <TouchableOpacity
+                style={styles.codeContainer}
+               
+                activeOpacity={0.8}
+              >
+                <Text style={styles.codeText}>
+                  {referralData?.referral_code || "N/A"}
+                </Text>
+                
+              </TouchableOpacity>
+              
+              <Text style={styles.tapToCopy}>Tap to copy</Text>
+
+              <TouchableOpacity
+                style={styles.shareButton}
+                onPress={shareReferralLink}
+                activeOpacity={0.8}
+              >
+                <Icon name="share" size={18} color="#FFFFFF" />
+                <Text style={styles.shareButtonText}>Share Link</Text>
+              </TouchableOpacity>
+            </LinearGradient>
+          </View>
+
+          {/* Earned History */}
+          <View style={styles.historyCard}>
+            <View style={styles.sectionHeader}>
+              <View>
+                <Text style={styles.sectionTitle}>Earned History</Text>
+                <Text style={styles.sectionSubtitle}>{earnedHistory.length} Referrals</Text>
+              </View>
+              <View style={styles.totalEarned}>
+                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalAmount}>
+                  {formatAmount(referralData?.totalCreditedAmount)}
+                </Text>
+              </View>
+            </View>
+
+            {earnedHistory.length === 0 ? (
+              <View style={styles.emptyState}>
+                <Icon name="people-outline" size={40} color="#94A3B8" />
+                <Text style={styles.emptyText}>No earnings yet</Text>
+                <Text style={styles.emptySubtext}>Share your code to start earning</Text>
               </View>
             ) : (
-              <View style={styles.redeemedList}>
-                {rewardsData.redeemed.map(renderRedeemedCard)}
+              <View style={styles.historyList}>
+                {earnedHistory.slice(0, 5).map((item, index) => (
+                  <View key={index} style={styles.historyItem}>
+                    <View style={styles.itemHeader}>
+                      <View style={styles.userAvatar}>
+                        <IconFA name="user" size={14} color="#0F766E" />
+                      </View>
+                      <View style={styles.userInfo}>
+                        <Text style={styles.userName} numberOfLines={1}>
+                          {item.new_member_personal_name}
+                        </Text>
+                        <Text style={styles.userPhone}>{item.new_member_mobile}</Text>
+                      </View>
+                      <Text style={styles.earnedAmount}>
+                        {formatAmount(item.credited_amount)}
+                      </Text>
+                    </View>
+                    <View style={styles.itemDetails}>
+                      <View style={styles.detailItem}>
+                        <Icon name="business-center" size={12} color="#64748B" />
+                        <Text style={styles.detailText} numberOfLines={1}>
+                          {item.schemeName}
+                        </Text>
+                      </View>
+                      <View style={styles.detailItem}>
+                        <Icon name="calendar-today" size={12} color="#64748B" />
+                        <Text style={styles.detailText}>{formatDate(item.created_at)}</Text>
+                      </View>
+                    </View>
+                  </View>
+                ))}
               </View>
             )}
           </View>
-          
-          <View style={styles.bottomSpacer} />
-        </ScrollView>
 
-        {/* Floating Action Bar */}
-        <View style={styles.floatingBar}>
-          <View style={styles.floatingContent}>
-            <View>
-              <Text style={styles.floatingLabel}>Your Balance</Text>
-              <Text style={styles.floatingPoints}>{userPoints.toLocaleString()} Points</Text>
+          {/* How It Works */}
+          <View style={styles.howItWorksCard}>
+            <View style={styles.sectionHeader}>
+              <Icon name="help-outline" size={20} color="#0F766E" />
+              <Text style={styles.sectionTitle}>How It Works</Text>
             </View>
-            <TouchableOpacity onPress={handleEarnPoints} activeOpacity={0.8}>
-              <LinearGradient
-                colors={COLORS.gradient.brand}
-                start={{ x: 0, y: 0 }}
-                end={{ x: 1, y: 0 }}
-                style={styles.earnButton}
-              >
-                <Ionicons name="flash" size={SIZES.icon.md} color={COLORS.white} />
-                <Text style={styles.earnButtonText}>Earn More Points</Text>
-              </LinearGradient>
-            </TouchableOpacity>
+            
+            <View style={styles.stepsContainer}>
+              {steps.map((step, index) => (
+                <View key={index} style={styles.stepItem}>
+                  <View style={styles.stepNumber}>
+                    <Text style={styles.stepNumberText}>{index + 1}</Text>
+                  </View>
+                  <Icon name={step.icon} size={18} color="#0F766E" />
+                  <Text style={styles.stepText}>{step.text}</Text>
+                </View>
+              ))}
+            </View>
           </View>
         </View>
-      </View>
-     <BottomTab screen="Rewards" />
-    </>
+        
+        <View style={styles.bottomSpace} />
+      </ScrollView>
+    </View>
   );
 };
 
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: COLORS.surface,
+    backgroundColor: "#F8FAFC",
   },
-  header: {
-    paddingHorizontal: SIZES.padding.lg,
-    paddingTop: SIZES.padding.xxl + SIZES.padding.md,
-    paddingBottom: SIZES.padding.xl,
-    borderBottomLeftRadius: SIZES.radius.xl,
-    borderBottomRightRadius: SIZES.radius.xl,
-  },
-  headerTitle: {
-    ...FONTS.h1,
-    color: COLORS.textInverse,
-    marginBottom: SIZES.margin.xs,
-  },
-  headerSubtitle: {
-    ...FONTS.body,
-    color: COLORS.whiteOpacity50,
-    marginBottom: SIZES.margin.lg,
-  },
-  pointsCard: {
-    backgroundColor: COLORS.whiteOpacity20,
-    borderRadius: SIZES.radius.lg,
-    padding: SIZES.padding.lg,
-    borderWidth: 1,
-    borderColor: COLORS.whiteOpacity30,
-  },
-  pointsContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    marginBottom: SIZES.margin.md,
-  },
-  pointsLeft: {
+  centeredContainer: {
     flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+    backgroundColor: "#F8FAFC",
+    paddingHorizontal: 20,
   },
-  pointsLabel: {
-    ...FONTS.bodySmall,
-    color: COLORS.whiteOpacity50,
-    marginBottom: SIZES.margin.xs,
+  loadingText: {
+    marginTop: 12,
+    fontSize: 14,
+    color: "#64748B",
+    fontWeight: "500",
   },
-  pointsRow: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SIZES.margin.sm,
+  errorText: {
+    fontSize: 15,
+    color: "#475569",
+    textAlign: "center",
+    marginTop: 12,
+    marginBottom: 20,
+    lineHeight: 22,
   },
-  pointsValue: {
-    fontSize: SIZES.heading.h1,
-    fontFamily: FONTS.family.bold,
-    color: COLORS.white,
+  retryButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#0F766E",
+    paddingVertical: 12,
+    paddingHorizontal: 24,
+    borderRadius: 10,
+    gap: 8,
   },
-  trophyContainer: {
-    backgroundColor: COLORS.whiteOpacity30,
-    padding: SIZES.padding.md,
-    borderRadius: SIZES.radius.md,
+  retryButtonText: {
+    color: "#FFFFFF",
+    fontSize: 14,
+    fontWeight: "600",
   },
-  progressBarContainer: {
-    backgroundColor: COLORS.whiteOpacity20,
-    height: SIZES.xs,
-    borderRadius: SIZES.radius.full,
-    overflow: 'hidden',
-  },
-  progressBar: {
-    backgroundColor: COLORS.white,
-    height: '100%',
-    borderRadius: SIZES.radius.full,
-  },
-  progressText: {
-    ...FONTS.caption,
-    color: COLORS.whiteOpacity50,
-    marginTop: SIZES.margin.sm,
-  },
-  tabsContainer: {
-    paddingHorizontal: SIZES.padding.lg,
-    marginTop: -SIZES.margin.lg,
-  },
-  tabsWrapper: {
-    backgroundColor: COLORS.white,
-    borderRadius: SIZES.radius.lg,
-    padding: SIZES.padding.xs,
-    flexDirection: 'row',
-    gap: SIZES.margin.sm,
-    ...SHADOWS.sm,
-  },
-  tabButton: {
+  scrollView: {
     flex: 1,
-  },
-  tabGradient: {
-    paddingVertical: SIZES.padding.md,
-    borderRadius: SIZES.radius.md,
-    alignItems: 'center',
-  },
-  tabInactive: {
-    backgroundColor: COLORS.transparent,
-  },
-  tabText: {
-    ...FONTS.bodyMedium,
-    color: COLORS.white,
-    fontFamily: FONTS.family.semiBold,
-  },
-  tabTextInactive: {
-    color: COLORS.textSecondary,
   },
   content: {
-    padding: SIZES.padding.lg,
+    paddingHorizontal: 16,
+    paddingTop: 12,
   },
-  rewardsGrid: {
-    gap: SIZES.margin.md,
+  bottomSpace: {
+    height: 20,
   },
-  rewardCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: SIZES.radius.lg,
-    padding: SIZES.padding.lg,
-    ...SHADOWS.md,
+
+  // Stats Grid
+  statsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    justifyContent: "space-between",
+    marginBottom: 16,
+    gap: 12,
   },
-  cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
-    marginBottom: SIZES.margin.md,
+  statCard: {
+    width: (width - 44) / 2,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 12,
+    padding: 14,
+    alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.03,
+    shadowRadius: 3,
+    elevation: 1,
   },
-  iconContainer: {
-    width: SIZES.xxxl,
-    height: SIZES.xxxl,
-    borderRadius: SIZES.radius.md,
-    alignItems: 'center',
-    justifyContent: 'center',
+  statIcon: {
+    width: 36,
+    height: 36,
+    borderRadius: 10,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
   },
-  badge: {
-    paddingHorizontal: SIZES.padding.md,
-    paddingVertical: SIZES.padding.xs,
-    borderRadius: SIZES.radius.full,
+  statValue: {
+    fontSize: 16,
+    fontWeight: "700",
+    marginBottom: 4,
   },
-  badgeText: {
-    ...FONTS.caption,
-    color: COLORS.white,
-    fontFamily: FONTS.family.semiBold,
+  statLabel: {
+    fontSize: 11,
+    color: "#6B7280",
+    textAlign: "center",
   },
-  rewardTitle: {
-    ...FONTS.h4,
-    marginBottom: SIZES.margin.sm,
-    color: COLORS.textPrimary,
+
+  // Referral Card (Reduced Height)
+  referralCard: {
+    marginBottom: 20,
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
-  pointsInfo: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SIZES.margin.xs,
-    marginBottom: SIZES.margin.md,
+  referralGradient: {
+    paddingVertical: 20, // Reduced from 32
+    paddingHorizontal: 20,
+    alignItems: "center",
   },
-  pointsText: {
-    ...FONTS.bodyMedium,
-    color: COLORS.textSecondary,
+  referralTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#FFFFFF",
+    marginBottom: 12,
   },
-  cardFooter: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  codeContainer: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFFFFF",
+    paddingVertical: 12, // Reduced from 18
+    paddingHorizontal: 20,
+    borderRadius: 12,
+    marginBottom: 8,
+    width: "100%",
+    justifyContent: "space-between",
   },
-  availableText: {
-    ...FONTS.bodySmall,
-    color: COLORS.success,
-    fontFamily: FONTS.family.semiBold,
+  codeText: {
+    fontSize: 22, // Reduced from 26
+    fontWeight: "800",
+    color: "#0F766E",
+    letterSpacing: 2,
   },
-  needMoreText: {
-    ...FONTS.bodySmall,
-    color: COLORS.primary,
-    fontFamily: FONTS.family.semiBold,
+  tapToCopy: {
+    fontSize: 12,
+    color: "rgba(255,255,255,0.85)",
+    marginBottom: 16,
+    fontWeight: "500",
   },
-  redeemButton: {
-    borderRadius: SIZES.radius.full,
-    overflow: 'hidden',
+  shareButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.2)",
+    borderRadius: 10,
+    paddingVertical: 10,
+    paddingHorizontal: 20,
+    gap: 8,
+    borderWidth: 1,
+    borderColor: "rgba(255,255,255,0.3)",
   },
-  redeemButtonDisabled: {
-    opacity: 1,
+  shareButtonText: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#FFFFFF",
   },
-  redeemGradient: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SIZES.margin.xs,
-    paddingHorizontal: SIZES.padding.lg,
-    paddingVertical: SIZES.padding.sm,
+
+  // History Card
+  historyCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  redeemText: {
-    ...FONTS.bodyMedium,
-    color: COLORS.white,
-    fontFamily: FONTS.family.semiBold,
+  sectionHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    marginBottom: 16,
+    paddingBottom: 12,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F1F5F9",
   },
-  redeemTextDisabled: {
-    color: COLORS.gray600,
+  headerIcon: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#0F766E",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
   },
-  redeemedList: {
-    gap: SIZES.margin.md,
+  sectionTitle: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#1E293B",
   },
-  redeemedCard: {
-    backgroundColor: COLORS.white,
-    borderRadius: SIZES.radius.lg,
-    padding: SIZES.padding.lg,
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
-    ...SHADOWS.sm,
+  sectionSubtitle: {
+    fontSize: 12,
+    color: "#64748B",
+    marginTop: 2,
   },
-  redeemedContent: {
+  totalEarned: {
+    alignItems: "flex-end",
+  },
+  totalLabel: {
+    fontSize: 12,
+    color: "#64748B",
+    marginBottom: 2,
+  },
+  totalAmount: {
+    fontSize: 16,
+    fontWeight: "700",
+    color: "#0F766E",
+  },
+
+  // History List
+  historyList: {
+    gap: 10,
+  },
+  historyItem: {
+    backgroundColor: "#FAFCFD",
+    borderRadius: 12,
+    padding: 12,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+  },
+  itemHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  userAvatar: {
+    width: 32,
+    height: 32,
+    borderRadius: 10,
+    backgroundColor: "#F0FCFC",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 10,
+  },
+  userInfo: {
     flex: 1,
   },
-  redeemedTitle: {
-    ...FONTS.h5,
-    marginBottom: SIZES.margin.xs,
-    color: COLORS.textPrimary,
+  userName: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#1E293B",
+    marginBottom: 2,
   },
-  redeemedDate: {
-    ...FONTS.bodySmall,
-    color: COLORS.textSecondary,
-    marginBottom: SIZES.margin.sm,
+  userPhone: {
+    fontSize: 12,
+    color: "#64748B",
   },
-  redeemedPoints: {
-    ...FONTS.bodySmall,
-    color: COLORS.textSecondary,
-    fontFamily: FONTS.family.semiBold,
+  earnedAmount: {
+    fontSize: 14,
+    fontWeight: "700",
+    color: "#0F766E",
   },
-  statusBadge: {
-    paddingHorizontal: SIZES.padding.md,
-    paddingVertical: SIZES.padding.sm,
-    borderRadius: SIZES.radius.full,
+  itemDetails: {
+    flexDirection: "row",
+    justifyContent: "space-between",
   },
-  statusCompleted: {
-    backgroundColor: COLORS.successLight + '20',
+  detailItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 6,
+    flex: 1,
   },
-  statusProcessing: {
-    backgroundColor: COLORS.warningLight + '20',
+  detailText: {
+    fontSize: 12,
+    color: "#475569",
+    flex: 1,
   },
-  statusText: {
-    ...FONTS.bodySmall,
-    fontFamily: FONTS.family.semiBold,
+
+  // Empty State
+  emptyState: {
+    alignItems: "center",
+    paddingVertical: 30,
   },
-  statusTextCompleted: {
-    color: COLORS.success,
+  emptyText: {
+    fontSize: 15,
+    color: "#475569",
+    fontWeight: "600",
+    marginTop: 12,
+    marginBottom: 4,
   },
-  statusTextProcessing: {
-    color: COLORS.warning,
+  emptySubtext: {
+    fontSize: 13,
+    color: "#94A3B8",
+    textAlign: "center",
   },
-  floatingBar: {
-    position: 'absolute',
-    bottom: 0,
-    left: 0,
-    right: 0,
-    backgroundColor: COLORS.white,
-    borderTopWidth: 1,
-    borderTopColor: COLORS.border,
-    padding: SIZES.padding.md,
-    ...SHADOWS.lg,
+
+  // How It Works
+  howItWorksCard: {
+    backgroundColor: "#FFFFFF",
+    borderRadius: 16,
+    padding: 16,
+    marginBottom: 20,
+    borderWidth: 1,
+    borderColor: "#F1F5F9",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 2,
   },
-  floatingContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+  stepsContainer: {
+    gap: 12,
   },
-  floatingLabel: {
-    ...FONTS.caption,
-    color: COLORS.textSecondary,
+  stepItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 4,
   },
-  floatingPoints: {
-    ...FONTS.h5,
-    color: COLORS.textPrimary,
+  stepNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#0F766E15",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
-  earnButton: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    gap: SIZES.margin.xs,
-    paddingHorizontal: SIZES.padding.lg,
-    paddingVertical: SIZES.padding.md,
-    borderRadius: SIZES.radius.full,
+  stepNumberText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#0F766E",
   },
-  earnButtonText: {
-    ...FONTS.bodyMedium,
-    color: COLORS.white,
-    fontFamily: FONTS.family.semiBold,
-  },
-  bottomSpacer: {
-    height: SIZES.xxxl,
+  stepText: {
+    fontSize: 14,
+    color: "#334155",
+    flex: 1,
+    marginLeft: 12,
+    fontWeight: "500",
   },
 });
 
-export default RewardsPage;
+export default ReferralScreen;

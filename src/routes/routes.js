@@ -52,6 +52,7 @@ function Drawer() {
       <NavigationStack.Screen name="AadhaarVerification" component={Screen.AadhaarVerificationScreen} />
       <NavigationStack.Screen name="DuePayment" component={Screen.DuePayment} />
       <NavigationStack.Screen name="SchemeListPage" component={Screen.SchemeListPage} />
+      <NavigationStack.Screen name="ReferralPending" component={Screen.ReferralPending} />
     </NavigationStack.Navigator>
   );
 }

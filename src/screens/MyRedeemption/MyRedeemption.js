@@ -10,10 +10,12 @@ import {
   ActivityIndicator,
   RefreshControl,
   StatusBar,
-  Alert,
+  Modal,
+  ScrollView,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getPhoneDetails } from "../../services/SchemeDetailsService";
+import { getRemainingDaysData } from "../../services/Remainingdays";
 import theme from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 
@@ -25,10 +27,26 @@ const SchemeListPage = ({ route, navigation }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [schemeApiData, setSchemeApiData] = useState({});
+  const [selectedScheme, setSelectedScheme] = useState(null);
+  const [modalVisible, setModalVisible] = useState(false);
 
-  /* ----------------------------------
-     Load phone number (route / storage)
-  -----------------------------------*/
+  // Memoized formatCurrency function
+  const formatCurrency = useCallback((amount) => {
+    try {
+      const num = Number(amount);
+      if (isNaN(num)) return "₹0";
+
+      return `₹${num.toLocaleString("en-IN", {
+        minimumFractionDigits: 0,
+        maximumFractionDigits: 0,
+      })}`;
+    } catch {
+      return "₹0";
+    }
+  }, []);
+
+  // Load phone number
   const loadPhoneNumber = useCallback(async () => {
     try {
       if (routePhoneNumber) {
@@ -50,56 +68,104 @@ const SchemeListPage = ({ route, navigation }) => {
     }
   }, [routePhoneNumber]);
 
-  /* -----------------------------
-     Fetch schemes
-  ------------------------------*/
-  const fetchSchemes = useCallback(async (phone) => {
-    try {
-      setLoading(true);
-      setError(null);
-      const data = await getPhoneDetails(phone);
+  // Fetch API data for schemes
+  const fetchApiDataForSchemes = useCallback(async (schemesData) => {
+    const apiDataMap = {};
 
-      if (data && data.length > 0) {
-        setSchemes(data);
-      } else {
-        setSchemes([]);
-        setError("No schemes found for this phone number");
+    const promises = schemesData.map(async (scheme) => {
+      const schemeId = scheme.schemeSummary?.schemeId;
+      const joinDate = scheme.joinDate
+        ? new Date(scheme.joinDate).toISOString().split("T")[0]
+        : null;
+
+      if (schemeId && joinDate) {
+        try {
+          const apiData = await getRemainingDaysData(schemeId, joinDate);
+          apiDataMap[`${schemeId}_${joinDate}`] = apiData;
+        } catch (apiError) {
+          console.warn(
+            `Failed to fetch API data for scheme ${schemeId}:`,
+            apiError
+          );
+          apiDataMap[`${schemeId}_${joinDate}`] = {
+            remainingDays: scheme.remainingDays,
+            allDays: [],
+            totalDays: scheme.fulldays,
+          };
+        }
       }
-    } catch (err) {
-      console.error("Error fetching schemes:", err);
-      const errorMessage =
-        err.message || "Failed to load schemes. Please try again.";
-      setError(errorMessage);
+    });
 
-      Alert.alert("Error Loading Schemes", errorMessage, [
-        { text: "Cancel", style: "cancel" },
-        { text: "Retry", onPress: () => fetchSchemes(phone) },
-      ]);
-    } finally {
-      setLoading(false);
-      setRefreshing(false);
-    }
+    await Promise.allSettled(promises);
+    return apiDataMap;
   }, []);
 
-  /* -----------------------------
-     Initial load
-  ------------------------------*/
+  // Fetch schemes
+  const fetchSchemes = useCallback(
+    async (phone) => {
+      try {
+        setLoading(true);
+        setError(null);
+        const data = await getPhoneDetails(phone);
+
+        if (data?.length > 0) {
+          setSchemes(data);
+          const apiData = await fetchApiDataForSchemes(data);
+          setSchemeApiData(apiData);
+        } else {
+          setSchemes([]);
+          setError("No schemes found for this phone number");
+        }
+      } catch (err) {
+        console.error("Error fetching schemes:", err);
+        setError("Failed to load schemes. Please try again.");
+      } finally {
+        setLoading(false);
+        setRefreshing(false);
+      }
+    },
+    [fetchApiDataForSchemes]
+  );
+
+  // Handle redeem button press
+  const handleRedeemPress = useCallback((scheme, actualRemainingDays, displayAmount) => {
+    setSelectedScheme({
+      scheme,
+      actualRemainingDays,
+      displayAmount
+    });
+    setModalVisible(true);
+  }, []);
+
+  // Handle confirm redemption
+  const handleConfirmRedeem = useCallback(() => {
+    // Add your redemption logic here
+    console.log("Confirming redemption for:", selectedScheme);
+    
+    // Close modal
+    setModalVisible(false);
+    
+    // Show success message or navigate to success screen
+    alert("Redemption request submitted successfully!");
+    
+    // Optionally refresh the schemes list
+    if (phoneNumber) {
+      fetchSchemes(phoneNumber);
+    }
+  }, [selectedScheme, phoneNumber, fetchSchemes]);
+
+  // Effects
   useEffect(() => {
     loadPhoneNumber();
   }, [loadPhoneNumber]);
 
-  /* -----------------------------
-     Fetch when phone ready
-  ------------------------------*/
   useEffect(() => {
     if (phoneNumber) {
       fetchSchemes(phoneNumber);
     }
   }, [phoneNumber, fetchSchemes]);
 
-  /* -----------------------------
-     Pull to refresh
-  ------------------------------*/
+  // Refresh
   const onRefresh = useCallback(() => {
     if (phoneNumber) {
       setRefreshing(true);
@@ -107,36 +173,28 @@ const SchemeListPage = ({ route, navigation }) => {
     }
   }, [phoneNumber, fetchSchemes]);
 
-  /* -----------------------------
-     Format currency
-  ------------------------------*/
-  const formatCurrency = useCallback((amount) => {
-    try {
-      const num = Number(amount);
-      if (isNaN(num)) return "₹0";
-
-      return `₹${num.toLocaleString("en-IN", {
-        minimumFractionDigits: Number.isInteger(num) ? 0 : 2,
-        maximumFractionDigits: 2,
-      })}`;
-    } catch (err) {
-      return "₹0";
-    }
-  }, []);
-
-  /* -----------------------------
-     Render scheme item
-  ------------------------------*/
+  // Render scheme item with memoization
   const renderSchemeItem = useCallback(
     ({ item }) => {
       const schemeName = item.schemeSummary?.schemeName || "N/A";
       const remainingDays = item.remainingDays ?? 0;
-      const amount =
-        item.schemeSummary?.schemaSummaryTransBalance?.totalAmount || 0;
 
-      const canRedeem = remainingDays === 0;
+      // Get API data
+      const joinDate = item.joinDate
+        ? new Date(item.joinDate).toISOString().split("T")[0]
+        : null;
+      const schemeId = item.schemeSummary?.schemeId;
+      const apiDataKey = `${schemeId}_${joinDate}`;
+      const apiData = schemeApiData[apiDataKey];
 
-      // Determine status color
+      // Calculate display values
+      const actualRemainingDays = apiData?.remainingDays ?? remainingDays;
+      const baseAmount = item.totalAmount || 0;
+      const bonusAmount = item.totalAmountWithBonus || 0;
+      const displayAmount = actualRemainingDays > 0 ? baseAmount : bonusAmount;
+      const canRedeem = remainingDays > 0;
+
+      // Status color
       let statusColor = theme.COLORS.warning;
       if (remainingDays === 0) {
         statusColor = theme.COLORS.success;
@@ -144,74 +202,104 @@ const SchemeListPage = ({ route, navigation }) => {
         statusColor = theme.COLORS.error;
       }
 
+      // Amount display logic
+      const showGiftIcon = actualRemainingDays > 0;
+      const isBonusUnlocked = actualRemainingDays <= 0;
+      const amountTextColor = isBonusUnlocked
+        ? theme.COLORS.success
+        : theme.COLORS.textSecondary;
+
       return (
         <View style={styles.tableRow}>
           {/* Scheme Name */}
-          <Text style={[styles.cell, styles.schemeCell]} numberOfLines={2}>
-            {schemeName}
-          </Text>
+          <View style={styles.schemeNameContainer}>
+            <Text style={styles.schemeName} numberOfLines={2}>
+              {schemeName}
+            </Text>
+          </View>
 
           {/* Remaining Days */}
-          <Text style={[styles.cell, { color: statusColor }]}>
-            {remainingDays}
-          </Text>
+          <View style={styles.daysContainer}>
+            <Text style={[styles.daysText, { color: statusColor }]}>
+              {remainingDays}
+            </Text>
+          </View>
 
-          {/* Amount */}
-          <Text style={[styles.cell, styles.amountCell]}>
-            {formatCurrency(amount)}
-          </Text>
+          {/* Amount Section */}
+          <View style={styles.amountSection}>
+            <View style={styles.amountMainRow}>
+              <Text style={[styles.amountText, { color: amountTextColor }]}>
+                {formatCurrency(displayAmount)}
+              </Text>
+            </View>
+            {showGiftIcon && <Text style={styles.giftIcon}>🎁</Text>}
+            {showGiftIcon && (
+              <Text style={styles.unlockText}>
+                Unlock in {actualRemainingDays} days
+              </Text>
+            )}
+
+            {isBonusUnlocked && (
+              <Text style={styles.bonusUnlockedText}>Bonus Unlocked!</Text>
+            )}
+          </View>
 
           {/* Redeem Button */}
-          <TouchableOpacity
-            disabled={!canRedeem}
-            style={[
-              styles.redeemButton,
-              !canRedeem && styles.redeemButtonDisabled,
-            ]}
-            onPress={() => {
-              navigation.navigate("RedeemScreen", {
-                scheme: item,
-              });
-            }}
-          >
-            <Text
+          <View style={styles.actionContainer}>
+            <TouchableOpacity
+              disabled={!canRedeem}
               style={[
-                styles.redeemButtonText,
-                !canRedeem && styles.redeemButtonTextDisabled,
+                styles.redeemButton,
+                !canRedeem && styles.redeemButtonDisabled,
               ]}
+              onPress={() => handleRedeemPress(item, actualRemainingDays, displayAmount)}
             >
-              Redeem
-            </Text>
-          </TouchableOpacity>
+              <Text
+                style={[
+                  styles.redeemButtonText,
+                  !canRedeem && styles.redeemButtonTextDisabled,
+                ]}
+              >
+                Redeem
+              </Text>
+            </TouchableOpacity>
+          </View>
         </View>
       );
     },
-    [formatCurrency, navigation]
+    [formatCurrency, schemeApiData, handleRedeemPress]
   );
 
+  // Render table header
   const renderTableHeader = () => (
     <View style={styles.tableHeader}>
-      <Text style={[styles.headerCell, styles.schemeCell]}>Scheme</Text>
-      <Text style={styles.headerCell}>Days</Text>
-      <Text style={styles.headerCell}>Amount</Text>
-      <Text style={styles.headerCell}>Action</Text>
+      <View style={[styles.headerCell, styles.schemeHeader]}>
+        <Text style={styles.headerText}>Scheme</Text>
+      </View>
+      <View style={[styles.headerCell, styles.daysHeader]}>
+        <Text style={styles.headerText}>Days</Text>
+      </View>
+      <View style={[styles.headerCell, styles.amountHeader]}>
+        <Text style={styles.headerText}>Amount</Text>
+      </View>
+      <View style={[styles.headerCell, styles.actionHeader]}>
+        <Text style={styles.headerText}>Action</Text>
+      </View>
     </View>
   );
 
-  /* -----------------------------
-     Render header
-  ------------------------------*/
+  // Render header
   const renderHeader = useCallback(() => {
     return (
       <View style={styles.headerContainer}>
         <CommonHeader
-          title="My Redeemption"
+          title="My Redemption"
           rightComponent={
             <TouchableOpacity
               onPress={() => navigation.navigate("GoldPlanScreen")}
-              style={{ padding: 4,borderWidth:1,borderRadius:10,width:55,height:32,backgroundColor:'#FF5724',alignSelf:"center",borderColor:"transparent" }}
+              style={styles.plansButton}
             >
-              <Text style={{ color: "#ffffffff", fontWeight: "600",alignSelf:"center" }}>Plans</Text>
+              <Text style={styles.plansButtonText}>Join Now</Text>
             </TouchableOpacity>
           }
         />
@@ -219,19 +307,19 @@ const SchemeListPage = ({ route, navigation }) => {
     );
   }, [navigation]);
 
-  /* -----------------------------
-     Render empty state
-  ------------------------------*/
+  // Render empty state
   const renderEmptyState = useCallback(() => {
     return (
       <View style={styles.emptyContainer}>
         <View style={styles.emptyIcon}>
           <Text style={styles.emptyIconText}>📋</Text>
         </View>
-        <Text style={styles.emptyTitle}>{"No Schemes Found"}</Text>
+        <Text style={styles.emptyTitle}>
+          {error ? "Error Loading Schemes" : "No Schemes Found"}
+        </Text>
         <Text style={styles.emptyMessage}>
-          
-            "You don't have any schemes registered with this phone number."
+          {error ||
+            "You don't have any schemes registered with this phone number."}
         </Text>
         {phoneNumber && (
           <TouchableOpacity
@@ -245,14 +333,32 @@ const SchemeListPage = ({ route, navigation }) => {
     );
   }, [error, phoneNumber, fetchSchemes]);
 
-  /* -----------------------------
-     Key extractor
-  ------------------------------*/
+  // Fixed key extractor with guaranteed uniqueness
   const keyExtractor = useCallback((item, index) => {
-    return `${item.regNo}-${
-      item.schemeSummary?.schemeName || "scheme"
-    }-${index}`;
+    // Create a composite key with multiple identifiers
+    const schemeId = item.schemeSummary?.schemeId || `scheme_${index}`;
+    const regNo = item.regNo || `reg_${index}`;
+    const joinDate = item.joinDate ? new Date(item.joinDate).getTime() : Date.now();
+    const uniqueId = `${schemeId}_${regNo}_${joinDate}_${index}_${Math.random().toString(36).substr(2, 9)}`;
+    
+    return uniqueId;
   }, []);
+
+  // Loading state
+  if (loading && !refreshing) {
+    return (
+      <SafeAreaView style={styles.container}>
+        <StatusBar
+          backgroundColor={theme.COLORS.primary}
+          barStyle="light-content"
+        />
+        <View style={styles.loadingContainer}>
+          <ActivityIndicator size="large" color={theme.COLORS.primary} />
+          <Text style={styles.loadingText}>Loading schemes...</Text>
+        </View>
+      </SafeAreaView>
+    );
+  }
 
   return (
     <SafeAreaView style={styles.container}>
@@ -261,42 +367,98 @@ const SchemeListPage = ({ route, navigation }) => {
         barStyle="light-content"
       />
 
-      {loading && !refreshing ? (
-        <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color={theme.COLORS.primary} />
-          <Text style={styles.loadingText}>Loading schemes...</Text>
+      <FlatList
+        data={schemes}
+        renderItem={renderSchemeItem}
+        keyExtractor={keyExtractor}
+        ListHeaderComponent={
+          <>
+            {renderHeader()}
+            {schemes.length > 0 && renderTableHeader()}
+          </>
+        }
+        ListEmptyComponent={renderEmptyState}
+        contentContainerStyle={styles.listContainer}
+        refreshControl={
+          <RefreshControl
+            refreshing={refreshing}
+            onRefresh={onRefresh}
+            colors={[theme.COLORS.primary]}
+            tintColor={theme.COLORS.primary}
+          />
+        }
+        initialNumToRender={10}
+        maxToRenderPerBatch={10}
+        windowSize={5}
+        removeClippedSubviews={true}
+        showsVerticalScrollIndicator={false}
+      />
+
+      {/* Redemption Terms Modal */}
+      <Modal
+        animationType="slide"
+        transparent={true}
+        visible={modalVisible}
+        onRequestClose={() => setModalVisible(false)}
+      >
+        <View style={styles.modalOverlay}>
+          <View style={styles.modalContainer}>
+            <View style={styles.modalHeader}>
+              <Text style={styles.modalTitle}>Redemption Terms & Conditions</Text>
+              <TouchableOpacity
+                onPress={() => setModalVisible(false)}
+                style={styles.closeButton}
+              >
+                <Text style={styles.closeButtonText}>×</Text>
+              </TouchableOpacity>
+            </View>
+
+            <ScrollView style={styles.modalContent}>
+              <View style={styles.schemeInfoContainer}>
+                <Text style={styles.schemeInfoLabel}>Scheme:</Text>
+                <Text style={styles.schemeInfoValue}>
+                  {selectedScheme?.scheme?.schemeSummary?.schemeName || "N/A"}
+                </Text>
+              </View>
+              
+              <View style={styles.schemeInfoContainer}>
+                <Text style={styles.schemeInfoLabel}>Amount to Redeem:</Text>
+                <Text style={[styles.schemeInfoValue, styles.amountValue]}>
+                  {selectedScheme ? formatCurrency(selectedScheme.displayAmount) : "₹0"}
+                </Text>
+              </View>
+
+              <View style={styles.termsSection}>
+                <Text style={styles.termsTitle}>Please read carefully:</Text>
+                <Text style={styles.redeemNoteText}>
+                  • Reward money is applicable only for purchases of ₹10,000 and above.{'\n\n'}
+                  • Redemption is subject to eligibility, validity period, and the company's reward policy.{'\n\n'}
+                  • The company reserves the right to modify or withdraw the reward scheme without prior notice.{'\n\n'}
+                  • Amount can only be redeemed when scheme reaches maturity date.{'\n\n'}
+                  • Redeemed amount will be transferred to your wallet.{'\n\n'}
+                  • Processing may take 24-48 hours.{'\n\n'}
+                </Text>
+              </View>
+            </ScrollView>
+
+            {/* Modal Buttons */}
+            <View style={styles.modalFooter}>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.cancelButton]}
+                onPress={() => setModalVisible(false)}
+              >
+                <Text style={styles.cancelButtonText}>Cancel</Text>
+              </TouchableOpacity>
+              <TouchableOpacity
+                style={[styles.modalButton, styles.confirmButton]}
+                onPress={handleConfirmRedeem}
+              >
+                <Text style={styles.confirmButtonText}>Confirm Redemption</Text>
+              </TouchableOpacity>
+            </View>
+          </View>
         </View>
-      ) : (
-        <FlatList
-          data={schemes}
-          renderItem={renderSchemeItem}
-          keyExtractor={keyExtractor}
-          ListHeaderComponent={
-            <>
-              {renderHeader()}
-              {schemes.length > 0 && renderTableHeader()}
-            </>
-          }
-          ListEmptyComponent={renderEmptyState}
-          contentContainerStyle={[
-            styles.listContainer,
-            schemes.length === 0 && styles.emptyListContainer,
-          ]}
-          refreshControl={
-            <RefreshControl
-              refreshing={refreshing}
-              onRefresh={onRefresh}
-              colors={[theme.COLORS.primary]}
-              tintColor={theme.COLORS.primary}
-            />
-          }
-          initialNumToRender={10}
-          maxToRenderPerBatch={10}
-          windowSize={10}
-          removeClippedSubviews={true}
-          showsVerticalScrollIndicator={false}
-        />
-      )}
+      </Modal>
     </SafeAreaView>
   );
 };
@@ -310,91 +472,176 @@ const styles = StyleSheet.create({
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: theme.COLORS.background,
   },
   loadingText: {
     marginTop: theme.SIZES.md,
-    ...theme.FONTS.body,
+    fontSize: theme.SIZES.font.md,
     color: theme.COLORS.textSecondary,
   },
   listContainer: {
     flexGrow: 1,
     paddingBottom: theme.SIZES.xl,
   },
-  emptyListContainer: {
-    flexGrow: 1,
-  },
   headerContainer: {
     paddingTop: theme.SIZES.md,
   },
 
-  // Table Styles
+  // Table Header
   tableHeader: {
     flexDirection: "row",
     backgroundColor: theme.COLORS.gray200,
     paddingVertical: theme.SIZES.md,
-    paddingHorizontal: theme.SIZES.md,
+    paddingHorizontal: theme.SIZES.sm,
     marginHorizontal: theme.SIZES.xs,
     marginTop: theme.SIZES.lg,
     marginBottom: theme.SIZES.sm,
     borderRadius: theme.SIZES.radius.md,
   },
   headerCell: {
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  schemeHeader: {
     flex: 1,
-    ...theme.FONTS.h6,
+    alignItems: "flex-start",
+    paddingLeft: theme.SIZES.sm,
+  },
+  daysHeader: {
+    flex: 0.8,
+  },
+  amountHeader: {
+    flex: 1.2,
+  },
+  actionHeader: {
+    flex: 1,
+  },
+  headerText: {
+    fontSize: theme.SIZES.font.sm,
     fontWeight: "bold",
     color: theme.COLORS.textPrimary,
-    textAlign: "center",
   },
+
+  // Table Row
   tableRow: {
     flexDirection: "row",
     backgroundColor: theme.COLORS.white,
     marginHorizontal: theme.SIZES.xs,
     marginBottom: theme.SIZES.xs,
     paddingVertical: theme.SIZES.lg,
-    paddingHorizontal: theme.SIZES.md,
+    paddingHorizontal: theme.SIZES.sm,
     borderRadius: theme.SIZES.radius.md,
-    alignItems: "center",
     borderWidth: 1,
     borderColor: theme.COLORS.borderLight,
+    minHeight: 80,
+    alignItems: "center",
   },
-  cell: {
+
+  // Scheme Column
+  schemeNameContainer: {
     flex: 1,
-    ...(theme.FONTS.h6 - 3),
-    textAlign: "center",
+    paddingLeft: theme.SIZES.sm,
+    justifyContent: "center",
+  },
+  schemeName: {
+    fontSize: theme.SIZES.font.sm,
+    fontWeight: "500",
     color: theme.COLORS.textPrimary,
+    lineHeight: 18,
   },
-  schemeCell: {
-    flex: 1.5,
-    textAlign: "left",
+
+  // Days Column
+  daysContainer: {
+    flex: 0.8,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  amountCell: {
-    color: theme.COLORS.success,
+  daysText: {
+    fontSize: theme.SIZES.font.md,
     fontWeight: "600",
   },
 
-  // Redeem Button Styles
+  // Amount Column
+  amountSection: {
+    flex: 1.2,
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  amountMainRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  amountText: {
+    fontSize: theme.SIZES.font.sm,
+    fontWeight: "600",
+  },
+  giftIcon: {
+    fontSize: theme.SIZES.font.sm,
+    marginLeft: 4,
+  },
+  unlockText: {
+    fontSize: 10,
+    color: theme.COLORS.warning,
+    fontWeight: "500",
+    marginTop: 2,
+    textAlign: "center",
+  },
+  bonusUnlockedText: {
+    fontSize: 10,
+    color: theme.COLORS.success,
+    fontWeight: "600",
+    marginTop: 2,
+  },
+
+  // Action Column
+  actionContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
+  },
   redeemButton: {
     backgroundColor: theme.COLORS.primary,
-    paddingVertical: theme.SIZES.xs,
-    paddingHorizontal: theme.SIZES.md,
+    paddingVertical: 8,
+    paddingHorizontal: theme.SIZES.xs,
     borderRadius: theme.SIZES.radius.sm,
-    minWidth: 70,
+    minWidth: 80,
+     justifyContent: "center",
+    alignItems: "center",
+    minHeight: 40,
   },
   redeemButtonDisabled: {
     backgroundColor: theme.COLORS.gray300,
   },
   redeemButtonText: {
-    ...theme.FONTS.caption,
+    fontSize: theme.SIZES.font.sm,
     color: theme.COLORS.white,
     fontWeight: "600",
-    textAlign: "center",
+    alignSelf:"center"
   },
   redeemButtonTextDisabled: {
     color: theme.COLORS.gray600,
   },
 
-  // Empty State Styles
+  // Plans Button
+  plansButton: {
+    paddingVertical: 6,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    backgroundColor: "#FF5724",
+    borderWidth: 1,
+    borderColor: "transparent",
+    width:80,
+    height:40,
+    justifyContent:"center",
+    alignItems:"center"
+  },
+  plansButtonText: {
+    color: "#FFFFFF",
+    fontWeight: "600",
+    fontSize: theme.SIZES.font.sm,
+  },
+
+  // Empty State
   emptyContainer: {
     flex: 1,
     justifyContent: "center",
@@ -413,17 +660,17 @@ const styles = StyleSheet.create({
     fontSize: 48,
   },
   emptyTitle: {
-    ...theme.FONTS.h4,
+    fontSize: theme.SIZES.font.lg,
     color: theme.COLORS.textPrimary,
     marginBottom: theme.SIZES.sm,
-    textAlign: "center",
+    fontWeight: "bold",
   },
   emptyMessage: {
-    ...theme.FONTS.body,
+    fontSize: theme.SIZES.font.md,
     color: theme.COLORS.textSecondary,
     textAlign: "center",
     marginBottom: theme.SIZES.xl,
-    lineHeight: theme.SIZES.font.lg * 1.5,
+    lineHeight: 22,
   },
   emptyButton: {
     backgroundColor: theme.COLORS.primary,
@@ -432,7 +679,111 @@ const styles = StyleSheet.create({
     borderRadius: theme.SIZES.radius.md,
   },
   emptyButtonText: {
-    ...theme.FONTS.button,
+    fontSize: theme.SIZES.font.md,
+    color: theme.COLORS.white,
+    fontWeight: "600",
+  },
+
+  // Modal Styles
+  modalOverlay: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  modalContainer: {
+    backgroundColor: theme.COLORS.white,
+    borderRadius: 20,
+    maxHeight: "80%",
+    width: "90%",
+  },
+  modalHeader: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: theme.SIZES.lg,
+    borderBottomWidth: 1,
+    borderBottomColor: theme.COLORS.borderLight,
+  },
+  modalTitle: {
+    fontSize: theme.SIZES.font.lg,
+    fontWeight: "bold",
+    color: theme.COLORS.textPrimary,
+    flex: 1,
+  },
+  closeButton: {
+    padding: 4,
+  },
+  closeButtonText: {
+    fontSize: 28,
+    color: theme.COLORS.textSecondary,
+    lineHeight: 28,
+  },
+  modalContent: {
+    padding: theme.SIZES.lg,
+  },
+  schemeInfoContainer: {
+    flexDirection: "row",
+    marginBottom: theme.SIZES.md,
+    alignItems: "center",
+  },
+  schemeInfoLabel: {
+    fontSize: theme.SIZES.font.md,
+    fontWeight: "600",
+    color: theme.COLORS.textPrimary,
+    marginRight: theme.SIZES.sm,
+  },
+  schemeInfoValue: {
+    fontSize: theme.SIZES.font.md,
+    color: theme.COLORS.textSecondary,
+    flex: 1,
+  },
+  amountValue: {
+    fontSize: theme.SIZES.font.lg,
+    fontWeight: "bold",
+    color: theme.COLORS.primary,
+  },
+  termsSection: {
+    marginTop: theme.SIZES.lg,
+  },
+  termsTitle: {
+    fontSize: theme.SIZES.font.md,
+    fontWeight: "bold",
+    color: theme.COLORS.textPrimary,
+    marginBottom: theme.SIZES.md,
+  },
+  redeemNoteText: {
+    fontSize: theme.SIZES.font.sm,
+    color: theme.COLORS.textSecondary,
+    lineHeight: 22,
+  },
+  modalFooter: {
+    flexDirection: "row",
+    padding: theme.SIZES.lg,
+    borderTopWidth: 1,
+    borderTopColor: theme.COLORS.borderLight,
+  },
+  modalButton: {
+    flex: 1,
+    paddingVertical: theme.SIZES.md,
+    borderRadius: theme.SIZES.radius.md,
+    alignItems: "center",
+    marginHorizontal: theme.SIZES.xs,
+  },
+  cancelButton: {
+    backgroundColor: theme.COLORS.gray200,
+  },
+  cancelButtonText: {
+    fontSize: theme.SIZES.font.md,
+    fontWeight: "600",
+    color: theme.COLORS.textSecondary,
+  },
+  confirmButton: {
+    backgroundColor: theme.COLORS.primary,
+  },
+  confirmButtonText: {
+    fontSize: theme.SIZES.font.md,
+    fontWeight: "600",
     color: theme.COLORS.white,
   },
 });

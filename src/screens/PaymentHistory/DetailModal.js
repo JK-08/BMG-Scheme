@@ -113,7 +113,7 @@ const PaymentDetailScreen = ({ navigation, route }) => {
             <View style={styles.header}>
               <View style={styles.headerContent}>
                 <Image
-                  source={require("../../assets/image/final-logo.jpg")}
+                  source={require("../../assets/image/logo08.jpeg")}
                   style={styles.logo}
                   resizeMode="contain"
                 />

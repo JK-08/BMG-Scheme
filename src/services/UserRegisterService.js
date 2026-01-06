@@ -33,6 +33,7 @@ export const userService = {
       });
 
       const result = await response.json();
+      console.log("Update response:", result);
 
       if (!response.ok) {
         throw new Error(result.message || "Failed to update user data");
@@ -290,4 +291,59 @@ export const userService = {
       aadhaarStatus: userData.aadhaarStatus || "pending",
     };
   },
+};
+
+export const parseAadhaarAddress = (addressString, splitAddressData) => {
+  try {
+    // If we have split_address data from documentData, use that
+    if (splitAddressData) {
+      return {
+        address1: splitAddressData.house || "",
+        address2: `${splitAddressData.street || ""} ${splitAddressData.landmark || ""}`.trim(),
+        city: splitAddressData.vtc || splitAddressData.city || "",
+        state: splitAddressData.state || "",
+        pincode: splitAddressData.pincode || "",
+        country: splitAddressData.country || "India"
+      };
+    }
+    
+    // Fallback: Parse the address string
+    if (!addressString) return null;
+    
+    // For your specific response format:
+    // "29, BAJANAI KOIL STREET, Kunnathur, Kunnathur, Arani, Tiruvannamalai, Tamil Nadu, India, 604402"
+    
+    const parts = addressString.split(',').map(part => part.trim()).filter(part => part);
+    
+    if (parts.length >= 9) {
+      // Your specific format
+      return {
+        address1: parts[0] || "", // "29"
+        address2: parts[1] || "", // "BAJANAI KOIL STREET"
+        city: parts[2] || "", // "Kunnathur"
+        state: parts[6] || "", // "Tamil Nadu"
+        pincode: parts[8] || "", // "604402"
+        country: parts[7] || "India" // "India"
+      };
+    }
+    
+    return null;
+  } catch (error) {
+    console.error("Error parsing address:", error);
+    return null;
+  }
+};
+
+export const formatDateOfBirth = (dobString) => {
+  if (!dobString) return "";
+  
+  // Handle DD-MM-YYYY format from Aadhaar
+  if (dobString.includes('-')) {
+    const parts = dobString.split('-');
+    if (parts.length === 3) {
+      return `${parts[2]}-${parts[1]}-${parts[0]}`; // Convert to YYYY-MM-DD
+    }
+  }
+  
+  return dobString;
 };

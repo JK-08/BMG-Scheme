@@ -221,7 +221,7 @@ const ReceiptPreviewModal = ({
                 </Text>
                 <View style={styles.logoPlaceholder}>
                   <Image
-                    source={require("../../assets/image/final-logo.jpg")}
+                    source={require("../../assets/image/logo08.jpeg")}
                     style={styles.logoImage}
                     resizeMode="contain"
                   />
@@ -345,6 +345,7 @@ const ReceiptPreviewModal = ({
                         {previewData.customerInfo.address1 ||
                           customerInfo?.address1 ||
                           "N/A"}
+                          
                         {previewData.customerInfo.address2
                           ? `, ${previewData.customerInfo.address2}`
                           : ""}

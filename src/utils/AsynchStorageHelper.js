@@ -87,3 +87,14 @@ export const getAuthToken = async () => {
     return null;
   }
 };
+
+export const updateAuthToken = async (token) => {
+  try {
+    if (!token) return;
+
+    await AsyncStorage.setItem("authToken", token);
+    console.log("✅ Auth token updated");
+  } catch (error) {
+    console.error("❌ Error updating auth token:", error);
+  }
+};

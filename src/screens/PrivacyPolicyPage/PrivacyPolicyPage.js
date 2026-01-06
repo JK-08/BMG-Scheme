@@ -16,83 +16,253 @@ import CommonHeader from "../../components/CommonHeader/CommonHeader";
 const { COLORS, SIZES, FONTS, verticalScale, moderateScale, SHADOWS } = theme;
 
 const PrivacyPolicyPage = () => {
-  const handleExternalLink = (url) => {
-    Linking.openURL(url).catch((err) =>
-      console.error("Couldn't load page", err)
-    );
-  };
-
-  const handleEmail = () => Linking.openURL("mailto:Contact@bmgjewellers.in");
-  const handlePhoneCall = () => Linking.openURL("tel:+919514333601");
+  const handleEmail = () => Linking.openURL("mailto:contact@bmgjewellers.in");
+  const handlePhoneCall = () => Linking.openURL("tel:+917094670946");
 
   const policySections = [
     {
-      title: "Introduction",
-      icon: "info",
-      content:
-        "At BMG Jewellers, your privacy is our top priority. This Privacy Policy describes how we collect, use, disclose, and protect your personal information when you use our Jewellery Chit App, website, or related services.",
+      title: "Legal Basis & Applicable Laws",
+      icon: "gavel",
+      content: "This Policy is framed in compliance with:",
+      subsections: [
+        {
+          content: "Digital Personal Data Protection Act, 2023 (India)"
+        },
+        {
+          content: "Information Technology Act, 2000"
+        },
+        {
+          content: "Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011"
+        },
+        {
+          content: "Aadhaar Act, 2016 and UIDAI regulations"
+        },
+        {
+          content: "Reserve Bank of India / State Chit Fund guidelines (where applicable)"
+        },
+        {
+          content: "Global data protection principles including GDPR (EU), to the extent applicable as best practice"
+        }
+      ]
     },
     {
-      title: "Information We Collect",
-      icon: "person",
+      title: "Definitions",
+      icon: "menu-book",
       content: "",
       subsections: [
         {
-          title: "Personal Information",
-          content:
-            "Full Name, Date of Birth, Gender, Contact Details, Residential Address, Government-issued ID (Aadhaar, PAN), Photographs",
+          title: "Personal Data",
+          content: "Any data about an individual who is identifiable, such as name, mobile number, address, etc."
         },
         {
-          title: "Financial Information",
-          content:
-            "Bank Account Details, UPI ID, Transaction History, Payment Records, Chit contributions",
+          title: "Sensitive Personal Data",
+          content: "As defined under IT Rules, 2011 (bank details, biometric data, etc.)"
         },
         {
-          title: "Technical Information",
-          content: "Device Information, IP Address, Location, App usage patterns",
+          title: "Data Fiduciary",
+          content: "The Company, which determines the purpose and means of processing personal data"
         },
+        {
+          title: "Data Principal",
+          content: "The individual to whom the personal data relates (Customer/User)"
+        }
+      ]
+    },
+    {
+      title: "User Consent",
+      icon: "check-circle",
+      content: "By accessing or using our App, Website, or Services, and by ticking the consent checkbox during login or enrolment, you:",
+      subsections: [
+        {
+          content: "Freely and voluntarily consent to the collection and processing of your personal data"
+        },
+        {
+          content: "Confirm that the information provided is accurate"
+        },
+        {
+          content: "Understand the purpose, usage, and retention of your data"
+        },
+        {
+          content: "Acknowledge your rights under applicable laws"
+        }
       ],
+      note: "Consent is purpose-specific, informed, revocable, and recorded electronically."
+    },
+    {
+      title: "Information We Collect",
+      icon: "category",
+      content: "",
+      subsections: [
+        {
+          title: "Information Provided Directly by You",
+          content: "Full Name, Mobile Number, Email Address (optional), Residential Address, PAN / Voter ID / Driving Licence (as applicable), Chit enrolment details, Payment details (transaction reference only, not card data)"
+        },
+        {
+          title: "Aadhaar Information (Important Clarification)",
+          content: "Aadhaar is used only for identity verification. Aadhaar number, copy, image, XML, or biometric data is NOT stored. Only masked Aadhaar (last 4 digits) and verification status may be recorded. Aadhaar may be viewed physically or verified through UIDAI-authorised mechanisms."
+        },
+        {
+          title: "Information Collected Automatically",
+          content: "IP address, Device type, OS, browser, App usage logs, Date, time, and activity history, Cookies and similar technologies (Website only)"
+        }
+      ]
     },
     {
       title: "Purpose of Data Collection",
       icon: "data-usage",
-      content:
-        "Register and manage your account, Enable chit scheme participation, Process payments and transactions, Verify identity and prevent fraud, Communicate updates and offers, Enhance app performance and security",
+      content: "We collect and process personal data strictly for:",
+      subsections: [
+        {
+          content: "Jewellery chit enrolment and management"
+        },
+        {
+          content: "Customer identification and verification"
+        },
+        {
+          content: "Compliance with legal and regulatory obligations"
+        },
+        {
+          content: "Transaction processing and account maintenance"
+        },
+        {
+          content: "Customer support and grievance redressal"
+        },
+        {
+          content: "Fraud prevention and security monitoring"
+        },
+        {
+          content: "Audit, accounting, and statutory reporting"
+        }
+      ]
+    },
+    {
+      title: "Data Minimisation & Purpose Limitation",
+      icon: "filter-list",
+      content: "Only data necessary for stated purposes is collected. Data is not used for unrelated purposes. Marketing communication is done only with separate consent."
+    },
+    {
+      title: "Storage & Retention of Data",
+      icon: "storage",
+      content: "",
+      subsections: [
+        {
+          content: "Data is stored in secure servers located in India"
+        },
+        {
+          content: "Physical records are kept in locked premises with restricted access"
+        },
+        {
+          content: "Personal data is retained during active chit period and for statutory period after closure (generally 7 years)"
+        },
+        {
+          content: "Data is securely deleted or anonymised after retention period"
+        }
+      ]
     },
     {
       title: "Data Sharing & Disclosure",
       icon: "share",
-      content: "",
+      content: "We do not sell or rent personal data. Data may be shared only with:",
       subsections: [
         {
-          title: "We Share With",
-          content:
-            "Trusted Service Providers, Legal Authorities (when required), Business Transfers (merger/acquisition)",
+          content: "UIDAI-authorised service providers (verification only)"
         },
         {
-          title: "We Never Share With",
-          content: "Third parties for commercial gain without your consent",
+          content: "Payment gateways and banks (transaction processing)"
         },
+        {
+          content: "Auditors, legal advisors, and statutory authorities"
+        },
+        {
+          content: "Government agencies when legally required"
+        }
       ],
+      note: "All third parties are bound by confidentiality and data protection obligations."
     },
     {
-      title: "Your Rights",
+      title: "Data Security Practices",
       icon: "security",
-      content:
-        "Access your data, Correct inaccurate information, Withdraw consent, Request data portability, Request deletion (subject to legal requirements)",
+      content: "We implement reasonable security practices including:",
+      subsections: [
+        {
+          content: "Encryption of digital data"
+        },
+        {
+          content: "Role-based access control"
+        },
+        {
+          content: "Audit logs and monitoring"
+        },
+        {
+          content: "Secure APIs"
+        },
+        {
+          content: "Firewalls and malware protection"
+        },
+        {
+          content: "Staff training and confidentiality agreements"
+        }
+      ]
     },
     {
-      title: "Data Security",
-      icon: "lock",
-      content:
-        "Encryption of sensitive data (SSL/HTTPS), Controlled access to information, Secure data centers, Regular system audits, Confidentiality of login credentials",
+      title: "User Rights (Data Principal Rights)",
+      icon: "person",
+      content: "You have the right to:",
+      subsections: [
+        {
+          content: "Access your personal data"
+        },
+        {
+          content: "Correct inaccurate data"
+        },
+        {
+          content: "Withdraw consent (subject to legal obligations)"
+        },
+        {
+          content: "Request deletion after legal retention"
+        },
+        {
+          content: "Grievance redressal"
+        }
+      ],
+      note: "Requests may be submitted via email or support portal."
     },
     {
-      title: "Children's Privacy",
+      title: "Withdrawal of Consent",
+      icon: "cancel",
+      content: "Consent can be withdrawn by written request. Withdrawal may affect our ability to provide services where data processing is mandatory by law."
+    },
+    {
+      title: "Children's Data",
       icon: "child-care",
-      content:
-        "Our services are intended for individuals aged 18 years and above. We do not knowingly collect personal data from minors.",
+      content: "Our services are not intended for minors. Customers must be 18 years or older. No data of minors is knowingly collected."
     },
+    {
+      title: "Data Breach Management",
+      icon: "warning",
+      content: "In the event of a data breach:",
+      subsections: [
+        {
+          content: "Internal assessment will be conducted immediately"
+        },
+        {
+          content: "Affected users and authorities will be notified as per law"
+        },
+        {
+          content: "Remedial measures will be taken promptly"
+        }
+      ]
+    },
+    {
+      title: "Cross-Border Data Transfer",
+      icon: "public",
+      content: "Personal data is processed and stored within India. No cross-border transfer is done except as permitted by law."
+    },
+    {
+      title: "Amendments to Policy",
+      icon: "update",
+      content: "This Policy may be updated periodically. Changes will be notified through App / Website."
+    }
   ];
 
   const ContactInfo = ({ icon, label, value, onPress, isLink = false }) => (
@@ -124,6 +294,16 @@ const PrivacyPolicyPage = () => {
         >
           <CommonHeader title={"Privacy Policy"} />
 
+          
+
+          {/* Company Info */}
+          <View style={styles.companyInfoCard}>
+            <Text style={styles.companyName}>BMG Jewellers Private Limited</Text>
+            <Text style={styles.companyAddress}>
+              54, Vaithiyanathapuram, Thathaneri, Madurai, Tamil Nadu, 625018
+            </Text>
+          </View>
+
           {/* Policy Sections */}
           {policySections.map((section, index) => (
             <View key={index} style={styles.sectionCard}>
@@ -141,61 +321,91 @@ const PrivacyPolicyPage = () => {
               {section.subsections &&
                 section.subsections.map((subsection, subIndex) => (
                   <View key={subIndex} style={styles.subsection}>
-                    <Text style={styles.subsectionTitle}>{subsection.title}</Text>
+                    {subsection.title && (
+                      <Text style={styles.subsectionTitle}>{subsection.title}</Text>
+                    )}
                     <Text style={styles.subsectionContent}>
                       {subsection.content}
                     </Text>
                   </View>
                 ))}
+
+              {section.note && (
+                <View style={styles.noteContainer}>
+                  <Text style={styles.noteText}>{section.note}</Text>
+                </View>
+              )}
             </View>
           ))}
 
-          {/* Contact Information */}
-          <View style={styles.contactCard}>
-            <Text style={styles.contactCardTitle}>
-              Contact Our Grievance Officer
+          {/* Grievance Redressal Officer */}
+          <View style={styles.grievanceCard}>
+            <Text style={styles.grievanceTitle}>
+              Grievance Redressal Officer
+            </Text>
+            <Text style={styles.grievanceSubtitle}>
+              As required under law
             </Text>
 
             <ContactInfo
+              icon="person"
+              label="Name"
+              value="Administrative Officer"
+            />
+            <ContactInfo
               icon="email"
               label="Email"
-              value="Contact@bmgjewellers.in"
+              value="contact@bmgjewellers.in"
               onPress={handleEmail}
               isLink={true}
             />
             <ContactInfo
               icon="phone"
-              label="Phone"
-              value="+91-95143 33601"
+              label="Contact"
+              value="7094670946"
               onPress={handlePhoneCall}
             />
-            <ContactInfo
-              icon="business"
-              label="Address"
-              value="M/s. BMG Jewellers Pvt Ltd, 160, Melamasi St, Madurai-625001"
-            />
-            <ContactInfo
-              icon="access-time"
-              label="Office Hours"
-              value="[Mon-Sat 10:00 AM - 6:00 PM, Sun 11:00 AM - 4:00 PM]"
-            />
+            <Text style={styles.grievanceNote}>
+              Complaints will be resolved within the statutory timeframe.
+            </Text>
           </View>
 
-          {/* Legal Footer */}
+          {/* Governing Law */}
+          <View style={styles.governingCard}>
+            <Icon name="balance" size={moderateScale(20)} color={COLORS.primary} />
+            <Text style={styles.governingText}>
+              Governing Law & Jurisdiction
+            </Text>
+            <Text style={styles.governingDetails}>
+              This Policy shall be governed by the laws of India. Courts at Madurai shall have exclusive jurisdiction.
+            </Text>
+          </View>
+
+          {/* Acknowledgement */}
           <LinearGradient
             colors={COLORS.gradient.primary}
-            style={styles.legalFooter}
+            style={styles.acknowledgementCard}
           >
-            <Icon name="gavel" size={moderateScale(20)} color={COLORS.white} />
-            <Text style={styles.legalText}>
-              Governed by Indian Laws • Information Technology Act, 2000
+            <Icon name="verified" size={moderateScale(20)} color={COLORS.white} />
+            <Text style={styles.acknowledgementText}>
+              By using our App or Website, you acknowledge that you have read, understood, and agreed to this Privacy Policy.
+              Aadhaar is used strictly for verification purposes and is never stored.
+              Personal data is processed lawfully, fairly, and transparently.
             </Text>
           </LinearGradient>
+
+          {/* Effective Date */}
+          <View style={styles.effectiveDateCard}>
+            <Icon name="calendar-today" size={moderateScale(18)} color={COLORS.primary} />
+            <Text style={styles.effectiveDateText}>
+              Last updated Date: 18.12.2025 
+            </Text>
+          </View>
 
           {/* Copyright */}
           <View style={styles.copyright}>
             <Text style={styles.copyrightText}>
-              © {new Date().getFullYear()} BMG Jewellers. All rights reserved.
+              © {new Date().getFullYear()} BMG Jewellers Private Limited. All rights reserved.
             </Text>
           </View>
         </ScrollView>
@@ -210,6 +420,46 @@ const styles = StyleSheet.create({
   scrollContent: { 
     flexGrow: 1,
     paddingBottom: verticalScale(SIZES.padding.xl),
+  },
+  effectiveDateCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginHorizontal: SIZES.padding.lg,
+    marginBottom: verticalScale(SIZES.padding.md),
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    ...SHADOWS.sm,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  effectiveDateText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.textPrimary,
+    marginLeft: SIZES.padding.sm,
+  },
+  companyInfoCard: {
+    backgroundColor: COLORS.card,
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.lg,
+    marginHorizontal: SIZES.padding.lg,
+    marginBottom: verticalScale(SIZES.padding.md),
+    ...SHADOWS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  companyName: {
+    ...FONTS.h6,
+    color: COLORS.primary,
+    marginBottom: verticalScale(SIZES.xs),
+    textAlign: "center",
+  },
+  companyAddress: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    textAlign: "center",
+    lineHeight: SIZES.font.md * 1.4,
   },
   sectionCard: {
     backgroundColor: COLORS.card,
@@ -245,34 +495,65 @@ const styles = StyleSheet.create({
     ...FONTS.body,
     color: COLORS.textPrimary,
     lineHeight: SIZES.font.lg * 1.4,
+    marginBottom: verticalScale(SIZES.padding.sm),
   },
   subsection: { 
-    marginTop: verticalScale(SIZES.padding.sm) 
+    marginBottom: verticalScale(SIZES.padding.sm),
+    paddingLeft: SIZES.padding.sm,
+    borderLeftWidth: 2,
+    borderLeftColor: COLORS.primaryLight,
   },
   subsectionTitle: {
     ...FONTS.bodyMedium,
     color: COLORS.primary,
     marginBottom: verticalScale(SIZES.xs),
+    fontWeight: "600",
   },
   subsectionContent: {
     ...FONTS.body,
     color: COLORS.textPrimary,
     lineHeight: SIZES.font.md * 1.4,
   },
-  contactCard: {
+  noteContainer: {
+    marginTop: verticalScale(SIZES.padding.sm),
+    padding: SIZES.padding.sm,
+    backgroundColor: COLORS.primaryLight + "20",
+    borderRadius: SIZES.radius.sm,
+    borderLeftWidth: 3,
+    borderLeftColor: COLORS.primary,
+  },
+  noteText: {
+    ...FONTS.bodySmall,
+    color: COLORS.textPrimary,
+    fontStyle: "italic",
+  },
+  grievanceCard: {
     backgroundColor: COLORS.card,
     borderRadius: SIZES.radius.lg,
     padding: SIZES.padding.xl,
     marginHorizontal: SIZES.padding.lg,
-    marginBottom: verticalScale(SIZES.padding.lg),
+    marginBottom: verticalScale(SIZES.padding.md),
     ...SHADOWS.md,
     borderWidth: 1,
     borderColor: COLORS.borderLight,
   },
-  contactCardTitle: {
+  grievanceTitle: {
     ...FONTS.h5,
     color: COLORS.textPrimary,
+    marginBottom: verticalScale(SIZES.xs),
+    textAlign: "center",
+  },
+  grievanceSubtitle: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
     marginBottom: verticalScale(SIZES.padding.md),
+    textAlign: "center",
+  },
+  grievanceNote: {
+    ...FONTS.bodySmall,
+    color: COLORS.textSecondary,
+    marginTop: verticalScale(SIZES.padding.md),
+    fontStyle: "italic",
     textAlign: "center",
   },
   contactItem: { 
@@ -298,21 +579,43 @@ const styles = StyleSheet.create({
     color: COLORS.primary, 
     textDecorationLine: "underline" 
   },
-  legalFooter: {
+  governingCard: {
+    backgroundColor: COLORS.card,
     borderRadius: SIZES.radius.lg,
     padding: SIZES.padding.lg,
     marginHorizontal: SIZES.padding.lg,
+    marginBottom: verticalScale(SIZES.padding.md),
     alignItems: "center",
-    flexDirection: "row",
-    justifyContent: "center",
+    ...SHADOWS.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderLight,
+  },
+  governingText: {
+    ...FONTS.h6,
+    color: COLORS.primary,
+    marginVertical: verticalScale(SIZES.padding.sm),
+    textAlign: "center",
+  },
+  governingDetails: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    textAlign: "center",
+    lineHeight: SIZES.font.md * 1.4,
+  },
+  acknowledgementCard: {
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.lg,
+    marginHorizontal: SIZES.padding.lg,
     marginBottom: verticalScale(SIZES.padding.lg),
+    alignItems: "center",
     ...SHADOWS.md,
   },
-  legalText: {
+  acknowledgementText: {
     ...FONTS.bodyMedium,
     color: COLORS.white,
-    marginLeft: SIZES.padding.sm,
+    marginTop: verticalScale(SIZES.padding.sm),
     textAlign: "center",
+    lineHeight: SIZES.font.md * 1.4,
   },
   copyright: { 
     alignItems: "center", 

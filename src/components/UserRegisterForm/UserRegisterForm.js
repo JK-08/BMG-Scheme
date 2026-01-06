@@ -12,7 +12,15 @@ import {
 
 // Import components
 import CommonHeader from "../CommonHeader/CommonHeader";
-import {OTPModal,CustomInput,DataRow,ConsentModal,CustomButton} from './RegisterComponents'
+import {
+  OTPModal,
+  CustomInput,
+  DataRow,
+  ConsentModal,
+  CustomButton,
+} from "./RegisterComponents";
+import { useNavigation } from "@react-navigation/native";
+import { saveUserData } from "../../utils/AsynchStorageHelper";
 
 // Import hooks and services
 import { useUserProfile } from "./Userhook";
@@ -38,11 +46,7 @@ const GenderSelector = ({ gender, updateField, errors }) => (
               gender === g && styles.genderOptionTextSelected,
             ]}
           >
-            {g === "female"
-              ? "👩 Female"
-              : g === "male"
-              ? "👨 Male"
-              : "Other"}
+            {g === "female" ? "👩 Female" : g === "male" ? "👨 Male" : "Other"}
           </Text>
         </TouchableOpacity>
       ))}
@@ -56,13 +60,18 @@ const GenderSelector = ({ gender, updateField, errors }) => (
   </View>
 );
 
-const TermsCheckbox = ({ termsAccepted, updateField, errors, setShowTermsModal }) => (
+const TermsCheckbox = ({
+  termsAccepted,
+  updateField,
+  errors,
+  setShowTermsModal,
+}) => (
   <View style={styles.termsContainer}>
     <View style={styles.termsHeader}>
       <Text style={styles.termsLabel}>Terms and Conditions *</Text>
       <TouchableOpacity
         style={styles.termsHelpButton}
-        onPress={() => setShowTermsModal(true)}
+        onPress={setShowTermsModal}
       >
         <Text style={styles.termsHelpText}>❓</Text>
       </TouchableOpacity>
@@ -99,7 +108,8 @@ const AadhaarField = ({
   pendingAadhaarVerification,
   userData,
 }) => {
-  const isAadhaarVerified = formData.aadhaarVerified || (userData && userData.aadhaarVerified);
+  const isAadhaarVerified =
+    formData.aadhaarVerified || (userData && userData.aadhaarVerified);
   const maskedAadhaar = formData.maskedAadhaar || userData?.maskedAadhaar;
 
   if (isAadhaarVerified) {
@@ -151,29 +161,22 @@ const AadhaarField = ({
           formData.idProofNo.length === 12 &&
           !errors.idProofNo && (
             <View style={styles.aadhaarActions}>
-              {formData.termsAccepted ? (
-                <TouchableOpacity
-                  style={styles.verifyButtonFull}
-                  onPress={handleVerifyAadhaar}
-                  disabled={verificationInProgress || pendingAadhaarVerification}
-                >
-                  {verificationInProgress || pendingAadhaarVerification ? (
-                    <ActivityIndicator size="small" color="#FFF" />
-                  ) : (
-                    <>
-                      <Text style={styles.verifyButtonText}>
-                        🔐 Verify Aadhaar
-                      </Text>
-                    </>
-                  )}
-                </TouchableOpacity>
-              ) : (
-                <View style={{ padding: 10, alignItems: "center" }}>
-                  <Text style={{ color: "#F59E0B", fontSize: 12 }}>
-                    Accept terms above to verify Aadhaar
-                  </Text>
-                </View>
-              )}
+              {/* REMOVED the terms check here */}
+              <TouchableOpacity
+                style={styles.verifyButtonFull}
+                onPress={handleVerifyAadhaar}
+                disabled={verificationInProgress || pendingAadhaarVerification}
+              >
+                {verificationInProgress || pendingAadhaarVerification ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Text style={styles.verifyButtonText}>
+                      🔐 Verify Aadhaar
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
             </View>
           )}
       </View>
@@ -208,7 +211,7 @@ export default function ProfileManagement() {
     pendingAadhaarVerification,
     formData,
     errors,
-    
+
     // Functions
     updateField,
     handleVerifyAadhaar,
@@ -219,8 +222,10 @@ export default function ProfileManagement() {
     resetForm,
     handleEdit,
     fetchUserData,
+    updateState, // ADD THIS - IT'S NOW RETURNED FROM THE HOOK
   } = useUserProfile();
 
+  const navigation = useNavigation();
   // ===== RENDER LOADING STATE =====
   if (isFetchingData) {
     return (
@@ -252,6 +257,7 @@ export default function ProfileManagement() {
       <CommonHeader
         title="User Profile Management"
         subtitle={userData ? `Welcome, ${userData.username}` : "Loading..."}
+        onBackPress={() => navigation.navigate('MainLanding')}
       />
 
       {/* Form Modal */}
@@ -305,9 +311,9 @@ export default function ProfileManagement() {
                 isValid={fieldValidity.username}
               />
 
-              <GenderSelector 
-                gender={formData.gender} 
-                updateField={updateField} 
+              <GenderSelector
+                gender={formData.gender}
+                updateField={updateField}
                 errors={errors}
               />
 
@@ -315,7 +321,10 @@ export default function ProfileManagement() {
                 label="Phone Number"
                 value={formData.contactNumber}
                 onChangeText={(v) =>
-                  updateField("contactNumber", v.replace(/[^0-9]/g, "").slice(0, 10))
+                  updateField(
+                    "contactNumber",
+                    v.replace(/[^0-9]/g, "").slice(0, 10)
+                  )
                 }
                 placeholder="10-digit mobile number"
                 keyboardType="phone-pad"
@@ -441,9 +450,9 @@ export default function ProfileManagement() {
                 <Text style={styles.sectionTitle}>📋 Terms & Conditions</Text>
                 <View style={styles.sectionDivider} />
               </View>
-              <TermsCheckbox 
-                termsAccepted={formData.termsAccepted} 
-                updateField={updateField} 
+              <TermsCheckbox
+                termsAccepted={formData.termsAccepted}
+                updateField={updateField}
                 errors={errors}
                 setShowTermsModal={() => updateState({ showTermsModal: true })}
               />

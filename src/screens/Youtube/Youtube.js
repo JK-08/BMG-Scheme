@@ -15,16 +15,15 @@ export default function MainPageWithYouTube() {
     <View style={styles.container}>
       <YoutubePlayer
         ref={playerRef}
-        height={(width * 9) / 16} // maintains perfect 16:9 ratio
+        height={(width * 9) / 16}   // 16:9 ratio
         width={width}
-        play={true} // auto play on mount
-        mute={false} // set true if you want silent autoplay
-        videoId="GCe6_LTWTn0" // 🔹 your YouTube video ID
+        play={true}               // autoplay
+        mute={false}              // set true if autoplay fails on iOS
+        videoId="SvKotU_FZAg"      // ✅ iframe video ID
         onReady={onReady}
         webViewProps={{
           allowsInlineMediaPlayback: true,
           mediaPlaybackRequiresUserAction: false,
-          originWhitelist: ["*"],
         }}
       />
     </View>
@@ -35,6 +34,5 @@ const styles = StyleSheet.create({
   container: {
     alignItems: "center",
     justifyContent: "center",
-  
   },
 });

@@ -157,6 +157,114 @@ const styles = StyleSheet.create({
     fontSize: SIZES.font.md,
   },
 
+  // Referral Code Styles
+  referralToggleContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    justifyContent: 'center',
+    marginTop: SIZES.lg,
+    marginBottom: SIZES.xs,
+    paddingVertical: SIZES.xs,
+  },
+  
+  referralToggleText: {
+    ...FONTS.bodySmall,
+    color: COLORS.primary,
+    fontWeight: '600',
+    marginRight: SIZES.xs,
+  },
+  
+  chevronIcon: {
+    width: SIZES.icon.sm,
+    height: SIZES.icon.sm,
+    tintColor: COLORS.primary,
+  },
+  
+  chevronIconRotated: {
+    transform: [{ rotate: '180deg' }],
+  },
+  
+  referralContainer: {
+    marginBottom: SIZES.md,
+  },
+  
+  referralInputContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.inputBackground,
+    borderRadius: SIZES.radius.md,
+    borderWidth: 1,
+    borderColor: COLORS.borderMedium,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: Platform.OS === 'ios' ? SIZES.padding.sm : SIZES.padding.xs,
+    minHeight: SIZES.input.height,
+  },
+  
+  referralApplied: {
+    borderColor: COLORS.success,
+    backgroundColor: COLORS.successLight + '20', // Add transparency
+  },
+  
+  referralInput: {
+    flex: 1,
+    fontSize: SIZES.font.md,
+    color: COLORS.textPrimary,
+    fontFamily: FONTS.family.regular,
+    paddingVertical: 0,
+    paddingRight: SIZES.xs,
+  },
+  
+  applyButton: {
+    backgroundColor: COLORS.primary,
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.padding.sm,
+    borderRadius: SIZES.radius.sm,
+    justifyContent: 'center',
+    alignItems: 'center',
+    minWidth: moderateScale(70),
+  },
+  
+  applyButtonDisabled: {
+    backgroundColor: COLORS.disabled,
+  },
+  
+  applyButtonText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  
+  appliedBadge: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.success,
+    paddingHorizontal: SIZES.padding.sm,
+    paddingVertical: SIZES.padding.xs,
+    borderRadius: SIZES.radius.sm,
+    minWidth: moderateScale(80),
+  },
+  
+  checkIcon: {
+    width: SIZES.icon.xs,
+    height: SIZES.icon.xs,
+    tintColor: COLORS.white,
+    marginRight: SIZES.xxs,
+  },
+  
+  appliedText: {
+    ...FONTS.bodySmall,
+    color: COLORS.white,
+    fontWeight: '600',
+  },
+  
+  referralSuccessText: {
+    ...FONTS.caption,
+    color: COLORS.success,
+    marginTop: SIZES.xs,
+    textAlign: 'left',
+    marginLeft: SIZES.xs,
+  },
+
   // Buttons
   primaryButton: {
     borderRadius: SIZES.radius.md,
@@ -278,8 +386,18 @@ if (Platform.OS === 'web') {
     outlineStyle: 'none',
   };
   
+  styles.referralInput = {
+    ...styles.referralInput,
+    outlineStyle: 'none',
+  };
+  
   styles.primaryButton = {
     ...styles.primaryButton,
+    cursor: 'pointer',
+  };
+  
+  styles.applyButton = {
+    ...styles.applyButton,
     cursor: 'pointer',
   };
   
@@ -290,6 +408,11 @@ if (Platform.OS === 'web') {
   
   styles.loginLink = {
     ...styles.loginLink,
+    cursor: 'pointer',
+  };
+  
+  styles.referralToggleContainer = {
+    ...styles.referralToggleContainer,
     cursor: 'pointer',
   };
 }

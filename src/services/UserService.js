@@ -162,6 +162,47 @@ const userService = {
     );
   },
 
+  //Referal code apply//
+ // Referal code apply
+checkReferralCode: async (userId, referralCode) => {
+  try {
+    const url = `https://scheme.bmgjewellers.com/api/v1/referral/check?userId=${userId}&referralCode=${referralCode}`;
+
+    const response = await fetch(url, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+      },
+      body: JSON.stringify({}), // required if backend expects body
+    });
+
+    const data = await response.json();
+
+    if (!response.ok) {
+      return {
+        success: false,
+        error: data?.message || "Referral check failed",
+        data,
+      };
+    }
+
+    return {
+      success: true,
+      data,
+    };
+  } catch (error) {
+    console.error("Referral check error:", error);
+    return {
+      success: false,
+      error: "Network error",
+    };
+  }
+},
+
+
+    
+  
+
   // ---------------- Authenticated APIs ----------------
   getUserById: async (id) => {
     console.log("🟢 Get User By ID - Step 1: Fetching");

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -15,14 +15,77 @@ import { LinearGradient } from "expo-linear-gradient";
 import theme from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { OTPService, UserService } from "../../services/OTPService";
-
+import { useNavigation } from "@react-navigation/native";
 const { COLORS, SIZES, FONTS, SHADOWS, moderateScale } = theme;
 
-const VerifyOtpScreen = ({ route, navigation }) => {
-  const { contactNumber, mode } = route.params || {};
+const VerifyOtpScreen = ({ route }) => {
+  const { contactNumber, mode, userId, hashKey } = route.params || {};
   const [otp, setOtp] = useState("");
   const [newPassword, setNewPassword] = useState("");
   const [loading, setLoading] = useState(false);
+  const [resendLoading, setResendLoading] = useState(false);
+  const [timer, setTimer] = useState(60);
+  const [isTimerActive, setIsTimerActive] = useState(true);
+  const navigation = useNavigation();
+  
+  const timerRef = useRef(null);
+
+  // Timer countdown effect
+  useEffect(() => {
+    if (isTimerActive && timer > 0) {
+      timerRef.current = setTimeout(() => {
+        setTimer(timer - 1);
+      }, 1000);
+    } else if (timer === 0) {
+      setIsTimerActive(false);
+    }
+
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, [timer, isTimerActive]);
+
+  // Format timer display
+  const formatTime = (seconds) => {
+    const mins = Math.floor(seconds / 60);
+    const secs = seconds % 60;
+    return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+  };
+
+  const handleResendOtp = async () => {
+    if (resendLoading || isTimerActive) return;
+
+    try {
+      setResendLoading(true);
+
+      if (mode === "forgot") {
+        if (!hashKey) {
+          throw new Error("Hash key not found. Please go back and try again.");
+        }
+        await OTPService.sendForgotPasswordOTP(contactNumber, hashKey);
+      } else {
+        if (!userId) {
+          throw new Error("User ID not found. Please go back and try again.");
+        }
+        await OTPService.sendContactUpdateOTP(userId, contactNumber);
+      }
+
+      // Reset timer
+      setTimer(60);
+      setIsTimerActive(true);
+      
+      Alert.alert("OTP Resent", "New OTP has been sent to your mobile.");
+    } catch (error) {
+      const errorMessage =
+        error?.message?.replace(/^Error:\s*/, "") ||
+        "Failed to resend OTP. Please try again.";
+      Alert.alert("Error", errorMessage);
+    } finally {
+      setResendLoading(false);
+    }
+  };
 
   const handleVerifyOtp = async () => {
     if (!UserService.validateOTP(otp)) {
@@ -73,9 +136,19 @@ const VerifyOtpScreen = ({ route, navigation }) => {
     }
   };
 
+  // Cleanup timer on unmount
+  useEffect(() => {
+    return () => {
+      if (timerRef.current) {
+        clearTimeout(timerRef.current);
+      }
+    };
+  }, []);
+
   return (
     <View style={styles.container}>
-      <CommonHeader title="Verify OTP" />
+      <CommonHeader title="Verify OTP"
+       onBackPress={() => navigation.navigate('LoginPage')} />
       <KeyboardAvoidingView
         style={styles.keyboardAvoidingView}
         behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -136,6 +209,31 @@ const VerifyOtpScreen = ({ route, navigation }) => {
                 )}
               </LinearGradient>
             </TouchableOpacity>
+
+            {/* Resend OTP Section */}
+            <View style={styles.resendContainer}>
+              <Text style={styles.resendPrompt}>
+                Didn't receive the OTP?
+              </Text>
+              <TouchableOpacity
+                style={[
+                  styles.resendButton,
+                  (isTimerActive || resendLoading) && styles.resendButtonDisabled,
+                ]}
+                onPress={handleResendOtp}
+                disabled={isTimerActive || resendLoading}
+              >
+                {resendLoading ? (
+                  <ActivityIndicator size="small" color={COLORS.primary} />
+                ) : (
+                  <Text style={styles.resendButtonText}>
+                    {isTimerActive
+                      ? `Resend OTP in ${formatTime(timer)}`
+                      : "Resend OTP"}
+                  </Text>
+                )}
+              </TouchableOpacity>
+            </View>
 
           </View>
         </ScrollView>
@@ -215,13 +313,26 @@ const styles = StyleSheet.create({
   },
   resendContainer: {
     marginTop: SIZES.xl,
-    alignSelf: "center",
-    padding: SIZES.padding.sm,
+    alignItems: "center",
   },
-  resendText: {
+  resendPrompt: {
+    ...FONTS.body,
+    color: COLORS.textSecondary,
+    marginBottom: SIZES.sm,
+    textAlign: "center",
+  },
+  resendButton: {
+    padding: SIZES.padding.sm,
+    borderRadius: SIZES.radius.sm,
+  },
+  resendButtonDisabled: {
+    opacity: 0.5,
+  },
+  resendButtonText: {
     ...FONTS.bodyMedium,
     color: COLORS.primary,
     textDecorationLine: "underline",
+    fontWeight: "600",
   },
 });
 
@@ -238,8 +349,8 @@ if (Platform.OS === "web") {
     cursor: "pointer",
   };
   
-  styles.resendContainer = {
-    ...styles.resendContainer,
+  styles.resendButton = {
+    ...styles.resendButton,
     cursor: "pointer",
   };
   

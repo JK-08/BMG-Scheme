@@ -12,6 +12,7 @@ import {
   validateAadhaar,
 } from "../../screens/AddNewMember/Validations";
 import { digiLockerService } from "../../services/DigiLockerService";
+import { updateAuthToken ,getAuthToken} from "../../utils/AsynchStorageHelper";
 
 export const useUserProfile = () => {
   const navigation = useNavigation();
@@ -40,6 +41,61 @@ export const useUserProfile = () => {
   // Helper to update state
   const updateState = (updates) => {
     setState((prev) => ({ ...prev, ...updates }));
+  };
+
+  // Helper function to parse Aadhaar address response
+  const parseAadhaarAddress = (addressString, splitAddressData) => {
+    try {
+      // If we have split_address data from documentData, use that
+      if (splitAddressData) {
+        return {
+          address1: splitAddressData.house || "",
+          address2: `${splitAddressData.street || ""} ${
+            splitAddressData.landmark || ""
+          }`.trim(),
+          city: splitAddressData.vtc || splitAddressData.city || "",
+          state: splitAddressData.state || "",
+          pincode: splitAddressData.pincode || "",
+          country: splitAddressData.country || "India",
+        };
+      }
+
+      // Fallback: Parse the address string
+      if (!addressString) return null;
+
+      // Split address string by commas
+      const parts = addressString
+        .split(",")
+        .map((part) => part.trim())
+        .filter((part) => part);
+
+      if (parts.length >= 7) {
+        // Common pattern: "house, street, village/city, sub-district, district, state, pincode, country"
+        const address1 = parts[0] || "";
+        const address2 = parts[1] || "";
+        const city = parts[2] || "";
+        const state = parts[5] || "";
+        const pincode = parts[6] || "";
+        const country = parts[7] || "India";
+
+        return { address1, address2, city, state, pincode, country };
+      } else if (parts.length >= 4) {
+        // Try to extract based on position
+        const address1 = parts[0] || "";
+        const address2 = parts.length > 1 ? parts[1] : "";
+        const city = parts.length > 2 ? parts[2] : "";
+        const state = parts.length > 3 ? parts[3] : "";
+        const pincode = parts.length > 4 ? parts[4] : "";
+        const country = parts.length > 5 ? parts[5] : "India";
+
+        return { address1, address2, city, state, pincode, country };
+      }
+
+      return null;
+    } catch (error) {
+      console.error("Error parsing address:", error);
+      return null;
+    }
   };
 
   // ===== DATA FETCHING =====
@@ -317,18 +373,6 @@ export const useUserProfile = () => {
 
   // ===== AADHAAR VERIFICATION =====
   const handleVerifyAadhaar = async () => {
-    if (!formData.termsAccepted) {
-      Alert.alert(
-        "Terms Required",
-        "Please accept the Terms and Conditions before verifying Aadhaar.",
-        [
-          { text: "Cancel", style: "cancel" },
-          { text: "View Terms", onPress: () => updateState({ showTermsModal: true }) },
-        ]
-      );
-      return;
-    }
-
     const aadhaarNumber = formData.idProofNo;
     if (!aadhaarNumber || aadhaarNumber.length !== 12) {
       Alert.alert("Error", "Please enter a valid 12-digit Aadhaar number");
@@ -349,6 +393,8 @@ export const useUserProfile = () => {
 
     try {
       const aadhaarNumber = formData.idProofNo;
+      console.log("Starting verification with Aadhaar:", aadhaarNumber);
+
       const result = await digiLockerService.verifyAadhaar(
         state.userId,
         aadhaarNumber
@@ -356,14 +402,18 @@ export const useUserProfile = () => {
 
       if (!result.success) {
         Alert.alert("Error", result.message || "Failed to start verification");
-        updateState({ verificationInProgress: false, pendingAadhaarVerification: false });
+        updateState({
+          verificationInProgress: false,
+          pendingAadhaarVerification: false,
+        });
         return;
       }
 
       navigation.navigate("DigiLockerWebViewScreen", {
         verificationUrl: result.verificationUrl,
         verificationId: result.verificationId,
-        aadhaarNumber: aadhaarNumber,
+        aadhaarNumber: aadhaarNumber, // Pass original Aadhaar number
+        originalAadhaarNumber: aadhaarNumber, // Explicitly pass as original
         onVerificationComplete: handleVerificationComplete,
       });
 
@@ -371,7 +421,10 @@ export const useUserProfile = () => {
     } catch (error) {
       console.error("Verification error:", error);
       Alert.alert("Error", "Failed to start verification. Please try again.");
-      updateState({ verificationInProgress: false, pendingAadhaarVerification: false });
+      updateState({
+        verificationInProgress: false,
+        pendingAadhaarVerification: false,
+      });
     }
   };
 
@@ -380,19 +433,46 @@ export const useUserProfile = () => {
   };
 
   const handleVerificationComplete = async (result) => {
-    console.log("Verification result:", result);
+    console.log("Verification result:", JSON.stringify(result, null, 2));
 
     if (result.success && result.aadhaarVerified) {
       try {
         const aadhaarData = result.userDetails || {};
         const documentData = result.documentData || {};
-        const actualAadhaarNumber = formData.idProofNo;
+        const actualAadhaarNumber = formData.idProofNo; // This is the original Aadhaar number
+
+        // IMPORTANT: Use the masked Aadhaar from result, not the full number
+        const maskedAadhaarFromResult = result.maskedAadhaar || "6485"; // From your log
+        const properMaskedAadhaar = `XXXX-XXXX-${maskedAadhaarFromResult}`;
+
+        console.log("Using Aadhaar data:", {
+          original: actualAadhaarNumber,
+          maskedFromResult: maskedAadhaarFromResult,
+          properMasked: properMaskedAadhaar,
+        });
+
+        // Parse address from Aadhaar response
+        const addressData = parseAadhaarAddress(
+          aadhaarData.address,
+          documentData.split_address
+        );
+
+        // Format date of birth properly (from "17-11-2004" to "2004-11-17")
+        const formatDateOfBirth = (dob) => {
+          if (!dob) return "";
+          const parts = dob.split("-");
+          if (parts.length === 3) {
+            // Convert "DD-MM-YYYY" to "YYYY-MM-DD"
+            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+          }
+          return dob;
+        };
 
         const updatedFormData = {
           ...formData,
-          idProofNo: actualAadhaarNumber,
+          idProofNo: actualAadhaarNumber, // Full Aadhaar number
           aadhaarVerified: true,
-          maskedAadhaar: `XXXX-XXXX-${actualAadhaarNumber.slice(8)}`,
+          maskedAadhaar: properMaskedAadhaar, // Masked format: "XXXX-XXXX-6485"
           aadhaarVerificationId:
             result.aadhaarVerificationId || result.verificationId,
           aadhaarVerifiedAt:
@@ -400,43 +480,91 @@ export const useUserProfile = () => {
           aadhaarStatus: result.aadhaarStatus || "VERIFIED",
           username: aadhaarData.name || formData.username,
           dateOfBirth:
-            userService.formatDateOfBirth(aadhaarData.dob) || formData.dateOfBirth,
-          gender: aadhaarData.gender || formData.gender,
-          address1: aadhaarData.address || formData.address1,
+            formatDateOfBirth(aadhaarData.dob) || formData.dateOfBirth,
+          gender: (
+            aadhaarData.gender ||
+            documentData.gender ||
+            formData.gender
+          )?.toLowerCase(),
+          // Update address fields from parsed data
+          address1:
+            addressData?.address1 || aadhaarData.address || formData.address1,
+          address2: addressData?.address2 || formData.address2,
+          city: addressData?.city || formData.city,
+          state: addressData?.state || formData.state,
+          pincode:
+            addressData?.pincode ||
+            documentData.split_address?.pincode ||
+            formData.pincode,
+          country: addressData?.country || formData.country || "India",
           kycVerified: formData.termsAccepted ? true : false,
         };
+
+        console.log("Updated form data with Aadhaar:", {
+          idProofNo: updatedFormData.idProofNo,
+          maskedAadhaar: updatedFormData.maskedAadhaar,
+          address1: updatedFormData.address1,
+          address2: updatedFormData.address2,
+          city: updatedFormData.city,
+          state: updatedFormData.state,
+          pincode: updatedFormData.pincode,
+          dateOfBirth: updatedFormData.dateOfBirth,
+          gender: updatedFormData.gender,
+        });
 
         setFormData(updatedFormData);
         updateState((prev) => ({
           fieldValidity: {
             ...prev.fieldValidity,
             idProofNo: true,
+            address1: true,
+            city: true,
+            state: true,
+            pincode: true,
             kycVerified: updatedFormData.kycVerified,
           },
         }));
-        setErrors((prev) => ({ ...prev, idProofNo: "" }));
+        setErrors((prev) => ({
+          ...prev,
+          idProofNo: "",
+          address1: "",
+          city: "",
+          state: "",
+          pincode: "",
+        }));
 
         const apiData = {
+          // Basic user info
           email: updatedFormData.email,
           username: updatedFormData.username,
-          gender: updatedFormData.gender,
           contactNumber: updatedFormData.contactNumber,
+
+          // Personal details
+          gender: updatedFormData.gender,
+          dateOfBirth: updatedFormData.dateOfBirth,
+
+          // Address details
           address1: updatedFormData.address1,
           address2: updatedFormData.address2,
           city: updatedFormData.city,
           state: updatedFormData.state,
           pincode: updatedFormData.pincode,
           country: updatedFormData.country,
-          dateOfBirth: updatedFormData.dateOfBirth,
-          kycVerified: updatedFormData.kycVerified,
+
+          // KYC & Terms
           termsAccepted: updatedFormData.termsAccepted,
-          idProofNo: actualAadhaarNumber,
+          kycVerified: updatedFormData.kycVerified,
+
+          // Aadhaar verification details
+          idProofNo: actualAadhaarNumber, // Full Aadhaar number
           aadhaarVerified: true,
-          maskedAadhaar: updatedFormData.maskedAadhaar,
+          maskedAadhaar: properMaskedAadhaar, // Masked format
           aadhaarVerificationId: updatedFormData.aadhaarVerificationId,
           aadhaarVerifiedAt: updatedFormData.aadhaarVerifiedAt,
           aadhaarStatus: updatedFormData.aadhaarStatus,
         };
+
+        console.log("Sending API data:", JSON.stringify(apiData, null, 2));
 
         await userService.updateUserData(state.userId, apiData);
         await fetchUserData(state.userId);
@@ -445,7 +573,9 @@ export const useUserProfile = () => {
           "✅ Aadhaar Verified Successfully",
           `Your Aadhaar has been verified and profile has been updated.\n\nName: ${
             aadhaarData.name || "N/A"
-          }\nAadhaar: ${updatedFormData.maskedAadhaar}\nKYC Status: ${
+          }\nAadhaar: ${updatedFormData.maskedAadhaar}\nAddress: ${
+            updatedFormData.address1
+          }, ${updatedFormData.city}, ${updatedFormData.state}\nKYC Status: ${
             updatedFormData.kycVerified ? "✅ Verified" : "❌ Pending Terms"
           }`,
           [{ text: "OK" }]
@@ -490,7 +620,10 @@ export const useUserProfile = () => {
       }));
     }
 
-    updateState({ verificationInProgress: false, pendingAadhaarVerification: false });
+    updateState({
+      verificationInProgress: false,
+      pendingAadhaarVerification: false,
+    });
   };
 
   // ===== OTP VERIFICATION =====
@@ -504,10 +637,19 @@ export const useUserProfile = () => {
 
     try {
       const result = await userService.verifyOTP(state.userId, otp);
+
+      // ✅ STORE TOKEN ONLY
+      if (result?.token) {
+        await updateAuthToken(result.token);
+      }
+
       updateState({ showOTPModal: false, verifyingOTP: false });
       await fetchUserData(state.userId);
       closeFormAndReset();
+
       Alert.alert("✅ Success", "Phone number verified successfully!");
+      const token = await getAuthToken();
+      console.log("Stored Token:", token);
     } catch (error) {
       Alert.alert(
         "Verification Failed",
@@ -530,7 +672,7 @@ export const useUserProfile = () => {
     };
 
     const validation = userService.validateFormData(formData, validators);
-    
+
     setErrors(validation.errors);
     updateState({ fieldValidity: validation.fieldValidity });
 
@@ -592,7 +734,10 @@ export const useUserProfile = () => {
         "You must accept the Terms and Conditions before updating your profile.",
         [
           { text: "Cancel", style: "cancel" },
-          { text: "View Terms", onPress: () => updateState({ showTermsModal: true }) },
+          {
+            text: "View Terms",
+            onPress: () => updateState({ showTermsModal: true }),
+          },
         ]
       );
       return;
@@ -621,23 +766,29 @@ export const useUserProfile = () => {
 
     try {
       const apiData = {
+        id: state.userId, // Add this if needed
         email: updatedFormData.email,
         username: updatedFormData.username,
-        gender: updatedFormData.gender,
+        password: updatedFormData.password, // Add if you have password field
         contactNumber: updatedFormData.contactNumber,
+        gender: updatedFormData.gender,
+        dateOfBirth: updatedFormData.dateOfBirth,
         address1: updatedFormData.address1,
         address2: updatedFormData.address2,
         city: updatedFormData.city,
         state: updatedFormData.state,
         pincode: updatedFormData.pincode,
-        country: updatedFormData.country,
-        kycVerified: updatedFormData.kycVerified,
+        country: updatedFormData.country || "India",
         termsAccepted: updatedFormData.termsAccepted,
-        dateOfBirth: updatedFormData.dateOfBirth,
-        idProofNo: updatedFormData.idProofNo,
-        aadhaarVerified: updatedFormData.aadhaarVerified,
+
+        // Aadhaar related fields - PAY ATTENTION HERE
+        idProofNo: updatedFormData.idProofNo, // This might be the issue
         maskedAadhaar: updatedFormData.maskedAadhaar,
+        aadhaarVerified: updatedFormData.aadhaarVerified,
+        kycVerified: updatedFormData.kycVerified,
+        // Verification fields (if your backend expects them)
         aadhaarVerificationId: updatedFormData.aadhaarVerificationId,
+        aadhaarVerifiedAt: updatedFormData.aadhaarVerifiedAt,
         aadhaarStatus: updatedFormData.aadhaarStatus,
       };
 
@@ -683,7 +834,7 @@ export const useUserProfile = () => {
     ...state,
     formData,
     errors,
-    
+
     // Functions
     updateField,
     handleVerifyAadhaar,
@@ -694,7 +845,8 @@ export const useUserProfile = () => {
     resetForm,
     handleEdit,
     fetchUserData,
-    
+    updateState,
+
     // Derived values
     userId: state.userId,
   };

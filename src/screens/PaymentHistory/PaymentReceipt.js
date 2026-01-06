@@ -14,7 +14,7 @@ class PaymentReceiptPDF {
 
   static ASSETS = {
     BACKGROUND: require("../../assets/bg12.jpg"),
-    LOGO: require("../../assets/image/final-logo.jpg")
+    LOGO: require("../../assets/image/logo08.jpeg")
   };
 
   static API_ENDPOINTS = {

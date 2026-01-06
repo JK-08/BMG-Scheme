@@ -215,52 +215,95 @@ function OtpPage({ navigation, route }) {
     inputRefs.current[0]?.focus();
   };
 
-  const handleVerifyOtp = async () => {
-    const otpValue = otp.join("");
-    if (otpValue.length !== 6) {
-      showToast("Please enter 6-digit OTP");
+const handleVerifyOtp = async () => {
+  const otpValue = otp.join("");
+  if (otpValue.length !== 6) {
+    showToast("Please enter 6-digit OTP");
+    return;
+  }
+
+  console.log("✅ Verifying OTP:", otpValue);
+  setVerifying(true);
+  setShowFullScreenLoader(true);
+
+  try {
+    const tempUserData = await AsyncStorage.getItem("tempUserData");
+    if (!tempUserData) {
+      showToast("User data not found. Please try again.");
+      setVerifying(false);
+      setShowFullScreenLoader(false);
       return;
     }
 
-    console.log("✅ Verifying OTP:", otpValue);
-    setVerifying(true);
-    setShowFullScreenLoader(true);
+    const { phone } = JSON.parse(tempUserData);
+    const res = await userService.verifyOtp(phone, otpValue);
 
-    try {
-      const tempUserData = await AsyncStorage.getItem("tempUserData");
-      if (!tempUserData) {
-        showToast("User data not found. Please try again.");
-        setVerifying(false);
-        setShowFullScreenLoader(false);
-        return;
-      }
-
-      const { phone } = JSON.parse(tempUserData);
-      const res = await userService.verifyOtp(phone, otpValue);
-
-      if (res.success && res.data) {
-        showToast("OTP verified successfully!");
-
-        await saveUserData(res.data);
-        await AsyncStorage.removeItem("tempUserData");
-
-        stopListener && stopListener();
-        setShowFullScreenLoader(false);
-
-        navigation.navigate("MpinScreen", { step: 3 });
+    if (res.success && res.data) {
+      showToast("OTP verified successfully!");
+      
+      const userData = res.data;
+      console.log("📋 User Data Received:", userData);
+      
+      // Check if user has a used_referral_code in the response
+      if (userData.used_referral_code) {
+        console.log("🎯 Found referral code to verify:", {
+          userId: userData.id,
+          referralCode: userData.used_referral_code
+        });
+        
+        try {
+          // Call the referral check API
+          const referralCheckResponse = await userService.checkReferralCode(
+            userData.id, 
+            userData.used_referral_code
+          );
+          
+          console.log("📨 Referral API Response:", referralCheckResponse);
+          
+          if (referralCheckResponse.success) {
+            console.log("✅ Referral code verified successfully");
+            showToast("Referral code applied successfully!");
+            
+            // Save user data (with or without referral response data)
+            await saveUserData(userData);
+          } else {
+            console.warn("⚠️ Referral code verification failed:", referralCheckResponse.error);
+            // Still save user data even if referral check fails
+            await saveUserData(userData);
+            showToast("Account created, but referral code could not be applied");
+          }
+        } catch (referralError) {
+          console.error("❌ Referral API error:", referralError);
+          // Still save user data even if referral API fails
+          await saveUserData(userData);
+          showToast("Account created!");
+        }
       } else {
-        showToast(res.error || "OTP verification failed");
-        clearOtp();
-        setShowFullScreenLoader(false);
+        // No referral code to verify, just save user data
+        console.log("ℹ️ No referral code found in response");
+        await saveUserData(userData);
       }
-    } catch (error) {
-      console.error("❌ OTP verification error:", error);
-      showToast("Verification failed. Please try again.");
+      
+      console.log("User data saved successfully");
+      await AsyncStorage.removeItem("tempUserData");
+
+      stopListener && stopListener();
       setShowFullScreenLoader(false);
-    } finally {
-      setVerifying(false);
+
+      navigation.navigate("MpinScreen", { step: 3 });
+    } else {
+      showToast(res.error || "OTP verification failed");
+      clearOtp();
+      setShowFullScreenLoader(false);
     }
-  };
+  } catch (error) {
+    console.error("❌ OTP verification error:", error);
+    showToast("Verification failed. Please try again.");
+    setShowFullScreenLoader(false);
+  } finally {
+    setVerifying(false);
+  }
+};
 
   const handleResendOtp = async () => {
     if (resendTimer > 0) return;

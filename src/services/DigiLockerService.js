@@ -180,84 +180,89 @@ class DigiLockerService {
       const documentResult = await this.getAadhaarDocument(verificationId);
       
       if (!documentResult.success) {
-        return {
-          success: false,
-          verified: false,
-          message: documentResult.message || 'Failed to get Aadhaar data',
-          aadhaarStatus: 'VERIFIED_NO_DATA'
-        };
-      }
-
-      const documentData = documentResult.data;
-      
-      // Extract data from the document response
-      const aadhaarNumber = documentData.uid || originalAadhaarNumber;
-      const name = documentData.name || '';
-      const dob = documentData.dob || '';
-      const gender = documentData.gender || '';
-      const address = this.formatAddress(documentData.split_address || {});
-      
-      // Prepare verification data
-      const verificationData = {
-        success: true,
-        verified: true,
-        aadhaarVerified: true,
-        idProofNo: aadhaarNumber,
-        maskedAadhaar: this.formatAadhaarNumber(aadhaarNumber, true),
-        aadhaarVerificationId: verificationId,
-        aadhaarVerifiedAt: new Date().toISOString(),
-        aadhaarStatus: documentData.status || 'VERIFIED',
-        
-        // User details from Aadhaar
-        userDetails: {
-          name: name,
-          dob: dob,
-          gender: this.formatGender(gender),
-          address: address,
-          careOf: documentData.care_of || '',
-          yearOfBirth: documentData.year_of_birth || '',
-          uid: aadhaarNumber
-        },
-        
-        message: 'Aadhaar verified successfully via DigiLocker',
-        documentData: documentData
-      };
-
-      return verificationData;
-
-    } catch (error) {
-      console.error('Complete verification error:', error);
       return {
         success: false,
-        error: error.message,
-        message: 'Verification process failed',
-        aadhaarVerified: false
+        verified: false,
+        message: documentResult.message || 'Failed to get Aadhaar data',
+        aadhaarStatus: 'VERIFIED_NO_DATA'
       };
     }
-  }
 
+    const documentData = documentResult.data;
+    
+    // Extract data from the document response
+    const aadhaarNumber = documentData.uid || originalAadhaarNumber;
+    const name = documentData.name || '';
+    const dob = documentData.dob || '';
+    const gender = documentData.gender || '';
+    const address = this.formatAddress(documentData.split_address || {});
+    
+    // Prepare verification data
+    const verificationData = {
+      success: true,
+      verified: true,
+      aadhaarVerified: true,
+      idProofNo: aadhaarNumber,
+      maskedAadhaar: this.formatAadhaarNumber(aadhaarNumber, true),
+      aadhaarVerificationId: verificationId,
+      aadhaarVerifiedAt: new Date().toISOString(),
+      aadhaarStatus: documentData.status || 'VERIFIED',
+      
+      // User details from Aadhaar
+      userDetails: {
+        name: name,
+        dob: dob,
+        gender: this.formatGender(gender),
+        address: address,
+        careOf: documentData.care_of || '',
+        yearOfBirth: documentData.year_of_birth || '',
+        uid: aadhaarNumber
+      },
+      
+      // Include documentData for address parsing
+      documentData: {
+        ...documentData,
+        split_address: documentData.split_address || {}
+      },
+      
+      message: 'Aadhaar verified successfully via DigiLocker'
+    };
+
+    return verificationData;
+
+  } catch (error) {
+    console.error('Complete verification error:', error);
+    return {
+      success: false,
+      error: error.message,
+      message: 'Verification process failed',
+      aadhaarVerified: false
+    };
+  }
+}
   /**
    * Format address from split_address object
    */
-  formatAddress(splitAddress) {
-    if (!splitAddress) return '';
-    
-    const parts = [
-      splitAddress.house || '',
-      splitAddress.street || '',
-      splitAddress.landmark || '',
-      splitAddress.loc || '',
-      splitAddress.vtc || splitAddress.village || '',
-      splitAddress.po || '',
-      splitAddress.subdist || '',
-      splitAddress.dist || '',
-      splitAddress.state || '',
-      splitAddress.country || '',
-      splitAddress.pincode || ''
-    ].filter(part => part.trim() !== '');
-    
-    return parts.join(', ');
-  }
+ 
+formatAddress(splitAddress) {
+  if (!splitAddress) return '';
+  
+  const parts = [
+    splitAddress.house || '',
+    splitAddress.street || '',
+    splitAddress.landmark || '',
+    splitAddress.loc || '',
+    splitAddress.vtc || splitAddress.village || splitAddress.city || '',
+    splitAddress.po || '',
+    splitAddress.subdist || '',
+    splitAddress.dist || '',
+    splitAddress.state || '',
+    splitAddress.country || 'India',
+    splitAddress.pincode || ''
+  ].filter(part => part.trim() !== '');
+  
+  return parts.join(', ');
+}
 
   /**
    * Format gender from single character

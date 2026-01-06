@@ -260,7 +260,7 @@ function LoginPage() {
             <View style={styles.container}>
               <View style={styles.logoContainer}>
                 <Image
-                  source={require("../../assets/image/final-logo.jpg")}
+                  source={require("../../assets/image/logo08.jpeg")}
                   style={styles.logoImage}
                 />
               </View>

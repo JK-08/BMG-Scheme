@@ -13,9 +13,10 @@ import {
 } from "react-native";
 import CommonHeader from "../CommonHeader/CommonHeader";
 import BottomTab from "../BottomTab/BottomTab";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useFocusEffect } from "@react-navigation/native";
 import { getAllSchemes } from "../../services/SchemeNameService";
 import { API_BASE_URL_OLD } from "../../Config/API";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const SchemeDetailsScreen = ({ route }) => {
   const navigation = useNavigation();
@@ -24,10 +25,21 @@ const SchemeDetailsScreen = ({ route }) => {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
+  const [userPhoneNumber, setUserPhoneNumber] = useState(null);
 
-  // Phone number from your API endpoint
-  const phoneNumber = "7603905056";
-  const API_URL = `${API_BASE_URL_OLD}/account/phone_details?phoneNo=${phoneNumber}`;
+  // Fetch user phone number from AsyncStorage
+  const fetchUserPhoneNumber = async () => {
+    try {
+      const phone = await AsyncStorage.getItem("userPhoneNumber");
+      console.log("Retrieved phone from AsyncStorage:", phone);
+      setUserPhoneNumber(phone);
+      return phone;
+    } catch (error) {
+      console.error("Error fetching phone from AsyncStorage:", error);
+      Alert.alert("Error", "Failed to load user information");
+      return null;
+    }
+  };
 
   // Fetch scheme rules
   const fetchSchemeRules = async () => {
@@ -35,14 +47,18 @@ const SchemeDetailsScreen = ({ route }) => {
       const allSchemes = await getAllSchemes();
       const rulesMap = {};
 
-      allSchemes.forEach((scheme) => {
-        rulesMap[scheme.schemeName?.trim()] = {
-          WeightLedger: scheme.WeightLedger,
-          FixedIns: scheme.FixedIns,
-          Instalment: scheme.Instalment,
-          SchemeId: scheme.SchemeId,
-        };
-      });
+      if (allSchemes && Array.isArray(allSchemes)) {
+        allSchemes.forEach((scheme) => {
+          if (scheme.schemeName) {
+            rulesMap[scheme.schemeName.trim()] = {
+              WeightLedger: scheme.WeightLedger || "N",
+              FixedIns: scheme.FixedIns || "N",
+              Instalment: scheme.Instalment || "0",
+              SchemeId: scheme.SchemeId || null,
+            };
+          }
+        });
+      }
 
       console.log("Scheme rules fetched:", rulesMap);
       setSchemeRules(rulesMap);
@@ -58,6 +74,13 @@ const SchemeDetailsScreen = ({ route }) => {
       setLoading(true);
       setError(null);
       
+      // Get user phone number first
+      const phone = await fetchUserPhoneNumber();
+      if (!phone) {
+        throw new Error("Phone number not found. Please login again.");
+      }
+
+      const API_URL = `${API_BASE_URL_OLD}/account/phone_details?phoneNo=${phone}`;
       console.log("Fetching data from:", API_URL);
       
       const response = await fetch(API_URL, {
@@ -66,6 +89,7 @@ const SchemeDetailsScreen = ({ route }) => {
           'Accept': 'application/json',
           'Content-Type': 'application/json',
         },
+        timeout: 30000, // 30 second timeout
       });
 
       if (!response.ok) {
@@ -73,8 +97,10 @@ const SchemeDetailsScreen = ({ route }) => {
       }
 
       const data = await response.json();
+      console.log("API Response:", data);
       
       if (!data || !Array.isArray(data)) {
+        console.warn("Invalid data format received from API:", data);
         throw new Error("Invalid data format received from API");
       }
 
@@ -86,7 +112,8 @@ const SchemeDetailsScreen = ({ route }) => {
         const rowColor = getRowColor(scheme);
         const statusText = getStatusText(rowColor);
         
-        const schemeName = scheme.schemeSummary?.schemeName?.trim();
+        // Get scheme name with fallback
+        const schemeName = (scheme.schemeSummary?.schemeName || scheme.schemeName || "BMG Scheme").trim();
         const schemeRule = rules[schemeName] || {};
         
         // Determine scheme type based on API rules
@@ -97,28 +124,32 @@ const SchemeDetailsScreen = ({ route }) => {
 
         return {
           ...scheme,
-          regNo: scheme.regNo || scheme.regno,
-          groupCode: scheme.groupCode || scheme.groupcode,
-          pname: scheme.pName || scheme.pname,
-          amount: scheme.amount || scheme.schemeAmount || "0",
+          regNo: scheme.regNo || scheme.regno || "N/A",
+          groupCode: scheme.groupCode || scheme.groupcode || "N/A",
+          pname: scheme.pName || scheme.pname || "N/A",
+          amount: scheme.amount || scheme.schemeAmount || scheme.monthlyAmount || "0",
+          nextDueDate: scheme.nextDueDate || scheme.nextDue || null,
+          lastPaidDate: scheme.lastPaidDate || scheme.lastPaid || null,
           rowColor,
           statusText,
           
           /* 🔥 CRITICAL: Add schemeSummary with proper rules */
           schemeSummary: {
             ...(scheme.schemeSummary || {}),
-            schemeId: schemeRule.SchemeId || scheme.schemeSummary?.schemeId,
-            schemeName: schemeName || "BMG Scheme",
-            instalment: schemeRule.Instalment || scheme.schemeSummary?.instalment || "0",
-            WeightLedger: schemeRule.WeightLedger || scheme.schemeSummary?.WeightLedger || "N",
-            FixedIns: schemeRule.FixedIns || scheme.schemeSummary?.FixedIns || "N",
+            schemeId: schemeRule.SchemeId || scheme.schemeSummary?.schemeId || scheme.schemeId,
+            schemeName: schemeName,
+            instalment: schemeRule.Instalment || scheme.schemeSummary?.instalment || scheme.instalment || "0",
+            WeightLedger: schemeRule.WeightLedger || scheme.schemeSummary?.WeightLedger || scheme.weightLedger || "N",
+            FixedIns: schemeRule.FixedIns || scheme.schemeSummary?.FixedIns || scheme.fixedIns || "N",
             
-            // Add transaction balance data
+            // Add transaction balance data with fallbacks
             schemaSummaryTransBalance: {
               insPaid: scheme.schemeSummary?.schemaSummaryTransBalance?.insPaid || 
-                      scheme.trans?.insPaid || "0",
+                      scheme.trans?.insPaid || 
+                      scheme.insPaid || "0",
               amtrecd: scheme.schemeSummary?.schemaSummaryTransBalance?.amtrecd || 
-                       scheme.trans?.amtrecd || "0",
+                       scheme.trans?.amtrecd || 
+                       scheme.amountReceived || "0",
             },
             
             // Add scheme type info (for debugging)
@@ -132,17 +163,17 @@ const SchemeDetailsScreen = ({ route }) => {
           
           // Add personalInfo for consistency
           personalInfo: {
-            pName: scheme.pName || scheme.pname,
-            mobile: scheme.mobile || phoneNumber,
+            pName: scheme.pName || scheme.pname || "N/A",
+            mobile: phone,
           },
           
           // Add accountDetails
           accountDetails: {
-            regNo: scheme.regNo || scheme.regno,
-            groupCode: scheme.groupCode || scheme.groupcode,
+            regNo: scheme.regNo || scheme.regno || "N/A",
+            groupCode: scheme.groupCode || scheme.groupcode || "N/A",
           }
         };
-      });
+      }).filter(scheme => scheme.regNo !== "N/A"); // Filter out invalid schemes
 
       // Sort by row color priority: Red > Yellow > Green
       processedSchemes.sort((a, b) => {
@@ -152,16 +183,21 @@ const SchemeDetailsScreen = ({ route }) => {
       
       setSchemes(processedSchemes);
       console.log("Fetched", processedSchemes.length, "schemes");
-      console.log("Sample scheme data for BuyPage:", {
-        weightLedger: processedSchemes[0]?.schemeSummary?.WeightLedger,
-        fixedIns: processedSchemes[0]?.schemeSummary?.FixedIns,
-        amount: processedSchemes[0]?.amount
-      });
+      if (processedSchemes.length > 0) {
+        console.log("Sample scheme data for BuyPage:", {
+          schemeName: processedSchemes[0]?.schemeSummary?.schemeName,
+          weightLedger: processedSchemes[0]?.schemeSummary?.WeightLedger,
+          fixedIns: processedSchemes[0]?.schemeSummary?.FixedIns,
+          amount: processedSchemes[0]?.amount,
+          regNo: processedSchemes[0]?.regNo,
+          groupCode: processedSchemes[0]?.groupCode
+        });
+      }
 
     } catch (err) {
       console.error("Error fetching schemes:", err);
       setError(err.message || "Failed to fetch scheme details");
-      Alert.alert("Error", "Failed to load scheme details. Please try again.");
+      Alert.alert("Error", err.message || "Failed to load scheme details. Please try again.");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -172,6 +208,13 @@ const SchemeDetailsScreen = ({ route }) => {
     fetchSchemeDetails();
   }, []);
 
+  // Refresh when screen comes into focus
+  useFocusEffect(
+    React.useCallback(() => {
+      fetchSchemeDetails();
+    }, [])
+  );
+
   const onRefresh = () => {
     setRefreshing(true);
     fetchSchemeDetails();
@@ -181,33 +224,35 @@ const SchemeDetailsScreen = ({ route }) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     
-    // Get next due date directly from API
-    const nextDueDateStr = scheme.nextDueDate;
+    // Get next due date from scheme with multiple fallbacks
+    const nextDueDateStr = scheme.nextDueDate || scheme.nextDue || scheme.schemeSummary?.nextDue;
+    
+    if (!nextDueDateStr || nextDueDateStr === "1900-01-01" || nextDueDateStr === "1900-01-01 00:00:00.0") {
+      return "green"; // No due date means no payment pending
+    }
     
     // Parse next due date
     const nextDue = parseDate(nextDueDateStr);
     
-    // Check if next due date is valid
-    if (nextDueDateStr && nextDueDateStr !== "1900-01-01" && !isNaN(nextDue.getTime())) {
-      const nextDueYear = nextDue.getFullYear();
-      const nextDueMonth = nextDue.getMonth();
-      const nextDueDay = nextDue.getDate();
-      const nextDueAtMidnight = new Date(nextDueYear, nextDueMonth, nextDueDay, 0, 0, 0);
-      
-      // Compare dates
-      if (today.getTime() > nextDueAtMidnight.getTime()) {
-        return "red";
-      } 
-      else if (today.getTime() < nextDueAtMidnight.getTime()) {
-        return "green";
-      }
-      else {
-        return "yellow";
-      }
+    if (isNaN(nextDue.getTime())) {
+      return "green"; // Invalid date, assume no payment pending
     }
     
-    // Default: Show as green if no valid next due date
-    return "green";
+    const nextDueYear = nextDue.getFullYear();
+    const nextDueMonth = nextDue.getMonth();
+    const nextDueDay = nextDue.getDate();
+    const nextDueAtMidnight = new Date(nextDueYear, nextDueMonth, nextDueDay, 0, 0, 0);
+    
+    // Compare dates
+    if (today.getTime() > nextDueAtMidnight.getTime()) {
+      return "red"; // Overdue
+    } 
+    else if (today.getTime() === nextDueAtMidnight.getTime()) {
+      return "yellow"; // Due today
+    }
+    else {
+      return "green"; // Future date (paid or not yet due)
+    }
   };
 
   const getStatusText = (rowColor) => {
@@ -217,7 +262,7 @@ const SchemeDetailsScreen = ({ route }) => {
       case "yellow":
         return "Due Today";
       case "green":
-        return "Paid";
+        return "Up to Date";
       default:
         return "Active";
     }
@@ -237,28 +282,43 @@ const SchemeDetailsScreen = ({ route }) => {
       cleanDateStr = cleanDateStr.split('T')[0];
     }
     
-    const parts = cleanDateStr.split('-');
-    if (parts.length === 3) {
-      const year = parseInt(parts[0]);
-      const month = parseInt(parts[1]) - 1;
-      const day = parseInt(parts[2]);
-      return new Date(year, month, day);
+    // Try to parse as ISO format first
+    const isoDate = new Date(cleanDateStr);
+    if (!isNaN(isoDate.getTime())) {
+      return isoDate;
     }
     
-    return new Date(cleanDateStr);
+    // Try DD-MM-YYYY format
+    if (cleanDateStr.includes('/')) {
+      const parts = cleanDateStr.split('/');
+      if (parts.length === 3) {
+        const day = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1;
+        const year = parseInt(parts[2]);
+        return new Date(year, month, day);
+      }
+    }
+    
+    // Try YYYY-MM-DD format
+    if (cleanDateStr.includes('-')) {
+      const parts = cleanDateStr.split('-');
+      if (parts.length === 3) {
+        const year = parseInt(parts[0]);
+        const month = parseInt(parts[1]) - 1;
+        const day = parseInt(parts[2]);
+        return new Date(year, month, day);
+      }
+    }
+    
+    return new Date(NaN);
   };
 
   const formatDate = (dateInput) => {
-    let date;
-    
-    if (dateInput instanceof Date) {
-      date = dateInput;
-    } else {
-      if (!dateInput || dateInput === "1900-01-01" || dateInput === "1900-01-01 00:00:00.0") {
-        return "N/A";
-      }
-      date = parseDate(dateInput);
+    if (!dateInput || dateInput === "1900-01-01" || dateInput === "1900-01-01 00:00:00.0") {
+      return "N/A";
     }
+    
+    const date = parseDate(dateInput);
     
     if (isNaN(date.getTime())) {
       return "N/A";
@@ -272,8 +332,9 @@ const SchemeDetailsScreen = ({ route }) => {
   };
 
   const formatCurrency = (amount) => {
-    if (!amount && amount !== 0) return "₹0";
+    if (amount === undefined || amount === null || amount === "") return "₹0";
     const num = parseFloat(amount);
+    if (isNaN(num)) return "₹0";
     return `₹${num.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
   };
 
@@ -326,15 +387,8 @@ const SchemeDetailsScreen = ({ route }) => {
     const amount = scheme.amount || "0";
     const nextDueDate = formatDate(scheme.nextDueDate);
     const lastPaidDate = formatDate(scheme.lastPaidDate);
-    const rowColor = scheme.rowColor || "red";
-    const statusText = scheme.statusText || "Pending";
-
-    // Debug info
-    const schemeType = scheme.schemeSummary?.schemeType;
-    const schemeTypeText = schemeType?.isAmountScheme ? "Fixed Amount" : 
-                         schemeType?.isWeightScheme ? "Weight Ledger" :
-                         schemeType?.isFixedDeposit ? "Fixed Deposit" :
-                         schemeType?.isDigitalScheme ? "Digital Scheme" : "Standard";
+    const rowColor = scheme.rowColor || "green";
+    const statusText = scheme.statusText || "Up to Date";
 
     return (
       <View 
@@ -411,7 +465,7 @@ const SchemeDetailsScreen = ({ route }) => {
         )}
         
         {/* Show next due info for Green (Paid) rows */}
-        {rowColor === 'green' && scheme.nextDueDate && (
+        {rowColor === 'green' && scheme.nextDueDate && scheme.nextDueDate !== "1900-01-01" && (
           <View style={styles.paidInfo}>
             <Text style={styles.paidText}>
               Next due: {nextDueDate}
@@ -454,7 +508,7 @@ const SchemeDetailsScreen = ({ route }) => {
       <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
       
       {/* Header */}
-      <CommonHeader title="My Pending Payments" />
+      <CommonHeader title="My Schemes" />
 
       {/* Summary Bar - Red, Yellow, and Green */}
       <View style={styles.summaryBar}>
@@ -468,9 +522,38 @@ const SchemeDetailsScreen = ({ route }) => {
         </View>
         <View style={styles.summaryItem}>
           <View style={[styles.summaryDot, { backgroundColor: '#4CAF50' }]} />
-          <Text style={styles.summaryText}>Paid</Text>
+          <Text style={styles.summaryText}>Up to Date</Text>
         </View>
       </View>
+
+      {/* Summary Statistics */}
+      {schemes.length > 0 && (
+        <View style={styles.totalSummary}>
+          <Text style={styles.totalText}>
+            Total Schemes: <Text style={styles.totalCount}>{schemes.length}</Text>
+          </Text>
+          <View style={styles.totalStats}>
+            <View style={styles.statItem}>
+              <Text style={[styles.statCount, { color: '#F44336' }]}>
+                {schemes.filter(s => s.rowColor === 'red').length}
+              </Text>
+              <Text style={styles.statLabel}>Overdue</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statCount, { color: '#FF9800' }]}>
+                {schemes.filter(s => s.rowColor === 'yellow').length}
+              </Text>
+              <Text style={styles.statLabel}>Due Today</Text>
+            </View>
+            <View style={styles.statItem}>
+              <Text style={[styles.statCount, { color: '#4CAF50' }]}>
+                {schemes.filter(s => s.rowColor === 'green').length}
+              </Text>
+              <Text style={styles.statLabel}>Up to Date</Text>
+            </View>
+          </View>
+        </View>
+      )}
 
       {/* Scheme List */}
       <ScrollView
@@ -486,7 +569,7 @@ const SchemeDetailsScreen = ({ route }) => {
             <Text style={styles.emptySubtext}>
               You haven't joined any schemes yet
             </Text>
-            <TouchableOpacity style={styles.emptyButton}>
+            <TouchableOpacity style={styles.emptyButton} onPress={() => navigation.navigate("Schemes")}>
               <Text style={styles.emptyButtonText}>Browse Schemes</Text>
             </TouchableOpacity>
           </View>
@@ -594,6 +677,43 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     fontSize: 12,
+    color: '#666',
+  },
+  totalSummary: {
+    backgroundColor: '#fff',
+    borderRadius: 10,
+    padding: 15,
+    margin: 15,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
+  },
+  totalText: {
+    fontSize: 14,
+    color: '#666',
+    textAlign: 'center',
+    marginBottom: 12,
+  },
+  totalCount: {
+    fontWeight: 'bold',
+    color: '#1976d2',
+  },
+  totalStats: {
+    flexDirection: 'row',
+    justifyContent: 'space-around',
+  },
+  statItem: {
+    alignItems: 'center',
+  },
+  statCount: {
+    fontSize: 18,
+    fontWeight: 'bold',
+    marginBottom: 4,
+  },
+  statLabel: {
+    fontSize: 11,
     color: '#666',
   },
   schemesList: {
@@ -706,43 +826,6 @@ const styles = StyleSheet.create({
     fontSize: 12,
     color: '#4CAF50',
     fontWeight: '500',
-  },
-  totalSummary: {
-    backgroundColor: '#fff',
-    borderRadius: 10,
-    padding: 15,
-    marginTop: 10,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 2,
-    elevation: 1,
-  },
-  totalText: {
-    fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
-    marginBottom: 12,
-  },
-  totalCount: {
-    fontWeight: 'bold',
-    color: '#1976d2',
-  },
-  totalStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-  },
-  statItem: {
-    alignItems: 'center',
-  },
-  statCount: {
-    fontSize: 18,
-    fontWeight: 'bold',
-    marginBottom: 4,
-  },
-  statLabel: {
-    fontSize: 11,
-    color: '#666',
   },
 });
 

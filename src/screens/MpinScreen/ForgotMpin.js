@@ -255,7 +255,7 @@ function ResetMpinScreen({ navigation }) {
               <View style={styles.logoContainer}>
                 <View style={styles.logoRow}>
                   <Image
-                    source={require("../../assets/image/final-logo.jpg")}
+                    source={require("../../assets/image/logo08.jpeg")}
                     style={styles.logoImage}
                   />
                 </View>

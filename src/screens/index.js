@@ -50,6 +50,7 @@ import UserRegisterForm from '../components/UserRegisterForm/UserRegisterForm'
 import AadhaarVerificationScreen from '../components/UserRegisterForm/AadhaarVerification'
 import DuePayment from "../components/DuePayment/DuePayment"
 import SchemeListPage from './MyRedeemption/MyRedeemption'
+import ReferralPending from './ReferalPending/ReferalPending'
 
 export {
   MainLanding,
@@ -102,5 +103,6 @@ export {
   UserRegisterForm,
   AadhaarVerificationScreen,
   DuePayment,
-  SchemeListPage
+  SchemeListPage,
+  ReferralPending
 }

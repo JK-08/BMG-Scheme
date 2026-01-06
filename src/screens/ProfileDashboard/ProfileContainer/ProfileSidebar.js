@@ -1,5 +1,4 @@
-// DrawerMenu.js
-import React, { useState, useEffect, useRef } from "react";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from "react";
 import {
   TouchableOpacity,
   View,
@@ -16,8 +15,9 @@ import {
   Pressable,
   Text,
   ActivityIndicator,
+  StyleSheet,
 } from "react-native";
-import { useNavigation } from "@react-navigation/native";
+import { useNavigation, useRoute } from "@react-navigation/native";
 import { MaterialIcons } from "@expo/vector-icons";
 import { LinearGradient } from "expo-linear-gradient";
 import { TextDefault } from "../../../components";
@@ -29,67 +29,231 @@ import {
 } from "../../../utils/AsynchStorageHelper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Application from "expo-application";
-import Constants from "expo-constants";
 import { checkForUpdate } from "../../../utils/VersionChecker";
 import { SafeAreaView } from "react-native-safe-area-context";
 import * as ImagePicker from "expo-image-picker";
 import memberPhotoService from "../../../services/UserProfileService";
+import { API_BASE_URL } from "../../../Config/API";
 
 const { COLORS, SIZES, FONTS, moderateScale } = theme;
-const { width } = Dimensions.get("window");
+const { width, height } = Dimensions.get("window");
+const DRAWER_WIDTH = width * 0.8;
+const IMAGE_BASE_URL = "https://scheme.bmgjewellers.com";
 
-// Add your  base URL here
-const IMAGE_BASE_URL = "https://scheme.bmgjewellers.com"; // Replace with your actual  base URL
+// Constants
+const ANIMATION_DURATION = {
+  drawer: 320,
+  fade: 220,
+  profile: 300,
+};
+
+const MENU_ITEMS = [
+  { label: "Register MySelf", icon: "description", route: "UserRegisterForm" },
+  { label: "My Rewards", icon: "card-giftcard", route: "Rewards" },
+  { label: "MyPay Now", icon: "credit-card", route: "DuePayment" },
+  { label: "My Redeemption", icon: "card-giftcard", route: "SchemeListPage" },
+  { label: "My Referal Pending", icon: "card-giftcard", route: "ReferralPending" },
+  { label: "About", icon: "info", route: "AboutPage" },
+  { label: "Privacy Policy", icon: "privacy-tip", route: "PrivacyPolicy" },
+  { label: "Terms & Conditions", icon: "description", route: "TermsandCondition" },
+];
+
+const SETTINGS_ITEMS = [
+  { label: "Update Profile Picture", icon: "photo-camera", action: "profilePicture" },
+  { label: "Reset MPIN", icon: "lock-reset", route: "ResetMpin" },
+  { label: "Account Delete", icon: "delete", route: "DeleteButton" },
+];
 
 const DrawerMenu = ({ isVisible, onClose }) => {
   const navigation = useNavigation();
+  const route = useRoute();
+  
+  // State
   const [userData, setUserData] = useState({});
-  const [activeRoute, setActiveRoute] = useState(null);
   const [uploading, setUploading] = useState(false);
-  const [showSettings, setShowSettings] = useState(false); // New state for settings submenu
-
-  // Animated values
-  const slideAnim = useRef(new Animated.Value(width)).current;
+  const [showSettings, setShowSettings] = useState(false);
+  const [selectedImagePreview, setSelectedImagePreview] = useState(null);
+  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  const [loading, setLoading] = useState(false);
+  
+  // Refs
+  const slideAnim = useRef(new Animated.Value(DRAWER_WIDTH)).current;
   const fadeAnim = useRef(new Animated.Value(0)).current;
   const profileY = useRef(new Animated.Value(20)).current;
   const profileOpacity = useRef(new Animated.Value(0)).current;
-  const settingsAnim = useRef(new Animated.Value(0)).current; // Animation for settings submenu
+  const settingsAnim = useRef(new Animated.Value(0)).current;
+  const abortControllerRef = useRef(null);
 
-  /* -------------------------
-     Fetch stored user + profile picture
-  ------------------------- */
-  useEffect(() => {
-    const fetchUserDetails = async () => {
+  // Memoized values
+  const activeRoute = useMemo(() => route.name, [route.name]);
+  
+  const isActive = useCallback((routeName) => activeRoute === routeName, [activeRoute]);
+
+  // API Functions
+  const fetchUserDataFromAPI = useCallback(async () => {
+    if (loading) return;
+    
+    setLoading(true);
+    
+    try {
+      abortControllerRef.current?.abort();
+      abortControllerRef.current = new AbortController();
+      const { signal } = abortControllerRef.current;
+
+      const userId = await AsyncStorage.getItem("userId");
+      if (!userId) {
+        console.error("No user ID found");
+        setLoading(false);
+        return;
+      }
+
+      const response = await fetch(`${API_BASE_URL}/user/${userId}`, {
+        method: "GET",
+        headers: { "Content-Type": "application/json" },
+        signal,
+      });
+
+      if (!response.ok) throw new Error(`HTTP error! Status: ${response.status}`);
+
+      const apiUserData = await response.json();
+      const storedProfilePic = await AsyncStorage.getItem("userProfilePicture");
+      
+      const mergedData = {
+        ...apiUserData,
+        username: apiUserData.username,
+        contactNumber: apiUserData.contactNumber,
+        email: apiUserData.email,
+        picture: storedProfilePic || apiUserData.picture,
+      };
+
+      setUserData(mergedData);
+      await saveUserData(mergedData);
+      
+      if (storedProfilePic) {
+        await AsyncStorage.setItem("userProfilePicture", storedProfilePic);
+      }
+    } catch (error) {
+      if (error.name === 'AbortError') {
+        console.log('Fetch aborted');
+        return;
+      }
+      
+      console.error("Fetch user data error:", error);
+      
+      // Fallback to stored data
       try {
-        const data = await getUserData();
-        if (data) {
-          setUserData(data);
-          const storedProfilePic = await AsyncStorage.getItem(
-            "userProfilePicture"
-          );
-          if (storedProfilePic && !data.picture) {
-            setUserData((prev) => ({ ...prev, picture: storedProfilePic }));
+        const storedData = await getUserData();
+        if (storedData) setUserData(storedData);
+      } catch (storageError) {
+        console.error("Storage fallback error:", storageError);
+      }
+      
+      if (error.name !== "AbortError") {
+        Alert.alert(
+          "Network Error",
+          "Unable to fetch updated user data. Using cached data.",
+          [{ text: "OK" }]
+        );
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [loading]);
+
+  // Initial data fetch
+  useEffect(() => {
+    const fetchInitialData = async () => {
+      try {
+        const storedData = await getUserData();
+        if (storedData) {
+          setUserData(storedData);
+          
+          const storedProfilePic = await AsyncStorage.getItem("userProfilePicture");
+          if (storedProfilePic && !storedData.picture) {
+            setUserData(prev => ({ ...prev, picture: storedProfilePic }));
           }
+          
+          // Debounced API fetch
+          setTimeout(fetchUserDataFromAPI, 500);
         }
       } catch (error) {
-        console.error("Error fetching user data:", error);
+        console.error("Error fetching initial user data:", error);
       }
     };
-    fetchUserDetails();
+    
+    fetchInitialData();
+    
+    return () => {
+      abortControllerRef.current?.abort();
+    };
   }, []);
 
-  /* Save profile picture when changed */
+  // Drawer open/close effects
   useEffect(() => {
-    if (!userData.picture) return;
-    AsyncStorage.setItem("userProfilePicture", userData.picture).catch((err) =>
-      console.error("Profile picture store error:", err)
-    );
-  }, [userData.picture]);
+    if (isVisible) {
+      fetchUserDataFromAPI();
+      
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: 0,
+          duration: ANIMATION_DURATION.drawer,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 1,
+          duration: ANIMATION_DURATION.fade,
+          useNativeDriver: true,
+        }),
+        Animated.stagger(70, [
+          Animated.parallel([
+            Animated.timing(profileY, {
+              toValue: 0,
+              duration: ANIMATION_DURATION.profile,
+              useNativeDriver: true,
+            }),
+            Animated.timing(profileOpacity, {
+              toValue: 1,
+              duration: ANIMATION_DURATION.profile,
+              useNativeDriver: true,
+            }),
+          ]),
+        ]),
+      ]).start();
+    } else {
+      Animated.parallel([
+        Animated.timing(slideAnim, {
+          toValue: DRAWER_WIDTH,
+          duration: 300,
+          useNativeDriver: true,
+        }),
+        Animated.timing(fadeAnim, {
+          toValue: 0,
+          duration: 200,
+          useNativeDriver: true,
+        }),
+        Animated.timing(profileOpacity, {
+          toValue: 0,
+          duration: 120,
+          useNativeDriver: true,
+        }),
+      ]).start(() => setShowSettings(false));
+    }
+  }, [isVisible]);
 
+  // Settings submenu animation
+  useEffect(() => {
+    Animated.timing(settingsAnim, {
+      toValue: showSettings ? 1 : 0,
+      duration: 200,
+      useNativeDriver: false,
+    }).start();
+  }, [showSettings]);
+
+  // Version check on mount
   useEffect(() => {
     const verifyVersion = async () => {
       const result = await checkForUpdate("com.bmg.bmgscheme");
-
+      
       if (result.isUpdateAvailable) {
         Alert.alert(
           "Update Available",
@@ -108,98 +272,30 @@ const DrawerMenu = ({ isVisible, onClose }) => {
         );
       }
     };
-
+    
     verifyVersion();
   }, []);
 
-  /* -------------------------
-     Open / Close animations
-  ------------------------- */
-  useEffect(() => {
-    if (isVisible) {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: 0,
-          duration: 320,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 1,
-          duration: 220,
-          useNativeDriver: true,
-        }),
-        Animated.stagger(70, [
-          Animated.parallel([
-            Animated.timing(profileY, {
-              toValue: 0,
-              duration: 300,
-              useNativeDriver: true,
-            }),
-            Animated.timing(profileOpacity, {
-              toValue: 1,
-              duration: 300,
-              useNativeDriver: true,
-            }),
-          ]),
-        ]),
-      ]).start();
-    } else {
-      Animated.parallel([
-        Animated.timing(slideAnim, {
-          toValue: width,
-          duration: 300,
-          useNativeDriver: true,
-        }),
-        Animated.timing(fadeAnim, {
-          toValue: 0,
-          duration: 200,
-          useNativeDriver: true,
-        }),
-        Animated.timing(profileOpacity, {
-          toValue: 0,
-          duration: 120,
-          useNativeDriver: true,
-        }),
-      ]).start();
-      
-      // Close settings submenu when drawer closes
-      setShowSettings(false);
-    }
-  }, [isVisible]);
-
-  // Animate settings submenu
-  useEffect(() => {
-    Animated.timing(settingsAnim, {
-      toValue: showSettings ? 1 : 0,
-      duration: 200,
-      useNativeDriver: false, // Height animation requires non-native driver
-    }).start();
-  }, [showSettings]);
-
-  /* -------------------------
-     PanResponder: swipe-left to close
-  ------------------------- */
+  // PanResponder for swipe-to-close
   const panResponder = useRef(
     PanResponder.create({
+      onStartShouldSetPanResponder: () => true,
       onMoveShouldSetPanResponder: (_, gesture) => {
-        const isHorizontal =
-          Math.abs(gesture.dx) > 10 && Math.abs(gesture.dy) < 60;
-        return isHorizontal && gesture.dx < 0;
+        return Math.abs(gesture.dx) > 10 && Math.abs(gesture.dy) < 60;
       },
       onPanResponderMove: (_, gesture) => {
         if (gesture.dx < 0) {
-          const newTranslate = Math.min(width, -gesture.dx);
-          slideAnim.setValue(newTranslate);
+          slideAnim.setValue(Math.min(DRAWER_WIDTH, -gesture.dx));
         }
       },
       onPanResponderRelease: (_, gesture) => {
         const closeThreshold = 80;
         if (-gesture.dx > closeThreshold) {
           Animated.timing(slideAnim, {
-            toValue: width,
+            toValue: DRAWER_WIDTH,
             duration: 200,
             useNativeDriver: true,
-          }).start(() => onClose());
+          }).start(onClose);
         } else {
           Animated.timing(slideAnim, {
             toValue: 0,
@@ -211,66 +307,59 @@ const DrawerMenu = ({ isVisible, onClose }) => {
     })
   ).current;
 
-  /* -------------------------
-     Image Picker Functions
-  ------------------------- */
-  const pickImageFromGallery = async () => {
+  // Image handling functions
+  const pickImageFromGallery = useCallback(async () => {
     try {
       const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
       
       if (status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "We need permission to access your photo library to set profile picture."
-        );
+        Alert.alert("Permission Required", "We need permission to access your photo library.");
         return;
       }
 
       const result = await ImagePicker.launchImageLibraryAsync({
         mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        await uploadProfilePicture(result.assets[0]);
+      if (!result.canceled && result.assets?.[0]) {
+        setSelectedImagePreview(result.assets[0]);
+        setPreviewModalVisible(true);
       }
     } catch (error) {
       console.error("Error picking image:", error);
       Alert.alert("Error", "Failed to pick image from gallery.");
     }
-  };
+  }, []);
 
-  const takePhotoWithCamera = async () => {
+  const takePhotoWithCamera = useCallback(async () => {
     try {
       const { status } = await ImagePicker.requestCameraPermissionsAsync();
       
       if (status !== "granted") {
-        Alert.alert(
-          "Permission Required",
-          "We need camera permission to take a photo."
-        );
+        Alert.alert("Permission Required", "We need camera permission to take a photo.");
         return;
       }
 
       const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: true,
-        aspect: [1, 1],
+        allowsEditing: false,
         quality: 0.8,
       });
 
-      if (!result.canceled && result.assets && result.assets[0]) {
-        await uploadProfilePicture(result.assets[0]);
+      if (!result.canceled && result.assets?.[0]) {
+        setSelectedImagePreview(result.assets[0]);
+        setPreviewModalVisible(true);
       }
     } catch (error) {
       console.error("Error taking photo:", error);
       Alert.alert("Error", "Failed to take photo.");
     }
-  };
+  }, []);
 
-  const uploadProfilePicture = async (imageAsset) => {
+  const uploadProfilePicture = useCallback(async (imageAsset) => {
     setUploading(true);
+    
     try {
       const image = {
         uri: imageAsset.uri,
@@ -278,16 +367,8 @@ const DrawerMenu = ({ isVisible, onClose }) => {
         fileName: imageAsset.fileName || `profile_${Date.now()}.jpg`,
       };
 
-      console.log("Starting upload with image:", {
-        uri: image.uri.substring(0, 50) + "...",
-        type: image.type,
-        fileName: image.fileName,
-      });
-
       const response = await memberPhotoService.uploadPhoto(image);
       
-      console.log("Upload response:", response);
-
       if (response.photoPath) {
         let fullImageUrl;
         
@@ -299,28 +380,22 @@ const DrawerMenu = ({ isVisible, onClose }) => {
           fullImageUrl = `${IMAGE_BASE_URL}/uploads/${response.photoPath}`;
         }
         
-        console.log("Full image URL:", fullImageUrl);
-        
         setUserData(prev => ({ ...prev, picture: fullImageUrl }));
-        
         await AsyncStorage.setItem("userProfilePicture", fullImageUrl);
         
         Alert.alert("Success", response.message || "Profile picture updated successfully!");
       } else {
-        Alert.alert("Warning", "Upload completed but no photo path returned. Please check with support.");
+        Alert.alert("Warning", "Upload completed but no photo path returned.");
       }
     } catch (error) {
-      console.error("Upload error details:", error);
-      Alert.alert(
-        "Upload Failed", 
-        error.message || "Failed to upload profile picture. Please try again."
-      );
+      console.error("Upload error:", error);
+      Alert.alert("Upload Failed", error.message || "Failed to upload profile picture.");
     } finally {
       setUploading(false);
     }
-  };
+  }, []);
 
-  const deleteProfilePicture = async () => {
+  const deleteProfilePicture = useCallback(async () => {
     Alert.alert(
       "Delete Profile Picture",
       "Are you sure you want to remove your profile picture?",
@@ -333,11 +408,8 @@ const DrawerMenu = ({ isVisible, onClose }) => {
             try {
               setUploading(true);
               await memberPhotoService.deletePhoto();
-              
               setUserData(prev => ({ ...prev, picture: null }));
-              
               await AsyncStorage.removeItem("userProfilePicture");
-              
               Alert.alert("Success", "Profile picture removed successfully!");
             } catch (error) {
               console.error("Delete error:", error);
@@ -349,437 +421,390 @@ const DrawerMenu = ({ isVisible, onClose }) => {
         },
       ]
     );
-  };
+  }, []);
 
-  const handleProfilePictureUpdate = () => {
-    Alert.alert(
-      "Update Profile Picture",
-      "Choose an option",
-      [
-        {
-          text: "Take Photo",
-          onPress: takePhotoWithCamera,
-        },
-        {
-          text: "Choose from Gallery",
-          onPress: pickImageFromGallery,
-        },
-        ...(userData.picture ? [{
-          text: "Remove Current Photo",
-          onPress: deleteProfilePicture,
-          style: "destructive",
-        }] : []),
-        { text: "Cancel", style: "cancel" },
-      ]
-    );
-  };
+  const handleUseImage = useCallback(async () => {
+    if (selectedImagePreview) {
+      setPreviewModalVisible(false);
+      await uploadProfilePicture(selectedImagePreview);
+      setSelectedImagePreview(null);
+    }
+  }, [selectedImagePreview, uploadProfilePicture]);
 
-  /* -------------------------
-     Utility handlers
-  ------------------------- */
-  const handleLogout = async () => {
+  const handleProfilePictureUpdate = useCallback(() => {
+    const options = [
+      { text: "Take Photo", onPress: takePhotoWithCamera },
+      { text: "Choose from Gallery", onPress: pickImageFromGallery },
+      ...(userData.picture ? [{
+        text: "Remove Current Photo",
+        onPress: deleteProfilePicture,
+        style: "destructive",
+      }] : []),
+      { text: "Cancel", style: "cancel" },
+    ];
+    
+    Alert.alert("Update Profile Picture", "Choose an option", options);
+  }, [userData.picture, takePhotoWithCamera, pickImageFromGallery, deleteProfilePicture]);
+
+  // Navigation and utility functions
+  const handleMenuNavigate = useCallback((routeName) => {
+    onClose();
+    setTimeout(() => navigation.navigate(routeName), 220);
+  }, [navigation, onClose]);
+
+  const handleLogout = useCallback(async () => {
     Alert.alert("Confirm Logout", "Are you sure you want to logout?", [
       { text: "Cancel", style: "cancel" },
       {
         text: "Logout",
         onPress: async () => {
           try {
-            await clearUserData();
-            await AsyncStorage.removeItem("userProfilePicture");
-            onClose();
-            navigation.replace("LoginPage");
+            await Promise.all([
+              clearUserData(),
+              AsyncStorage.removeItem("userProfilePicture"),
+              AsyncStorage.clear(),
+            ]);
           } catch (error) {
             console.error("Logout error:", error);
+          } finally {
             onClose();
             navigation.replace("LoginPage");
           }
         },
       },
     ]);
-  };
+  }, [navigation, onClose]);
 
-  const handleMenuNavigate = (route) => {
-    setActiveRoute(route);
-    onClose();
-    setTimeout(() => {
-      navigation.navigate(route);
-    }, 220);
-  };
-
-  const handleShareApp = async () => {
+  const handleShareApp = useCallback(async () => {
     try {
-      const url = `https://play.google.com/store/apps/details?id=com.bmg.bmgscheme`;
-      await Share.share({
-        message: `Check out this app: ${url}`,
-        url,
-        title: "Share App",
-      });
+      const url = "https://play.google.com/store/apps/details?id=com.bmg.bmgscheme";
+      await Share.share({ message: `Check out this app: ${url}`, url });
     } catch (error) {
       console.error("Share error", error);
     }
-  };
+  }, []);
 
-  const handleRateUs = async () => {
-    const androidUrl = `market://details?id=com.bmg.bmgscheme`;
-    const webUrl = `https://play.google.com/store/apps/details?id=com.bmg.bmgscheme`;
+  const handleRateUs = useCallback(async () => {
+    const androidUrl = "market://details?id=com.bmg.bmgscheme";
+    const webUrl = "https://play.google.com/store/apps/details?id=com.bmg.bmgscheme";
+    
     try {
       if (Platform.OS === "android") {
         const canOpen = await Linking.canOpenURL(androidUrl);
-        if (canOpen) {
-          return Linking.openURL(androidUrl);
-        }
+        if (canOpen) return Linking.openURL(androidUrl);
       }
+      
       const canOpenWeb = await Linking.canOpenURL(webUrl);
-      if (canOpenWeb) {
-        return Linking.openURL(webUrl);
-      }
+      if (canOpenWeb) return Linking.openURL(webUrl);
+      
       Alert.alert("Can't open store", "Unable to open the store URL.");
     } catch (err) {
       console.error("RateUs error", err);
     }
-  };
+  }, []);
 
-  const toggleSettings = () => {
-    setShowSettings(!showSettings);
-  };
+  const toggleSettings = useCallback(() => {
+    setShowSettings(prev => !prev);
+  }, []);
 
-  /* -------------------------
-     Menu items
-  ------------------------- */
-  const menuItems = [
-    {
-      label: "Register MySelf",
-      icon: "description",
-      route: "UserRegisterForm",
-    },
-    {
-      label: "My Rewards",
-      icon: "card-giftcard",
-      route: "Rewards",
-    },
-    {
-      label: "Pay Now",
-      icon: "",
-      route: "DuePayment",
-    },
-    {
-      label: "My Redeemption",
-      icon: "card-giftcard",
-      route: "SchemeListPage",
-    },
+  const handleSettingsAction = useCallback((item) => {
+    if (item.action === 'profilePicture') {
+      handleProfilePictureUpdate();
+    } else if (item.route) {
+      handleMenuNavigate(item.route);
+    }
+  }, [handleProfilePictureUpdate, handleMenuNavigate]);
+
+  // Render helpers
+  const renderMenuItem = useCallback((item, index) => {
+    const active = isActive(item.route);
     
-    { label: "About", icon: "info", route: "AboutPage" },
-    { label: "Privacy Policy", icon: "privacy-tip", route: "PrivacyPolicy" },
-    {
-      label: "Terms & Conditions",
-      icon: "description",
-      route: "TermsandCondition",
-    },
-    { label: "Help Center", icon: "help-center", route: "HelpCenter" },
-    { label: "FAQ", icon: "support-agent", route: "FAQPage" },
-  ];
+    return (
+      <TouchableOpacity
+        key={`menu-${index}`}
+        style={[styles.menuItem, active && styles.menuItemActive]}
+        onPress={() => handleMenuNavigate(item.route)}
+      >
+        <View style={styles.menuItemContent}>
+          <MaterialIcons
+            name={item.icon}
+            size={moderateScale(22)}
+            color={active ? COLORS.primary : COLORS.textPrimary}
+          />
+          <TextDefault style={[styles.menuItemText, active && styles.menuItemTextActive]}>
+            {item.label}
+          </TextDefault>
+        </View>
+      </TouchableOpacity>
+    );
+  }, [isActive, handleMenuNavigate]);
 
-  const settingsItems = [
-    {
-      label: "Update Profile Picture",
-      icon: "photo-camera",
-      action: handleProfilePictureUpdate,
-    },
-    {
-      label: "Reset MPIN",
-      icon: "lock-reset",
-      route: "ResetMpin",
-    },
-    {
-      label: "Account Delete",
-      icon: "delete",
-      route: "DeleteButton",
-    },
-  ];
-
-  const isActive = (route) => activeRoute === route;
+  const renderSettingsSubmenu = useCallback(() => (
+    <Animated.View
+      style={[
+        styles.submenuContainer,
+        {
+          maxHeight: settingsAnim.interpolate({
+            inputRange: [0, 1],
+            outputRange: [0, 180],
+          }),
+          opacity: settingsAnim,
+        },
+      ]}
+    >
+      {SETTINGS_ITEMS.map((item, index) => (
+        <TouchableOpacity
+          key={`settings-${index}`}
+          style={styles.submenuItem}
+          onPress={() => handleSettingsAction(item)}
+        >
+          <View style={styles.submenuItemContent}>
+            <MaterialIcons
+              name={item.icon}
+              size={moderateScale(18)}
+              color={COLORS.textPrimary}
+              style={styles.submenuIcon}
+            />
+            <TextDefault style={styles.submenuItemText}>
+              {item.label}
+            </TextDefault>
+          </View>
+        </TouchableOpacity>
+      ))}
+    </Animated.View>
+  ), [settingsAnim, handleSettingsAction]);
 
   return (
-    <Modal
-      visible={isVisible}
-      transparent
-      animationType="none"
-      onRequestClose={onClose}
-    >
-      {/* Fade overlay */}
-      <Animated.View
-        style={[
-          styles.overlay,
-          {
-            opacity: fadeAnim,
-          },
-        ]}
+    <>
+      <Modal
+        visible={isVisible}
+        transparent
+        animationType="none"
+        onRequestClose={onClose}
       >
-        <TouchableOpacity
-          style={{ flex: 1 }}
-          activeOpacity={1}
-          onPress={onClose}
-        />
-      </Animated.View>
+        <Animated.View style={[styles.overlay, { opacity: fadeAnim }]}>
+          <TouchableOpacity
+            style={styles.overlayTouchable}
+            activeOpacity={1}
+            onPress={onClose}
+          />
+        </Animated.View>
 
-      {/* Drawer */}
-      <Animated.View
-        {...panResponder.panHandlers}
-        style={[
-          styles.drawer,
-          {
-            transform: [{ translateX: slideAnim }],
-          },
-        ]}
-      >
-        <SafeAreaView style={styles.drawerContent}>
-          {/* Header with gradient */}
-          <LinearGradient
-            colors={[COLORS.primary, COLORS.primaryLight]}
-            start={[1, 0]}
-            end={[0, 1]}
-            style={styles.headerContainer}
-          >
-            <View style={styles.headerTopRow}>
-              <Pressable
-                onPress={onClose}
-                style={({ pressed }) => [
-                  styles.closeButton,
-                  pressed && { opacity: 0.6 },
-                ]}
-                accessibilityLabel="Close drawer"
-              >
-                <MaterialIcons
-                  name="chevron-right"
-                  size={moderateScale(28)}
-                  color={COLORS.white}
-                />
-              </Pressable>
-            </View>
-
-            {/* Animated profile block */}
-            <Animated.View
-              style={[
-                styles.profileHeader,
-                {
-                  transform: [{ translateY: profileY }],
-                  opacity: profileOpacity,
-                },
-              ]}
+        <Animated.View
+          {...panResponder.panHandlers}
+          style={[styles.drawer, { transform: [{ translateX: slideAnim }] }]}
+        >
+          <SafeAreaView style={styles.drawerContent}>
+            <LinearGradient
+              colors={[COLORS.primary, COLORS.primaryLight]}
+              style={styles.headerContainer}
+              start={[1, 0]}
+              end={[0, 1]}
             >
-              <TouchableOpacity
-                style={styles.profileCircle}
-                onPress={handleProfilePictureUpdate}
-                disabled={uploading}
-              >
-                {uploading ? (
-                  <ActivityIndicator size="large" color={COLORS.white} />
-                ) : userData.picture ? (
-                  <Image
-                    source={{ uri: userData.picture }}
-                    style={styles.profileImage}
-                  />
-                ) : (
-                  <MaterialIcons
-                    name="account-circle"
-                    size={moderateScale(80)}
-                    color={COLORS.white}
-                  />
-                )}
-                <View style={styles.editProfileIcon}>
-                  <MaterialIcons
-                    name="edit"
-                    size={moderateScale(12)}
-                    color={COLORS.white}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              <TextDefault style={styles.welcomeText}>
-                Welcome, {userData.username || "User"}
-              </TextDefault>
-              <TextDefault style={styles.phoneText}>
-                {userData.contactNumber || ""}
-              </TextDefault>
-            </Animated.View>
-          </LinearGradient>
-
-          {/* Menu list - Using contentContainerStyle for proper scrolling */}
-          <ScrollView
-            style={styles.scrollView}
-            contentContainerStyle={styles.scrollContent}
-            showsVerticalScrollIndicator={false}
-            bounces={true}
-          >
-            {menuItems.map((item, index) => {
-              const active = isActive(item.route);
-              return (
-                <TouchableOpacity
-                  key={index}
-                  style={[styles.menuItem, active && styles.menuItemActive]}
-                  onPress={() => handleMenuNavigate(item.route)}
+              <View style={styles.headerTopRow}>
+                <Pressable
+                  onPress={onClose}
+                  style={({ pressed }) => [styles.closeButton, pressed && styles.buttonPressed]}
                 >
-                  <View style={styles.menuItemContent}>
+                  <MaterialIcons
+                    name="chevron-right"
+                    size={moderateScale(28)}
+                    color={COLORS.white}
+                  />
+                </Pressable>
+                
+                <Pressable
+                  onPress={fetchUserDataFromAPI}
+                  style={({ pressed }) => [styles.refreshButton, pressed && styles.buttonPressed]}
+                  disabled={loading}
+                >
+                  {loading ? (
+                    <ActivityIndicator size="small" color={COLORS.white} />
+                  ) : (
                     <MaterialIcons
-                      name={item.icon}
+                      name="refresh"
                       size={moderateScale(22)}
-                      color={active ? COLORS.primary : COLORS.textPrimary}
+                      color={COLORS.white}
                     />
-                    <TextDefault
-                      style={[
-                        styles.menuItemText,
-                        active && { color: COLORS.primary },
-                      ]}
-                    >
-                      {item.label}
-                    </TextDefault>
-                  </View>
-                </TouchableOpacity>
-              );
-            })}
+                  )}
+                </Pressable>
+              </View>
 
-            {/* Settings Item with expandable submenu */}
-            <View style={styles.settingsContainer}>
-              <TouchableOpacity
-                style={styles.menuItem}
-                onPress={toggleSettings}
-              >
-                <View style={styles.menuItemContent}>
-                  <MaterialIcons
-                    name={showSettings ? "settings" : "settings"}
-                    size={moderateScale(22)}
-                    color={COLORS.textPrimary}
-                  />
-                  <TextDefault style={styles.menuItemText}>
-                    Settings
-                  </TextDefault>
-                  <MaterialIcons
-                    name={showSettings ? "expand-less" : "expand-more"}
-                    size={moderateScale(22)}
-                    color={COLORS.textSecondary}
-                  />
-                </View>
-              </TouchableOpacity>
-
-              {/* Settings Submenu */}
               <Animated.View
                 style={[
-                  styles.submenuContainer,
-                  {
-                    maxHeight: settingsAnim.interpolate({
-                      inputRange: [0, 1],
-                      outputRange: [0, 180], // Adjust based on number of items
-                    }),
-                    opacity: settingsAnim,
-                  },
+                  styles.profileHeader,
+                  { transform: [{ translateY: profileY }], opacity: profileOpacity },
                 ]}
               >
-                {settingsItems.map((item, index) => (
-                  <TouchableOpacity
-                    key={index}
-                    style={styles.submenuItem}
-                    onPress={() => {
-                      if (item.action) {
-                        item.action();
-                      } else if (item.route) {
-                        handleMenuNavigate(item.route);
-                      }
-                    }}
-                  >
-                    <View style={styles.submenuItemContent}>
-                      <MaterialIcons
-                        name={item.icon}
-                        size={moderateScale(18)}
-                        color={COLORS.textPrimary}
-                        style={styles.submenuIcon}
-                      />
-                      <TextDefault style={styles.submenuItemText}>
-                        {item.label}
-                      </TextDefault>
-                    </View>
-                  </TouchableOpacity>
-                ))}
-              </Animated.View>
-            </View>
-
-            <View style={{ height: 8 }} />
-
-            {/* Extra Actions */}
-            <TouchableOpacity style={styles.menuItem} onPress={handleShareApp}>
-              <View style={styles.menuItemContent}>
-                <MaterialIcons
-                  name="share"
-                  size={moderateScale(22)}
-                  color={COLORS.textPrimary}
-                />
-                <TextDefault style={styles.menuItemText}>Share App</TextDefault>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={handleRateUs}>
-              <View style={styles.menuItemContent}>
-                <MaterialIcons
-                  name="star-rate"
-                  size={moderateScale(22)}
-                  color={COLORS.textPrimary}
-                />
-                <TextDefault style={styles.menuItemText}>Rate Us</TextDefault>
-              </View>
-            </TouchableOpacity>
-
-            <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
-              <View style={styles.menuItemContent}>
-                <MaterialIcons
-                  name="logout"
-                  size={moderateScale(22)}
-                  color={COLORS.error}
-                />
-                <TextDefault
-                  style={[styles.menuItemText, { color: COLORS.error }]}
+                <TouchableOpacity
+                  style={styles.profileCircle}
+                  onPress={handleProfilePictureUpdate}
+                  disabled={uploading}
                 >
-                  Logout
+                  {uploading || loading ? (
+                    <ActivityIndicator size="large" color={COLORS.white} />
+                  ) : userData.picture ? (
+                    <Image
+                      source={{ uri: userData.picture }}
+                      style={styles.profileImage}
+                    />
+                  ) : (
+                    <MaterialIcons
+                      name="account-circle"
+                      size={moderateScale(80)}
+                      color={COLORS.white}
+                    />
+                  )}
+                  <View style={styles.editProfileIcon}>
+                    <MaterialIcons
+                      name="edit"
+                      size={moderateScale(12)}
+                      color={COLORS.white}
+                    />
+                  </View>
+                </TouchableOpacity>
+
+                <TextDefault style={styles.welcomeText}>
+                  {loading ? "Loading..." : `Welcome, ${userData.username || "User"}`}
+                </TextDefault>
+                
+                {userData.contactNumber && (
+                  <TextDefault style={styles.phoneText}>
+                    {userData.contactNumber}
+                  </TextDefault>
+                )}
+                
+              </Animated.View>
+            </LinearGradient>
+
+            <ScrollView
+              style={styles.scrollView}
+              contentContainerStyle={styles.scrollContent}
+              showsVerticalScrollIndicator={false}
+              bounces={true}
+            >
+              {MENU_ITEMS.map(renderMenuItem)}
+
+              <View style={styles.settingsContainer}>
+                <TouchableOpacity style={styles.menuItem} onPress={toggleSettings}>
+                  <View style={styles.menuItemContent}>
+                    <MaterialIcons
+                      name="settings"
+                      size={moderateScale(22)}
+                      color={COLORS.textPrimary}
+                    />
+                    <TextDefault style={styles.menuItemText}>
+                      Settings
+                    </TextDefault>
+                    <MaterialIcons
+                      name={showSettings ? "expand-less" : "expand-more"}
+                      size={moderateScale(22)}
+                      color={COLORS.textSecondary}
+                    />
+                  </View>
+                </TouchableOpacity>
+                {renderSettingsSubmenu()}
+              </View>
+
+              <View style={styles.spacerSmall} />
+
+              <TouchableOpacity style={styles.menuItem} onPress={handleShareApp}>
+                <View style={styles.menuItemContent}>
+                  <MaterialIcons name="share" size={moderateScale(22)} color={COLORS.textPrimary} />
+                  <TextDefault style={styles.menuItemText}>Share App</TextDefault>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.menuItem} onPress={handleRateUs}>
+                <View style={styles.menuItemContent}>
+                  <MaterialIcons name="star-rate" size={moderateScale(22)} color={COLORS.textPrimary} />
+                  <TextDefault style={styles.menuItemText}>Rate Us</TextDefault>
+                </View>
+              </TouchableOpacity>
+
+              <TouchableOpacity style={styles.menuItem} onPress={handleLogout}>
+                <View style={styles.menuItemContent}>
+                  <MaterialIcons name="logout" size={moderateScale(22)} color={COLORS.error} />
+                  <TextDefault style={[styles.menuItemText, styles.logoutText]}>
+                    Logout
+                  </TextDefault>
+                </View>
+              </TouchableOpacity>
+
+              <View style={styles.footer}>
+                <TextDefault style={styles.versionText}>
+                  Version {Application.nativeApplicationVersion}
                 </TextDefault>
               </View>
-            </TouchableOpacity>
-
-            {/* Footer section inside ScrollView */}
-            <View style={styles.footer}>
-              <TextDefault style={styles.versionText}>
-                Version {Application.nativeApplicationVersion}
-              </TextDefault>
               
-              {/* Company Branding - Now inside ScrollView */}
-              <View style={styles.brandBadge}>
-                <Text style={styles.brandLine1}>BrightechSoftware</Text>
-                <Text style={styles.brandLine2}>Solutions</Text>
+              <View style={styles.spacerLarge} />
+            </ScrollView>
+          </SafeAreaView>
+        </Animated.View>
+      </Modal>
+
+      {previewModalVisible && (
+        <Modal
+          visible={previewModalVisible}
+          transparent
+          animationType="fade"
+          onRequestClose={() => setPreviewModalVisible(false)}
+        >
+          <View style={styles.previewModalContainer}>
+            <View style={styles.previewModalContent}>
+              <Text style={styles.previewTitle}>Profile Picture Preview</Text>
+              
+              {selectedImagePreview && (
+                <Image
+                  source={{ uri: selectedImagePreview.uri }}
+                  style={styles.previewImage}
+                  resizeMode="contain"
+                />
+              )}
+              
+              <View style={styles.previewButtonsContainer}>
+                <TouchableOpacity
+                  style={[styles.previewButton, styles.cancelButton]}
+                  onPress={() => {
+                    setPreviewModalVisible(false);
+                    setSelectedImagePreview(null);
+                  }}
+                >
+                  <Text style={styles.cancelButtonText}>Cancel</Text>
+                </TouchableOpacity>
+                
+                <TouchableOpacity
+                  style={[styles.previewButton, styles.useButton]}
+                  onPress={handleUseImage}
+                >
+                  <Text style={styles.useButtonText}>Use Image</Text>
+                </TouchableOpacity>
               </View>
             </View>
-            
-            {/* Extra padding at bottom for safe area */}
-            <View style={{ height: 20 }} />
-          </ScrollView>
-        </SafeAreaView>
-      </Animated.View>
-    </Modal>
+          </View>
+        </Modal>
+      )}
+    </>
   );
 };
 
-/* -------------------------
-   Styles
-------------------------- */
-const styles = {
+const styles = StyleSheet.create({
+  // Overlay
   overlay: {
-    position: "absolute",
-    width: "100%",
-    height: "100%",
+    ...StyleSheet.absoluteFillObject,
     backgroundColor: "#00000066",
   },
+  overlayTouchable: {
+    flex: 1,
+  },
+  
+  // Drawer
   drawer: {
     position: "absolute",
     right: 0,
     top: 0,
     bottom: 0,
-    width: width * 0.8,
+    width: DRAWER_WIDTH,
     backgroundColor: COLORS.surface || COLORS.background || "#fff",
     ...theme.SHADOWS.xl,
     borderLeftWidth: 1,
@@ -788,20 +813,21 @@ const styles = {
   drawerContent: {
     flex: 1,
   },
+  
+  // ScrollView
   scrollView: {
     flex: 1,
   },
   scrollContent: {
     flexGrow: 1,
-    paddingBottom: 20, // Add padding at bottom
+    paddingBottom: 20,
   },
-
-  /* Header */
+  
+  // Header
   headerContainer: {
     paddingBottom: SIZES.padding.md,
     paddingTop: SIZES.padding.sm,
     borderBottomLeftRadius: 12,
-    borderBottomRightRadius: 0,
     overflow: "hidden",
   },
   headerTopRow: {
@@ -814,8 +840,15 @@ const styles = {
     padding: 6,
     marginLeft: -6,
   },
-
-  /* Profile area */
+  refreshButton: {
+    padding: 6,
+    marginRight: -6,
+  },
+  buttonPressed: {
+    opacity: 0.6,
+  },
+  
+  // Profile
   profileHeader: {
     paddingHorizontal: SIZES.padding.lg,
     alignItems: "center",
@@ -861,15 +894,30 @@ const styles = {
   phoneText: {
     ...FONTS.body,
     color: "rgba(255,255,255,0.9)",
+    marginBottom: SIZES.xs,
   },
-
-  /* Menu */
+  walletBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "rgba(255,255,255,0.15)",
+    paddingHorizontal: SIZES.padding.md,
+    paddingVertical: SIZES.xs,
+    borderRadius: 20,
+    marginTop: SIZES.xs,
+  },
+  walletText: {
+    ...FONTS.body,
+    color: COLORS.white,
+    marginLeft: SIZES.xs,
+    fontWeight: "600",
+  },
+  
+  // Menu Items
   menuItem: {
     paddingVertical: SIZES.padding.lg,
     paddingHorizontal: SIZES.padding.xl,
     borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.04)",
-    backgroundColor: "transparent",
   },
   menuItemActive: {
     backgroundColor: "rgba(0,0,0,0.04)",
@@ -884,14 +932,17 @@ const styles = {
     marginLeft: SIZES.padding.md,
     flex: 1,
   },
-
-  /* Settings Container */
+  menuItemTextActive: {
+    color: COLORS.primary,
+  },
+  logoutText: {
+    color: COLORS.error,
+  },
+  
+  // Settings
   settingsContainer: {
-    // borderBottomWidth: 1,
     borderBottomColor: "rgba(0,0,0,0.04)",
   },
-
-  /* Submenu Styles */
   submenuContainer: {
     overflow: "hidden",
     backgroundColor: "rgba(0,0,0,0.02)",
@@ -918,50 +969,89 @@ const styles = {
     ...FONTS.body,
     color: COLORS.textPrimary,
   },
-
-  /* Footer */
+  
+  // Spacers
+  spacerSmall: {
+    height: 8,
+  },
+  spacerLarge: {
+    height: 20,
+  },
+  
+  // Footer
   footer: {
     marginTop: SIZES.padding.lg,
     paddingHorizontal: SIZES.padding.xl,
     alignItems: "center",
-    position: "relative", // Changed from absolute
   },
   versionText: {
     textAlign: "center",
     color: COLORS.textSecondary,
     marginBottom: SIZES.padding.md,
   },
-  brandBadge: {
-    // backgroundColor: "rgba(255, 255, 255, 0.7)",
-    paddingVertical: 8,
-    paddingHorizontal: 16,
-    borderRadius: 20,
-    alignItems: "center",
+  
+  // Preview Modal
+  previewModalContainer: {
+    flex: 1,
+    backgroundColor: "rgba(0, 0, 0, 0.8)",
     justifyContent: "center",
-    shadowColor: "#000",
-    // shadowOffset: { width: 0, height: 2 },
-    // shadowOpacity: 0.1,
-    // shadowRadius: 4,
-    // elevation: 3,
+    alignItems: "center",
+    padding: 20,
+  },
+  previewModalContent: {
+    backgroundColor: COLORS.background || "#fff",
+    borderRadius: 20,
+    padding: 20,
+    width: "90%",
+    maxWidth: 400,
+    alignItems: "center",
+    ...theme.SHADOWS.xxl,
+  },
+  previewTitle: {
+    ...FONTS.h5,
+    color: COLORS.textPrimary,
+    marginBottom: 20,
+    textAlign: "center",
+  },
+  previewImage: {
+    width: "100%",
+    height: 300,
+    borderRadius: 15,
+    marginBottom: 25,
+    backgroundColor: "#f5f5f5",
+  },
+  previewButtonsContainer: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    width: "100%",
+    gap: 15,
+  },
+  previewButton: {
+    flex: 1,
+    paddingVertical: 15,
+    borderRadius: 10,
+    alignItems: "center",
+  },
+  cancelButton: {
+    backgroundColor: COLORS.error + "20",
     borderWidth: 1,
-    borderColor: "rgba(0,0,0,0.05)",
-    marginLeft: 120
+    borderColor: COLORS.error,
   },
-  brandLine1: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: COLORS.primary,
-    letterSpacing: 0.7,
-    fontStyle: "italic",
+  useButton: {
+    backgroundColor: COLORS.primary,
+    borderWidth: 1,
+    borderColor: COLORS.primary,
   },
-  brandLine2: {
-    fontSize: 12,
+  cancelButtonText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.error,
     fontWeight: "600",
-    letterSpacing: 0.5,
-    color: "#444",
-    marginTop: -2,
-    opacity: 0.85,
   },
-};
+  useButtonText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.white,
+    fontWeight: "600",
+  },
+});
 
-export default DrawerMenu;
+export default React.memo(DrawerMenu);

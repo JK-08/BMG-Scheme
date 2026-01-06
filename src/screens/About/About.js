@@ -10,41 +10,57 @@ import {BottomTab} from '../../components';
 const { COLORS, SIZES, FONTS, verticalScale, moderateScale, SHADOWS } = theme;
 
 const CONTENT = {
-  story: [
-    "BMG Jewellers began as a small, family-run business in Madurai with a mission to provide high-quality, genuine jewellery.",
-    "Now a trusted name, we're recognized for our craftsmanship, value, and customer care, rooted in the cultural richness of Madurai.",
-    "Our legacy is built on lasting customer relationships, with many returning for their special occasions."
+  intro: [
+    "BMG Jewellers is a trusted destination for pure 92.5 Hallmarked silver jewellery and articles, crafted to celebrate tradition, elegance, and everyday luxury.",
+    "We specialize in a wide range of gold-polished silver jewellery, plain silver ornaments, silver vessels, pooja articles, idols, photo frames, and 999 pure silver bars and coins—each piece designed to combine beauty, purity, and lasting value.",
+    "At BMG Jewellers, we believe silver is not just an ornament—it is heritage, investment, and emotion. Every product we offer is carefully curated, quality-checked, and hallmarked to ensure purity, transparency, and customer confidence."
   ],
-  craftsmanship: [
-    "Our master craftsmen blend traditional techniques with modern designs, creating timeless pieces with meticulous attention to detail.",
-    "Specializing in gold, diamonds, and precious stones, every piece meets our rigorous quality standards."
-  ],
-  features: [
+  whyChooseUs: [
     {
-      icon: 'diamond',
-      title: 'Uncompromising Quality',
-      description: 'We use the finest materials and skilled artisans to craft jewellery that endures.',
+      icon: 'verified',
+      title: '92.5 Hallmarked Assurance',
+      description: 'All our jewellery and silver articles meet certified purity standards for complete peace of mind.',
       color: COLORS.primary
     },
     {
-      icon: 'handshake',
-      title: 'Trust & Transparency',
-      description: 'For generations, we ve built honest relationships with no hidden costs.',
+      icon: 'brush',
+      title: 'Gold-Polished Silver Excellence',
+      description: 'Experience the elegance of gold-look jewellery with the value and durability of pure silver.',
       color: COLORS.secondary
     },
     {
-      icon: 'auto-awesome',
-      title: 'Heritage & Innovation',
-      description: 'We honor traditional craftsmanship while embracing modern designs.',
+      icon: 'category',
+      title: 'Wide Product Range Under One Roof',
+      description: 'From daily-wear ornaments to traditional vessels, from festive jewellery to pure 999 silver bars and coins.',
       color: COLORS.warning
+    },
+    {
+      icon: 'price-check',
+      title: 'Transparent Pricing & Ethical Practices',
+      description: 'Clear weight, purity, and pricing—no hidden charges, no compromise.',
+      color: COLORS.success
+    },
+    {
+      icon: 'design-services',
+      title: 'Craftsmanship with Modern Design',
+      description: 'Traditional artistry blended with contemporary styles to suit every generation.',
+      color: COLORS.info
+    },
+    {
+      icon: 'handshake',
+      title: 'Trust Built on Relationships',
+      description: 'Customer satisfaction and long-term trust are at the heart of everything we do.',
+      color: COLORS.primaryLight
     }
   ],
-  mission: "At BMG Jewellers, we aim to make high-quality, beautifully designed jewellery accessible to everyone, with transparency and integrity.",
-  vision: "We aspire to be a leading name in jewellery, expanding beyond Madurai while maintaining our commitment to quality and customer satisfaction.",
+  vision: "To become a leading and most trusted silver jewellery brand, offering purity-driven products, innovative designs, and unmatched customer experience—both in-store and online.",
   promise: [
-    "We promise exceptional value, superior craftsmanship, and unwavering customer trust.",
-    "Your satisfaction is our ultimate goal, ensuring every interaction with BMG Jewellers is memorable."
-  ]
+    { icon: 'verified', text: 'Certified purity' },
+    { icon: 'price-change', text: 'Honest pricing' },
+    { icon: 'engineering', text: 'Superior craftsmanship' },
+    { icon: 'support-agent', text: 'Customer-first service' }
+  ],
+  commitment: "BMG Jewellers is committed to delivering silver you can trust, wear, gift, and invest in—today and for generations to come."
 };
 
 const AboutPage = () => {
@@ -68,23 +84,23 @@ const AboutPage = () => {
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
               <Image
-                source={require('../../assets/image/final-logo.jpg')}
+                source={require('../../assets/image/logo08.jpeg')}
                 style={styles.logo}
                 resizeMode="contain"
               />
             </View>
             <TextDefault style={styles.tagline}>
-              Crafting Timeless Beauty Since 1985
+              Silver You Can Trust
             </TextDefault>
           </View>
 
-          {/* Our Story Section */}
+          {/* Introduction Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
-              <MaterialIcons name="history" size={moderateScale(24)} color={COLORS.primary} />
-              <TextDefault style={styles.sectionTitle}>Our Story</TextDefault>
+              <MaterialIcons name="business" size={moderateScale(24)} color={COLORS.primary} />
+              <TextDefault style={styles.sectionTitle}>About BMG Jewellers</TextDefault>
             </View>
-            {CONTENT.story.map((text, index) => (
+            {CONTENT.intro.map((text, index) => (
               <View key={index} style={styles.textContainer}>
                 <View style={styles.bullet} />
                 <TextDefault style={styles.sectionText}>
@@ -94,35 +110,13 @@ const AboutPage = () => {
             ))}
           </View>
 
-          {/* Craftsmanship Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialIcons name="precision-manufacturing" size={moderateScale(24)} color={COLORS.primary} />
-              <TextDefault style={styles.sectionTitle}>Our Craftsmanship</TextDefault>
-            </View>
-            {CONTENT.craftsmanship.map((text, index) => (
-              <View key={index} style={styles.textContainer}>
-                <View style={styles.bullet} />
-                <TextDefault style={styles.sectionText}>
-                  {text}
-                </TextDefault>
-              </View>
-            ))}
-            <View style={styles.certificationBox}>
-              <MaterialIcons name="verified" size={moderateScale(28)} color={COLORS.success} />
-              <TextDefault style={styles.certificationText}>
-                All items crafted with <TextDefault style={styles.certificationHighlight}>92.5 BIS hallmark-certified silver</TextDefault> for guaranteed purity.
-              </TextDefault>
-            </View>
-          </View>
-
-          {/* Why Choose Us Section */}
+          {/* What Makes Us Different Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialIcons name="star" size={moderateScale(24)} color={COLORS.primary} />
-              <TextDefault style={styles.sectionTitle}>Why Choose Us</TextDefault>
+              <TextDefault style={styles.sectionTitle}>What Makes Us Different</TextDefault>
             </View>
-            {CONTENT.features.map((feature, index) => (
+            {CONTENT.whyChooseUs.map((feature, index) => (
               <View key={index} style={styles.featureCard}>
                 <View style={[styles.featureIconContainer, { backgroundColor: feature.color + '15' }]}>
                   <MaterialIcons name={feature.icon} size={moderateScale(20)} color={feature.color} />
@@ -137,59 +131,59 @@ const AboutPage = () => {
             ))}
           </View>
 
-          {/* Mission Section */}
-          <View style={styles.section}>
-            <View style={styles.sectionHeader}>
-              <MaterialIcons name="flag" size={moderateScale(24)} color={COLORS.primary} />
-              <TextDefault style={styles.sectionTitle}>Our Mission</TextDefault>
-            </View>
-            <View style={styles.missionBox}>
-              <MaterialIcons name="target" size={moderateScale(28)} color={COLORS.primary} />
-              <TextDefault style={styles.missionText}>
-                {CONTENT.mission}
-              </TextDefault>
-            </View>
-          </View>
-
-          {/* Vision Section */}
+          {/* Our Vision Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialIcons name="visibility" size={moderateScale(24)} color={COLORS.primary} />
               <TextDefault style={styles.sectionTitle}>Our Vision</TextDefault>
             </View>
             <View style={styles.visionBox}>
-              <MaterialIcons name="trending-up" size={moderateScale(28)} color={COLORS.warning} />
+              <MaterialIcons name="target" size={moderateScale(28)} color={COLORS.primary} />
               <TextDefault style={styles.visionText}>
                 {CONTENT.vision}
               </TextDefault>
             </View>
           </View>
 
-          {/* Promise Section */}
+          {/* Our Promise Section */}
           <View style={styles.section}>
             <View style={styles.sectionHeader}>
               <MaterialIcons name="favorite" size={moderateScale(24)} color={COLORS.primary} />
               <TextDefault style={styles.sectionTitle}>Our Promise</TextDefault>
             </View>
-            <View style={styles.promiseBox}>
-              <MaterialIcons name="security" size={moderateScale(28)} color={COLORS.secondary} />
-              <View style={styles.promiseContent}>
-                {CONTENT.promise.map((text, index) => (
-                  <View key={index} style={styles.promiseItem}>
-                    <View style={styles.promiseBullet} />
-                    <TextDefault style={styles.promiseText}>
-                      {text}
-                    </TextDefault>
+            <View style={styles.promiseGrid}>
+              {CONTENT.promise.map((item, index) => (
+                <View key={index} style={styles.promiseItem}>
+                  <View style={styles.promiseIconContainer}>
+                    <MaterialIcons name={item.icon} size={moderateScale(18)} color={COLORS.primary} />
                   </View>
-                ))}
-              </View>
+                  <TextDefault style={styles.promiseItemText}>
+                    {item.text}
+                  </TextDefault>
+                </View>
+              ))}
+            </View>
+          </View>
+
+          {/* Commitment Section */}
+          <View style={styles.section}>
+            <View style={styles.sectionHeader}>
+              <MaterialIcons name="security" size={moderateScale(24)} color={COLORS.primary} />
+              <TextDefault style={styles.sectionTitle}>Our Commitment</TextDefault>
+            </View>
+            <View style={styles.commitmentBox}>
+              <MaterialIcons name="check-circle" size={moderateScale(28)} color={COLORS.success} />
+              <TextDefault style={styles.commitmentText}>
+                {CONTENT.commitment}
+              </TextDefault>
             </View>
           </View>
 
           {/* Footer */}
           <View style={styles.footer}>
+            <MaterialIcons name="location-on" size={moderateScale(18)} color={COLORS.textSecondary} />
             <TextDefault style={styles.footerText}>
-              Thank you for choosing BMG Jewellers
+              Madurai, Tamil Nadu
             </TextDefault>
           </View>
         </ScrollView>
@@ -277,26 +271,6 @@ const styles = StyleSheet.create({
     color: COLORS.textPrimary,
     lineHeight: SIZES.font.lg * 1.4,
   },
-  certificationBox: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    backgroundColor: COLORS.success + '10',
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.lg,
-    marginTop: verticalScale(SIZES.padding.md),
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.success,
-  },
-  certificationText: {
-    flex: 1,
-    ...FONTS.body,
-    color: COLORS.textPrimary,
-    marginLeft: SIZES.padding.md,
-  },
-  certificationHighlight: {
-    ...FONTS.bodyBold,
-    color: COLORS.success,
-  },
   featureCard: {
     flexDirection: 'row',
     alignItems: 'flex-start',
@@ -329,7 +303,7 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     lineHeight: SIZES.font.md * 1.4,
   },
-  missionBox: {
+  visionBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
     backgroundColor: COLORS.primary + '08',
@@ -338,72 +312,73 @@ const styles = StyleSheet.create({
     borderLeftWidth: 4,
     borderLeftColor: COLORS.primary,
   },
-  missionText: {
-    flex: 1,
-    ...FONTS.body,
-    color: COLORS.textPrimary,
-    lineHeight: SIZES.font.lg * 1.4,
-    marginLeft: SIZES.padding.md,
-    textAlign: 'center',
-  },
-  visionBox: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    backgroundColor: COLORS.warning + '08',
-    borderRadius: SIZES.radius.md,
-    padding: SIZES.padding.xl,
-    borderLeftWidth: 4,
-    borderLeftColor: COLORS.warning,
-  },
   visionText: {
     flex: 1,
     ...FONTS.body,
     color: COLORS.textPrimary,
     lineHeight: SIZES.font.lg * 1.4,
     marginLeft: SIZES.padding.md,
+    textAlign: 'center',
   },
-  promiseBox: {
+  promiseGrid: {
+    flexDirection: 'row',
+    flexWrap: 'wrap',
+    justifyContent: 'space-between',
+    marginTop: verticalScale(SIZES.padding.sm),
+  },
+  promiseItem: {
+    width: '48%',
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: COLORS.white,
+    borderRadius: SIZES.radius.md,
+    padding: SIZES.padding.md,
+    marginBottom: verticalScale(SIZES.padding.md),
+    ...SHADOWS.sm,
+  },
+  promiseIconContainer: {
+    width: moderateScale(32),
+    height: moderateScale(32),
+    borderRadius: SIZES.radius.md,
+    backgroundColor: COLORS.primary + '15',
+    justifyContent: 'center',
+    alignItems: 'center',
+    marginRight: SIZES.padding.sm,
+  },
+  promiseItemText: {
+    flex: 1,
+    ...FONTS.bodySmall,
+    color: COLORS.textPrimary,
+  },
+  commitmentBox: {
     flexDirection: 'row',
     alignItems: 'flex-start',
-    backgroundColor: COLORS.secondary + '08',
+    backgroundColor: COLORS.success + '08',
     borderRadius: SIZES.radius.md,
     padding: SIZES.padding.xl,
     borderLeftWidth: 4,
-    borderLeftColor: COLORS.secondary,
+    borderLeftColor: COLORS.success,
   },
-  promiseContent: {
-    flex: 1,
-    marginLeft: SIZES.padding.md,
-  },
-  promiseItem: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: verticalScale(SIZES.padding.sm),
-  },
-  promiseBullet: {
-    width: moderateScale(5),
-    height: moderateScale(5),
-    borderRadius: SIZES.radius.full,
-    backgroundColor: COLORS.secondary,
-    marginRight: SIZES.padding.sm,
-    marginTop: verticalScale(SIZES.padding.sm),
-  },
-  promiseText: {
+  commitmentText: {
     flex: 1,
     ...FONTS.body,
     color: COLORS.textPrimary,
     lineHeight: SIZES.font.lg * 1.4,
+    marginLeft: SIZES.padding.md,
+    textAlign: 'center',
+    fontStyle: 'italic',
   },
   footer: {
+    flexDirection: 'row',
     alignItems: 'center',
+    justifyContent: 'center',
     paddingVertical: verticalScale(SIZES.padding.xl),
     marginHorizontal: SIZES.padding.lg,
   },
   footerText: {
-    ...FONTS.body,
+    ...FONTS.bodySmall,
     color: COLORS.textSecondary,
-    fontStyle: 'italic',
-    textAlign: 'center',
+    marginLeft: SIZES.xs,
   },
 });
 

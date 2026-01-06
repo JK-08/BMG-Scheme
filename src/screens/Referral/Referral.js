@@ -51,7 +51,7 @@ const ReferralScreen = () => {
   // New state for redeem functionality
   const [redeemModalVisible, setRedeemModalVisible] = useState(false);
   const [isRedeeming, setIsRedeeming] = useState(false);
-  
+
   // New state for referral schemes from API
   const [referralSchemes, setReferralSchemes] = useState([]);
   const [isLoadingSchemes, setIsLoadingSchemes] = useState(false);
@@ -146,13 +146,17 @@ const ReferralScreen = () => {
     setIsLoadingSchemes(true);
     try {
       const schemesData = await fetchReferralSchemes();
-      
+
       // Handle API response format
       if (Array.isArray(schemesData)) {
         setReferralSchemes(schemesData);
       } else if (schemesData && Array.isArray(schemesData.data)) {
         setReferralSchemes(schemesData.data);
-      } else if (schemesData && schemesData.success && Array.isArray(schemesData.data)) {
+      } else if (
+        schemesData &&
+        schemesData.success &&
+        Array.isArray(schemesData.data)
+      ) {
         setReferralSchemes(schemesData.data);
       } else {
         console.log("No scheme data found or unexpected format:", schemesData);
@@ -170,59 +174,60 @@ const ReferralScreen = () => {
   // ===============================
   // RENDER HOW IT WORKS SECTION WITH DYNAMIC SCHEMES
   // ===============================
-const renderHowItWorks = () => {
-  const baseSteps = [
-    {
-      number: 1,
-      text: "Share your referral code or link with friends",
-    },
-    {
-      number: 2,
-      text: "Ask them to sign up using your code/link",
-    },
-  ];
+  const renderHowItWorks = () => {
+    const baseSteps = [
+      {
+        number: 1,
+        text: "Share your referral code or link with friends",
+      },
+      {
+        number: 2,
+        text: "Ask them to sign up using your code/link",
+      },
+    ];
 
-  // Dynamic scheme steps
-  const schemeSteps =
-    referralSchemes.length > 0
-      ? referralSchemes.map((scheme, index) => ({
-          number: index + 3,
-          text: `Earn ₹${scheme.referral_amount || 0} bonus for ${scheme.scheme_name || "Unnamed Scheme"}`,
-        }))
-      : [
-          {
-            number: 3,
-            text: "Earn bonus for each successful referral",
-          },
-        ];
+    // Dynamic scheme steps
+    const schemeSteps =
+      referralSchemes.length > 0
+        ? referralSchemes.map((scheme, index) => ({
+            number: index + 3,
+            text: `Earn ₹${scheme.referral_amount || 0} bonus for ${
+              scheme.scheme_name || "Unnamed Scheme"
+            }`,
+          }))
+        : [
+            {
+              number: 3,
+              text: "Earn bonus for each successful referral",
+            },
+          ];
 
-  const finalSteps = [
-    ...baseSteps,
-    ...schemeSteps,
-    {
-      number: schemeSteps.length + 3,
-      text: "Redeem your earnings when schemes reach maturity date",
-    },
-  ];
+    const finalSteps = [
+      ...baseSteps,
+      ...schemeSteps,
+      {
+        number: schemeSteps.length + 3,
+        text: "Redeem your earnings when schemes reach maturity date",
+      },
+    ];
 
-  return (
-    <View style={styles.section}>
-      <Text style={styles.sectionTitle}>How It Works</Text>
+    return (
+      <View style={styles.section}>
+        <Text style={styles.sectionTitle}>How It Works</Text>
 
-      <View style={styles.stepsContainer}>
-        {finalSteps.map((step, index) => (
-          <View key={`step-${index}`} style={styles.stepItem}>
-            <View style={styles.stepNumber}>
-              <Text style={styles.stepNumberText}>{step.number}</Text>
+        <View style={styles.stepsContainer}>
+          {finalSteps.map((step, index) => (
+            <View key={`step-${index}`} style={styles.stepItem}>
+              <View style={styles.stepNumber}>
+                <Text style={styles.stepNumberText}>{step.number}</Text>
+              </View>
+              <Text style={styles.stepText}>{step.text}</Text>
             </View>
-            <Text style={styles.stepText}>{step.text}</Text>
-          </View>
-        ))}
+          ))}
+        </View>
       </View>
-    </View>
-  );
-};
-
+    );
+  };
 
   // ===============================
   // REDEEM FUNCTIONALITY
@@ -233,17 +238,19 @@ const renderHowItWorks = () => {
 
   const handleRedeemScheme = (schemeId) => {
     setIsRedeeming(true);
-    
+
     setTimeout(() => {
       Alert.alert(
         "Success!",
         `Amount has been successfully redeemed and will be transferred to your wallet within 24-48 hours.`,
-        [{
-          text: "OK",
-          onPress: () => {
-            setIsRedeeming(false);
-          }
-        }]
+        [
+          {
+            text: "OK",
+            onPress: () => {
+              setIsRedeeming(false);
+            },
+          },
+        ]
       );
       setIsRedeeming(false);
     }, 1500);
@@ -263,7 +270,11 @@ const renderHowItWorks = () => {
       if (referralSchemes.length > 0) {
         schemesInfo = "\n\n🎯 **Available Referral Schemes:**\n";
         referralSchemes.forEach((scheme, index) => {
-          schemesInfo += `\n• ${scheme.scheme_name || `Scheme ${index + 1}`}: ₹${scheme.referral_amount || 0} + ${scheme.referral_percent || 0}% bonus`;
+          schemesInfo += `\n• ${
+            scheme.scheme_name || `Scheme ${index + 1}`
+          }: ₹${scheme.referral_amount || 0} + ${
+            scheme.referral_percent || 0
+          }% bonus`;
         });
       }
 
@@ -538,7 +549,9 @@ const renderHowItWorks = () => {
                 onPress={handleShare}
                 disabled={!referralCode}
               >
-                <Text style={styles.primaryButtonText}>Share Referral Link</Text>
+                <Text style={styles.primaryButtonText}>
+                  Share Referral Link
+                </Text>
               </TouchableOpacity>
 
               <TouchableOpacity
@@ -570,46 +583,15 @@ const renderHowItWorks = () => {
               style={styles.redeemButtonMain}
               onPress={handleRedeemPress}
             >
-              <Text style={styles.redeemButtonMainText}>Redeem Amount</Text>
+              <Text style={styles.redeemButtonMainText}>How to Redeem</Text>
             </TouchableOpacity>
           </View>
-
-          {/* ===== HOW IT WORKS ===== */}
-          {renderHowItWorks()}
 
           {/* ===== APPLIED REFERRAL / INPUT SECTION ===== */}
           {renderAppliedReferralSection()}
 
-          {/* ===== REFERRAL HISTORY ===== */}
-          <View style={styles.section}>
-            <View style={styles.historyHeader}>
-              <Text style={styles.sectionTitle}>Earnings History</Text>
-              {referralHistory.length > 0 && (
-                <Text style={styles.historyCount}>
-                  {totalReferrals} referrals
-                </Text>
-              )}
-            </View>
-
-            {referralHistory.length > 0 ? (
-              <View style={styles.historyContainer}>
-                <FlatList
-                  data={referralHistory}
-                  renderItem={renderHistoryItem}
-                  keyExtractor={(item, index) => `${item.id}-${index}`}
-                  scrollEnabled={false}
-                  ItemSeparatorComponent={() => <View style={styles.separator} />}
-                />
-              </View>
-            ) : (
-              <View style={styles.emptyState}>
-                <Text style={styles.emptyText}>No referral earnings yet</Text>
-                <Text style={styles.emptySubtext}>
-                  Start referring friends to earn rewards!
-                </Text>
-              </View>
-            )}
-          </View>
+          {/* ===== HOW IT WORKS ===== */}
+          {renderHowItWorks()}
         </ScrollView>
 
         {/* Redeem Modal */}
@@ -634,7 +616,9 @@ const renderHowItWorks = () => {
 
               {/* Total Redeemable Amount */}
               <View style={styles.totalRedeemableCard}>
-                <Text style={styles.totalRedeemableLabel}>Total Redeemable</Text>
+                <Text style={styles.totalRedeemableLabel}>
+                  Total Redeemable
+                </Text>
                 <Text style={styles.totalRedeemableAmount}>
                   ₹{totalBonus.toFixed(2)}
                 </Text>
@@ -644,12 +628,19 @@ const renderHowItWorks = () => {
               <View style={styles.redeemNoteContainer}>
                 <Text style={styles.redeemNoteTitle}>Important:</Text>
                 <Text style={styles.redeemNoteText}>
-                  • Reward money is applicable only for purchases of ₹10,000 and above. {'\n\n'}
-                  • Redemption is subject to eligibility, validity period, and the company’s reward policy.{'\n\n'}
-                  • The company reserves the right to modify or withdraw the reward scheme without prior notice{'\n\n'}
-                  • Amount can only be redeemed when scheme reaches maturity date{'\n\n'}
-                  • Redeemed amount will be transferred to your wallet{'\n\n'}
-                  • Processing may take 24-48 hours{'\n\n'}
+                  • Reward money is applicable only for purchases of ₹10,000 and
+                  above. {"\n\n"}• Redemption is subject to eligibility,
+                  validity period, and the company’s reward policy.{"\n\n"}• The
+                  company reserves the right to modify or withdraw the reward
+                  scheme without prior notice{"\n\n"}✅ Redemption is allowed
+                  after scheme completion / eligibility {"\n\n"}🏬 Visit any authorized
+                  showroom / branch {"\n\n"}📱 Carry your registered mobile number / App
+                  ID {"\n\n"}🧾 Benefits can be redeemed only against jewellery purchase
+                  {"\n\n"}⚖️ Final value depends on prevailing gold / silver rate on
+                  redemption date {"\n\n"}🔖 Valid ID proof may be required {"\n\n"}⏳
+                  Redemption must be done within the validity period{"\n\n"} 🚫 Benefits
+                  are non-transferable and cannot be encashed{"\n\n"} 📜 Subject to
+                  scheme Terms & Conditions
                 </Text>
               </View>
             </View>
@@ -664,7 +655,7 @@ const renderHowItWorks = () => {
 // ============================================
 // STYLES
 // ============================================
-const { width, height } = Dimensions.get('window');
+const { width, height } = Dimensions.get("window");
 
 const styles = StyleSheet.create({
   container: {
@@ -1174,8 +1165,8 @@ const styles = StyleSheet.create({
   // Modal Styles
   modalOverlay: {
     flex: 1,
-    backgroundColor: 'rgba(0, 0, 0, 0.5)',
-    justifyContent: 'center',
+    backgroundColor: "rgba(0, 0, 0, 0.5)",
+    justifyContent: "center",
   },
   modalContainer: {
     backgroundColor: COLORS.white,
@@ -1185,9 +1176,9 @@ const styles = StyleSheet.create({
     paddingBottom: SIZES.padding.lg,
   },
   modalHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'center',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: SIZES.padding.lg,
     paddingVertical: SIZES.padding.lg,
     borderBottomWidth: 1,
@@ -1211,7 +1202,7 @@ const styles = StyleSheet.create({
     marginVertical: SIZES.margin.lg,
     padding: SIZES.padding.lg,
     borderRadius: SIZES.radius.md,
-    alignItems: 'center',
+    alignItems: "center",
     borderWidth: 1,
     borderColor: COLORS.successOpacity30,
   },
@@ -1246,7 +1237,7 @@ const styles = StyleSheet.create({
     ...FONTS.caption,
     color: COLORS.textSecondary,
     lineHeight: 18,
-    fontSize: 14
+    fontSize: 14,
   },
 });
 

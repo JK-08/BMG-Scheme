@@ -56,32 +56,16 @@ export const MONTHS = [
   "December",
 ];
 
-export const parseAddress = (address) => {
-  if (!address) return { doorNo: "", street: "", area: "" };
-
-  const parts = address
-    .split(",")
-    .map((p) => p.trim())
-    .filter(Boolean);
-
-  let doorNo = "";
-  let street = "";
-  let area = "";
-
-  if (parts.length >= 1) {
-    doorNo = parts[0];
-  }
-
-  if (parts.length >= 2) {
-    street = parts[1];
-  }
-
-  if (parts.length > 2) {
-    const areaParts = parts.slice(2, parts.length - 4);
-    area = areaParts.join(", ");
-  }
-
-  return { doorNo, street, area };
+export const parseAddress = (address1, address2) => {
+  // In your case, address1 is "29" (door/house number)
+  // address2 is "BAJANAI KOIL STREET" (street)
+  // There's no separate "area" field in your data, so we'll use city for area
+  
+  return { 
+    doorNo: address1 || "", 
+    street: address2 || "", 
+    area: "" // Leave empty or use city if needed
+  };
 };
 
 export const formatDateDisplay = (dateString) => {
@@ -243,7 +227,14 @@ const MemberDetailsPage = ({
   const [showConsentModal, setShowConsentModal] = useState(false);
   const [userData, setUserData] = useState(null);
   const [apiLoading, setApiLoading] = useState(true);
-  const [userId] = useState(40199);
+  const [userId, setUserId] = useState(null);
+
+  useEffect(() => {
+    (async () => {
+      const storedUserId = await AsyncStorage.getItem("userId");
+      setUserId(storedUserId);
+    })();
+  }, []);
 
   const displayMaskedAadhaar = (aadhaar) => {
     if (!aadhaar || aadhaar.length < 12) return "XXXX-XXXX-XXXX";
@@ -310,55 +301,188 @@ const MemberDetailsPage = ({
   );
 
   // Effects
-  useEffect(() => {
-    const fetchUserData = async () => {
-      try {
-        setApiLoading(true);
-        const response = await fetch(
-          `${API_BASE_URL}/user/${userId}`
-        );
+// Update the fetchUserData function in the useEffect
+useEffect(() => {
+  const fetchUserData = async () => {
+    try {
+      const currentUserId = await AsyncStorage.getItem("userId");
 
-        if (!response.ok) throw new Error(`API error: ${response.status}`);
-
-        const data = await response.json();
-        setUserData(data);
-
-        const addressParts = parseAddress(data.address1);
-
-        const updatedForm = {
-          name: data.username || "",
-          mobile: data.contactNumber || "",
-          email: data.email || "",
-          dateOfBirth: data.dateOfBirth || "",
-          pincode: data.pincode || "",
-          city: data.city || "",
-          state: data.state || "",
-          doorNo: addressParts.doorNo || "",
-          street: addressParts.street || "",
-          area: addressParts.area || "",
-          aadharNumber: data.maskedAadhaar || "",
-        };
-
-        setFormData((prev) => ({ ...prev, ...updatedForm }));
-
-        if (data.aadhaarVerified) setIsAadhaarValid(true);
-        if (data.dateOfBirth) {
-          const [year, month, day] = data.dateOfBirth.split("-");
-          setSelectedDate({ day, month, year });
-        }
-      } catch (error) {
-        console.error("Error fetching user data:", error);
+      if (!currentUserId) {
+        console.log("No userId available");
         Alert.alert(
-          "Info",
-          "Using local form data. Some fields may need manual entry."
+          "Registration Required",
+          "Please complete your KYC registration first.",
+          [
+            {
+              text: "Register Now",
+              onPress: () => {
+                navigation.navigate("UserRegisterForm");
+              },
+            },
+          ]
         );
-      } finally {
         setApiLoading(false);
+        return;
       }
-    };
 
-    fetchUserData();
-  }, [userId]);
+      setApiLoading(true);
+      const response = await fetch(`${API_BASE_URL}/user/${currentUserId}`);
+
+      if (!response.ok) {
+        if (response.status === 404) {
+          Alert.alert(
+            "User Not Found",
+            "Your profile was not found. Please complete your KYC registration.",
+            [
+              {
+                text: "Register Now",
+                onPress: () => {
+                  AsyncStorage.removeItem("userId");
+                  navigation.navigate("UserRegisterForm");
+                },
+              },
+            ]
+          );
+          setApiLoading(false);
+          return;
+        }
+        throw new Error(`API error: ${response.status}`);
+      }
+
+      const data = await response.json();
+
+      // Check if data is empty or doesn't have required fields
+      if (!data || Object.keys(data).length === 0 || !data.id) {
+        Alert.alert(
+          "Incomplete Profile",
+          "Your profile is incomplete. Please complete your KYC registration.",
+          [
+            {
+              text: "Complete Registration",
+              onPress: () => {
+                navigation.navigate("UserRegisterForm");
+              },
+            },
+          ]
+        );
+        setApiLoading(false);
+        return;
+      }
+
+      // Check if user has completed KYC (has essential fields)
+      const hasBasicKYC = data.contactNumber && data.email && data.username;
+      const hasFullKYC = data.aadhaarVerified && 
+                        data.dateOfBirth && 
+                        data.pincode && 
+                        data.address1; // Adjust based on your actual KYC fields
+
+      if (!data.aadhaarVerified || !hasBasicKYC) {
+        // User exists but hasn't completed KYC
+        Alert.alert(
+          "KYC Required",
+          "Please complete your KYC registration to proceed.",
+          [
+            {
+              text: "Complete KYC",
+              onPress: () => {
+                // Navigate to KYC completion page
+                // You might want to pass the user data to pre-fill
+                navigation.navigate("UserRegisterForm", { 
+                  userId: data.id,
+                  prefillData: {
+                    username: data.username,
+                    email: data.email,
+                    contactNumber: data.contactNumber
+                  }
+                });
+              },
+            },
+            {
+              text: "Cancel",
+              style: "cancel"
+            }
+          ]
+        );
+        setApiLoading(false);
+        return;
+      }
+
+      // User has completed KYC - set the data
+      setUserData(data);
+
+      // Only set form data if KYC is complete
+      if (hasFullKYC) {
+  // Use the actual user data structure
+  // address1 = "29" (door number)
+  // address2 = "BAJANAI KOIL STREET" (street)
+  // city = "Kunnathur"
+  
+  const addressParts = parseAddress(data.address1, data.address2);
+
+  const updatedForm = {
+    name: data.username || "",
+    mobile: data.contactNumber || "",
+    email: data.email || "",
+    dateOfBirth: data.dateOfBirth || "",
+    pincode: data.pincode || "",
+    city: data.city || "",
+    state: data.state || "",
+    doorNo: addressParts.doorNo || "", // This will be "29"
+    street: addressParts.street || "", // This will be "BAJANAI KOIL STREET"
+    area: data.city || "", // Using city as area since no separate area field
+    aadharNumber: data.maskedAadhaar || "",
+  };
+
+  setFormData((prev) => ({ ...prev, ...updatedForm }));
+  setIsAadhaarValid(data.aadhaarVerified || false);
+  
+  if (data.dateOfBirth) {
+    const [year, month, day] = data.dateOfBirth.split("-");
+    setSelectedDate({ day, month, year });
+  }
+}
+
+    } catch (error) {
+      console.error("Error fetching user data:", error);
+      
+      if (error.message.includes("Network request failed")) {
+        Alert.alert(
+          "Network Error",
+          "Unable to connect to server. Please check your internet connection.",
+          [
+            {
+              text: "Try Again",
+              onPress: () => fetchUserData(),
+            },
+            {
+              text: "Register Offline",
+              onPress: () => {
+                navigation.navigate("UserRegisterPage");
+              },
+            },
+          ]
+        );
+      } else {
+        Alert.alert(
+          "Registration Required",
+          "Unable to load your profile. Please complete your KYC registration first.",
+          [
+            {
+              text: "Register Now",
+              onPress: () => {
+                navigation.navigate("UserRegisterForm");
+              },
+            },
+          ]
+        );
+      }
+    } finally {
+      setApiLoading(false);
+    }
+  };
+
+  fetchUserData();
+}, [userId, navigation]);
 
   const getUserDataForStorage = useCallback(() => {
     return {
@@ -1409,10 +1533,9 @@ const MemberDetailsPage = ({
 
       // Reset only user data from API/profile
       if (userData) {
-        const { doorNo, street, area } = parseAddress(userData.address1);
-
+        // Use the direct fields from userData
         setFormData({
-          ...INITIAL_FORM, // This includes empty nominee fields
+          ...INITIAL_FORM,
           name: userData.username || "",
           mobile: userData.contactNumber || "",
           email: userData.email || "",
@@ -1421,15 +1544,13 @@ const MemberDetailsPage = ({
           city: userData.city || "",
           state: userData.state || "",
           aadharNumber: userData.maskedAadhaar || "",
-          doorNo,
-          street,
-          area,
+          doorNo: userData.address1 || "", // Direct from address1
+          street: userData.address2 || "", // Direct from address2
+          area: userData.city || "", // No area in your data
         });
       } else {
-        // Reset all fields including nominee fields to empty
         setFormData(INITIAL_FORM);
       }
-
       setSelectedScheme({
         id: initialSchemeId || null,
         name: initialSchemeName || "Select a Scheme",
@@ -1691,15 +1812,16 @@ const MemberDetailsPage = ({
   );
 
   // Show loading while fetching API data
-  if (apiLoading) {
-    return (
-      <View style={styles.loadingContainer}>
-        <ActivityIndicator size="large" color={COLORS.primary} />
-        <Text style={styles.loadingText}>Loading your profile data...</Text>
-      </View>
-    );
-  }
-
+ if (apiLoading) {
+  return (
+    <View style={styles.loadingContainer}>
+      <ActivityIndicator size="large" color={COLORS.primary} />
+      <Text style={styles.loadingText}>
+        {userData ? "Loading your profile data..." : "Checking your profile..."}
+      </Text>
+    </View>
+  );
+}
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -1745,9 +1867,6 @@ const MemberDetailsPage = ({
             {validationErrors.name && (
               <Text style={styles.errorText}>{validationErrors.name}</Text>
             )}
-            {userData?.username && (
-              <Text style={styles.infoText}>✓ From your profile</Text>
-            )}
           </View>
 
           {/* Date of Birth */}
@@ -1787,9 +1906,6 @@ const MemberDetailsPage = ({
               <Text style={styles.errorText}>
                 {validationErrors.dateOfBirth}
               </Text>
-            )}
-            {userData?.dateOfBirth && (
-              <Text style={styles.infoText}>✓ From your profile</Text>
             )}
           </View>
 
@@ -1898,13 +2014,26 @@ const MemberDetailsPage = ({
         </View>
 
         {/* Address Section */}
+        {/* Address Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Address</Text>
+
+          {/* Door No - from address1 */}
           {renderInput("doorNo", "Door No.", null, true, true)}
+
+          {/* Street - from address2 */}
           {renderInput("street", "Street", null, true, true)}
-          {renderInput("area", "Area / Locality", null, true, true)}
+
+          {/* Area/Locality - you can keep this for manual entry */}
+          {renderInput("area", "Area / Locality", null, false, true)}
+
+          {/* PIN Code */}
           {renderInput("pincode", "PIN Code", handlePincode, true, true)}
-          {renderInput("city", "District", null, true, false)}
+
+          {/* City - from userData.city, auto-filled by pincode */}
+          {renderInput("city", "City", null, true, false)}
+
+          {/* State - from userData.state, auto-filled by pincode */}
           {renderInput("state", "State", null, true, false)}
         </View>
 
@@ -1920,7 +2049,6 @@ const MemberDetailsPage = ({
         {/* Nominee Details Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Nominee Details</Text>
-          {renderInput("nomeni", "Nominee Name", null, true, true)}
 
           {/* Nominee Mobile */}
           <View style={styles.inputGroup}>

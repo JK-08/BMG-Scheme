@@ -166,10 +166,13 @@ function ProductCard({
         <View style={styles.circleLarge} />
         <View style={styles.circleMedium} />
 
-        <TextDefault style={styles.schemeName}>
-          {pName.length > 17
-            ? `${pName.substring(0, 17).toUpperCase()}...`
-            : pName.toUpperCase()}
+        <TextDefault
+          style={styles.schemeName}
+          numberOfLines={1}
+          ellipsizeMode="tail"
+          allowFontScaling={false}
+        >
+          {pName.toUpperCase()}
           {isSchemeClosed && " (Closed)"}
         </TextDefault>
 
@@ -560,7 +563,7 @@ const styles = StyleSheet.create({
     marginTop: SIZES.margin.xl,
   },
   infoSub: {
-    ...FONTS.caption+1,
+    ...(FONTS.caption + 1),
     color: COLORS.textSecondary,
     marginTop: SIZES.margin.xs,
     textAlign: "center",
