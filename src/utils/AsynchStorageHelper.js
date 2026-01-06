@@ -1,49 +1,49 @@
 // utils/AsyncStorageHelper.js
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
-// Key constants for consistency
-const STORAGE_KEYS = {
-  USER_DATA: "userData",
-  AUTH_TOKEN: "authToken",
-  USER_ID: "userId",
-  USER_EMAIL: "userEmail",
-  USERNAME: "username",
-  IS_LOGGED_IN: "isLoggedIn",
-};
-
 /**
- * Save user data with guaranteed token preservation
+ * Save user data from login response with specific key names
  */
 export const saveUserData = async (data) => {
   try {
     if (!data) return;
 
-    // Always ensure token is stored separately as well
-    if (data.token) {
-      await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);
-    }
-
-    // Store the full user data
-    await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(data));
-
-    // Store individual fields for quick access
-    const promises = [];
-
-    if (data.id) {
-      promises.push(AsyncStorage.setItem(STORAGE_KEYS.USER_ID, String(data.id)));
-    }
-    if (data.email) {
-      promises.push(AsyncStorage.setItem(STORAGE_KEYS.USER_EMAIL, data.email));
-    }
-    if (data.username) {
-      promises.push(AsyncStorage.setItem(STORAGE_KEYS.USERNAME, data.username));
-    }
+    const token = data.token || "";
+    const id = data.id || "";
+    const email = data.email || "";
+    const username = data.username || "";
+    const contactNumber = data.contactNumber || "";
     
-    promises.push(AsyncStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, "true"));
+    // For fields that might not be in your login response
+    const picture = data.picture || data.profilePicture || "";
+    const status = data.status || "";
+    const message = data.message || "";
+    
+    // Use contactNumber as finalContact
+    const finalContact = contactNumber;
 
-    await Promise.all(promises);
+    // Store all data using multiSet with your exact key names
+    await AsyncStorage.multiSet([
+      ["authToken", token],
+      ["userId", String(id)],
+      ["userEmail", email],
+      ["username", username],
+      ["userPicture", picture],
+      ["userStatus", status],
+      ["userMessage", message],
+      ["userPhoneNumber", finalContact],
+      ["userData", JSON.stringify(data)],
+      ["isLoggedIn", "true"],
+    ]);
 
-    console.log("✅ User data saved successfully");
+    console.log("✅ User data saved successfully:", {
+      userId: id,
+      username,
+      email,
+      phoneNumber: finalContact,
+      hasToken: !!token,
+    });
+
     return data;
   } catch (error) {
     console.error("❌ Error saving user data:", error);
@@ -62,15 +62,15 @@ export const updateUserData = async (updates) => {
 
     // Get existing data
     const existingData = await getUserData();
-    
+
     if (!existingData) {
       // No existing data, save as new
       return await saveUserData(updates);
     }
 
     // IMPORTANT: Never allow token to be removed
-    const token = existingData.token || await getAuthToken();
-    
+    const token = existingData.token || (await getAuthToken());
+
     // Merge updates with existing data
     const mergedData = {
       ...existingData,
@@ -79,12 +79,45 @@ export const updateUserData = async (updates) => {
     };
 
     // Save merged data
-    await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(mergedData));
+    await AsyncStorage.setItem("userData", JSON.stringify(mergedData));
 
-    console.log("✅ User data updated, token preserved:", {
+    // Also update individual fields if they exist in updates
+    const updatePromises = [];
+    
+    if (updates.token !== undefined) {
+      updatePromises.push(AsyncStorage.setItem("authToken", updates.token));
+    }
+    if (updates.id !== undefined) {
+      updatePromises.push(AsyncStorage.setItem("userId", String(updates.id)));
+    }
+    if (updates.email !== undefined) {
+      updatePromises.push(AsyncStorage.setItem("userEmail", updates.email));
+    }
+    if (updates.username !== undefined) {
+      updatePromises.push(AsyncStorage.setItem("username", updates.username));
+    }
+    if (updates.picture !== undefined || updates.profilePicture !== undefined) {
+      const picture = updates.picture || updates.profilePicture || "";
+      updatePromises.push(AsyncStorage.setItem("userPicture", picture));
+    }
+    if (updates.status !== undefined) {
+      updatePromises.push(AsyncStorage.setItem("userStatus", updates.status));
+    }
+    if (updates.message !== undefined) {
+      updatePromises.push(AsyncStorage.setItem("userMessage", updates.message));
+    }
+    if (updates.contactNumber !== undefined) {
+      updatePromises.push(AsyncStorage.setItem("userPhoneNumber", updates.contactNumber));
+    }
+
+    if (updatePromises.length > 0) {
+      await Promise.all(updatePromises);
+    }
+
+    console.log("✅ User data updated:", {
       hasToken: !!mergedData.token,
       userId: mergedData.id,
-      updatedFields: Object.keys(updates)
+      updatedFields: Object.keys(updates),
     });
 
     return mergedData;
@@ -123,7 +156,7 @@ export const updateUserProfile = async (profileData) => {
  */
 export const getUserData = async () => {
   try {
-    const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
+    const userData = await AsyncStorage.getItem("userData");
     return userData ? JSON.parse(userData) : null;
   } catch (error) {
     console.error("❌ Error getting user data:", error);
@@ -137,7 +170,7 @@ export const getUserData = async () => {
 export const getAuthToken = async () => {
   try {
     // First check dedicated auth token storage
-    let token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    let token = await AsyncStorage.getItem("authToken");
     
     if (token) {
       return token;
@@ -147,7 +180,7 @@ export const getAuthToken = async () => {
     const userData = await getUserData();
     if (userData?.token) {
       // Restore to dedicated storage for consistency
-      await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, userData.token);
+      await AsyncStorage.setItem("authToken", userData.token);
       return userData.token;
     }
 
@@ -159,11 +192,50 @@ export const getAuthToken = async () => {
 };
 
 /**
+ * Get specific user field
+ */
+export const getUserField = async (fieldName) => {
+  try {
+    switch(fieldName) {
+      case 'token':
+        return await AsyncStorage.getItem("authToken");
+      case 'id':
+        return await AsyncStorage.getItem("userId");
+      case 'email':
+        return await AsyncStorage.getItem("userEmail");
+      case 'username':
+        return await AsyncStorage.getItem("username");
+      case 'phoneNumber':
+        return await AsyncStorage.getItem("userPhoneNumber");
+      case 'picture':
+        return await AsyncStorage.getItem("userPicture");
+      case 'status':
+        return await AsyncStorage.getItem("userStatus");
+      case 'message':
+        return await AsyncStorage.getItem("userMessage");
+      case 'isLoggedIn':
+        return await AsyncStorage.getItem("isLoggedIn");
+      default:
+        const userData = await getUserData();
+        return userData?.[fieldName] || null;
+    }
+  } catch (error) {
+    console.error(`❌ Error getting ${fieldName}:`, error);
+    return null;
+  }
+};
+
+/**
  * Clear all user data
  */
 export const clearUserData = async () => {
   try {
-    const keys = Object.values(STORAGE_KEYS);
+    const keys = [
+      "authToken", "userId", "userEmail", "username", 
+      "userPicture", "userStatus", "userMessage", 
+      "userPhoneNumber", "userData", "isLoggedIn"
+    ];
+    
     await AsyncStorage.multiRemove(keys);
     console.log("🧹 All user data cleared");
   } catch (error) {
@@ -178,25 +250,31 @@ export const verifyToken = async () => {
   try {
     const token = await getAuthToken();
     const userData = await getUserData();
+    const isLoggedIn = await AsyncStorage.getItem("isLoggedIn");
     
     console.log("🔐 Token verification:", {
       hasToken: !!token,
       tokenLength: token?.length || 0,
       hasUserData: !!userData,
-      userId: userData?.id
+      userId: userData?.id,
+      isLoggedIn: isLoggedIn === "true",
     });
 
     return {
       hasToken: !!token,
       token: token,
-      userData: userData
+      userData: userData,
+      isLoggedIn: isLoggedIn === "true"
     };
   } catch (error) {
     console.error("❌ Error verifying token:", error);
-    return { hasToken: false, token: null, userData: null };
+    return { hasToken: false, token: null, userData: null, isLoggedIn: false };
   }
 };
 
+/**
+ * Update auth token
+ */
 export const updateAuthToken = async (token) => {
   try {
     if (!token) {
@@ -204,19 +282,34 @@ export const updateAuthToken = async (token) => {
       return false;
     }
     
-    await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+    await AsyncStorage.setItem("authToken", token);
     
     // Also ensure it's in user data
     const userData = await getUserData();
     if (userData) {
       userData.token = token;
-      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+      await AsyncStorage.setItem("userData", JSON.stringify(userData));
     }
     
     console.log("🔐 Token restored successfully");
     return true;
   } catch (error) {
     console.error("❌ Error restoring token:", error);
+    return false;
+  }
+};
+
+/**
+ * Check if user is logged in
+ */
+export const isUserLoggedIn = async () => {
+  try {
+    const isLoggedIn = await AsyncStorage.getItem("isLoggedIn");
+    const token = await getAuthToken();
+    
+    return isLoggedIn === "true" && !!token;
+  } catch (error) {
+    console.error("❌ Error checking login status:", error);
     return false;
   }
 };

@@ -199,6 +199,7 @@ const fetchRemainingDays = useCallback(async (schemeId, joinDate) => {
       else setLoading(true);
 
       const storedPhoneNumber = await AsyncStorage.getItem("userPhoneNumber");
+      console.log("Stored phone number:", storedPhoneNumber);
       if (!storedPhoneNumber) {
         setError("Phone number not found");
         return;
