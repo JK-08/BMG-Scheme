@@ -342,10 +342,12 @@ class PaymentReceiptPDF {
         customerInfo: {
           customerName: responseData?.customerInfo?.customerName || personalInfo?.pName || "N/A",
           mobile: responseData?.customerInfo?.mobile || personalInfo?.mobile || "N/A",
-          address1: personalInfo?.doorNo 
-            ? `${personalInfo.doorNo}, ${personalInfo.address1}`
-            : personalInfo?.address1 || "N/A",
-          address2: personalInfo?.pinCode ? `${personalInfo.pinCode}` : "Tamil Nadu",
+         address1:
+  personalInfo?.doorNo || personalInfo?.address1 || personalInfo?.area
+    ? `${personalInfo?.doorNo || ""}, ${personalInfo?.address1 || ""}, ${personalInfo?.area || ""}`.replace(/(^,\s*)|(,\s*,)|(,\s*$)/g, "")
+    : "N/A",
+
+address2: `${personalInfo?.pinCode}, ${personalInfo?.state || "Tamil Nadu"}`,
         },
 
       

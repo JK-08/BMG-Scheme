@@ -411,7 +411,7 @@ function MainLanding() {
         // Wait for all remaining days to be fetched
         const processed = await Promise.all(processedPromises);
 
-        console.log("Processed product data with remainingDays:", processed);
+      
         setProductData(processed);
       } catch (err) {
         console.log("Error in fetchProductData:", err);

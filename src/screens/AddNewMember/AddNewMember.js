@@ -373,6 +373,7 @@ const AddNewMember = () => {
         body: JSON.stringify(paymentPayload),
       });
       const initiateData = await initiateRes.json();
+      console.log("initiate payment response:", initiateRes);
       console.log("Initiate payment response:", initiateData);
       if (!initiateRes.ok) throw new Error(initiateData.message);
 

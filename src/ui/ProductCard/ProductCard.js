@@ -311,9 +311,7 @@ function ProductCard({
                   <TextDefault style={styles.infoValue}>
                     ₹{parseInt(bonusAmount || 0).toLocaleString("en-IN")}
                   </TextDefault>
-                  <TextDefault style={styles.infoSub}>
-                    Benefit unlocked ✨
-                  </TextDefault>
+                  
                 </>
               )}
             </Animated.View>

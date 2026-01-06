@@ -1,47 +1,81 @@
 // services/UserService.js
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "../Config/API";
+import { getAuthToken } from "../utils/AsynchStorageHelper"; // Import the function
 
 export const userService = {
   // ===== USER DATA FETCHING =====
-  async fetchUserData(userId) {
-    if (!userId) throw new Error("User ID is required");
+async fetchUserData(userId) {
+  if (!userId) throw new Error("User ID is required");
 
-    try {
-      const response = await fetch(`${API_BASE_URL}/user/${userId}`);
-
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+  try {
+    console.log("🌐 Fetching user data without token...");
+    
+    const response = await fetch(`${API_BASE_URL}/user/${userId}`, {
+      method: "GET",
+      headers: { 
+        "Content-Type": "application/json"
+        // REMOVED: Authorization header since it's not needed
       }
+    });
 
-      return await response.json();
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      throw error;
+    console.log("📥 Response status:", response.status);
+    
+    const responseText = await response.text();
+    
+    if (!response.ok) {
+      console.error("❌ Fetch error response:", responseText);
+      throw new Error(`HTTP error! status: ${response.status}`);
     }
-  },
 
+    return JSON.parse(responseText);
+  } catch (error) {
+    console.error("Error fetching user data:", error);
+    throw error;
+  }
+},
   // ===== USER DATA UPDATING =====
   async updateUserData(userId, formData) {
     if (!userId) throw new Error("User ID is required");
 
     try {
+      // Get token before making request
+      const token = await getAuthToken();
+      console.log("🔐 Token for update API:", token ? "Exists" : "Missing");
+      console.log("📤 Sending update data:", JSON.stringify(formData, null, 2));
+      
       const response = await fetch(`${API_BASE_URL}/${userId}/update`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+        },
         body: JSON.stringify(formData),
       });
 
       const result = await response.json();
-      console.log("Update response:", result);
+      console.log("📥 Update API response:", result);
 
       if (!response.ok) {
         throw new Error(result.message || "Failed to update user data");
       }
 
+      // IMPORTANT: Ensure the response doesn't contain null token
+      if (result.token === null || result.token === undefined) {
+        // Remove token from result to prevent overwriting
+        delete result.token;
+      }
+
+      // If OTP is sent, return early
+      if (result.otpSent === true) {
+        console.log("📱 OTP sent to phone");
+        return { otpSent: true };
+      }
+
+      // If update is successful, return the updated data
+      console.log("✅ Server update successful, returning data");
       return result;
     } catch (error) {
-      console.error("Error updating user data:", error);
+      console.error("❌ Error updating user data:", error);
       throw error;
     }
   },
@@ -51,9 +85,14 @@ export const userService = {
     if (!userId) throw new Error("User ID is required");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/${userId}/verify-otp`, {
+      const token = await getAuthToken();
+      
+      const response = await fetch(`${API_BASE_URL}/user/${userId}/verify-otp`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers: { 
+          "Content-Type": "application/json",
+          ...(token ? { "Authorization": `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({ otp }),
       });
 
@@ -310,20 +349,16 @@ export const parseAadhaarAddress = (addressString, splitAddressData) => {
     // Fallback: Parse the address string
     if (!addressString) return null;
     
-    // For your specific response format:
-    // "29, BAJANAI KOIL STREET, Kunnathur, Kunnathur, Arani, Tiruvannamalai, Tamil Nadu, India, 604402"
-    
     const parts = addressString.split(',').map(part => part.trim()).filter(part => part);
     
     if (parts.length >= 9) {
-      // Your specific format
       return {
-        address1: parts[0] || "", // "29"
-        address2: parts[1] || "", // "BAJANAI KOIL STREET"
-        city: parts[2] || "", // "Kunnathur"
-        state: parts[6] || "", // "Tamil Nadu"
-        pincode: parts[8] || "", // "604402"
-        country: parts[7] || "India" // "India"
+        address1: parts[0] || "",
+        address2: parts[1] || "",
+        city: parts[2] || "",
+        state: parts[6] || "",
+        pincode: parts[8] || "",
+        country: parts[7] || "India"
       };
     }
     
@@ -337,11 +372,10 @@ export const parseAadhaarAddress = (addressString, splitAddressData) => {
 export const formatDateOfBirth = (dobString) => {
   if (!dobString) return "";
   
-  // Handle DD-MM-YYYY format from Aadhaar
   if (dobString.includes('-')) {
     const parts = dobString.split('-');
     if (parts.length === 3) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`; // Convert to YYYY-MM-DD
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
   }
   

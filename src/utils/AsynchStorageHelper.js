@@ -1,50 +1,129 @@
 // utils/AsyncStorageHelper.js
 import AsyncStorage from "@react-native-async-storage/async-storage";
 
+// Key constants for consistency
+const STORAGE_KEYS = {
+  USER_DATA: "userData",
+  AUTH_TOKEN: "authToken",
+  USER_ID: "userId",
+  USER_EMAIL: "userEmail",
+  USERNAME: "username",
+  IS_LOGGED_IN: "isLoggedIn",
+};
+
 /**
- * Save full user details to AsyncStorage (unified structure for all logins)
+ * Save user data with guaranteed token preservation
  */
 export const saveUserData = async (data) => {
   try {
-    const {
-      token,
-      id,
-      email,
-      username,
-      picture,
-      message,
-      status,
-      contactNumber,
-       contact, // added for normal login
-    } = data;
+    if (!data) return;
 
-     const finalContact = contactNumber || contact || "";
+    // Always ensure token is stored separately as well
+    if (data.token) {
+      await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);
+    }
 
-    await AsyncStorage.multiSet([
-      ["authToken", token || ""],
-      ["userId", String(id || "")],
-      ["userEmail", email || ""],
-      ["username", username || ""],
-      ["userPicture", picture || ""],
-      ["userStatus", status || ""],
-      ["userMessage", message || ""],
-      ["userPhoneNumber", finalContact || ""],
-      ["userData", JSON.stringify(data)],
-      ["isLoggedIn", "true"],
-    ]);
+    // Store the full user data
+    await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(data));
 
-    console.log("✅ User data saved successfully to AsyncStorage", data);
+    // Store individual fields for quick access
+    const promises = [];
+
+    if (data.id) {
+      promises.push(AsyncStorage.setItem(STORAGE_KEYS.USER_ID, String(data.id)));
+    }
+    if (data.email) {
+      promises.push(AsyncStorage.setItem(STORAGE_KEYS.USER_EMAIL, data.email));
+    }
+    if (data.username) {
+      promises.push(AsyncStorage.setItem(STORAGE_KEYS.USERNAME, data.username));
+    }
+    
+    promises.push(AsyncStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, "true"));
+
+    await Promise.all(promises);
+
+    console.log("✅ User data saved successfully");
+    return data;
   } catch (error) {
     console.error("❌ Error saving user data:", error);
+    throw error;
   }
 };
 
 /**
- * Get full user details from AsyncStorage
+ * Update user data while preserving the token
+ */
+export const updateUserData = async (updates) => {
+  try {
+    if (!updates || Object.keys(updates).length === 0) {
+      return null;
+    }
+
+    // Get existing data
+    const existingData = await getUserData();
+    
+    if (!existingData) {
+      // No existing data, save as new
+      return await saveUserData(updates);
+    }
+
+    // IMPORTANT: Never allow token to be removed
+    const token = existingData.token || await getAuthToken();
+    
+    // Merge updates with existing data
+    const mergedData = {
+      ...existingData,
+      ...updates,
+      token: token, // Always preserve token
+    };
+
+    // Save merged data
+    await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(mergedData));
+
+    console.log("✅ User data updated, token preserved:", {
+      hasToken: !!mergedData.token,
+      userId: mergedData.id,
+      updatedFields: Object.keys(updates)
+    });
+
+    return mergedData;
+  } catch (error) {
+    console.error("❌ Error updating user data:", error);
+    throw error;
+  }
+};
+
+/**
+ * Safely update user profile without affecting authentication data
+ */
+export const updateUserProfile = async (profileData) => {
+  try {
+    // Define authentication fields that should NEVER be overwritten
+    const PROTECTED_FIELDS = ['token', 'referralCode', 'referralLink', 'playStoreLink', 'password', 'usedReferralCode'];
+    
+    // Filter out protected fields from profile updates
+    const safeProfileData = Object.keys(profileData).reduce((acc, key) => {
+      if (!PROTECTED_FIELDS.includes(key)) {
+        acc[key] = profileData[key];
+      }
+      return acc;
+    }, {});
+
+    // Update with safe data
+    return await updateUserData(safeProfileData);
+  } catch (error) {
+    console.error("❌ Error updating user profile:", error);
+    throw error;
+  }
+};
+
+/**
+ * Get full user data from storage
  */
 export const getUserData = async () => {
   try {
-    const userData = await AsyncStorage.getItem("userData");
+    const userData = await AsyncStorage.getItem(STORAGE_KEYS.USER_DATA);
     return userData ? JSON.parse(userData) : null;
   } catch (error) {
     console.error("❌ Error getting user data:", error);
@@ -53,48 +132,91 @@ export const getUserData = async () => {
 };
 
 /**
- * Clear all user-related data from AsyncStorage
- */
-export const clearUserData = async () => {
-  try {
-    await AsyncStorage.multiRemove([
-      "authToken",
-      "userId",
-      "userEmail",
-      "username",
-      "userPicture",
-      "userStatus",
-      "userMessage",
-      "userPhoneNumber",
-      "userData",
-      "isLoggedIn",
-    ]);
-    console.log("🧹 User data cleared from AsyncStorage");
-  } catch (error) {
-    console.error("❌ Error clearing user data:", error);
-  }
-};
-
-/**
- * Get stored auth token (for API requests)
+ * Get auth token - checks multiple sources
  */
 export const getAuthToken = async () => {
   try {
-    const token = await AsyncStorage.getItem("authToken");
-    return token;
+    // First check dedicated auth token storage
+    let token = await AsyncStorage.getItem(STORAGE_KEYS.AUTH_TOKEN);
+    
+    if (token) {
+      return token;
+    }
+
+    // Fallback to user data
+    const userData = await getUserData();
+    if (userData?.token) {
+      // Restore to dedicated storage for consistency
+      await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, userData.token);
+      return userData.token;
+    }
+
+    return null;
   } catch (error) {
     console.error("❌ Error getting auth token:", error);
     return null;
   }
 };
 
+/**
+ * Clear all user data
+ */
+export const clearUserData = async () => {
+  try {
+    const keys = Object.values(STORAGE_KEYS);
+    await AsyncStorage.multiRemove(keys);
+    console.log("🧹 All user data cleared");
+  } catch (error) {
+    console.error("❌ Error clearing user data:", error);
+  }
+};
+
+/**
+ * Verify token exists and is valid
+ */
+export const verifyToken = async () => {
+  try {
+    const token = await getAuthToken();
+    const userData = await getUserData();
+    
+    console.log("🔐 Token verification:", {
+      hasToken: !!token,
+      tokenLength: token?.length || 0,
+      hasUserData: !!userData,
+      userId: userData?.id
+    });
+
+    return {
+      hasToken: !!token,
+      token: token,
+      userData: userData
+    };
+  } catch (error) {
+    console.error("❌ Error verifying token:", error);
+    return { hasToken: false, token: null, userData: null };
+  }
+};
+
 export const updateAuthToken = async (token) => {
   try {
-    if (!token) return;
-
-    await AsyncStorage.setItem("authToken", token);
-    console.log("✅ Auth token updated");
+    if (!token) {
+      console.warn("⚠️ No token provided for restoration");
+      return false;
+    }
+    
+    await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, token);
+    
+    // Also ensure it's in user data
+    const userData = await getUserData();
+    if (userData) {
+      userData.token = token;
+      await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(userData));
+    }
+    
+    console.log("🔐 Token restored successfully");
+    return true;
   } catch (error) {
-    console.error("❌ Error updating auth token:", error);
+    console.error("❌ Error restoring token:", error);
+    return false;
   }
 };
