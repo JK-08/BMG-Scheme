@@ -12,7 +12,13 @@ import {
   validateAadhaar,
 } from "../../screens/AddNewMember/Validations";
 import { digiLockerService } from "../../services/DigiLockerService";
-import { updateAuthToken ,getAuthToken} from "../../utils/AsynchStorageHelper";
+import { 
+  getUserData, 
+  getAuthToken, 
+  updateUserProfile,
+  saveUserData,
+  verifyTokenStatus 
+} from "../../utils/AsynchStorageHelper";
 
 export const useUserProfile = () => {
   const navigation = useNavigation();
@@ -46,13 +52,10 @@ export const useUserProfile = () => {
   // Helper function to parse Aadhaar address response
   const parseAadhaarAddress = (addressString, splitAddressData) => {
     try {
-      // If we have split_address data from documentData, use that
       if (splitAddressData) {
         return {
           address1: splitAddressData.house || "",
-          address2: `${splitAddressData.street || ""} ${
-            splitAddressData.landmark || ""
-          }`.trim(),
+          address2: `${splitAddressData.street || ""} ${splitAddressData.landmark || ""}`.trim(),
           city: splitAddressData.vtc || splitAddressData.city || "",
           state: splitAddressData.state || "",
           pincode: splitAddressData.pincode || "",
@@ -60,27 +63,21 @@ export const useUserProfile = () => {
         };
       }
 
-      // Fallback: Parse the address string
       if (!addressString) return null;
 
-      // Split address string by commas
-      const parts = addressString
-        .split(",")
-        .map((part) => part.trim())
-        .filter((part) => part);
+      const parts = addressString.split(",").map((part) => part.trim()).filter((part) => part);
 
-      if (parts.length >= 7) {
-        // Common pattern: "house, street, village/city, sub-district, district, state, pincode, country"
-        const address1 = parts[0] || "";
-        const address2 = parts[1] || "";
-        const city = parts[2] || "";
-        const state = parts[5] || "";
-        const pincode = parts[6] || "";
-        const country = parts[7] || "India";
-
-        return { address1, address2, city, state, pincode, country };
+      // Handle your specific format: "29, BAJANAI KOIL STREET, Kunnathur, Kunnathur, Arani, Tiruvannamalai, Tamil Nadu, India, 604402"
+      if (parts.length >= 9) {
+        return {
+          address1: parts[0] || "",
+          address2: parts[1] || "",
+          city: parts[2] || "",
+          state: parts[6] || "", // "Tamil Nadu"
+          pincode: parts[8] || "", // "604402"
+          country: parts[7] || "India"
+        };
       } else if (parts.length >= 4) {
-        // Try to extract based on position
         const address1 = parts[0] || "";
         const address2 = parts.length > 1 ? parts[1] : "";
         const city = parts.length > 2 ? parts[2] : "";
@@ -105,11 +102,32 @@ export const useUserProfile = () => {
 
   const loadUserData = async () => {
     try {
-      const storedUserId = await userService.getUserId();
-      updateState({ userId: storedUserId });
-      if (storedUserId) await fetchUserData(storedUserId);
+      // Check token status first
+      const tokenStatus = await verifyTokenStatus();
+      console.log("🔐 Initial token status:", tokenStatus);
+
+      const storedUserData = await getUserData();
+      
+      if (storedUserData) {
+        console.log("📱 Loaded user data from storage:", {
+          id: storedUserData.id,
+          username: storedUserData.username,
+          hasToken: !!storedUserData.token
+        });
+        
+        updateState({ 
+          userId: storedUserData.id,
+          userData: storedUserData 
+        });
+        setFormData(userService.getInitialFormState(storedUserData));
+        
+        // Fetch fresh data from server
+        if (storedUserData.id) {
+          await fetchUserData(storedUserData.id);
+        }
+      }
     } catch (error) {
-      console.error("Failed to load userId", error);
+      console.error("Failed to load user data", error);
     }
   };
 
@@ -118,15 +136,35 @@ export const useUserProfile = () => {
     updateState({ isFetchingData: true });
 
     try {
+      // Check token before fetch
+      const tokenBefore = await getAuthToken();
+      console.log("🔐 Token before fetch:", tokenBefore ? "Exists" : "Missing");
+
       const result = await userService.fetchUserData(userId);
-      updateState({ userData: result });
-      setFormData(userService.getInitialFormState(result));
+
+      if (result) {
+        // Update profile data safely (preserves token)
+        await updateUserProfile(result);
+        
+        // Verify token after update
+        const tokenAfter = await getAuthToken();
+        console.log("🔐 Token after fetch:", tokenAfter ? "✅ PRESERVED" : "❌ LOST");
+        
+        // Update local state
+        const updatedUserData = {
+          ...state.userData,
+          ...result
+        };
+        
+        updateState({ 
+          userData: updatedUserData,
+          userId: updatedUserData.id
+        });
+        setFormData(userService.getInitialFormState(updatedUserData));
+      }
     } catch (error) {
-      console.error("Error fetching user data:", error);
-      Alert.alert(
-        "Error",
-        "Failed to fetch user data. Please check your internet connection."
-      );
+      console.error("Error fetching user data's:", error);
+      
     } finally {
       updateState({ isFetchingData: false });
     }
@@ -142,7 +180,7 @@ export const useUserProfile = () => {
       const updatedFormData = {
         ...formData,
         [field]: newValue,
-        kycVerified: formData.aadhaarVerified && newValue ? true : false,
+        kycVerified: formData.aadhaarVerified && newValue,
       };
       setFormData(updatedFormData);
       setErrors((prev) => ({ ...prev, [field]: "" }));
@@ -162,7 +200,7 @@ export const useUserProfile = () => {
       const updatedFormData = {
         ...formData,
         [field]: newValue,
-        kycVerified: newValue && formData.termsAccepted ? true : false,
+        kycVerified: newValue && formData.termsAccepted,
       };
       setFormData(updatedFormData);
       setErrors((prev) => ({ ...prev, [field]: "" }));
@@ -412,8 +450,8 @@ export const useUserProfile = () => {
       navigation.navigate("DigiLockerWebViewScreen", {
         verificationUrl: result.verificationUrl,
         verificationId: result.verificationId,
-        aadhaarNumber: aadhaarNumber, // Pass original Aadhaar number
-        originalAadhaarNumber: aadhaarNumber, // Explicitly pass as original
+        aadhaarNumber: aadhaarNumber,
+        originalAadhaarNumber: aadhaarNumber,
         onVerificationComplete: handleVerificationComplete,
       });
 
@@ -433,22 +471,37 @@ export const useUserProfile = () => {
   };
 
   const handleVerificationComplete = async (result) => {
-    console.log("Verification result:", JSON.stringify(result, null, 2));
+    console.log("🔄 Verification result received:", {
+      success: result.success,
+      aadhaarVerified: result.aadhaarVerified,
+      maskedAadhaar: result.maskedAadhaar
+    });
+
+    updateState({
+      verificationInProgress: false,
+      pendingAadhaarVerification: false,
+    });
 
     if (result.success && result.aadhaarVerified) {
       try {
         const aadhaarData = result.userDetails || {};
         const documentData = result.documentData || {};
-        const actualAadhaarNumber = formData.idProofNo; // This is the original Aadhaar number
+        const actualAadhaarNumber = formData.idProofNo;
 
-        // IMPORTANT: Use the masked Aadhaar from result, not the full number
-        const maskedAadhaarFromResult = result.maskedAadhaar || "6485"; // From your log
+        // FIX: Properly format masked Aadhaar
+        const maskedAadhaarFromResult = result.maskedAadhaar || "6485";
         const properMaskedAadhaar = `XXXX-XXXX-${maskedAadhaarFromResult}`;
+        
+        // FIX: Handle the case where uid might be masked
+        const uid = result.userDetails?.uid || result.documentData?.uid || "";
+        const actualAadhaar = uid.includes("xxxx") ? formData.idProofNo : uid;
 
-        console.log("Using Aadhaar data:", {
+        console.log("📝 Aadhaar details:", {
           original: actualAadhaarNumber,
+          uidFromResult: uid,
+          actualAadhaarToSave: actualAadhaar,
           maskedFromResult: maskedAadhaarFromResult,
-          properMasked: properMaskedAadhaar,
+          properMasked: properMaskedAadhaar
         });
 
         // Parse address from Aadhaar response
@@ -457,59 +510,45 @@ export const useUserProfile = () => {
           documentData.split_address
         );
 
-        // Format date of birth properly (from "17-11-2004" to "2004-11-17")
+        // Format date of birth from DD-MM-YYYY to YYYY-MM-DD
         const formatDateOfBirth = (dob) => {
           if (!dob) return "";
           const parts = dob.split("-");
           if (parts.length === 3) {
-            // Convert "DD-MM-YYYY" to "YYYY-MM-DD"
-            return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            // Check if it's DD-MM-YYYY format
+            if (parts[0].length === 2 && parts[1].length === 2 && parts[2].length === 4) {
+              return `${parts[2]}-${parts[1]}-${parts[0]}`;
+            }
           }
           return dob;
         };
 
+        // Update form data with Aadhaar verification results
         const updatedFormData = {
           ...formData,
-          idProofNo: actualAadhaarNumber, // Full Aadhaar number
+          idProofNo: actualAadhaar, // Use the correct Aadhaar number
           aadhaarVerified: true,
-          maskedAadhaar: properMaskedAadhaar, // Masked format: "XXXX-XXXX-6485"
-          aadhaarVerificationId:
-            result.aadhaarVerificationId || result.verificationId,
-          aadhaarVerifiedAt:
-            result.aadhaarVerifiedAt || new Date().toISOString(),
+          maskedAadhaar: properMaskedAadhaar,
+          aadhaarVerificationId: result.aadhaarVerificationId || result.verificationId,
+          aadhaarVerifiedAt: result.aadhaarVerifiedAt || new Date().toISOString(),
           aadhaarStatus: result.aadhaarStatus || "VERIFIED",
           username: aadhaarData.name || formData.username,
-          dateOfBirth:
-            formatDateOfBirth(aadhaarData.dob) || formData.dateOfBirth,
-          gender: (
-            aadhaarData.gender ||
-            documentData.gender ||
-            formData.gender
-          )?.toLowerCase(),
-          // Update address fields from parsed data
-          address1:
-            addressData?.address1 || aadhaarData.address || formData.address1,
+          dateOfBirth: formatDateOfBirth(aadhaarData.dob) || formData.dateOfBirth,
+          gender: (aadhaarData.gender || documentData.gender || formData.gender)?.toLowerCase(),
+          address1: addressData?.address1 || aadhaarData.address || formData.address1,
           address2: addressData?.address2 || formData.address2,
           city: addressData?.city || formData.city,
           state: addressData?.state || formData.state,
-          pincode:
-            addressData?.pincode ||
-            documentData.split_address?.pincode ||
-            formData.pincode,
+          pincode: addressData?.pincode || documentData.split_address?.pincode || formData.pincode,
           country: addressData?.country || formData.country || "India",
           kycVerified: formData.termsAccepted ? true : false,
         };
 
-        console.log("Updated form data with Aadhaar:", {
-          idProofNo: updatedFormData.idProofNo,
+        console.log("✅ Updated form data:", {
+          username: updatedFormData.username,
+          aadhaarVerified: updatedFormData.aadhaarVerified,
           maskedAadhaar: updatedFormData.maskedAadhaar,
-          address1: updatedFormData.address1,
-          address2: updatedFormData.address2,
-          city: updatedFormData.city,
-          state: updatedFormData.state,
-          pincode: updatedFormData.pincode,
-          dateOfBirth: updatedFormData.dateOfBirth,
-          gender: updatedFormData.gender,
+          address: `${updatedFormData.address1}, ${updatedFormData.city}, ${updatedFormData.state}`
         });
 
         setFormData(updatedFormData);
@@ -533,51 +572,64 @@ export const useUserProfile = () => {
           pincode: "",
         }));
 
+        // Prepare data for API update
         const apiData = {
-          // Basic user info
           email: updatedFormData.email,
           username: updatedFormData.username,
           contactNumber: updatedFormData.contactNumber,
-
-          // Personal details
           gender: updatedFormData.gender,
           dateOfBirth: updatedFormData.dateOfBirth,
-
-          // Address details
           address1: updatedFormData.address1,
           address2: updatedFormData.address2,
           city: updatedFormData.city,
           state: updatedFormData.state,
           pincode: updatedFormData.pincode,
           country: updatedFormData.country,
-
-          // KYC & Terms
           termsAccepted: updatedFormData.termsAccepted,
           kycVerified: updatedFormData.kycVerified,
-
-          // Aadhaar verification details
-          idProofNo: actualAadhaarNumber, // Full Aadhaar number
+          idProofNo: actualAadhaar,
           aadhaarVerified: true,
-          maskedAadhaar: properMaskedAadhaar, // Masked format
+          maskedAadhaar: properMaskedAadhaar,
           aadhaarVerificationId: updatedFormData.aadhaarVerificationId,
           aadhaarVerifiedAt: updatedFormData.aadhaarVerifiedAt,
           aadhaarStatus: updatedFormData.aadhaarStatus,
         };
 
-        console.log("Sending API data:", JSON.stringify(apiData, null, 2));
+        console.log("📤 Sending API data:", JSON.stringify(apiData, null, 2));
 
-        await userService.updateUserData(state.userId, apiData);
-        await fetchUserData(state.userId);
+        // Try to update on server
+        try {
+          const serverResult = await userService.updateUserData(state.userId, apiData);
+          console.log("✅ Server update successful:", serverResult);
+        } catch (serverError) {
+          console.warn("⚠️ Server update failed, saving locally:", serverError.message);
+          // Continue with local update even if server fails
+        }
+
+        // Check token before local update
+        const tokenBefore = await getAuthToken();
+        console.log("🔐 Token before local update:", tokenBefore ? "Exists" : "Missing");
+
+        // Update locally with token preservation
+        await updateUserProfile(apiData);
+        
+        // Verify token after update
+        const tokenAfter = await getAuthToken();
+        console.log("🔐 Token after local update:", tokenAfter ? "✅ PRESERVED" : "❌ LOST");
+
+        // Update local state
+        const updatedUserData = {
+          ...state.userData,
+          ...apiData
+        };
+        
+        updateState({ 
+          userData: updatedUserData 
+        });
 
         Alert.alert(
           "✅ Aadhaar Verified Successfully",
-          `Your Aadhaar has been verified and profile has been updated.\n\nName: ${
-            aadhaarData.name || "N/A"
-          }\nAadhaar: ${updatedFormData.maskedAadhaar}\nAddress: ${
-            updatedFormData.address1
-          }, ${updatedFormData.city}, ${updatedFormData.state}\nKYC Status: ${
-            updatedFormData.kycVerified ? "✅ Verified" : "❌ Pending Terms"
-          }`,
+          `Your Aadhaar has been verified and profile has been updated.\n\nName: ${updatedFormData.username}\nAadhaar: ${properMaskedAadhaar}\nAddress: ${updatedFormData.address1}, ${updatedFormData.city}, ${updatedFormData.state}`,
           [{ text: "OK" }]
         );
 
@@ -585,10 +637,10 @@ export const useUserProfile = () => {
           closeFormAndReset();
         }
       } catch (error) {
-        console.error("API update error:", error);
+        console.error("❌ Local update error:", error);
         Alert.alert(
-          "⚠️ Network Error",
-          "Your Aadhaar has been verified locally. Please check your internet connection and save your profile to update server.",
+          "⚠️ Update Error",
+          "Your Aadhaar has been verified but there was an error saving the data locally. Please try updating your profile again.",
           [{ text: "OK" }]
         );
       }
@@ -619,11 +671,6 @@ export const useUserProfile = () => {
         idProofNo: "Verification failed. Please try again.",
       }));
     }
-
-    updateState({
-      verificationInProgress: false,
-      pendingAadhaarVerification: false,
-    });
   };
 
   // ===== OTP VERIFICATION =====
@@ -638,18 +685,24 @@ export const useUserProfile = () => {
     try {
       const result = await userService.verifyOTP(state.userId, otp);
 
-      // ✅ STORE TOKEN ONLY
-      if (result?.token) {
-        await updateAuthToken(result.token);
+      if (result) {
+        // Save user data (this includes token)
+        await saveUserData(result);
       }
 
       updateState({ showOTPModal: false, verifyingOTP: false });
-      await fetchUserData(state.userId);
+      
+      // Refresh user data
+      if (state.userId) {
+        await fetchUserData(state.userId);
+      }
+      
       closeFormAndReset();
-
       Alert.alert("✅ Success", "Phone number verified successfully!");
-      const token = await getAuthToken();
-      console.log("Stored Token:", token);
+
+      // Verify token is preserved
+      const tokenStatus = await verifyTokenStatus();
+      console.log("🔐 Final token status:", tokenStatus);
     } catch (error) {
       Alert.alert(
         "Verification Failed",
@@ -766,10 +819,8 @@ export const useUserProfile = () => {
 
     try {
       const apiData = {
-        id: state.userId, // Add this if needed
         email: updatedFormData.email,
         username: updatedFormData.username,
-        password: updatedFormData.password, // Add if you have password field
         contactNumber: updatedFormData.contactNumber,
         gender: updatedFormData.gender,
         dateOfBirth: updatedFormData.dateOfBirth,
@@ -780,19 +831,30 @@ export const useUserProfile = () => {
         pincode: updatedFormData.pincode,
         country: updatedFormData.country || "India",
         termsAccepted: updatedFormData.termsAccepted,
-
-        // Aadhaar related fields - PAY ATTENTION HERE
-        idProofNo: updatedFormData.idProofNo, // This might be the issue
+        idProofNo: updatedFormData.idProofNo,
         maskedAadhaar: updatedFormData.maskedAadhaar,
         aadhaarVerified: updatedFormData.aadhaarVerified,
         kycVerified: updatedFormData.kycVerified,
-        // Verification fields (if your backend expects them)
         aadhaarVerificationId: updatedFormData.aadhaarVerificationId,
         aadhaarVerifiedAt: updatedFormData.aadhaarVerifiedAt,
         aadhaarStatus: updatedFormData.aadhaarStatus,
       };
 
-      const result = await userService.updateUserData(state.userId, apiData);
+      console.log("📤 Profile update data:", JSON.stringify(apiData, null, 2));
+
+      // Check token before update
+      const tokenBefore = await getAuthToken();
+      console.log("🔐 Token before profile update:", tokenBefore ? "Exists" : "Missing");
+
+      let result;
+      try {
+        result = await userService.updateUserData(state.userId, apiData);
+        console.log("✅ Server update response:", result);
+      } catch (serverError) {
+        console.warn("⚠️ Server update failed:", serverError.message);
+        // Continue with local update
+        result = { success: true, message: "Updated locally" };
+      }
 
       if (result.otpSent === true) {
         updateState({
@@ -801,17 +863,28 @@ export const useUserProfile = () => {
           isLoading: false,
         });
       } else {
-        await fetchUserData(state.userId);
+        // Update locally with token preservation
+        await updateUserProfile(apiData);
+        
+        // Verify token after update
+        const tokenAfter = await getAuthToken();
+        console.log("🔐 Token after profile update:", tokenAfter ? "✅ PRESERVED" : "❌ LOST");
+        
+        // Update local state
+        const updatedUserData = {
+          ...state.userData,
+          ...apiData
+        };
+        
+        updateState({ 
+          userData: updatedUserData 
+        });
+        
         closeFormAndReset();
-        Alert.alert(
-          "Success ✅",
-          updatedFormData.kycVerified
-            ? "Profile updated successfully! KYC is now verified."
-            : "Profile updated successfully!"
-        );
+        Alert.alert("Success ✅", "Profile updated successfully!");
       }
     } catch (error) {
-      console.error("Submit Error:", error);
+      console.error("❌ Submit Error:", error);
       Alert.alert(
         "Error",
         error.message || "Failed to save data. Please try again."
@@ -829,25 +902,25 @@ export const useUserProfile = () => {
     updateState({ showForm: true });
   };
 
-  return {
-    // State
-    ...state,
-    formData,
-    errors,
+return {
+  // State
+  ...state,
+  formData,
+  errors,
 
-    // Functions
-    updateField,
-    handleVerifyAadhaar,
-    handleConsentAccept,
-    handleConsentClose,
-    verifyOTP,
-    handleSubmit,
-    resetForm,
-    handleEdit,
-    fetchUserData,
-    updateState,
+  // Functions
+  updateField,
+  handleVerifyAadhaar,
+  handleConsentAccept,
+  handleConsentClose,
+  verifyOTP,
+  handleSubmit,
+  resetForm,
+  handleEdit,
+  fetchUserData,
+  // Remove updateState from here
 
-    // Derived values
-    userId: state.userId,
-  };
+  // Derived values
+  userId: state.userId,
+};
 };

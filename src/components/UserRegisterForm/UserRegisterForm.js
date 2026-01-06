@@ -193,37 +193,37 @@ const AadhaarField = ({
 
 // Main Component
 export default function ProfileManagement() {
-  const {
-    // State
-    userData,
-    showForm,
-    isFetchingPincode,
-    isLoading,
-    userId,
-    showOTPModal,
-    verifyingOTP,
-    phoneToVerify,
-    isFetchingData,
-    fieldValidity,
-    verificationInProgress,
-    showTermsModal,
-    showConsentModal,
-    pendingAadhaarVerification,
-    formData,
-    errors,
+ const {
+  // State
+  userData,
+  showForm,
+  isFetchingPincode,
+  isLoading,
+  userId,
+  showOTPModal,
+  verifyingOTP,
+  phoneToVerify,
+  isFetchingData,
+  fieldValidity,
+  verificationInProgress,
+  showTermsModal,
+  showConsentModal,
+  pendingAadhaarVerification,
+  formData,
+  errors,
 
-    // Functions
-    updateField,
-    handleVerifyAadhaar,
-    handleConsentAccept,
-    handleConsentClose,
-    verifyOTP,
-    handleSubmit,
-    resetForm,
-    handleEdit,
-    fetchUserData,
-    updateState, // ADD THIS - IT'S NOW RETURNED FROM THE HOOK
-  } = useUserProfile();
+  // Functions
+  updateField,
+  handleVerifyAadhaar,
+  handleConsentAccept,
+  handleConsentClose,
+  verifyOTP,
+  handleSubmit,
+  resetForm,
+  handleEdit,
+  fetchUserData,
+  // Remove updateState from here
+} = useUserProfile();
 
   const navigation = useNavigation();
   // ===== RENDER LOADING STATE =====

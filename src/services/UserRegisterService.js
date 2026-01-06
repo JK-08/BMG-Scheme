@@ -1,6 +1,7 @@
 // services/UserService.js
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { API_BASE_URL } from "../Config/API";
+import { getAuthToken } from "../utils/AsynchStorageHelper";
 
 export const userService = {
   // ===== USER DATA FETCHING =====
@@ -8,13 +9,33 @@ export const userService = {
     if (!userId) throw new Error("User ID is required");
 
     try {
-      const response = await fetch(`${API_BASE_URL}/user/${userId}`);
+      const token = await getAuthToken();
+      
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token && { "Authorization": `Bearer ${token}` })
+      };
 
-      if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+     const response = await fetch(`https://scheme.bmgjewellers.com/api/v1/user/${userId}`, {
+  headers
+});
+
+if (!response.ok) {
+  const errorText = await response.text();
+  console.error(`HTTP error! status: ${response.status}, body: ${errorText}`);
+  throw new Error(`HTTP error! status: ${response.status}`);
+}
+
+      const result = await response.json();
+      console.log("Fetch user data response:", result);
+      
+      // Remove token from response if present to prevent overwriting
+      if (result.token) {
+        console.log("⚠️ Token found in fetch response, removing to prevent overwrite");
+        delete result.token;
       }
-
-      return await response.json();
+      
+      return result;
     } catch (error) {
       console.error("Error fetching user data:", error);
       throw error;
@@ -26,17 +47,33 @@ export const userService = {
     if (!userId) throw new Error("User ID is required");
 
     try {
+      const token = await getAuthToken();
+      
+      // NEVER send token in update requests unless it's a token refresh
+      const { token: _, ...safeFormData } = formData;
+      
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token && { "Authorization": `Bearer ${token}` })
+      };
+
       const response = await fetch(`${API_BASE_URL}/${userId}/update`, {
         method: "PATCH",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify(formData),
+        headers,
+        body: JSON.stringify(safeFormData),
       });
 
       const result = await response.json();
-      console.log("Update response:", result);
+      console.log("Update response received");
 
       if (!response.ok) {
         throw new Error(result.message || "Failed to update user data");
+      }
+
+      // Clean response - remove any token that shouldn't be there
+      if (result.token) {
+        console.log("⚠️ Removing token from update response");
+        delete result.token;
       }
 
       return result;
@@ -51,9 +88,16 @@ export const userService = {
     if (!userId) throw new Error("User ID is required");
 
     try {
+      const token = await getAuthToken();
+      
+      const headers = {
+        "Content-Type": "application/json",
+        ...(token && { "Authorization": `Bearer ${token}` })
+      };
+
       const response = await fetch(`${API_BASE_URL}/${userId}/verify-otp`, {
         method: "POST",
-        headers: { "Content-Type": "application/json" },
+        headers,
         body: JSON.stringify({ otp }),
       });
 
@@ -293,6 +337,7 @@ export const userService = {
   },
 };
 
+// Utility functions
 export const parseAadhaarAddress = (addressString, splitAddressData) => {
   try {
     // If we have split_address data from documentData, use that
@@ -310,20 +355,18 @@ export const parseAadhaarAddress = (addressString, splitAddressData) => {
     // Fallback: Parse the address string
     if (!addressString) return null;
     
-    // For your specific response format:
-    // "29, BAJANAI KOIL STREET, Kunnathur, Kunnathur, Arani, Tiruvannamalai, Tamil Nadu, India, 604402"
-    
+    // For your specific response format
     const parts = addressString.split(',').map(part => part.trim()).filter(part => part);
     
     if (parts.length >= 9) {
       // Your specific format
       return {
-        address1: parts[0] || "", // "29"
-        address2: parts[1] || "", // "BAJANAI KOIL STREET"
-        city: parts[2] || "", // "Kunnathur"
-        state: parts[6] || "", // "Tamil Nadu"
-        pincode: parts[8] || "", // "604402"
-        country: parts[7] || "India" // "India"
+        address1: parts[0] || "",
+        address2: parts[1] || "",
+        city: parts[2] || "",
+        state: parts[6] || "",
+        pincode: parts[8] || "",
+        country: parts[7] || "India"
       };
     }
     
@@ -341,7 +384,7 @@ export const formatDateOfBirth = (dobString) => {
   if (dobString.includes('-')) {
     const parts = dobString.split('-');
     if (parts.length === 3) {
-      return `${parts[2]}-${parts[1]}-${parts[0]}`; // Convert to YYYY-MM-DD
+      return `${parts[2]}-${parts[1]}-${parts[0]}`;
     }
   }
   
