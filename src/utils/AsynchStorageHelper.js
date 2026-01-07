@@ -8,8 +8,10 @@ const STORAGE_KEYS = {
   USER_ID: "userId",
   USER_EMAIL: "userEmail",
   USERNAME: "username",
+  USER_PHONE_NUMBER: "userPhoneNumber", // ✅ ADD THIS
   IS_LOGGED_IN: "isLoggedIn",
 };
+
 
 /**
  * Save user data with guaranteed token preservation
@@ -18,27 +20,36 @@ export const saveUserData = async (data) => {
   try {
     if (!data) return;
 
-    // Always ensure token is stored separately as well
     if (data.token) {
       await AsyncStorage.setItem(STORAGE_KEYS.AUTH_TOKEN, data.token);
     }
 
-    // Store the full user data
     await AsyncStorage.setItem(STORAGE_KEYS.USER_DATA, JSON.stringify(data));
 
-    // Store individual fields for quick access
     const promises = [];
 
     if (data.id) {
       promises.push(AsyncStorage.setItem(STORAGE_KEYS.USER_ID, String(data.id)));
     }
+
     if (data.email) {
       promises.push(AsyncStorage.setItem(STORAGE_KEYS.USER_EMAIL, data.email));
     }
+
     if (data.username) {
       promises.push(AsyncStorage.setItem(STORAGE_KEYS.USERNAME, data.username));
     }
-    
+
+    // ✅ STORE PHONE NUMBER
+    if (data.contactNumber) {
+      promises.push(
+        AsyncStorage.setItem(
+          STORAGE_KEYS.USER_PHONE_NUMBER,
+          String(data.contactNumber)
+        )
+      );
+    }
+
     promises.push(AsyncStorage.setItem(STORAGE_KEYS.IS_LOGGED_IN, "true"));
 
     await Promise.all(promises);
@@ -50,6 +61,15 @@ export const saveUserData = async (data) => {
     throw error;
   }
 };
+export const getUserPhoneNumber = async () => {
+  try {
+    return await AsyncStorage.getItem(STORAGE_KEYS.USER_PHONE_NUMBER);
+  } catch (error) {
+    console.error("❌ Error getting phone number:", error);
+    return null;
+  }
+};
+
 
 /**
  * Update user data while preserving the token
@@ -220,3 +240,4 @@ export const updateAuthToken = async (token) => {
     return false;
   }
 };
+

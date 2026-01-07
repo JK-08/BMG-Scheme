@@ -18,6 +18,7 @@ import { getPhoneDetails } from "../../services/SchemeDetailsService";
 import { getAllSchemes } from "../../services/SchemeNameService";
 import { getRemainingDaysData } from "../../services/Remainingdays"; // Import the new service
 import { COLORS } from "../../utils/Theme";
+import { API_BASE_URL } from "../../Config/API";
 
 function DiscoverPlace({ navigation }) {
   const [productData, setProductData] = useState([]);
@@ -53,7 +54,7 @@ const fetchRemainingDays = useCallback(async (schemeId, joinDate) => {
     console.log(`🔗 Calling API: schemeId=${schemeId}, joinDate=${formattedDate}`);
     
     // Use your API endpoint
-    const apiUrl = `https://scheme.bmgjewellers.com/api/v1/scheme-bonus/all_remainingDays?schemeId=${schemeId}&joinDate=${formattedDate}`;
+    const apiUrl = `${API_BASE_URL}/scheme-bonus/all_remainingDays?schemeId=${schemeId}&joinDate=${formattedDate}`;
     
     console.log(`🌐 API URL: ${apiUrl}`);
     

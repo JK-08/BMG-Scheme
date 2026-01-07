@@ -579,7 +579,7 @@ const styles = StyleSheet.create({
   logoPlaceholder: {
     width: moderateScale(135),
     height: moderateScale(70),
-    backgroundColor: COLORS.gray100,
+    // backgroundColor: COLORS.gray100,
     borderRadius: SIZES.radius.sm,
     justifyContent: "center",
     alignItems: "center",

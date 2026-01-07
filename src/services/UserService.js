@@ -166,7 +166,7 @@ const userService = {
  // Referal code apply
 checkReferralCode: async (userId, referralCode) => {
   try {
-    const url = `https://scheme.bmgjewellers.com/api/v1/referral/check?userId=${userId}&referralCode=${referralCode}`;
+    const url = `${API_BASE_URL}/referral/check?userId=${userId}&referralCode=${referralCode}`;
 
     const response = await fetch(url, {
       method: "POST",
