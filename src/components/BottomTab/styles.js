@@ -16,6 +16,11 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.1,
     shadowRadius: 4,
   },
+  footerBtnContainer1: {
+    alignItems: "center",
+    justifyContent: "center",
+    width: 90,
+  },
   footerBtnContainer: {
     alignItems: "center",
     justifyContent: "center",

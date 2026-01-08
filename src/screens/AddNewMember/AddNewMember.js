@@ -43,11 +43,7 @@ const AddNewMember = () => {
   const { schemeId: routeSchemeId, schemeName: routeSchemeName } =
     route.params || {};
 
-  // Debug logs
-  console.log("🚀 AddNewMember mounted");
-  console.log("Route params:", route.params);
-  console.log("routeSchemeId:", routeSchemeId);
-  console.log("routeSchemeName:", routeSchemeName);
+ 
 
   // Use state for scheme data - parse immediately
   const [selectedScheme, setSelectedScheme] = useState({
@@ -368,7 +364,7 @@ const AddNewMember = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: token,
         },
         body: JSON.stringify(paymentPayload),
       });
@@ -384,7 +380,7 @@ const AddNewMember = () => {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: token,
         },
         body: JSON.stringify({ tranCtx: initiateData.tranCtx }),
       });
@@ -627,6 +623,8 @@ const submitMemberData = async (
       schemeCollectInsert,
       referralCode: ReferralCode || "",
     };
+
+    console.log("Referral Code:", ReferralCode);
 
     // Log the complete request for debugging
     console.log(

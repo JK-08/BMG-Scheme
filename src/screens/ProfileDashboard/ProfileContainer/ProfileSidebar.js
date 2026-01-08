@@ -50,12 +50,14 @@ const ANIMATION_DURATION = {
 const MENU_ITEMS = [
   { label: "Register MySelf", icon: "description", route: "UserRegisterForm" },
   { label: "My Rewards", icon: "card-giftcard", route: "Rewards" },
-  { label: "MyPay Now", icon: "credit-card", route: "DuePayment" },
+  { label: "My Schemes", icon: "credit-card", route: "MyScheme" },
+  { label: "My Pay Now", icon: "credit-card", route: "DuePayment" },
   { label: "My Redeemption", icon: "card-giftcard", route: "SchemeListPage" },
   { label: "My Referal Pending", icon: "card-giftcard", route: "ReferralPending" },
   { label: "About", icon: "info", route: "AboutPage" },
   { label: "Privacy Policy", icon: "privacy-tip", route: "PrivacyPolicy" },
   { label: "Terms & Conditions", icon: "description", route: "TermsandCondition" },
+  { label: "FAQ", icon: "description", route: "FAQPage" },
 ];
 
 const SETTINGS_ITEMS = [

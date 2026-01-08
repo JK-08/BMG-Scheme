@@ -128,26 +128,29 @@ const SchemeListPage = ({ route, navigation }) => {
   );
 
   // Handle redeem button press
-  const handleRedeemPress = useCallback((scheme, actualRemainingDays, displayAmount) => {
-    setSelectedScheme({
-      scheme,
-      actualRemainingDays,
-      displayAmount
-    });
-    setModalVisible(true);
-  }, []);
+  const handleRedeemPress = useCallback(
+    (scheme, remainingBonusDays, displayAmount) => {
+      setSelectedScheme({
+        scheme,
+        remainingBonusDays,
+        displayAmount,
+      });
+      setModalVisible(true);
+    },
+    []
+  );
 
   // Handle confirm redemption
   const handleConfirmRedeem = useCallback(() => {
     // Add your redemption logic here
     console.log("Confirming redemption for:", selectedScheme);
-    
+
     // Close modal
     setModalVisible(false);
-    
+
     // Show success message or navigate to success screen
     alert("Redemption request submitted successfully!");
-    
+
     // Optionally refresh the schemes list
     if (phoneNumber) {
       fetchSchemes(phoneNumber);
@@ -176,8 +179,14 @@ const SchemeListPage = ({ route, navigation }) => {
   // Render scheme item with memoization
   const renderSchemeItem = useCallback(
     ({ item }) => {
-      const schemeName = item.schemeSummary?.schemeName || "N/A";
-      const remainingDays = item.remainingDays ?? 0;
+
+        const schemeCloseDays = item.remainingDays ?? 0;
+    
+
+
+      // 2️⃣ Bonus unlock days (FROM BONUS API ONLY)
+    
+      const remainingSchemeDays = item.remainingDays ?? 0;
 
       // Get API data
       const joinDate = item.joinDate
@@ -186,28 +195,38 @@ const SchemeListPage = ({ route, navigation }) => {
       const schemeId = item.schemeSummary?.schemeId;
       const apiDataKey = `${schemeId}_${joinDate}`;
       const apiData = schemeApiData[apiDataKey];
+  const bonusUnlockDays = schemeApiData[apiDataKey]?.remainingDays ?? null;
+      const schemeName = item.schemeSummary?.schemeName || "N/A";
+      console.log("Scheme Close Days:", schemeCloseDays);
+console.log("Bonus Unlock Days:", bonusUnlockDays);
 
       // Calculate display values
-      const actualRemainingDays = apiData?.remainingDays ?? remainingDays;
+      const remainingBonusDays = apiData?.remainingDays ?? remainingSchemeDays;
       const baseAmount = item.totalAmount || 0;
       const bonusAmount = item.totalAmountWithBonus || 0;
-      const displayAmount = actualRemainingDays > 0 ? baseAmount : bonusAmount;
-      const canRedeem = remainingDays > 0;
+      const displayAmount = remainingBonusDays > 0 ? baseAmount : bonusAmount;
+      const canRedeem = schemeCloseDays <= 0;
 
-      // Status color
+      // Status color based on remainingSchemeDays
       let statusColor = theme.COLORS.warning;
-      if (remainingDays === 0) {
+      if (remainingSchemeDays === 0) {
         statusColor = theme.COLORS.success;
-      } else if (remainingDays < 0) {
+      } else if (remainingSchemeDays < 0) {
         statusColor = theme.COLORS.error;
       }
 
       // Amount display logic
-      const showGiftIcon = actualRemainingDays > 0;
-      const isBonusUnlocked = actualRemainingDays <= 0;
+      const showGiftIcon = bonusUnlockDays !== null && bonusUnlockDays > 0;
+      const isBonusUnlocked = bonusUnlockDays !== null && bonusUnlockDays <= 0;
+
       const amountTextColor = isBonusUnlocked
         ? theme.COLORS.success
         : theme.COLORS.textSecondary;
+
+      // 1️⃣ Scheme close days (FOR REDEEM)
+    
+
+        
 
       return (
         <View style={styles.tableRow}>
@@ -221,7 +240,7 @@ const SchemeListPage = ({ route, navigation }) => {
           {/* Remaining Days */}
           <View style={styles.daysContainer}>
             <Text style={[styles.daysText, { color: statusColor }]}>
-              {remainingDays}
+              {schemeCloseDays}
             </Text>
           </View>
 
@@ -235,7 +254,7 @@ const SchemeListPage = ({ route, navigation }) => {
             {showGiftIcon && <Text style={styles.giftIcon}>🎁</Text>}
             {showGiftIcon && (
               <Text style={styles.unlockText}>
-                Unlock in {actualRemainingDays} days
+                Unlock in {bonusUnlockDays} days
               </Text>
             )}
 
@@ -252,7 +271,9 @@ const SchemeListPage = ({ route, navigation }) => {
                 styles.redeemButton,
                 !canRedeem && styles.redeemButtonDisabled,
               ]}
-              onPress={() => handleRedeemPress(item, actualRemainingDays, displayAmount)}
+              onPress={() =>
+                handleRedeemPress(item, remainingBonusDays, displayAmount)
+              }
             >
               <Text
                 style={[
@@ -338,9 +359,13 @@ const SchemeListPage = ({ route, navigation }) => {
     // Create a composite key with multiple identifiers
     const schemeId = item.schemeSummary?.schemeId || `scheme_${index}`;
     const regNo = item.regNo || `reg_${index}`;
-    const joinDate = item.joinDate ? new Date(item.joinDate).getTime() : Date.now();
-    const uniqueId = `${schemeId}_${regNo}_${joinDate}_${index}_${Math.random().toString(36).substr(2, 9)}`;
-    
+    const joinDate = item.joinDate
+      ? new Date(item.joinDate).getTime()
+      : Date.now();
+    const uniqueId = `${schemeId}_${regNo}_${joinDate}_${index}_${Math.random()
+      .toString(36)
+      .substr(2, 9)}`;
+
     return uniqueId;
   }, []);
 
@@ -404,7 +429,9 @@ const SchemeListPage = ({ route, navigation }) => {
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
             <View style={styles.modalHeader}>
-              <Text style={styles.modalTitle}>Redemption Terms & Conditions</Text>
+              <Text style={styles.modalTitle}>
+                Redemption Terms & Conditions
+              </Text>
               <TouchableOpacity
                 onPress={() => setModalVisible(false)}
                 style={styles.closeButton}
@@ -420,42 +447,38 @@ const SchemeListPage = ({ route, navigation }) => {
                   {selectedScheme?.scheme?.schemeSummary?.schemeName || "N/A"}
                 </Text>
               </View>
-              
+
+              <View style={styles.schemeInfoContainer}>
+                <Text style={styles.schemeInfoLabel}>
+                  Remaining Bonus Days:
+                </Text>
+                <Text style={styles.schemeInfoValue}>
+                  {selectedScheme?.remainingBonusDays || 0} days
+                </Text>
+              </View>
+
               <View style={styles.schemeInfoContainer}>
                 <Text style={styles.schemeInfoLabel}>Amount to Redeem:</Text>
                 <Text style={[styles.schemeInfoValue, styles.amountValue]}>
-                  {selectedScheme ? formatCurrency(selectedScheme.displayAmount) : "₹0"}
+                  {selectedScheme
+                    ? formatCurrency(selectedScheme.displayAmount)
+                    : "₹0"}
                 </Text>
               </View>
 
               <View style={styles.termsSection}>
                 <Text style={styles.termsTitle}>Please read carefully:</Text>
                 <Text style={styles.redeemNoteText}>
-                  • Reward money is applicable only for purchases of ₹10,000 and above.{'\n\n'}
-                  • Redemption is subject to eligibility, validity period, and the company's reward policy.{'\n\n'}
-                  • The company reserves the right to modify or withdraw the reward scheme without prior notice.{'\n\n'}
-                  • Amount can only be redeemed when scheme reaches maturity date.{'\n\n'}
-                  • Redeemed amount will be transferred to your wallet.{'\n\n'}
-                  • Processing may take 24-48 hours.{'\n\n'}
+                  • Reward money is applicable only for purchases of ₹10,000 and
+                  above.{"\n\n"}• Redemption is subject to eligibility, validity
+                  period, and the company's reward policy.{"\n\n"}• The company
+                  reserves the right to modify or withdraw the reward scheme
+                  without prior notice.{"\n\n"}• Amount can only be redeemed
+                  when scheme reaches maturity date.{"\n\n"}• Processing may
+                  take 24-48 hours.{"\n\n"}
                 </Text>
               </View>
             </ScrollView>
-
-            {/* Modal Buttons */}
-            <View style={styles.modalFooter}>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.cancelButton]}
-                onPress={() => setModalVisible(false)}
-              >
-                <Text style={styles.cancelButtonText}>Cancel</Text>
-              </TouchableOpacity>
-              <TouchableOpacity
-                style={[styles.modalButton, styles.confirmButton]}
-                onPress={handleConfirmRedeem}
-              >
-                <Text style={styles.confirmButtonText}>Confirm Redemption</Text>
-              </TouchableOpacity>
-            </View>
           </View>
         </View>
       </Modal>
@@ -605,7 +628,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: theme.SIZES.xs,
     borderRadius: theme.SIZES.radius.sm,
     minWidth: 80,
-     justifyContent: "center",
+    justifyContent: "center",
     alignItems: "center",
     minHeight: 40,
   },
@@ -616,7 +639,7 @@ const styles = StyleSheet.create({
     fontSize: theme.SIZES.font.sm,
     color: theme.COLORS.white,
     fontWeight: "600",
-    alignSelf:"center"
+    alignSelf: "center",
   },
   redeemButtonTextDisabled: {
     color: theme.COLORS.gray600,
@@ -630,10 +653,10 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF5724",
     borderWidth: 1,
     borderColor: "transparent",
-    width:80,
-    height:40,
-    justifyContent:"center",
-    alignItems:"center"
+    width: 80,
+    height: 40,
+    justifyContent: "center",
+    alignItems: "center",
   },
   plansButtonText: {
     color: "#FFFFFF",

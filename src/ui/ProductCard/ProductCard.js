@@ -46,8 +46,7 @@ function ProductCard({
   const summary = item.schemeSummary || {};
   const trans = item.schemaSummaryTransBalance || {};
   const schemeType = summary.schemeType || {};
-  console.log("remainingDate:", remainingDate);
-
+  
   // Check if scheme is closed
   const isSchemeClosed =
     schemeClosedSummary &&

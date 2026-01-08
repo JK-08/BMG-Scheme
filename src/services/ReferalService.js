@@ -159,3 +159,90 @@ export const validateReferralCode = (code) => {
   console.log("🟢 STEP 6: Code is valid");
   return { valid: true };
 };
+
+// Add this new function in your ReferralAmount service file
+export const getRewardsData = async () => {
+  console.log("🟢 [getRewardsData] STEP 1: Function started");
+
+  const userId = await AsyncStorage.getItem("userId");
+  console.log("🟢 STEP 2: UserId from storage →", userId);
+
+  if (!userId) {
+    console.log("🔴 STEP 2.5: No userId found in storage");
+    return {
+      success: false,
+      message: "User ID not found. Please login again.",
+      referrer: null,
+      transactions: []
+    };
+  }
+
+  try {
+    const url = `${API_BASE_URL_OLD}/account/referrals/${userId}`;
+    console.log("🟢 STEP 3: API URL →", url);
+
+    const response = await fetch(url);
+    console.log("🟢 STEP 4: Response status →", response.status);
+
+    if (!response.ok) {
+      console.log("🔴 STEP 5: Response NOT OK");
+      const errorText = await response.text();
+      console.log("🔴 Error response:", errorText);
+      
+      return {
+        success: false,
+        message: `Network error: ${response.status}`,
+        referrer: null,
+        transactions: []
+      };
+    }
+
+    const data = await response.json();
+    console.log("🟢 STEP 6: Response data structure →", typeof data);
+    
+    // Check if data is an object with referrer property
+    if (data && typeof data === 'object' && data.referrer) {
+      console.log("🟢 STEP 7: Object structure detected →", {
+        hasReferrer: !!data.referrer,
+        hasTransactions: Array.isArray(data.transactions),
+        transactionsCount: data.transactions?.length || 0
+      });
+      
+      return {
+        success: true,
+        referrer: data.referrer || null,
+        transactions: data.transactions || []
+      };
+    } 
+    // Handle array structure (for backward compatibility)
+    else if (Array.isArray(data)) {
+      console.log("🟡 STEP 8: Array structure detected");
+      const referrer = data[0] || null;
+      const transactions = data.slice(1) || [];
+      
+      return {
+        success: true,
+        referrer,
+        transactions
+      };
+    }
+    // Handle unexpected format
+    else {
+      console.log("🟡 STEP 9: Unexpected data format");
+      return {
+        success: true,
+        referrer: null,
+        transactions: []
+      };
+    }
+    
+  } catch (error) {
+    console.log("🔴 STEP 10: Catch error →", error);
+    return {
+      success: false,
+      message: error.message || "Something went wrong",
+      referrer: null,
+      transactions: []
+    };
+  }
+};

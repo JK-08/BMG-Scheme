@@ -36,7 +36,7 @@ function BottomTab({ screen }) {
       {/* Schemes */}
       <TouchableOpacity
         onPress={() => navigation.navigate("MyScheme")}
-        style={styles.footerBtnContainer}
+        style={styles.footerBtnContainer1}
         activeOpacity={0.7}
       >
         <MaterialIcons
@@ -44,7 +44,7 @@ function BottomTab({ screen }) {
           size={SIZES.icon.md}
           color={getIconColor("SCHEMES")}
         />
-        <Text style={getTextStyle("SCHEMES")}>Schemes</Text>
+        <Text style={getTextStyle("SCHEMES")}>My Schemes</Text>
       </TouchableOpacity>
 
       {/* Payment */}

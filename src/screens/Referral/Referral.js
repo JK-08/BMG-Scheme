@@ -74,26 +74,29 @@ const ReferralScreen = () => {
       if (referralResult.success) {
         const data = referralResult.data;
 
-        if (Array.isArray(data) && data.length > 0) {
-          // ---- FIRST OBJECT = USER INFO ----
-          const userInfo = data[0];
-          setReferralCode(userInfo.referral_code || "");
-          setTotalBonus(userInfo.wallet_balance || 0);
-          setUsername(userInfo.username || "");
+        // Check if data has the new structure (referrer and transactions)
+        if (data && data.referrer && Array.isArray(data.transactions)) {
+          const { referrer, transactions } = data;
+
+          // Set user info from referrer object
+          setReferralCode(referrer.referral_code || "");
+          setTotalBonus(referrer.wallet_balance || referrer.totalCreditedAmount || 0);
+          setUsername(referrer.username || "");
+          setTotalReferrals(transactions.length);
 
           // Set referral link
           setReferralLink(
-            userInfo.referralLink ||
-              `https://bmgscheme.com/signup?ref=${userInfo.referral_code}`
+            referrer.referralLink ||
+              `https://bmgscheme.com/signup?ref=${referrer.referral_code}`
           );
 
           // Set Play Store link if available
           setPlayStoreLink(
-            userInfo.playStoreLink || "https://play.google.com/store/apps"
+            referrer.playStoreLink || "https://play.google.com/store/apps"
           );
 
-          // ---- REMAINING OBJECTS = REFERRAL HISTORY ----
-          const history = data.slice(1).map((item) => ({
+          // Format and set referral history from transactions
+          const history = transactions.map((item) => ({
             id: item.new_member_personal_id || "0",
             name: item.new_member_personal_name || "Unknown User",
             amount: item.credited_amount || 0,
@@ -105,20 +108,68 @@ const ReferralScreen = () => {
                 })
               : "N/A",
             schemeId: item.scheme_id || 0,
+            schemeName: item.schemeName || "Scheme",
+            newMemberReward: item.new_member_reward || 0,
           }));
 
           setReferralHistory(history);
-          setTotalReferrals(history.length);
-
-          // Calculate total bonus from history if needed
-          if (!userInfo.wallet_balance && history.length > 0) {
-            const totalFromHistory = history.reduce(
-              (sum, item) => sum + (item.amount || 0),
+          
+          // Calculate total bonus from transactions if wallet_balance is not provided
+          if (!referrer.wallet_balance && transactions.length > 0) {
+            const totalFromHistory = transactions.reduce(
+              (sum, item) => sum + (item.credited_amount || 0),
               0
             );
             setTotalBonus(totalFromHistory);
           }
+        } else {
+          // Fallback to old structure handling
+          console.log("Using old data structure format");
+          if (Array.isArray(data) && data.length > 0) {
+            const userInfo = data[0];
+            setReferralCode(userInfo.referral_code || "");
+            setTotalBonus(userInfo.wallet_balance || 0);
+            setUsername(userInfo.username || "");
+
+            setReferralLink(
+              userInfo.referralLink ||
+                `https://bmgscheme.com/signup?ref=${userInfo.referral_code}`
+            );
+
+            setPlayStoreLink(
+              userInfo.playStoreLink || "https://play.google.com/store/apps"
+            );
+
+            const history = data.slice(1).map((item) => ({
+              id: item.new_member_personal_id || "0",
+              name: item.new_member_personal_name || "Unknown User",
+              amount: item.credited_amount || 0,
+              date: item.created_at
+                ? new Date(item.created_at).toLocaleDateString("en-IN", {
+                    day: "2-digit",
+                    month: "short",
+                    year: "numeric",
+                  })
+                : "N/A",
+              schemeId: item.scheme_id || 0,
+              schemeName: item.schemeName || "Scheme",
+              newMemberReward: item.new_member_reward || 0,
+            }));
+
+            setReferralHistory(history);
+            setTotalReferrals(history.length);
+
+            if (!userInfo.wallet_balance && history.length > 0) {
+              const totalFromHistory = history.reduce(
+                (sum, item) => sum + (item.amount || 0),
+                0
+              );
+              setTotalBonus(totalFromHistory);
+            }
+          }
         }
+      } else {
+        Alert.alert("Error", "Failed to load referral data");
       }
 
       // Check applied referral status
@@ -164,7 +215,6 @@ const ReferralScreen = () => {
       }
     } catch (error) {
       console.error("Failed to load referral schemes:", error);
-      // Continue without schemes data - don't show error to user
       setReferralSchemes([]);
     } finally {
       setIsLoadingSchemes(false);
@@ -236,26 +286,6 @@ const ReferralScreen = () => {
     setRedeemModalVisible(true);
   };
 
-  const handleRedeemScheme = (schemeId) => {
-    setIsRedeeming(true);
-
-    setTimeout(() => {
-      Alert.alert(
-        "Success!",
-        `Amount has been successfully redeemed and will be transferred to your wallet within 24-48 hours.`,
-        [
-          {
-            text: "OK",
-            onPress: () => {
-              setIsRedeeming(false);
-            },
-          },
-        ]
-      );
-      setIsRedeeming(false);
-    }, 1500);
-  };
-
   // ===============================
   // SHARE LINK WITH SCHEME INFO
   // ===============================
@@ -272,15 +302,25 @@ const ReferralScreen = () => {
         referralSchemes.forEach((scheme, index) => {
           schemesInfo += `\n• ${
             scheme.scheme_name || `Scheme ${index + 1}`
-          }: ₹${scheme.referral_amount || 0} + ${
-            scheme.referral_percent || 0
-          }% bonus`;
+          }: ₹${scheme.referral_amount || 0} bonus`;
+        });
+      }
+
+      // Get unique scheme names from history for personal referral stats
+      const uniqueSchemes = [...new Set(referralHistory.map(item => item.schemeName))];
+      let personalStats = "";
+      if (uniqueSchemes.length > 0) {
+        personalStats = "\n\n📊 **My Referral Performance:**\n";
+        uniqueSchemes.forEach(schemeName => {
+          const schemeReferrals = referralHistory.filter(item => item.schemeName === schemeName);
+          const totalEarned = schemeReferrals.reduce((sum, item) => sum + item.amount, 0);
+          personalStats += `\n• ${schemeName}: ₹${totalEarned} from ${schemeReferrals.length} referral(s)`;
         });
       }
 
       const shareMessage = playStoreLink
-        ? `Join me on BMG Scheme! Use my referral code: **${referralCode}** to get bonus.${schemesInfo}\n\n📱 Download the app: ${playStoreLink}\n🔗 Sign up with my referral link: ${referralLink}`
-        : `Join me on BMG Scheme! Use my referral code: **${referralCode}** to get bonus.${schemesInfo}\n\n🔗 Sign up here: ${referralLink}`;
+        ? `Join me on BMG Scheme! Use my referral code: **${referralCode}** to get bonus.${schemesInfo}${personalStats}\n\n📱 Download the app: ${playStoreLink}\n🔗 Sign up with my referral link: ${referralLink}`
+        : `Join me on BMG Scheme! Use my referral code: **${referralCode}** to get bonus.${schemesInfo}${personalStats}\n\n🔗 Sign up here: ${referralLink}`;
 
       await Share.share({
         message: shareMessage,
@@ -483,9 +523,14 @@ const ReferralScreen = () => {
             {item.name}
           </Text>
           <Text style={styles.historyDate}>{item.date}</Text>
-          {item.schemeId > 0 && (
-            <Text style={styles.schemeText}>Scheme #{item.schemeId}</Text>
-          )}
+          <View style={styles.schemeInfoRow}>
+            <Text style={styles.schemeText}>{item.schemeName}</Text>
+            {item.newMemberReward > 0 && (
+              <Text style={styles.memberRewardText}>
+                Friend got ₹{item.newMemberReward}
+              </Text>
+            )}
+          </View>
         </View>
       </View>
       <View style={styles.historyRight}>
@@ -592,6 +637,8 @@ const ReferralScreen = () => {
 
           {/* ===== HOW IT WORKS ===== */}
           {renderHowItWorks()}
+
+          
         </ScrollView>
 
         {/* Redeem Modal */}
@@ -630,7 +677,7 @@ const ReferralScreen = () => {
                 <Text style={styles.redeemNoteText}>
                   • Reward money is applicable only for purchases of ₹10,000 and
                   above. {"\n\n"}• Redemption is subject to eligibility,
-                  validity period, and the company’s reward policy.{"\n\n"}• The
+                  validity period, and the company's reward policy.{"\n\n"}• The
                   company reserves the right to modify or withdraw the reward
                   scheme without prior notice{"\n\n"}✅ Redemption is allowed
                   after scheme completion / eligibility {"\n\n"}🏬 Visit any authorized
@@ -1006,13 +1053,15 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
   },
 
-  // History
+  // History Container
   historyContainer: {
     backgroundColor: COLORS.white,
     borderRadius: SIZES.radius.md,
     padding: SIZES.padding.md,
     ...SHADOWS.sm,
   },
+
+  // History Item
   historyItem: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -1052,9 +1101,21 @@ const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginBottom: 2,
   },
+  schemeInfoRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "space-between",
+    marginTop: 2,
+  },
   schemeText: {
     ...FONTS.captionSmall,
-    color: COLORS.textTertiary,
+    color: COLORS.primary,
+    fontFamily: FONTS.family.medium,
+  },
+  memberRewardText: {
+    ...FONTS.captionSmall,
+    color: COLORS.success,
+    fontFamily: FONTS.family.medium,
   },
   historyRight: {
     alignItems: "flex-end",
@@ -1072,6 +1133,20 @@ const styles = StyleSheet.create({
   separator: {
     height: 1,
     backgroundColor: COLORS.borderLight,
+  },
+
+  // History Summary
+  historySummary: {
+    paddingTop: SIZES.padding.md,
+    borderTopWidth: 1,
+    borderTopColor: COLORS.borderLight,
+    marginTop: SIZES.margin.sm,
+  },
+  historySummaryText: {
+    ...FONTS.bodyMedium,
+    color: COLORS.primary,
+    fontFamily: FONTS.family.bold,
+    textAlign: "center",
   },
 
   // Empty State

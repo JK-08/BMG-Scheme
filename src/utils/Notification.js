@@ -56,6 +56,14 @@ async function generateDeviceId() {
 export async function sendPushTokenToServer(expoToken, userId) {
   try {
     const deviceId = await generateDeviceId();
+    const token = await AsyncStorage.getItem("authToken");
+
+    console.log("🔐 Auth Token from storage:", token);
+
+    if (!token) {
+      console.log("❌ No auth token found");
+      return false;
+    }
 
     const data = {
       deviceId,
@@ -69,7 +77,10 @@ export async function sendPushTokenToServer(expoToken, userId) {
 
     const res = await fetch(`${API_BASE_URL}/device/register`, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+       
+      },
       body: JSON.stringify(data),
     });
 
@@ -82,6 +93,7 @@ export async function sendPushTokenToServer(expoToken, userId) {
     return false;
   }
 }
+
 
 // ----------------- Register for Push Notifications -----------------
 export async function registerForPushNotifications(userId, options = {}) {
@@ -156,12 +168,20 @@ export async function registerForPushNotifications(userId, options = {}) {
 // ----------------- Send Notification via Server API -----------------
 export async function sendServerNotification({ userId }) {
   try {
+    const token = await AsyncStorage.getItem("authToken");
+
+    console.log("🔐 Auth Token:", token);
+
+    if (!token) return false;
+
     const apiUrl = `${API_BASE_URL}/notifications/sendMessage/5/user/${userId}`;
 
-    // Send POST request without a body
     const res = await fetch(apiUrl, {
       method: "POST",
-      headers: { "Content-Type": "application/json" },
+      headers: {
+        "Content-Type": "application/json",
+      
+      },
     });
 
     const text = await res.text();
@@ -173,6 +193,7 @@ export async function sendServerNotification({ userId }) {
     return false;
   }
 }
+
 
 // ----------------- Listen for Notifications -----------------
 export function listenForNotifications() {

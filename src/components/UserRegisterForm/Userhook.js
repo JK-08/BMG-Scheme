@@ -817,7 +817,7 @@ const handleSubmit = async () => {
 
     // Call the API with properly typed data
     const result = await userService.updateUserData(state.userId, apiData);
-    console.log("📥 Server response:", result);
+    console.log("📥 Server response's:", result);
 
     if (result.otpSent === true) {
       console.log("📱 OTP required for phone verification");

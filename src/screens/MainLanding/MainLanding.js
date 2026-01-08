@@ -462,7 +462,7 @@ function MainLanding() {
 
   const renderProductCard = useCallback(
     (item) => {
-      console.log("Rendering ProductCard with remainingDays:", item.remainingDays);
+      // console.log("Rendering ProductCard with remainingDays:", item.remainingDays);
       return (
         <View style={styles.productCardContainer}>
           <ProductCard

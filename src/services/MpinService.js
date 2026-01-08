@@ -13,7 +13,7 @@ const getHeaders = async () => {
 
     return {
       "Content-Type": "application/json",
-      Authorization: token ? `Bearer ${token.trim()}` : "",
+      Authorization: token ,
     };
   } catch (error) {
     console.error("❌ Error fetching headers:", error);
@@ -40,6 +40,7 @@ const parseResponse = async (response) => {
 export const createMpinApi = async (mpin) => {
   try {
     const headers = await getHeaders();
+    const token = await getAuthToken();
     console.log("📤 Create MPIN Request Headers:", headers);
 
     const response = await fetch(

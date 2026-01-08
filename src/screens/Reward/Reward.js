@@ -11,18 +11,19 @@ import {
   Alert,
   Dimensions,
 } from "react-native";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 import Icon from "react-native-vector-icons/MaterialIcons";
 import IconFA from "react-native-vector-icons/FontAwesome5";
 import { LinearGradient } from "expo-linear-gradient";
-import { getReferralDetails } from "../../services/ReferralAmount";
 import theme from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
+import { API_BASE_URL_OLD } from "../../Config/API";
 
 const { width } = Dimensions.get("window");
 
 const ReferralScreen = () => {
   const [referralData, setReferralData] = useState(null);
-  const [earnedHistory, setEarnedHistory] = useState([]);
+  const [transactions, setTransactions] = useState([]);
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState(null);
@@ -35,16 +36,43 @@ const ReferralScreen = () => {
     try {
       setLoading(true);
       setError(null);
-      const result = await getReferralDetails();
-
-      if (result.success) {
-        setReferralData(result.userReferralData);
-        setEarnedHistory(result.earnedHistory || []);
-      } else {
-        setError(result.message || "Failed to load referral data");
+      
+      const userId = await AsyncStorage.getItem("userId");
+      
+      if (!userId) {
+        setError("User ID not found. Please login again.");
+        setLoading(false);
+        return;
       }
+
+      const url = `${API_BASE_URL_OLD}/account/referrals/${userId}`;
+      console.log("Fetching data from:", url);
+
+      const response = await fetch(url);
+      
+      if (!response.ok) {
+        throw new Error(`Network error: ${response.status}`);
+      }
+
+      const data = await response.json();
+      console.log("API Response:", JSON.stringify(data, null, 2));
+
+      // Handle the API response structure
+      if (data && data.referrer) {
+        setReferralData(data.referrer);
+        setTransactions(data.transactions || []);
+      } else if (Array.isArray(data)) {
+        // Fallback for array format
+        setReferralData(data[0] || null);
+        setTransactions(data.slice(1) || []);
+      } else {
+        setReferralData(null);
+        setTransactions([]);
+      }
+      
     } catch (err) {
-      setError(err.message || "An error occurred");
+      console.error("Error loading referral data:", err);
+      setError(err.message || "An error occurred while loading data");
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -56,14 +84,15 @@ const ReferralScreen = () => {
     await loadReferralData();
   };
 
-
   const shareReferralLink = async () => {
     if (!referralData?.playStoreLink) return;
 
     try {
+      const shareMessage = `Join me on BMG Scheme! Use my referral code: ${referralData.referral_code}\n\nDownload app: ${referralData.playStoreLink}`;
+      
       await Share.share({
-        message: `Join me on Digi Gold! Use my code: ${referralData.referral_code}\n${referralData.playStoreLink}`,
-        title: "Join Digi Gold",
+        message: shareMessage,
+        title: "Join BMG Scheme",
       });
     } catch (error) {
       Alert.alert("Error", "Failed to share referral link");
@@ -72,43 +101,47 @@ const ReferralScreen = () => {
 
   const formatDate = (dateString) => {
     if (!dateString) return "N/A";
-    const date = new Date(dateString);
-    return date.toLocaleDateString("en-IN", {
-      day: "2-digit",
-      month: "short",
-    });
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleDateString("en-IN", {
+        day: "2-digit",
+        month: "short",
+        year: "numeric",
+      });
+    } catch (error) {
+      return "Invalid Date";
+    }
+  };
+
+  const formatTime = (dateString) => {
+    if (!dateString) return "";
+    try {
+      const date = new Date(dateString);
+      return date.toLocaleTimeString("en-IN", {
+        hour: "2-digit",
+        minute: "2-digit",
+      });
+    } catch (error) {
+      return "";
+    }
   };
 
   const formatAmount = (amount) => {
-    return `₹${parseFloat(amount || 0).toFixed(2)}`;
+    const numAmount = parseFloat(amount || 0);
+    return `₹${numAmount.toLocaleString("en-IN", {
+      minimumFractionDigits: 2,
+      maximumFractionDigits: 2,
+    })}`;
   };
 
   // Stats Data
   const stats = [
     {
-      label: "Total Earnings",
-      value: formatAmount(referralData?.totalCreditedAmount),
-      icon: "trending-up",
-      color: "#10B981",
-    },
-    {
       label: "Wallet Balance",
       value: formatAmount(referralData?.wallet_balance),
       icon: "account-balance-wallet",
-      color: theme.COLORS.primary || "#0F766E",
-    },
-    {
-      label: "Total Referrals",
-      value: earnedHistory.length.toString(),
-      icon: "people",
-      color: "#3B82F6",
-    },
-    {
-      label: "Total Rewards",
-      value: formatAmount(referralData?.totalNewMemberReward),
-      icon: "card-giftcard",
-      color: "#8B5CF6",
-    },
+      color: theme.COLORS.primary,
+    }
   ];
 
   // Steps Data
@@ -123,7 +156,7 @@ const ReferralScreen = () => {
   if (loading && !refreshing) {
     return (
       <View style={styles.centeredContainer}>
-        <ActivityIndicator size="large" color="#0F766E" />
+        <ActivityIndicator size="large" color={theme.COLORS.primary} />
         <Text style={styles.loadingText}>Loading referral data...</Text>
       </View>
     );
@@ -133,10 +166,10 @@ const ReferralScreen = () => {
   if (error) {
     return (
       <View style={styles.centeredContainer}>
-        <Icon name="error-outline" size={48} color="#EF4444" />
+        <Icon name="error-outline" size={theme.SIZES.icon.xxxl} color={theme.COLORS.error} />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadReferralData}>
-          <Icon name="refresh" size={18} color="#FFFFFF" />
+          <Icon name="refresh" size={theme.SIZES.icon.sm} color={theme.COLORS.white} />
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -153,19 +186,34 @@ const ReferralScreen = () => {
           <RefreshControl
             refreshing={refreshing}
             onRefresh={onRefresh}
-            colors={["#0F766E"]}
-            tintColor="#0F766E"
+            colors={[theme.COLORS.primary]}
+            tintColor={theme.COLORS.primary}
           />
         }
         showsVerticalScrollIndicator={false}
       >
         <View style={styles.content}>
+          {/* User Info Card */}
+          <View style={[styles.userInfoCard, theme.SHADOWS.sm]}>
+            <View style={styles.userAvatarLarge}>
+              <IconFA name="user" size={theme.SIZES.icon.md} color={theme.COLORS.white} />
+            </View>
+            <View style={styles.userInfo}>
+              <Text style={styles.userName} numberOfLines={1}>
+                {referralData?.username || "User"}
+              </Text>
+              <Text style={styles.userPhone}>
+                {referralData?.contact_number || "N/A"}
+              </Text>
+            </View>
+          </View>
+
           {/* Stats Grid */}
           <View style={styles.statsGrid}>
             {stats.map((stat, index) => (
-              <View key={index} style={styles.statCard}>
+              <View key={index} style={[styles.statCard, theme.SHADOWS.xs]}>
                 <View style={[styles.statIcon, { backgroundColor: `${stat.color}15` }]}>
-                  <Icon name={stat.icon} size={20} color={stat.color} />
+                  <Icon name={stat.icon} size={theme.SIZES.icon.md} color={stat.color} />
                 </View>
                 <Text style={[styles.statValue, { color: stat.color }]}>
                   {stat.value}
@@ -175,89 +223,110 @@ const ReferralScreen = () => {
             ))}
           </View>
 
-          {/* Referral Code Card - Reduced Height */}
-          <View style={styles.referralCard}>
+          {/* Referral Code Card */}
+          <View style={[styles.referralCard, theme.SHADOWS.md]}>
             <LinearGradient
-              colors={["#FF7A4D", "#E64310"]}
+              colors={theme.COLORS.gradient.primary}
               start={{ x: 0, y: 0 }}
               end={{ x: 1, y: 1 }}
               style={styles.referralGradient}
             >
               <Text style={styles.referralTitle}>Your Referral Code</Text>
               
-              <TouchableOpacity
-                style={styles.codeContainer}
-               
-                activeOpacity={0.8}
-              >
+              <View style={styles.codeContainer}>
                 <Text style={styles.codeText}>
                   {referralData?.referral_code || "N/A"}
                 </Text>
-                
-              </TouchableOpacity>
+              </View>
               
-              <Text style={styles.tapToCopy}>Tap to copy</Text>
+             
 
               <TouchableOpacity
                 style={styles.shareButton}
                 onPress={shareReferralLink}
-                activeOpacity={0.8}
+                activeOpacity={0.7}
               >
-                <Icon name="share" size={18} color="#FFFFFF" />
-                <Text style={styles.shareButtonText}>Share Link</Text>
+                <Icon name="share" size={theme.SIZES.icon.sm} color={theme.COLORS.primary} />
+                <Text style={styles.shareButtonText}>Share Referral Link</Text>
               </TouchableOpacity>
             </LinearGradient>
           </View>
 
-          {/* Earned History */}
-          <View style={styles.historyCard}>
+          {/* Transactions History */}
+          <View style={[styles.historyCard, theme.SHADOWS.sm]}>
             <View style={styles.sectionHeader}>
               <View>
-                <Text style={styles.sectionTitle}>Earned History</Text>
-                <Text style={styles.sectionSubtitle}>{earnedHistory.length} Referrals</Text>
+                <Text style={styles.sectionTitle}>Transaction History</Text>
+                <Text style={styles.sectionSubtitle}>
+                  {transactions.length} {transactions.length === 1 ? 'Transaction' : 'Transactions'}
+                </Text>
               </View>
               <View style={styles.totalEarned}>
-                <Text style={styles.totalLabel}>Total</Text>
+                <Text style={styles.totalLabel}>Total Earned</Text>
                 <Text style={styles.totalAmount}>
                   {formatAmount(referralData?.totalCreditedAmount)}
                 </Text>
               </View>
             </View>
 
-            {earnedHistory.length === 0 ? (
+            {transactions.length === 0 ? (
               <View style={styles.emptyState}>
-                <Icon name="people-outline" size={40} color="#94A3B8" />
-                <Text style={styles.emptyText}>No earnings yet</Text>
-                <Text style={styles.emptySubtext}>Share your code to start earning</Text>
+                <Icon name="receipt-long" size={theme.SIZES.icon.xxxl} color={theme.COLORS.gray400} />
+                <Text style={styles.emptyText}>No transactions yet</Text>
+                <Text style={styles.emptySubtext}>Share your referral code to start earning</Text>
               </View>
             ) : (
               <View style={styles.historyList}>
-                {earnedHistory.slice(0, 5).map((item, index) => (
-                  <View key={index} style={styles.historyItem}>
+                {transactions.map((item, index) => (
+                  <View key={index} style={[styles.historyItem, theme.SHADOWS.xs]}>
                     <View style={styles.itemHeader}>
                       <View style={styles.userAvatar}>
-                        <IconFA name="user" size={14} color="#0F766E" />
+                        <IconFA name="user" size={theme.SIZES.font.xs} color={theme.COLORS.primary} />
                       </View>
                       <View style={styles.userInfo}>
                         <Text style={styles.userName} numberOfLines={1}>
-                          {item.new_member_personal_name}
+                          {item.new_member_personal_name || "New Member"}
                         </Text>
-                        <Text style={styles.userPhone}>{item.new_member_mobile}</Text>
+                        <Text style={styles.userPhone}>
+                          {item.new_member_mobile || "N/A"}
+                        </Text>
                       </View>
                       <Text style={styles.earnedAmount}>
-                        {formatAmount(item.credited_amount)}
+                        +{formatAmount(item.credited_amount)}
                       </Text>
                     </View>
+                    
                     <View style={styles.itemDetails}>
-                      <View style={styles.detailItem}>
-                        <Icon name="business-center" size={12} color="#64748B" />
-                        <Text style={styles.detailText} numberOfLines={1}>
-                          {item.schemeName}
-                        </Text>
+                      <View style={styles.detailRow}>
+                        <View style={styles.detailItem}>
+                          <Icon name="business-center" size={theme.SIZES.font.xs} color={theme.COLORS.gray500} />
+                          <Text style={styles.detailText} numberOfLines={1}>
+                            {item.schemeName || "N/A"}
+                          </Text>
+                        </View>
+                        
+                        <View style={styles.detailItem}>
+                          <Icon name="card-giftcard" size={theme.SIZES.font.xs} color={theme.COLORS.gray500} />
+                          <Text style={styles.detailText}>
+                            Member: {formatAmount(item.new_member_reward)}
+                          </Text>
+                        </View>
                       </View>
-                      <View style={styles.detailItem}>
-                        <Icon name="calendar-today" size={12} color="#64748B" />
-                        <Text style={styles.detailText}>{formatDate(item.created_at)}</Text>
+                      
+                      <View style={styles.detailRow}>
+                        <View style={styles.detailItem}>
+                          <Icon name="calendar-today" size={theme.SIZES.font.xs} color={theme.COLORS.gray500} />
+                          <Text style={styles.detailText}>
+                            {formatDate(item.created_at)}
+                          </Text>
+                        </View>
+                        
+                        <View style={styles.detailItem}>
+                          <Icon name="access-time" size={theme.SIZES.font.xs} color={theme.COLORS.gray500} />
+                          <Text style={styles.detailText}>
+                            {formatTime(item.created_at)}
+                          </Text>
+                        </View>
                       </View>
                     </View>
                   </View>
@@ -267,9 +336,9 @@ const ReferralScreen = () => {
           </View>
 
           {/* How It Works */}
-          <View style={styles.howItWorksCard}>
+          <View style={[styles.howItWorksCard, theme.SHADOWS.sm]}>
             <View style={styles.sectionHeader}>
-              <Icon name="help-outline" size={20} color="#0F766E" />
+              <Icon name="help-outline" size={theme.SIZES.icon.lg} color={theme.COLORS.primary} />
               <Text style={styles.sectionTitle}>How It Works</Text>
             </View>
             
@@ -279,7 +348,7 @@ const ReferralScreen = () => {
                   <View style={styles.stepNumber}>
                     <Text style={styles.stepNumberText}>{index + 1}</Text>
                   </View>
-                  <Icon name={step.icon} size={18} color="#0F766E" />
+                  <Icon name={step.icon} size={theme.SIZES.icon.md} color={theme.COLORS.primary} />
                   <Text style={styles.stepText}>{step.text}</Text>
                 </View>
               ))}
@@ -296,52 +365,88 @@ const ReferralScreen = () => {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8FAFC",
+    backgroundColor: theme.COLORS.background,
   },
   centeredContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
-    backgroundColor: "#F8FAFC",
-    paddingHorizontal: 20,
+    backgroundColor: theme.COLORS.background,
+    paddingHorizontal: theme.SIZES.padding.lg,
   },
   loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: "#64748B",
-    fontWeight: "500",
+    marginTop: theme.SIZES.margin.md,
+    fontSize: theme.SIZES.font.md,
+    color: theme.COLORS.textSecondary,
+    fontFamily: theme.FONTS.family.regular,
   },
   errorText: {
-    fontSize: 15,
-    color: "#475569",
+    fontSize: theme.SIZES.font.lg,
+    color: theme.COLORS.textPrimary,
     textAlign: "center",
-    marginTop: 12,
-    marginBottom: 20,
-    lineHeight: 22,
+    marginTop: theme.SIZES.margin.md,
+    marginBottom: theme.SIZES.margin.xl,
+    lineHeight: theme.SIZES.font.lg * 1.5,
+    fontFamily: theme.FONTS.family.regular,
   },
   retryButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#0F766E",
-    paddingVertical: 12,
-    paddingHorizontal: 24,
-    borderRadius: 10,
-    gap: 8,
+    backgroundColor: theme.COLORS.primary,
+    paddingVertical: theme.SIZES.padding.md,
+    paddingHorizontal: theme.SIZES.padding.xxl,
+    borderRadius: theme.SIZES.radius.md,
+    gap: theme.SIZES.margin.sm,
   },
   retryButtonText: {
-    color: "#FFFFFF",
-    fontSize: 14,
-    fontWeight: "600",
+    color: theme.COLORS.white,
+    fontSize: theme.SIZES.font.md,
+    fontFamily: theme.FONTS.family.semiBold,
   },
   scrollView: {
     flex: 1,
   },
   content: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
+    paddingHorizontal: theme.SIZES.padding.lg,
+    paddingTop: theme.SIZES.padding.md,
   },
   bottomSpace: {
-    height: 20,
+    height: theme.SIZES.margin.xxl,
+  },
+
+  // User Info Card
+  userInfoCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: theme.COLORS.card,
+    borderRadius: theme.SIZES.radius.lg,
+    padding: theme.SIZES.padding.lg,
+    marginBottom: theme.SIZES.margin.lg,
+    borderWidth: 1,
+    borderColor: theme.COLORS.borderLight,
+  },
+  userAvatarLarge: {
+    width: theme.SIZES.icon.xxxl,
+    height: theme.SIZES.icon.xxxl,
+    borderRadius: theme.SIZES.icon.xxxl / 2,
+    backgroundColor: theme.COLORS.primary,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: theme.SIZES.margin.md,
+  },
+  userInfo: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: theme.SIZES.font.xl,
+    fontFamily: theme.FONTS.family.semiBold,
+    color: theme.COLORS.textPrimary,
+    marginBottom: theme.SIZES.margin.xs,
+  },
+  userPhone: {
+    fontSize: theme.SIZES.font.sm,
+    fontFamily: theme.FONTS.family.regular,
+    color: theme.COLORS.textSecondary,
   },
 
   // Stats Grid
@@ -349,279 +454,257 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     flexWrap: "wrap",
     justifyContent: "space-between",
-    marginBottom: 16,
-    gap: 12,
+    marginBottom: theme.SIZES.margin.lg,
+    gap: theme.SIZES.margin.md,
   },
   statCard: {
-    width: (width - 44) / 2,
-    backgroundColor: "#FFFFFF",
-    borderRadius: 12,
-    padding: 14,
+    width: (width - theme.SIZES.padding.lg * 2 - theme.SIZES.margin.md) / 2,
+    backgroundColor: theme.COLORS.card,
+    borderRadius: theme.SIZES.radius.lg,
+    padding: theme.SIZES.padding.lg,
     alignItems: "center",
     borderWidth: 1,
-    borderColor: "#F1F5F9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.03,
-    shadowRadius: 3,
-    elevation: 1,
+    borderColor: theme.COLORS.borderLight,
   },
   statIcon: {
-    width: 36,
-    height: 36,
-    borderRadius: 10,
+    width: theme.SIZES.icon.xxl,
+    height: theme.SIZES.icon.xxl,
+    borderRadius: theme.SIZES.radius.md,
     justifyContent: "center",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: theme.SIZES.margin.sm,
   },
   statValue: {
-    fontSize: 16,
-    fontWeight: "700",
-    marginBottom: 4,
+    fontSize: theme.SIZES.font.lg,
+    fontFamily: theme.FONTS.family.bold,
+    marginBottom: theme.SIZES.margin.xs,
   },
   statLabel: {
-    fontSize: 11,
-    color: "#6B7280",
+    fontSize: theme.SIZES.font.xs,
+    fontFamily: theme.FONTS.family.regular,
+    color: theme.COLORS.textTertiary,
     textAlign: "center",
   },
 
-  // Referral Card (Reduced Height)
+  // Referral Card
   referralCard: {
-    marginBottom: 20,
-    borderRadius: 16,
+    marginBottom: theme.SIZES.margin.xl,
+    borderRadius: theme.SIZES.radius.xl,
     overflow: "hidden",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.08,
-    shadowRadius: 8,
-    elevation: 3,
   },
   referralGradient: {
-    paddingVertical: 20, // Reduced from 32
-    paddingHorizontal: 20,
+    paddingVertical: theme.SIZES.padding.xxl,
+    paddingHorizontal: theme.SIZES.padding.xl,
     alignItems: "center",
   },
   referralTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#FFFFFF",
-    marginBottom: 12,
+    fontSize: theme.SIZES.font.xxl,
+    fontFamily: theme.FONTS.family.bold,
+    color: theme.COLORS.white,
+    marginBottom: theme.SIZES.margin.lg,
   },
   codeContainer: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFFFFF",
-    paddingVertical: 12, // Reduced from 18
-    paddingHorizontal: 20,
-    borderRadius: 12,
-    marginBottom: 8,
+    backgroundColor: theme.COLORS.white,
+    paddingVertical: theme.SIZES.padding.lg,
+    paddingHorizontal: theme.SIZES.padding.xl,
+    borderRadius: theme.SIZES.radius.lg,
+    marginBottom: theme.SIZES.margin.sm,
     width: "100%",
     justifyContent: "space-between",
   },
   codeText: {
-    fontSize: 22, // Reduced from 26
-    fontWeight: "800",
-    color: "#0F766E",
+    fontSize: theme.SIZES.font.xxxl,
+    fontFamily: theme.FONTS.family.extraBold,
+    color: theme.COLORS.primary,
     letterSpacing: 2,
+    alignSelf:"center"
   },
   tapToCopy: {
-    fontSize: 12,
-    color: "rgba(255,255,255,0.85)",
-    marginBottom: 16,
-    fontWeight: "500",
+    fontSize: theme.SIZES.font.sm,
+    fontFamily: theme.FONTS.family.medium,
+    color: theme.COLORS.whiteOpacity50,
+    marginBottom: theme.SIZES.margin.lg,
   },
   shareButton: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "rgba(255,255,255,0.2)",
-    borderRadius: 10,
-    paddingVertical: 10,
-    paddingHorizontal: 20,
-    gap: 8,
-    borderWidth: 1,
-    borderColor: "rgba(255,255,255,0.3)",
+    backgroundColor: theme.COLORS.white,
+    borderRadius: theme.SIZES.radius.md,
+    paddingVertical: theme.SIZES.padding.md,
+    paddingHorizontal: theme.SIZES.padding.xl,
+    gap: theme.SIZES.margin.sm,
   },
   shareButtonText: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#FFFFFF",
+    fontSize: theme.SIZES.font.md,
+    fontFamily: theme.FONTS.family.semiBold,
+    color: theme.COLORS.primary,
   },
 
   // History Card
   historyCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
+    backgroundColor: theme.COLORS.card,
+    borderRadius: theme.SIZES.radius.xl,
+    padding: theme.SIZES.padding.lg,
+    marginBottom: theme.SIZES.margin.xl,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: theme.COLORS.borderLight,
   },
   sectionHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 16,
-    paddingBottom: 12,
+    marginBottom: theme.SIZES.margin.lg,
+    paddingBottom: theme.SIZES.padding.md,
     borderBottomWidth: 1,
-    borderBottomColor: "#F1F5F9",
-  },
-  headerIcon: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#0F766E",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 10,
+    borderBottomColor: theme.COLORS.borderLight,
   },
   sectionTitle: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#1E293B",
+    fontSize: theme.SIZES.font.lg,
+    fontFamily: theme.FONTS.family.semiBold,
+    color: theme.COLORS.textPrimary,
   },
   sectionSubtitle: {
-    fontSize: 12,
-    color: "#64748B",
-    marginTop: 2,
+    fontSize: theme.SIZES.font.sm,
+    fontFamily: theme.FONTS.family.regular,
+    color: theme.COLORS.textSecondary,
+    marginTop: theme.SIZES.margin.xs,
   },
   totalEarned: {
     alignItems: "flex-end",
   },
   totalLabel: {
-    fontSize: 12,
-    color: "#64748B",
-    marginBottom: 2,
+    fontSize: theme.SIZES.font.sm,
+    fontFamily: theme.FONTS.family.regular,
+    color: theme.COLORS.textSecondary,
+    marginBottom: theme.SIZES.margin.xs,
   },
   totalAmount: {
-    fontSize: 16,
-    fontWeight: "700",
-    color: "#0F766E",
+    fontSize: theme.SIZES.font.lg,
+    fontFamily: theme.FONTS.family.bold,
+    color: theme.COLORS.primary,
   },
 
   // History List
   historyList: {
-    gap: 10,
+    gap: theme.SIZES.margin.md,
   },
   historyItem: {
-    backgroundColor: "#FAFCFD",
-    borderRadius: 12,
-    padding: 12,
+    backgroundColor: theme.COLORS.backgroundSecondary,
+    borderRadius: theme.SIZES.radius.lg,
+    padding: theme.SIZES.padding.md,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
+    borderColor: theme.COLORS.borderLight,
   },
   itemHeader: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: theme.SIZES.margin.sm,
   },
   userAvatar: {
-    width: 32,
-    height: 32,
-    borderRadius: 10,
-    backgroundColor: "#F0FCFC",
+    width: theme.SIZES.icon.lg,
+    height: theme.SIZES.icon.lg,
+    borderRadius: theme.SIZES.radius.sm,
+    backgroundColor: theme.COLORS.primaryOpacity10,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 10,
+    marginRight: theme.SIZES.margin.sm,
   },
   userInfo: {
     flex: 1,
   },
   userName: {
-    fontSize: 14,
-    fontWeight: "600",
-    color: "#1E293B",
-    marginBottom: 2,
+    fontSize: theme.SIZES.font.md,
+    fontFamily: theme.FONTS.family.semiBold,
+    color: theme.COLORS.textPrimary,
+    marginBottom: theme.SIZES.margin.xs,
   },
   userPhone: {
-    fontSize: 12,
-    color: "#64748B",
+    fontSize: theme.SIZES.font.xs,
+    fontFamily: theme.FONTS.family.regular,
+    color: theme.COLORS.textSecondary,
   },
   earnedAmount: {
-    fontSize: 14,
-    fontWeight: "700",
-    color: "#0F766E",
+    fontSize: theme.SIZES.font.md,
+    fontFamily: theme.FONTS.family.bold,
+    color: theme.COLORS.success,
   },
   itemDetails: {
+    gap: theme.SIZES.margin.sm,
+  },
+  detailRow: {
     flexDirection: "row",
     justifyContent: "space-between",
   },
   detailItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 6,
+    gap: theme.SIZES.margin.xs,
     flex: 1,
   },
   detailText: {
-    fontSize: 12,
-    color: "#475569",
-    flex: 1,
+    fontSize: theme.SIZES.font.xs,
+    fontFamily: theme.FONTS.family.regular,
+    color: theme.COLORS.textSecondary,
   },
 
   // Empty State
   emptyState: {
     alignItems: "center",
-    paddingVertical: 30,
+    paddingVertical: theme.SIZES.padding.xxl,
   },
   emptyText: {
-    fontSize: 15,
-    color: "#475569",
-    fontWeight: "600",
-    marginTop: 12,
-    marginBottom: 4,
+    fontSize: theme.SIZES.font.lg,
+    fontFamily: theme.FONTS.family.semiBold,
+    color: theme.COLORS.textSecondary,
+    marginTop: theme.SIZES.margin.md,
+    marginBottom: theme.SIZES.margin.xs,
   },
   emptySubtext: {
-    fontSize: 13,
-    color: "#94A3B8",
+    fontSize: theme.SIZES.font.sm,
+    fontFamily: theme.FONTS.family.regular,
+    color: theme.COLORS.textTertiary,
     textAlign: "center",
   },
 
   // How It Works
   howItWorksCard: {
-    backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 16,
-    marginBottom: 20,
+    backgroundColor: theme.COLORS.card,
+    borderRadius: theme.SIZES.radius.xl,
+    padding: theme.SIZES.padding.lg,
+    marginBottom: theme.SIZES.margin.xl,
     borderWidth: 1,
-    borderColor: "#F1F5F9",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    borderColor: theme.COLORS.borderLight,
   },
   stepsContainer: {
-    gap: 12,
+    gap: theme.SIZES.margin.lg,
   },
   stepItem: {
     flexDirection: "row",
     alignItems: "center",
-    paddingVertical: 4,
+    paddingVertical: theme.SIZES.padding.xs,
   },
   stepNumber: {
-    width: 24,
-    height: 24,
-    borderRadius: 12,
-    backgroundColor: "#0F766E15",
+    width: theme.SIZES.icon.md,
+    height: theme.SIZES.icon.md,
+    borderRadius: theme.SIZES.icon.md / 2,
+    backgroundColor: theme.COLORS.primaryOpacity20,
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: theme.SIZES.margin.md,
   },
   stepNumberText: {
-    fontSize: 12,
-    fontWeight: "700",
-    color: "#0F766E",
+    fontSize: theme.SIZES.font.sm,
+    fontFamily: theme.FONTS.family.bold,
+    color: theme.COLORS.primary,
   },
   stepText: {
-    fontSize: 14,
-    color: "#334155",
+    fontSize: theme.SIZES.font.md,
+    fontFamily: theme.FONTS.family.medium,
+    color: theme.COLORS.textPrimary,
     flex: 1,
-    marginLeft: 12,
-    fontWeight: "500",
+    marginLeft: theme.SIZES.margin.md,
   },
 });
 

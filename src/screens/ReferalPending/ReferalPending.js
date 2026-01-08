@@ -106,35 +106,82 @@ const ReferralPending = () => {
       console.log('Completed API data:', completedData);
       console.log('Pending API data:', pendingData);
 
-      // Process completed referrals from first API
+      // Process completed referrals from first API - NEW STRUCTURE
       let userInfo = null;
       const completedReferrals = [];
 
-      if (Array.isArray(completedData) && completedData.length > 0) {
-        // First item is user data
-        userInfo = completedData[0];
+      // Check new structure first: { referrer: {...}, transactions: [...] }
+      if (completedData && completedData.referrer && Array.isArray(completedData.transactions)) {
+        const { referrer, transactions } = completedData;
+        
+        // Set user info from referrer object
+        userInfo = {
+          ...referrer,
+          referral_code: referrer.referral_code || '',
+          username: referrer.username || '',
+          wallet_balance: referrer.wallet_balance || referrer.totalCreditedAmount || 0,
+          playStoreLink: referrer.playStoreLink || 'https://play.google.com/store/apps/details?id=com.bmg.bmgscheme',
+          referralLink: referrer.referralLink || `https://bmgscheme.com/signup?ref=${referrer.referral_code || ''}`
+        };
         setUserData(userInfo);
+        
+        // Process completed referrals from transactions array
+        transactions.forEach((item) => {
+          if (item.new_member_personal_id) {
+            completedReferrals.push({
+              id: `${item.new_member_personal_id}_${item.scheme_id}_${item.created_at}`,
+              userId: item.new_member_personal_id,
+              name: item.new_member_personal_name?.trim() || 'Unknown User',
+              phone: item.new_member_mobile || '',
+              email: '', // Email not available in this API
+              referralCode: referrer.referral_code,
+              date: item.created_at,
+              status: 'completed',
+              amount: item.credited_amount || 0,
+              schemeName: item.schemeName || 'BMG Scheme',
+              schemeId: item.scheme_id,
+              type: 'completed',
+              newMemberReward: item.new_member_reward || 0,
+            });
+          }
+        });
+      } 
+      // Fallback to old array structure if needed
+      else if (Array.isArray(completedData) && completedData.length > 0) {
+        // First item is user data in old structure
+        userInfo = completedData[0];
+        setUserData({
+          ...userInfo,
+          referral_code: userInfo.referral_code || '',
+          username: userInfo.username || '',
+          wallet_balance: userInfo.wallet_balance || 0,
+          playStoreLink: userInfo.playStoreLink || 'https://play.google.com/store/apps/details?id=com.bmg.bmgscheme',
+          referralLink: userInfo.referralLink || `https://bmgscheme.com/signup?ref=${userInfo.referral_code || ''}`
+        });
         
         // Process completed referrals (items after the first one)
         for (let i = 1; i < completedData.length; i++) {
           const item = completedData[i];
           if (item.new_member_personal_id) {
             completedReferrals.push({
-              id: `${item.new_member_personal_id}_${item.scheme_id}_${i}`,
+              id: `${item.new_member_personal_id}_${item.scheme_id}_${item.created_at}`,
               userId: item.new_member_personal_id,
               name: item.new_member_personal_name?.trim() || 'Unknown User',
               phone: item.new_member_mobile || '',
-              email: '', // Email not available in completed API
+              email: '',
               referralCode: userInfo.referral_code,
               date: item.created_at,
               status: 'completed',
               amount: item.credited_amount || 0,
               schemeName: item.schemeName || 'BMG Scheme',
               schemeId: item.scheme_id,
-              type: 'completed'
+              type: 'completed',
+              newMemberReward: item.new_member_reward || 0,
             });
           }
         }
+      } else {
+        console.log('No completed referrals data found or unexpected format');
       }
 
       console.log('Processed completed referrals:', completedReferrals);
@@ -143,7 +190,6 @@ const ReferralPending = () => {
       const completedPhoneNumbers = new Set();
       completedReferrals.forEach(ref => {
         if (ref.phone) {
-          // Clean phone number (remove spaces, special characters)
           const cleanPhone = ref.phone.replace(/\D/g, '');
           if (cleanPhone.length >= 10) {
             completedPhoneNumbers.add(cleanPhone);
@@ -168,16 +214,16 @@ const ReferralPending = () => {
             }
             
             pendingReferrals.push({
-              id: `${item.user_id}_${index}`,
+              id: `${item.user_id}_${index}_${Date.now()}`,
               name: item.referredUserName?.trim() || item.referred_user_name?.trim() || 'Unknown User',
               userId: item.user_id,
               phone: phoneNumber,
               email: item.referredEmail || item.email || '',
               referralCode: item.referral_code || userInfo?.referral_code || '',
-              date: item.created_at,
+              date: item.created_at || new Date().toISOString(),
               status: 'pending',
               amount: 0,
-              schemeName: 'Not Enrolled',
+              schemeName: 'Not Enrolled Yet',
               type: 'pending'
             });
           }
@@ -270,14 +316,36 @@ const ReferralPending = () => {
     const referralLink = userData.referralLink || 
       `https://bmgscheme.com/signup?ref=${userData.referral_code}`;
     
-    const message = `Join me on BMG Scheme! Use my referral code: ${userData.referral_code}\n\n` +
-      `Download app: ${userData.playStoreLink || 'https://play.google.com/store/apps/details?id=com.bmg.bmgscheme'}\n\n` +
-      `Or sign up directly: ${referralLink}`;
+    // Create a summary of referral schemes if available
+    let schemeInfo = '';
+    const completedReferrals = referrals.filter(r => r.status === 'completed');
+    if (completedReferrals.length > 0) {
+      const schemeMap = new Map();
+      completedReferrals.forEach(ref => {
+        const schemeName = ref.schemeName || 'Unknown Scheme';
+        if (!schemeMap.has(schemeName)) {
+          schemeMap.set(schemeName, { count: 0, total: 0 });
+        }
+        const schemeData = schemeMap.get(schemeName);
+        schemeData.count++;
+        schemeData.total += ref.amount;
+      });
+      
+      schemeInfo = '\n\n🎯 **My Referral Success:**\n';
+      schemeMap.forEach((data, schemeName) => {
+        schemeInfo += `\n• ${schemeName}: ₹${data.total.toFixed(2)} from ${data.count} referral(s)`;
+      });
+    }
+    
+    const message = `Join me on BMG Scheme! Use my referral code: **${userData.referral_code}** to get bonus.${schemeInfo}\n\n` +
+      `📱 Download app: ${userData.playStoreLink || 'https://play.google.com/store/apps/details?id=com.bmg.bmgscheme'}\n\n` +
+      `🔗 Or sign up directly: ${referralLink}\n\n` +
+      `💰 I've earned ₹${stats.earned.toFixed(2)} so far!`;
     
     try {
       await Share.share({
         message,
-        title: 'BMG Scheme Referral',
+        title: 'Refer & Earn with BMG Scheme',
       });
     } catch (error) {
       console.error('Error sharing:', error);
@@ -452,12 +520,54 @@ const ReferralPending = () => {
             <Icon name="share" size={18} color={theme.COLORS.white} />
           </TouchableOpacity>
         </View>
+        
+        {/* User stats summary */}
+        <View style={styles.userStats}>
+          <View style={styles.userStatItem}>
+            <Text style={styles.userStatValue}>{stats.total}</Text>
+            <Text style={styles.userStatLabel}>Total</Text>
+          </View>
+          <View style={styles.userStatDivider} />
+          <View style={styles.userStatItem}>
+            <Text style={[styles.userStatValue, { color: theme.COLORS.success }]}>
+              {stats.completed}
+            </Text>
+            <Text style={styles.userStatLabel}>Completed</Text>
+          </View>
+          <View style={styles.userStatDivider} />
+          <View style={styles.userStatItem}>
+            <Text style={[styles.userStatValue, { color: theme.COLORS.warning }]}>
+              {stats.pending}
+            </Text>
+            <Text style={styles.userStatLabel}>Pending</Text>
+          </View>
+        </View>
+        
+        {showHelpTip && (
+          <View style={styles.helpTip}>
+            <Icon name="info" size={16} color={theme.COLORS.warning} />
+            <Text style={styles.helpTipText}>
+              Share your referral code with friends to earn rewards when they join and purchase schemes!
+            </Text>
+            <TouchableOpacity 
+              onPress={() => {
+                setShowHelpTip(false);
+                AsyncStorage.setItem('hasSeenReferralTip', 'true');
+              }}
+              style={styles.closeTipButton}
+              activeOpacity={0.6}
+            >
+              <Icon name="close" size={16} color={theme.COLORS.textTertiary} />
+            </TouchableOpacity>
+          </View>
+        )}
       </Animated.View>
     );
   };
 
   const renderReferralCard = (item, index) => {
     const isPending = item.status === 'pending';
+    const isCompleted = item.status === 'completed';
     
     return (
       <Animated.View 
@@ -487,6 +597,7 @@ const ReferralPending = () => {
                 isPending && styles.pendingSchemeName
               ]}>
                 {item.schemeName}
+                {item.schemeId && ` (ID: ${item.schemeId})`}
               </Text>
             </View>
           </View>
@@ -510,8 +621,6 @@ const ReferralPending = () => {
 
         <View style={styles.cardContent}>
           <View style={styles.infoRow}>
-           
-            
             <View style={styles.infoItem}>
               <Icon name="phone" size={14} color={theme.COLORS.textTertiary} />
               <Text style={styles.infoLabel}>Phone:</Text>
@@ -530,12 +639,24 @@ const ReferralPending = () => {
             </View>
           </View>
           
-          {!isPending && item.amount > 0 && (
-            <View style={styles.amountContainer}>
-              <Icon name="currency-rupee" size={14} color={theme.COLORS.success} />
-              <Text style={styles.amountText}>
-                Earned: ₹{item.amount.toFixed(2)}
-              </Text>
+          {isCompleted && (
+            <View style={styles.earningsContainer}>
+              {item.amount > 0 && (
+                <View style={styles.amountContainer}>
+                  <Icon name="currency-rupee" size={14} color={theme.COLORS.success} />
+                  <Text style={styles.amountText}>
+                    You Earned: ₹{item.amount.toFixed(2)}
+                  </Text>
+                </View>
+              )}
+              {item.newMemberReward > 0 && (
+                <View style={[styles.amountContainer, { backgroundColor: theme.COLORS.primary + '10' }]}>
+                  <Icon name="gift" size={14} color={theme.COLORS.primary} />
+                  <Text style={[styles.amountText, { color: theme.COLORS.primary }]}>
+                    Friend's Bonus: ₹{item.newMemberReward.toFixed(2)}
+                  </Text>
+                </View>
+              )}
             </View>
           )}
         </View>
@@ -582,7 +703,7 @@ const ReferralPending = () => {
             ? 'No pending referrals found.'
             : 'No completed referrals yet.'}
       </Text>
-      {activeFilter === 'all' && (
+      {activeFilter === 'all' && userData?.referral_code && (
         <TouchableOpacity 
           style={styles.primaryButton}
           onPress={shareReferralLink}
@@ -974,6 +1095,9 @@ const styles = StyleSheet.create({
   callButton: {
     padding: 4,
     marginLeft: 8,
+  },
+  earningsContainer: {
+    gap: 8,
   },
   amountContainer: {
     flexDirection: 'row',

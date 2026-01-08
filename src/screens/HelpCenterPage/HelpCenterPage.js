@@ -142,9 +142,9 @@ function HelpCenterPage() {
                 }
               />
               <QuickAction
-                icon="description"
-                text="Leave a message"
-                onPress={() => handlePhoneCall(companyInfo.cPhone)}
+                icon="location-on"
+                text="Location"
+                onPress={() => handleOpenMap(getFullAddress())}
               />
             </View>
 
@@ -164,18 +164,10 @@ function HelpCenterPage() {
             </View>
 
             {/* Row 3 */}
-            <View style={styles.quickContainerRow}>
-              <QuickAction
-                icon="location-on"
-                text="Location"
-                onPress={() => handleOpenMap(getFullAddress())}
-              />
-              <QuickAction
-                icon="help-outline"
-                text="FAQs"
-                onPress={() => navigation.navigate("FAQPage")}
-              />
-            </View>
+            {/* <View style={styles.quickContainerRow}>
+              
+             
+            </View> */}
           </View>
 
           {/* <View style={styles.cardsContainer}>
