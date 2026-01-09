@@ -1,4 +1,4 @@
-import React from "react";
+import React, { useState, useEffect, useRef } from "react";
 import {
   View,
   Text,
@@ -8,6 +8,7 @@ import {
   ActivityIndicator,
   TouchableOpacity,
   TextInput,
+  Animated,
 } from "react-native";
 
 // Import components
@@ -20,13 +21,393 @@ import {
   CustomButton,
 } from "./RegisterComponents";
 import { useNavigation } from "@react-navigation/native";
-import { saveUserData } from "../../utils/AsynchStorageHelper";
 
 // Import hooks and services
 import { useUserProfile } from "./Userhook";
 import { styles } from "./UserStyles";
 
-// Sub-components for the form
+// ===== CUSTOM DATE PICKER COMPONENT =====
+const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
+  const months = [
+    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
+    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+  ];
+  
+  const monthsFull = [
+    "January", "February", "March", "April", "May", "June",
+    "July", "August", "September", "October", "November", "December"
+  ];
+  
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
+  const [selectedDay, setSelectedDay] = useState(new Date().getDate());
+  
+  const [yearsList, setYearsList] = useState([]);
+  const [daysList, setDaysList] = useState([]);
+  
+  // Refs for ScrollViews
+  const yearScrollRef = useRef(null);
+  const monthScrollRef = useRef(null);
+  const dayScrollRef = useRef(null);
+
+  // Item height for calculation
+  const ITEM_HEIGHT = 40;
+
+  // Generate years (100 years back from current year)
+  useEffect(() => {
+    const currentYear = new Date().getFullYear();
+    const years = [];
+    for (let i = currentYear; i >= currentYear - 100; i--) {
+      years.push(i);
+    }
+    setYearsList(years);
+    
+    // Initialize with current date or passed date
+    if (currentDate) {
+      const date = new Date(currentDate);
+      setSelectedYear(date.getFullYear());
+      setSelectedMonth(date.getMonth());
+      setSelectedDay(date.getDate());
+    }
+  }, [currentDate]);
+
+  // Generate days based on selected month and year
+  useEffect(() => {
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    const days = [];
+    for (let i = 1; i <= daysInMonth; i++) {
+      days.push(i);
+    }
+    setDaysList(days);
+    
+    // Adjust selected day if it exceeds days in month
+    if (selectedDay > daysInMonth) {
+      setSelectedDay(daysInMonth);
+    }
+  }, [selectedYear, selectedMonth, selectedDay]);
+
+  // Scroll to selected item when it changes
+  useEffect(() => {
+    if (yearScrollRef.current && yearsList.length > 0) {
+      const yearIndex = yearsList.findIndex(y => y === selectedYear);
+      const scrollY = yearIndex * ITEM_HEIGHT;
+      yearScrollRef.current.scrollTo({ y: scrollY, animated: true });
+    }
+  }, [selectedYear, yearsList]);
+
+  useEffect(() => {
+    if (monthScrollRef.current) {
+      const scrollY = selectedMonth * ITEM_HEIGHT;
+      monthScrollRef.current.scrollTo({ y: scrollY, animated: true });
+    }
+  }, [selectedMonth]);
+
+  useEffect(() => {
+    if (dayScrollRef.current && daysList.length > 0) {
+      const dayIndex = selectedDay - 1;
+      const scrollY = dayIndex * ITEM_HEIGHT;
+      dayScrollRef.current.scrollTo({ y: scrollY, animated: true });
+    }
+  }, [selectedDay, daysList]);
+
+  const handleYearSelect = (year) => {
+    setSelectedYear(year);
+  };
+
+  const handleMonthSelect = (monthIndex) => {
+    setSelectedMonth(monthIndex);
+  };
+
+  const handleDaySelect = (day) => {
+    setSelectedDay(day);
+  };
+
+  const handleConfirm = () => {
+    const formattedDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+    onSelectDate(formattedDate);
+    onClose();
+  };
+
+  const getCurrentDate = () => {
+    const date = new Date(selectedYear, selectedMonth, selectedDay);
+    return date.toDateString();
+  };
+
+  // Render items with centered selection indicator
+  const renderYearItem = (year, index) => {
+    const isSelected = selectedYear === year;
+    return (
+      <TouchableOpacity
+        key={year}
+        style={[
+          styles.columnItem,
+          isSelected && styles.columnItemSelected
+        ]}
+        onPress={() => handleYearSelect(year)}
+      >
+        <View style={[
+          styles.columnItemContent,
+          isSelected && styles.columnItemContentSelected
+        ]}>
+          <Text style={[
+            styles.columnItemText,
+            isSelected && styles.columnItemTextSelected
+          ]}>
+            {year}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderMonthItem = (month, index) => {
+    const isSelected = selectedMonth === index;
+    return (
+      <TouchableOpacity
+        key={index}
+        style={[
+          styles.columnItem,
+          isSelected && styles.columnItemSelected
+        ]}
+        onPress={() => handleMonthSelect(index)}
+      >
+        <View style={[
+          styles.columnItemContent,
+          isSelected && styles.columnItemContentSelected
+        ]}>
+          <Text style={[
+            styles.columnItemText,
+            isSelected && styles.columnItemTextSelected
+          ]}>
+            {month}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  const renderDayItem = (day, index) => {
+    const isSelected = selectedDay === day;
+    return (
+      <TouchableOpacity
+        key={day}
+        style={[
+          styles.columnItem,
+          isSelected && styles.columnItemSelected
+        ]}
+        onPress={() => handleDaySelect(day)}
+      >
+        <View style={[
+          styles.columnItemContent,
+          isSelected && styles.columnItemContentSelected
+        ]}>
+          <Text style={[
+            styles.columnItemText,
+            isSelected && styles.columnItemTextSelected
+          ]}>
+            {day}
+          </Text>
+        </View>
+      </TouchableOpacity>
+    );
+  };
+
+  if (!visible) return null;
+
+  return (
+    <Modal
+      visible={visible}
+      transparent={true}
+      animationType="slide"
+      onRequestClose={onClose}
+    >
+      <View style={styles.datePickerModalContainer}>
+        <View style={styles.datePickerModalContent}>
+          {/* Header */}
+          <View style={styles.datePickerHeader}>
+            <Text style={styles.datePickerTitle}>Select Date of Birth</Text>
+            <TouchableOpacity 
+              onPress={onClose} 
+              style={styles.datePickerCloseButton}
+            >
+              <Text style={styles.datePickerCloseText}>✕</Text>
+            </TouchableOpacity>
+          </View>
+          
+          {/* Current Selection Display */}
+          <View style={styles.selectedDatePreview}>
+            <Text style={styles.selectedDatePreviewText}>
+              {getCurrentDate()}
+            </Text>
+          </View>
+          
+          {/* Three Row Selector */}
+          <View style={styles.threeRowSelector}>
+            {/* Year Column */}
+            <View style={styles.columnContainer}>
+              <Text style={styles.columnTitle}>Year</Text>
+              <View style={styles.columnScrollContainer}>
+                <View style={styles.selectionIndicatorTop} />
+                <View style={styles.selectionIndicatorMiddle} />
+                <View style={styles.selectionIndicatorBottom} />
+                
+                <ScrollView 
+                  ref={yearScrollRef}
+                  style={styles.columnScrollView}
+                  showsVerticalScrollIndicator={false}
+                  snapToInterval={ITEM_HEIGHT}
+                  decelerationRate="fast"
+                >
+                  <View style={{ height: ITEM_HEIGHT * 2 }} />
+                  {yearsList.map(renderYearItem)}
+                  <View style={{ height: ITEM_HEIGHT * 2 }} />
+                </ScrollView>
+              </View>
+            </View>
+            
+            {/* Month Column */}
+            <View style={styles.columnContainer}>
+              <Text style={styles.columnTitle}>Month</Text>
+              <View style={styles.columnScrollContainer}>
+                <View style={styles.selectionIndicatorTop} />
+                <View style={styles.selectionIndicatorMiddle} />
+                <View style={styles.selectionIndicatorBottom} />
+                
+                <ScrollView 
+                  ref={monthScrollRef}
+                  style={styles.columnScrollView}
+                  showsVerticalScrollIndicator={false}
+                  snapToInterval={ITEM_HEIGHT}
+                  decelerationRate="fast"
+                >
+                  <View style={{ height: ITEM_HEIGHT * 2 }} />
+                  {months.map(renderMonthItem)}
+                  <View style={{ height: ITEM_HEIGHT * 2 }} />
+                </ScrollView>
+              </View>
+            </View>
+            
+            {/* Day Column */}
+            <View style={styles.columnContainer}>
+              <Text style={styles.columnTitle}>Day</Text>
+              <View style={styles.columnScrollContainer}>
+                <View style={styles.selectionIndicatorTop} />
+                <View style={styles.selectionIndicatorMiddle} />
+                <View style={styles.selectionIndicatorBottom} />
+                
+                <ScrollView 
+                  ref={dayScrollRef}
+                  style={styles.columnScrollView}
+                  showsVerticalScrollIndicator={false}
+                  snapToInterval={ITEM_HEIGHT}
+                  decelerationRate="fast"
+                >
+                  <View style={{ height: ITEM_HEIGHT * 2 }} />
+                  {daysList.map(renderDayItem)}
+                  <View style={{ height: ITEM_HEIGHT * 2 }} />
+                </ScrollView>
+              </View>
+            </View>
+          </View>
+          
+          {/* Action Buttons */}
+          <View style={styles.datePickerActions}>
+            <TouchableOpacity 
+              style={styles.datePickerCancelButton}
+              onPress={onClose}
+            >
+              <Text style={styles.datePickerCancelText}>Cancel</Text>
+            </TouchableOpacity>
+            
+            <TouchableOpacity 
+              style={styles.datePickerConfirmButton}
+              onPress={handleConfirm}
+            >
+              <Text style={styles.datePickerConfirmText}>Select Date</Text>
+            </TouchableOpacity>
+          </View>
+        </View>
+      </View>
+    </Modal>
+  );
+};
+
+// ===== DATE OF BIRTH INPUT COMPONENT =====
+const DateOfBirthInput = ({ 
+  value, 
+  onChangeText, 
+  error, 
+  required, 
+  isValid,
+  showValidationIcon 
+}) => {
+  const [showDatePicker, setShowDatePicker] = useState(false);
+
+  // Format date for display
+  const formatDateForDisplay = (dateString) => {
+    if (!dateString) return '';
+    try {
+      const [year, month, day] = dateString.split('-');
+      return `${day}-${month}-${year}`;
+    } catch (e) {
+      return dateString;
+    }
+  };
+
+  return (
+    <View style={styles.dobContainer}>
+      <View style={styles.dobInputHeader}>
+        <Text style={styles.inputLabel}>
+          Date of Birth {required && <Text style={styles.requiredIndicator}>*</Text>}
+        </Text>
+        {showValidationIcon && isValid && (
+          <View style={styles.validationIcon}>
+            <Text>✅</Text>
+          </View>
+        )}
+      </View>
+      
+      <View style={styles.dobInputWrapper}>
+        <TextInput
+          style={[
+            styles.input,
+            styles.dobInput,
+            error && styles.inputError,
+            isValid && styles.inputValid,
+          ]}
+          value={formatDateForDisplay(value)}
+          onChangeText={onChangeText}
+          placeholder="DD-MM-YYYY"
+          editable={false}
+        />
+        <TouchableOpacity
+          style={styles.calendarIconButton}
+          onPress={() => setShowDatePicker(true)}
+        >
+          <Text style={styles.calendarIcon}>📅</Text>
+        </TouchableOpacity>
+      </View>
+      
+      <Text style={styles.dobHintText}>Format: DD-MM-YYYY</Text>
+      
+      {error && (
+        <View style={styles.errorContainer}>
+          <Text style={styles.errorIcon}>⚠️</Text>
+          <Text style={styles.errorText}>{error}</Text>
+        </View>
+      )}
+
+      <CustomDatePicker
+        visible={showDatePicker}
+        currentDate={value}
+        onSelectDate={onChangeText}
+        onClose={() => setShowDatePicker(false)}
+      />
+    </View>
+  );
+};
+
+// ===== GENDER SELECTOR COMPONENT =====
 const GenderSelector = ({ gender, updateField, errors }) => (
   <View style={styles.genderContainer}>
     <Text style={styles.genderLabel}>Gender *</Text>
@@ -60,6 +441,7 @@ const GenderSelector = ({ gender, updateField, errors }) => (
   </View>
 );
 
+// ===== TERMS CHECKBOX COMPONENT =====
 const TermsCheckbox = ({
   termsAccepted,
   updateField,
@@ -99,6 +481,7 @@ const TermsCheckbox = ({
   </View>
 );
 
+// ===== AADHAAR FIELD COMPONENT =====
 const AadhaarField = ({
   formData,
   errors,
@@ -108,8 +491,7 @@ const AadhaarField = ({
   pendingAadhaarVerification,
   userData,
 }) => {
-  const isAadhaarVerified =
-    formData.aadhaarVerified || (userData && userData.aadhaarVerified);
+  const isAadhaarVerified = formData.aadhaarVerified || (userData && userData.aadhaarVerified);
   const maskedAadhaar = formData.maskedAadhaar || userData?.maskedAadhaar;
 
   if (isAadhaarVerified) {
@@ -124,8 +506,7 @@ const AadhaarField = ({
 
         <View style={styles.verifiedAadhaarContent}>
           <Text style={styles.verifiedAadhaarNumber}>
-            {maskedAadhaar ||
-              `XXXX-XXXX-${formData.idProofNo?.slice(8) || "****"}`}
+            {maskedAadhaar || `XXXX-XXXX-${formData.idProofNo?.slice(8) || "****"}`}
           </Text>
         </View>
       </View>
@@ -144,10 +525,7 @@ const AadhaarField = ({
           style={[
             styles.input,
             styles.aadhaarInput,
-            formData.idProofNo &&
-              formData.idProofNo.length === 12 &&
-              !errors.idProofNo &&
-              styles.inputAadhaarReady,
+            formData.idProofNo && formData.idProofNo.length === 12 && !errors.idProofNo && styles.inputAadhaarReady,
             errors.idProofNo && styles.inputError,
           ]}
           value={formData.idProofNo}
@@ -157,28 +535,25 @@ const AadhaarField = ({
           maxLength={12}
         />
 
-        {formData.idProofNo &&
-          formData.idProofNo.length === 12 &&
-          !errors.idProofNo && (
-            <View style={styles.aadhaarActions}>
-              {/* REMOVED the terms check here */}
-              <TouchableOpacity
-                style={styles.verifyButtonFull}
-                onPress={handleVerifyAadhaar}
-                disabled={verificationInProgress || pendingAadhaarVerification}
-              >
-                {verificationInProgress || pendingAadhaarVerification ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <>
-                    <Text style={styles.verifyButtonText}>
-                      🔐 Verify Aadhaar
-                    </Text>
-                  </>
-                )}
-              </TouchableOpacity>
-            </View>
-          )}
+        {formData.idProofNo && formData.idProofNo.length === 12 && !errors.idProofNo && (
+          <View style={styles.aadhaarActions}>
+            <TouchableOpacity
+              style={styles.verifyButtonFull}
+              onPress={handleVerifyAadhaar}
+              disabled={verificationInProgress || pendingAadhaarVerification}
+            >
+              {verificationInProgress || pendingAadhaarVerification ? (
+                <ActivityIndicator size="small" color="#FFF" />
+              ) : (
+                <>
+                  <Text style={styles.verifyButtonText}>
+                    🔐 Verify Aadhaar
+                  </Text>
+                </>
+              )}
+            </TouchableOpacity>
+          </View>
+        )}
       </View>
 
       {errors.idProofNo && (
@@ -191,7 +566,7 @@ const AadhaarField = ({
   );
 };
 
-// Main Component
+// ===== MAIN PROFILE MANAGEMENT COMPONENT =====
 export default function ProfileManagement() {
   const {
     // State
@@ -222,10 +597,11 @@ export default function ProfileManagement() {
     resetForm,
     handleEdit,
     fetchUserData,
-    updateState, // ADD THIS - IT'S NOW RETURNED FROM THE HOOK
+    updateState,
   } = useUserProfile();
 
   const navigation = useNavigation();
+
   // ===== RENDER LOADING STATE =====
   if (isFetchingData) {
     return (
@@ -335,11 +711,10 @@ export default function ProfileManagement() {
                 maxLength={10}
               />
 
-              <CustomInput
-                label="Date of Birth (YYYY-MM-DD)"
+              {/* Updated Date of Birth input with three-row picker */}
+              <DateOfBirthInput
                 value={formData.dateOfBirth}
                 onChangeText={(v) => updateField("dateOfBirth", v)}
-                placeholder="1992-08-25"
                 error={errors.dateOfBirth}
                 required
                 showValidationIcon={true}

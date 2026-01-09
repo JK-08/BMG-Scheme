@@ -286,17 +286,14 @@ const BuyPage = () => {
       console.log("Creating payment order with payload:", orderPayload);
 
       // API call
-      const response = await fetch(
-        `${API_BASE_URL}/orders/create`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(orderPayload),
-        }
-      );
+      const response = await fetch(`${API_BASE_URL}/orders/create`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(orderPayload),
+      });
 
       console.log("Create order response status:", response.status);
 
@@ -311,7 +308,8 @@ const BuyPage = () => {
       console.log("Order created successfully:", data);
 
       // Extract order ID from response (adjust based on your API response structure)
-      const orderId = data.order_id || data.id || data.transactionId || data.referenceNo;
+      const orderId =
+        data.order_id || data.id || data.transactionId || data.referenceNo;
       console.log("Extracted order ID:", orderId);
       if (!orderId) {
         console.warn("No order ID found in response, using timestamp:", data);
@@ -455,7 +453,7 @@ const BuyPage = () => {
       // Get the order ID with correct parameters
       const orderId = await createOrder(amount, productInfo);
       console.log(`[Payment] Order ID created: ${orderId}`);
-      
+
       const payload = {
         merchantTxnNo: orderId,
         amount: parseFloat(amount || productInfo.defaultAmount),
@@ -468,12 +466,19 @@ const BuyPage = () => {
       };
 
       console.log(`[Payment] Payload for initiate-sale:`, payload);
+      console.log("T", token);
+      console.log(
+  "[Payment] Redirect API Authorization:",
+  `Bearer ${token}`
+);
+
       const initiate = await fetch(`${API_BASE_URL}/payment/initiate-sale`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
+          Authorization: token,
         },
+
         body: JSON.stringify(payload),
       });
 
@@ -961,7 +966,7 @@ const BuyPage = () => {
               </View>
             )}
           </View>
-          
+
           {/* Proceed Button */}
           <View style={styles.buttonContainer}>
             <TouchableOpacity

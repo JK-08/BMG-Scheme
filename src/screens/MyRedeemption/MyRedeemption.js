@@ -12,12 +12,35 @@ import {
   StatusBar,
   Modal,
   ScrollView,
+  Dimensions,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getPhoneDetails } from "../../services/SchemeDetailsService";
 import { getRemainingDaysData } from "../../services/Remainingdays";
 import theme from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
+
+const { width: SCREEN_WIDTH } = Dimensions.get('window');
+
+// Helper function to determine button font size based on text length
+const getButtonFontSize = (text = "How to Redeem") => {
+  const textLength = text.length;
+  
+  // Base font sizes adjusted for better fit
+  if (SCREEN_WIDTH < 350) { // Small phones
+    if (textLength > 12) return 9;
+    if (textLength > 10) return 10;
+    return 11;
+  } else if (SCREEN_WIDTH < 400) { // Medium phones
+    if (textLength > 12) return 10;
+    if (textLength > 10) return 11;
+    return 12;
+  } else { // Large phones
+    if (textLength > 12) return 11;
+    if (textLength > 10) return 12;
+    return 13;
+  }
+};
 
 const SchemeListPage = ({ route, navigation }) => {
   const routePhoneNumber = route?.params?.phoneNumber || null;
@@ -30,6 +53,32 @@ const SchemeListPage = ({ route, navigation }) => {
   const [schemeApiData, setSchemeApiData] = useState({});
   const [selectedScheme, setSelectedScheme] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+
+  // Helper function to extract date part from ISO string
+  const extractDatePart = (isoString) => {
+    if (!isoString) return null;
+    // If it's already just date (YYYY-MM-DD), return as is
+    if (/^\d{4}-\d{2}-\d{2}$/.test(isoString)) {
+      return isoString;
+    }
+    // If it has 'T' in it, extract date part
+    if (isoString.includes("T")) {
+      return isoString.split("T")[0];
+    }
+    // Try to parse as date and extract YYYY-MM-DD
+    try {
+      const date = new Date(isoString);
+      if (!isNaN(date.getTime())) {
+        const year = date.getFullYear();
+        const month = String(date.getMonth() + 1).padStart(2, "0");
+        const day = String(date.getDate()).padStart(2, "0");
+        return `${year}-${month}-${day}`;
+      }
+    } catch (e) {
+      console.error("Error parsing date:", e);
+    }
+    return null;
+  };
 
   // Memoized formatCurrency function
   const formatCurrency = useCallback((amount) => {
@@ -74,29 +123,31 @@ const SchemeListPage = ({ route, navigation }) => {
 
     const promises = schemesData.map(async (scheme) => {
       const schemeId = scheme.schemeSummary?.schemeId;
-      const joinDate = scheme.joinDate
-        ? new Date(scheme.joinDate).toISOString().split("T")[0]
-        : null;
 
-      if (schemeId && joinDate) {
+      // Extract just the date part from the ISO string
+      const extractedDate = extractDatePart(scheme.joinDate);
+
+      if (schemeId && extractedDate) {
         try {
-          const apiData = await getRemainingDaysData(schemeId, joinDate);
-          apiDataMap[`${schemeId}_${joinDate}`] = apiData;
+          // Pass the extracted date (YYYY-MM-DD) to your existing API
+          const apiData = await getRemainingDaysData(schemeId, extractedDate);
+
+          // Store with original joinDate as key for consistency
+          apiDataMap[`${schemeId}_${scheme.joinDate}`] = apiData;
         } catch (apiError) {
           console.warn(
             `Failed to fetch API data for scheme ${schemeId}:`,
             apiError
           );
-          apiDataMap[`${schemeId}_${joinDate}`] = {
-            remainingDays: scheme.remainingDays,
-            allDays: [],
-            totalDays: scheme.fulldays,
-          };
+          apiDataMap[`${schemeId}_${scheme.joinDate}`] = null;
         }
+      } else {
+        console.warn(`Missing schemeId or joinDate for scheme:`, scheme);
       }
     });
 
     await Promise.allSettled(promises);
+    console.log("All API Data Stored:", Object.keys(apiDataMap));
     return apiDataMap;
   }, []);
 
@@ -140,23 +191,6 @@ const SchemeListPage = ({ route, navigation }) => {
     []
   );
 
-  // Handle confirm redemption
-  const handleConfirmRedeem = useCallback(() => {
-    // Add your redemption logic here
-    console.log("Confirming redemption for:", selectedScheme);
-
-    // Close modal
-    setModalVisible(false);
-
-    // Show success message or navigate to success screen
-    alert("Redemption request submitted successfully!");
-
-    // Optionally refresh the schemes list
-    if (phoneNumber) {
-      fetchSchemes(phoneNumber);
-    }
-  }, [selectedScheme, phoneNumber, fetchSchemes]);
-
   // Effects
   useEffect(() => {
     loadPhoneNumber();
@@ -176,42 +210,47 @@ const SchemeListPage = ({ route, navigation }) => {
     }
   }, [phoneNumber, fetchSchemes]);
 
-  // Render scheme item with memoization
+  // Render scheme item
   const renderSchemeItem = useCallback(
     ({ item }) => {
-
-        const schemeCloseDays = item.remainingDays ?? 0;
-    
-
-
-      // 2️⃣ Bonus unlock days (FROM BONUS API ONLY)
-    
-      const remainingSchemeDays = item.remainingDays ?? 0;
-
-      // Get API data
-      const joinDate = item.joinDate
-        ? new Date(item.joinDate).toISOString().split("T")[0]
-        : null;
-      const schemeId = item.schemeSummary?.schemeId;
-      const apiDataKey = `${schemeId}_${joinDate}`;
-      const apiData = schemeApiData[apiDataKey];
-  const bonusUnlockDays = schemeApiData[apiDataKey]?.remainingDays ?? null;
+      const schemeCloseDays = item.remainingDays ?? 0;
       const schemeName = item.schemeSummary?.schemeName || "N/A";
-      console.log("Scheme Close Days:", schemeCloseDays);
-console.log("Bonus Unlock Days:", bonusUnlockDays);
 
-      // Calculate display values
-      const remainingBonusDays = apiData?.remainingDays ?? remainingSchemeDays;
+      // Use the original joinDate as key
+      const joinDate = item.joinDate; // "2025-10-01T00:00:00"
+      const schemeId = item.schemeSummary?.schemeId;
+
+      // Create key matching what we stored in fetchApiDataForSchemes
+      const apiDataKey = `${schemeId}_${joinDate}`;
+      const apiData = schemeApiData[apiDataKey] || {};
+
+      // Get bonus days EXACTLY from API
+      const bonusUnlockDays =
+        apiData.remainingDays !== undefined ? apiData.remainingDays : null;
+
+      // Calculate display values - USE API DATA DIRECTLY
+      const remainingBonusDays =
+        bonusUnlockDays !== null ? bonusUnlockDays : schemeCloseDays;
       const baseAmount = item.totalAmount || 0;
       const bonusAmount = item.totalAmountWithBonus || 0;
-      const displayAmount = remainingBonusDays > 0 ? baseAmount : bonusAmount;
+
+      // Determine which amount to display
+      let displayAmount = baseAmount;
+      if (bonusUnlockDays !== null) {
+        // If we have bonus API data
+        displayAmount = bonusUnlockDays > 0 ? baseAmount : bonusAmount;
+      } else {
+        // Fallback
+        displayAmount = schemeCloseDays > 0 ? baseAmount : bonusAmount;
+      }
+
       const canRedeem = schemeCloseDays <= 0;
 
-      // Status color based on remainingSchemeDays
+      // Status color for scheme close days
       let statusColor = theme.COLORS.warning;
-      if (remainingSchemeDays === 0) {
+      if (schemeCloseDays === 0) {
         statusColor = theme.COLORS.success;
-      } else if (remainingSchemeDays < 0) {
+      } else if (schemeCloseDays < 0) {
         statusColor = theme.COLORS.error;
       }
 
@@ -223,10 +262,9 @@ console.log("Bonus Unlock Days:", bonusUnlockDays);
         ? theme.COLORS.success
         : theme.COLORS.textSecondary;
 
-      // 1️⃣ Scheme close days (FOR REDEEM)
-    
-
-        
+      // Get button text properties
+      const buttonText = "How to Redeem";
+      const buttonFontSize = getButtonFontSize(buttonText);
 
       return (
         <View style={styles.tableRow}>
@@ -242,6 +280,7 @@ console.log("Bonus Unlock Days:", bonusUnlockDays);
             <Text style={[styles.daysText, { color: statusColor }]}>
               {schemeCloseDays}
             </Text>
+            {/* Show bonus days from API */}
           </View>
 
           {/* Amount Section */}
@@ -279,9 +318,13 @@ console.log("Bonus Unlock Days:", bonusUnlockDays);
                 style={[
                   styles.redeemButtonText,
                   !canRedeem && styles.redeemButtonTextDisabled,
+                  { fontSize: buttonFontSize }
                 ]}
+                numberOfLines={2}
+                adjustsFontSizeToFit
+                minimumFontScale={0.85}
               >
-                Redeem
+                {buttonText}
               </Text>
             </TouchableOpacity>
           </View>
@@ -354,19 +397,12 @@ console.log("Bonus Unlock Days:", bonusUnlockDays);
     );
   }, [error, phoneNumber, fetchSchemes]);
 
-  // Fixed key extractor with guaranteed uniqueness
+  // Fixed key extractor
   const keyExtractor = useCallback((item, index) => {
-    // Create a composite key with multiple identifiers
     const schemeId = item.schemeSummary?.schemeId || `scheme_${index}`;
     const regNo = item.regNo || `reg_${index}`;
-    const joinDate = item.joinDate
-      ? new Date(item.joinDate).getTime()
-      : Date.now();
-    const uniqueId = `${schemeId}_${regNo}_${joinDate}_${index}_${Math.random()
-      .toString(36)
-      .substr(2, 9)}`;
-
-    return uniqueId;
+    const joinDate = item.joinDate || `date_${index}`;
+    return `${schemeId}_${regNo}_${joinDate}_${index}`;
   }, []);
 
   // Loading state
@@ -550,19 +586,19 @@ const styles = StyleSheet.create({
     backgroundColor: theme.COLORS.white,
     marginHorizontal: theme.SIZES.xs,
     marginBottom: theme.SIZES.xs,
-    paddingVertical: theme.SIZES.lg,
-    paddingHorizontal: theme.SIZES.sm,
+    paddingVertical: theme.SIZES.md,
+    paddingHorizontal: theme.SIZES.xs,
     borderRadius: theme.SIZES.radius.md,
     borderWidth: 1,
     borderColor: theme.COLORS.borderLight,
-    minHeight: 80,
+    minHeight: 70,
     alignItems: "center",
   },
 
   // Scheme Column
   schemeNameContainer: {
     flex: 1,
-    paddingLeft: theme.SIZES.sm,
+    paddingLeft: theme.SIZES.xs,
     justifyContent: "center",
   },
   schemeName: {
@@ -603,43 +639,47 @@ const styles = StyleSheet.create({
     marginLeft: 4,
   },
   unlockText: {
-    fontSize: 10,
+    fontSize: 9,
     color: theme.COLORS.warning,
     fontWeight: "500",
     marginTop: 2,
     textAlign: "center",
   },
   bonusUnlockedText: {
-    fontSize: 10,
+    fontSize: 9,
     color: theme.COLORS.success,
     fontWeight: "600",
     marginTop: 2,
   },
 
-  // Action Column
+  // Action Column - Optimized for text centering
   actionContainer: {
     flex: 1,
     justifyContent: "center",
     alignItems: "center",
+    paddingHorizontal: 2,
   },
   redeemButton: {
     backgroundColor: theme.COLORS.primary,
-    paddingVertical: 8,
-    paddingHorizontal: theme.SIZES.xs,
     borderRadius: theme.SIZES.radius.sm,
-    minWidth: 80,
+    width: SCREEN_WIDTH < 350 ? 80 : 85,
+    height: 34,
     justifyContent: "center",
     alignItems: "center",
-    minHeight: 40,
+    paddingHorizontal: 4,
+    paddingVertical: 0,
   },
   redeemButtonDisabled: {
     backgroundColor: theme.COLORS.gray300,
   },
   redeemButtonText: {
-    fontSize: theme.SIZES.font.sm,
     color: theme.COLORS.white,
     fontWeight: "600",
-    alignSelf: "center",
+    textAlign: "center",
+    textAlignVertical: "center",
+    includeFontPadding: false,
+    paddingVertical: 0,
+    lineHeight: 14,
   },
   redeemButtonTextDisabled: {
     color: theme.COLORS.gray600,
@@ -779,35 +819,6 @@ const styles = StyleSheet.create({
     fontSize: theme.SIZES.font.sm,
     color: theme.COLORS.textSecondary,
     lineHeight: 22,
-  },
-  modalFooter: {
-    flexDirection: "row",
-    padding: theme.SIZES.lg,
-    borderTopWidth: 1,
-    borderTopColor: theme.COLORS.borderLight,
-  },
-  modalButton: {
-    flex: 1,
-    paddingVertical: theme.SIZES.md,
-    borderRadius: theme.SIZES.radius.md,
-    alignItems: "center",
-    marginHorizontal: theme.SIZES.xs,
-  },
-  cancelButton: {
-    backgroundColor: theme.COLORS.gray200,
-  },
-  cancelButtonText: {
-    fontSize: theme.SIZES.font.md,
-    fontWeight: "600",
-    color: theme.COLORS.textSecondary,
-  },
-  confirmButton: {
-    backgroundColor: theme.COLORS.primary,
-  },
-  confirmButtonText: {
-    fontSize: theme.SIZES.font.md,
-    fontWeight: "600",
-    color: theme.COLORS.white,
   },
 });
 

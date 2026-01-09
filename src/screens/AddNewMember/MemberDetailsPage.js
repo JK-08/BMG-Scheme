@@ -18,6 +18,7 @@ import {
   ActivityIndicator,
   Linking,
   Modal,
+  BackHandler,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { BottomTab } from "../../components";
@@ -40,6 +41,7 @@ import {
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 import { styles } from "./MemberStyles";
 import { API_BASE_URL } from "../../Config/API";
+
 // helpers.js
 export const MONTHS = [
   "January",
@@ -57,14 +59,10 @@ export const MONTHS = [
 ];
 
 export const parseAddress = (address1, address2) => {
-  // In your case, address1 is "29" (door/house number)
-  // address2 is "BAJANAI KOIL STREET" (street)
-  // There's no separate "area" field in your data, so we'll use city for area
-  
   return { 
     doorNo: address1 || "", 
     street: address2 || "", 
-    area: "" // Leave empty or use city if needed
+    area: "" 
   };
 };
 
@@ -121,15 +119,12 @@ export const getMaskedAadhaar = (aadhaar) => {
   return `XXXX-XXXX-${aadhaar.substring(8)}`;
 };
 
-// Helper function to extract last 4 digits from masked Aadhaar
 export const extractLast4FromMaskedAadhaar = (maskedAadhaar) => {
   if (!maskedAadhaar) return "";
-  // Handle formats like: XXXX-XXXX-1234 or XXXX-XXXX-XXXX-1234
   const match = maskedAadhaar.match(/(\d{4})$/);
   return match ? match[1] : "";
 };
 
-// Helper function to extract last 4 digits from regular Aadhaar
 export const extractLast4FromAadhaar = (aadhaar) => {
   if (!aadhaar) return "";
   const cleanAadhaar = aadhaar.replace(/\s/g, "");
@@ -228,6 +223,7 @@ const MemberDetailsPage = ({
   const [userData, setUserData] = useState(null);
   const [apiLoading, setApiLoading] = useState(true);
   const [userId, setUserId] = useState(null);
+  const [verificationAttempted, setVerificationAttempted] = useState(false);
 
   useEffect(() => {
     (async () => {
@@ -236,13 +232,69 @@ const MemberDetailsPage = ({
     })();
   }, []);
 
+  const completeVerification = useCallback(() => {
+    if (verificationPolling) {
+      clearInterval(verificationPolling);
+      setVerificationPolling(null);
+    }
+    
+    setShowDigiLockerWebView(false);
+    
+    Alert.alert(
+      "Verification Pending",
+      "Your verification is being processed. Please wait a moment for the results.",
+      [{ text: "OK" }]
+    );
+  }, [verificationPolling]);
+
+  const checkStatusAndComplete = useCallback(() => {
+    Alert.alert(
+      "Check Verification",
+      "Have you completed the verification in DigiLocker?",
+      [
+        
+        {
+          text: "Cancel Verification",
+          onPress: () => {
+            setShowDigiLockerWebView(false);
+            
+            if (verificationPolling) {
+              clearInterval(verificationPolling);
+              setVerificationPolling(null);
+            }
+            
+            setNomineeAadhaarStatus({
+              isVerified: false,
+              isVerifying: false,
+              verificationId: "",
+              message: "",
+              aadhaarData: null,
+            });
+            
+            setFormData(prev => ({
+              ...prev,
+              nomineeAadhaarVerified: false,
+              nomineeAadhaarVerificationId: "",
+            }));
+            
+            Alert.alert(
+              "Verification Cancelled",
+              "You can try again or proceed with manual verification.",
+              [{ text: "OK" }]
+            );
+          },
+          style: "destructive",
+        },
+      ]
+    );
+  }, [completeVerification, verificationPolling]);
+
   const displayMaskedAadhaar = (aadhaar) => {
     if (!aadhaar || aadhaar.length < 12) return "XXXX-XXXX-XXXX";
     const cleanAadhaar = aadhaar.replace(/\s/g, "");
     return `XXXX-XXXX-${cleanAadhaar.substring(8)}`;
   };
 
-  // Helper function to get last 4 digits from user's masked Aadhaar
   const getUserAadhaarLast4 = useCallback(() => {
     if (userData?.maskedAadhaar) {
       return extractLast4FromMaskedAadhaar(userData.maskedAadhaar);
@@ -253,7 +305,6 @@ const MemberDetailsPage = ({
     return "";
   }, [userData, formData.aadharNumber]);
 
-  // Helper function to check if nominee Aadhaar is same as user's Aadhaar
   const isSameAadhaar = useCallback(() => {
     const nomineeAadhaar = formData.nomineeAadhaarNumber.replace(/\s/g, "");
     if (!nomineeAadhaar || nomineeAadhaar.length !== 12) return false;
@@ -261,12 +312,10 @@ const MemberDetailsPage = ({
     const userLast4 = getUserAadhaarLast4();
     const nomineeLast4 = nomineeAadhaar.substring(8);
 
-    // If we have user's last 4 digits, compare them
     if (userLast4 && userLast4 === nomineeLast4) {
       return true;
     }
 
-    // Also check if user has full Aadhaar from form
     const userAadhaar = formData.aadharNumber.replace(/\s/g, "");
     if (
       userAadhaar &&
@@ -283,7 +332,6 @@ const MemberDetailsPage = ({
     getUserAadhaarLast4,
   ]);
 
-  // Memoized values
   const currentYear = new Date().getFullYear();
   const { days, months, years } = useMemo(
     () => ({
@@ -300,44 +348,63 @@ const MemberDetailsPage = ({
     [currentYear]
   );
 
-  // Effects
-// Update the fetchUserData function in the useEffect
-useEffect(() => {
-  const fetchUserData = async () => {
-    try {
-      const currentUserId = await AsyncStorage.getItem("userId");
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const currentUserId = await AsyncStorage.getItem("userId");
 
-      if (!currentUserId) {
-        console.log("No userId available");
-        Alert.alert(
-          "Registration Required",
-          "Please complete your KYC registration first.",
-          [
-            {
-              text: "Register Now",
-              onPress: () => {
-                navigation.navigate("UserRegisterForm");
-              },
-            },
-          ]
-        );
-        setApiLoading(false);
-        return;
-      }
-
-      setApiLoading(true);
-      const response = await fetch(`${API_BASE_URL}/user/${currentUserId}`);
-
-      if (!response.ok) {
-        if (response.status === 404) {
+        if (!currentUserId) {
+          console.log("No userId available");
           Alert.alert(
-            "User Not Found",
-            "Your profile was not found. Please complete your KYC registration.",
+            "Registration Required",
+            "Please complete your KYC registration first.",
             [
               {
                 text: "Register Now",
                 onPress: () => {
-                  AsyncStorage.removeItem("userId");
+                  navigation.navigate("MemberDetailsPage");
+                },
+              },
+            ]
+          );
+          setApiLoading(false);
+          return;
+        }
+
+        setApiLoading(true);
+        const response = await fetch(`${API_BASE_URL}/user/${currentUserId}`);
+
+        if (!response.ok) {
+          if (response.status === 404) {
+            Alert.alert(
+              "User Not Found",
+              "Your profile was not found. Please complete your KYC registration.",
+              [
+                {
+                  text: "Register Now",
+                  onPress: () => {
+                    AsyncStorage.removeItem("userId");
+                    navigation.navigate("UserRegisterForm");
+                  },
+                },
+              ]
+            );
+            setApiLoading(false);
+            return;
+          }
+          throw new Error(`API error: ${response.status}`);
+        }
+
+        const data = await response.json();
+
+        if (!data || Object.keys(data).length === 0 || !data.id) {
+          Alert.alert(
+            "Incomplete Profile",
+            "Your profile is incomplete. Please complete your KYC registration.",
+            [
+              {
+                text: "Complete Registration",
+                onPress: () => {
                   navigation.navigate("UserRegisterForm");
                 },
               },
@@ -346,143 +413,110 @@ useEffect(() => {
           setApiLoading(false);
           return;
         }
-        throw new Error(`API error: ${response.status}`);
-      }
 
-      const data = await response.json();
+        const hasBasicKYC = data.contactNumber && data.email && data.username;
+        const hasFullKYC = data.aadhaarVerified && 
+                          data.dateOfBirth && 
+                          data.pincode && 
+                          data.address1;
 
-      // Check if data is empty or doesn't have required fields
-      if (!data || Object.keys(data).length === 0 || !data.id) {
-        Alert.alert(
-          "Incomplete Profile",
-          "Your profile is incomplete. Please complete your KYC registration.",
-          [
-            {
-              text: "Complete Registration",
-              onPress: () => {
-                navigation.navigate("UserRegisterForm");
+        if (!data.aadhaarVerified || !hasBasicKYC) {
+          Alert.alert(
+            "KYC Required",
+            "Please complete your KYC registration to proceed.",
+            [
+              {
+                text: "Complete KYC",
+                onPress: () => {
+                  navigation.navigate("UserRegisterForm", { 
+                    userId: data.id,
+                    prefillData: {
+                      username: data.username,
+                      email: data.email,
+                      contactNumber: data.contactNumber
+                    }
+                  });
+                },
               },
-            },
-          ]
-        );
+              {
+                text: "Cancel",
+                style: "cancel"
+              }
+            ]
+          );
+          setApiLoading(false);
+          return;
+        }
+
+        setUserData(data);
+
+        if (hasFullKYC) {
+          const addressParts = parseAddress(data.address1, data.address2);
+
+          const updatedForm = {
+            name: data.username || "",
+            mobile: data.contactNumber || "",
+            email: data.email || "",
+            dateOfBirth: data.dateOfBirth || "",
+            pincode: data.pincode || "",
+            city: data.city || "",
+            state: data.state || "",
+            doorNo: addressParts.doorNo || "",
+            street: addressParts.street || "",
+            area: data.city || "",
+            aadharNumber: data.maskedAadhaar || "",
+          };
+
+          setFormData((prev) => ({ ...prev, ...updatedForm }));
+          setIsAadhaarValid(data.aadhaarVerified || false);
+          
+          if (data.dateOfBirth) {
+            const [year, month, day] = data.dateOfBirth.split("-");
+            setSelectedDate({ day, month, year });
+          }
+        }
+
+      } catch (error) {
+        console.error("Error fetching user data:", error);
+        
+        if (error.message.includes("Network request failed")) {
+          Alert.alert(
+            "Network Error",
+            "Unable to connect to server. Please check your internet connection.",
+            [
+              {
+                text: "Try Again",
+                onPress: () => fetchUserData(),
+              },
+              {
+                text: "Register Offline",
+                onPress: () => {
+                  navigation.navigate("UserRegisterPage");
+                },
+              },
+            ]
+          );
+        } else {
+          Alert.alert(
+            "Registration Required",
+            "Unable to load your profile. Please complete your KYC registration first.",
+            [
+              {
+                text: "Register Now",
+                onPress: () => {
+                  navigation.navigate("UserRegisterForm");
+                },
+              },
+            ]
+          );
+        }
+      } finally {
         setApiLoading(false);
-        return;
       }
+    };
 
-      // Check if user has completed KYC (has essential fields)
-      const hasBasicKYC = data.contactNumber && data.email && data.username;
-      const hasFullKYC = data.aadhaarVerified && 
-                        data.dateOfBirth && 
-                        data.pincode && 
-                        data.address1; // Adjust based on your actual KYC fields
-
-      if (!data.aadhaarVerified || !hasBasicKYC) {
-        // User exists but hasn't completed KYC
-        Alert.alert(
-          "KYC Required",
-          "Please complete your KYC registration to proceed.",
-          [
-            {
-              text: "Complete KYC",
-              onPress: () => {
-                // Navigate to KYC completion page
-                // You might want to pass the user data to pre-fill
-                navigation.navigate("UserRegisterForm", { 
-                  userId: data.id,
-                  prefillData: {
-                    username: data.username,
-                    email: data.email,
-                    contactNumber: data.contactNumber
-                  }
-                });
-              },
-            },
-            {
-              text: "Cancel",
-              style: "cancel"
-            }
-          ]
-        );
-        setApiLoading(false);
-        return;
-      }
-
-      // User has completed KYC - set the data
-      setUserData(data);
-
-      // Only set form data if KYC is complete
-      if (hasFullKYC) {
-  // Use the actual user data structure
-  // address1 = "29" (door number)
-  // address2 = "BAJANAI KOIL STREET" (street)
-  // city = "Kunnathur"
-  
-  const addressParts = parseAddress(data.address1, data.address2);
-
-  const updatedForm = {
-    name: data.username || "",
-    mobile: data.contactNumber || "",
-    email: data.email || "",
-    dateOfBirth: data.dateOfBirth || "",
-    pincode: data.pincode || "",
-    city: data.city || "",
-    state: data.state || "",
-    doorNo: addressParts.doorNo || "", // This will be "29"
-    street: addressParts.street || "", // This will be "BAJANAI KOIL STREET"
-    area: data.city || "", // Using city as area since no separate area field
-    aadharNumber: data.maskedAadhaar || "",
-  };
-
-  setFormData((prev) => ({ ...prev, ...updatedForm }));
-  setIsAadhaarValid(data.aadhaarVerified || false);
-  
-  if (data.dateOfBirth) {
-    const [year, month, day] = data.dateOfBirth.split("-");
-    setSelectedDate({ day, month, year });
-  }
-}
-
-    } catch (error) {
-      console.error("Error fetching user data:", error);
-      
-      if (error.message.includes("Network request failed")) {
-        Alert.alert(
-          "Network Error",
-          "Unable to connect to server. Please check your internet connection.",
-          [
-            {
-              text: "Try Again",
-              onPress: () => fetchUserData(),
-            },
-            {
-              text: "Register Offline",
-              onPress: () => {
-                navigation.navigate("UserRegisterPage");
-              },
-            },
-          ]
-        );
-      } else {
-        Alert.alert(
-          "Registration Required",
-          "Unable to load your profile. Please complete your KYC registration first.",
-          [
-            {
-              text: "Register Now",
-              onPress: () => {
-                navigation.navigate("UserRegisterForm");
-              },
-            },
-          ]
-        );
-      }
-    } finally {
-      setApiLoading(false);
-    }
-  };
-
-  fetchUserData();
-}, [userId, navigation]);
+    fetchUserData();
+  }, [userId, navigation]);
 
   const getUserDataForStorage = useCallback(() => {
     return {
@@ -540,7 +574,6 @@ useEffect(() => {
           ? JSON.parse(savedUserData)
           : {};
 
-        // Only set user fields, NOT nominee fields
         setFormData((prev) => {
           const merged = {
             ...prev,
@@ -569,8 +602,6 @@ useEffect(() => {
           });
         }
 
-        // DON'T load nominee Aadhaar verification status
-        // Always start with fresh nominee verification state
         setNomineeAadhaarStatus({
           isVerified: false,
           isVerifying: false,
@@ -585,6 +616,7 @@ useEffect(() => {
 
     loadInitialData();
   }, [apiLoading, initialSchemeId, initialSchemeName, userData]);
+
   useEffect(() => {
     if (apiLoading) return;
 
@@ -677,7 +709,33 @@ useEffect(() => {
     return () => clearTimeout(debounceTimer);
   }, [formData.pincode]);
 
-  // Handlers
+  // Android hardware back button handler
+  useEffect(() => {
+    const handleBackPress = () => {
+      if (showDigiLockerWebView) {
+        if (!verificationAttempted) {
+          checkStatusAndComplete();
+        } else {
+          setShowDigiLockerWebView(false);
+          if (verificationPolling) {
+            clearInterval(verificationPolling);
+            setVerificationPolling(null);
+          }
+        }
+        return true;
+      }
+      return false;
+    };
+
+    if (Platform.OS === 'android') {
+      const backHandler = BackHandler.addEventListener(
+        'hardwareBackPress',
+        handleBackPress
+      );
+      return () => backHandler.remove();
+    }
+  }, [showDigiLockerWebView, verificationAttempted, checkStatusAndComplete, verificationPolling]);
+
   const updateField = useCallback(
     (field, value) => {
       if (
@@ -720,7 +778,6 @@ useEffect(() => {
       if (field === "nomineeAadhaarNumber") {
         const cleanValue = value.replace(/\s/g, "");
 
-        // Clear any existing verification if changing Aadhaar
         if (cleanValue.length === 12) {
           setNomineeAadhaarStatus((prev) => ({
             ...prev,
@@ -746,10 +803,8 @@ useEffect(() => {
             nomPincode: "",
           }));
 
-          // Check for duplicate Aadhaar using last 4 digits
           if (isSameAadhaar()) {
             const userLast4 = getUserAadhaarLast4();
-            // Show error and prevent the update
             Alert.alert(
               "Same Aadhaar Detected",
               `Cannot use your Aadhaar for nominee.\n\nPlease use a different Aadhaar number for nominee.`,
@@ -757,22 +812,19 @@ useEffect(() => {
                 {
                   text: "OK",
                   onPress: () => {
-                    // Clear the input field
                     setFormData((prev) => ({
                       ...prev,
                       nomineeAadhaarNumber: "",
                     }));
-                    // Focus back on the field
                     inputRefs.current.nomineeAadhaarNumber?.focus();
                   },
                 },
               ]
             );
-            return; // Don't update with invalid value
+            return;
           }
         }
 
-        // Format and update the field
         let formattedValue = cleanValue;
         if (cleanValue.length > 8) {
           formattedValue = `${cleanValue.slice(0, 4)} ${cleanValue.slice(
@@ -785,7 +837,6 @@ useEffect(() => {
 
         setFormData((prev) => ({ ...prev, [field]: formattedValue.trim() }));
 
-        // Clear validation error if any
         if (validationErrors[field]) {
           setValidationErrors((prev) => ({ ...prev, [field]: "" }));
         }
@@ -960,7 +1011,6 @@ useEffect(() => {
       return;
     }
 
-    // Check for duplicate Aadhaar using last 4 digits
     if (isSameAadhaar()) {
       const userLast4 = getUserAadhaarLast4();
       Alert.alert(
@@ -970,7 +1020,6 @@ useEffect(() => {
           {
             text: "OK",
             onPress: () => {
-              // Clear the field and focus
               setFormData((prev) => ({
                 ...prev,
                 nomineeAadhaarNumber: "",
@@ -992,9 +1041,9 @@ useEffect(() => {
       return;
     }
 
-    // Open consent modal directly without asking confirmation
     setShowConsentModal(true);
     setIsAadhaarDifferentConfirmed(false);
+    setVerificationAttempted(false); // Reset verification attempted flag
   }, [
     formData.nomineeAadhaarNumber,
     nomineeAadhaarStatus.isVerified,
@@ -1003,7 +1052,6 @@ useEffect(() => {
   ]);
 
   const handleConsentConfirm = useCallback(async () => {
-    // Final safety check
     if (isSameAadhaar()) {
       const userLast4 = getUserAadhaarLast4();
       Alert.alert(
@@ -1026,7 +1074,6 @@ useEffect(() => {
       return;
     }
 
-    // Check if checkbox is checked
     if (!isAadhaarDifferentConfirmed) {
       Alert.alert(
         "Consent Required",
@@ -1038,6 +1085,7 @@ useEffect(() => {
 
     setShowConsentModal(false);
     setFailureHandled(false);
+    setVerificationAttempted(false); // Reset verification attempted flag
 
     const aadhaarNumber = formData.nomineeAadhaarNumber.replace(/\s/g, "");
 
@@ -1360,7 +1408,6 @@ useEffect(() => {
         if (nomineeAadhaarErr) {
           errors.nomineeAadhaarNumber = nomineeAadhaarErr;
         } else {
-          // Check if nominee Aadhaar is same as user Aadhaar using last 4 digits
           const userLast4 = getUserAadhaarLast4();
           const nomineeAadhaar = d.nomineeAadhaarNumber.replace(/\s/g, "");
           const nomineeLast4 = nomineeAadhaar.substring(8);
@@ -1405,7 +1452,6 @@ useEffect(() => {
     const errors = validate(formData);
     setValidationErrors(errors);
 
-    // Check for same Aadhaar one more time before proceeding
     if (isSameAadhaar()) {
       const userLast4 = getUserAadhaarLast4();
       Alert.alert(
@@ -1524,16 +1570,13 @@ useEffect(() => {
 
   const clearSavedData = useCallback(async () => {
     try {
-      // Clear both user data and any old form data
       await Promise.all([
         AsyncStorage.removeItem("digigoldUserData"),
         AsyncStorage.removeItem("digigoldMemberForm"),
         AsyncStorage.removeItem("digilocker_verification_id"),
       ]);
 
-      // Reset only user data from API/profile
       if (userData) {
-        // Use the direct fields from userData
         setFormData({
           ...INITIAL_FORM,
           name: userData.username || "",
@@ -1544,9 +1587,9 @@ useEffect(() => {
           city: userData.city || "",
           state: userData.state || "",
           aadharNumber: userData.maskedAadhaar || "",
-          doorNo: userData.address1 || "", // Direct from address1
-          street: userData.address2 || "", // Direct from address2
-          area: userData.city || "", // No area in your data
+          doorNo: userData.address1 || "",
+          street: userData.address2 || "",
+          area: userData.city || "",
         });
       } else {
         setFormData(INITIAL_FORM);
@@ -1559,7 +1602,6 @@ useEffect(() => {
       setValidationErrors({});
       setIsAadhaarValid(false);
 
-      // Always reset nominee verification state
       setNomineeAadhaarStatus({
         isVerified: false,
         isVerifying: false,
@@ -1570,6 +1612,7 @@ useEffect(() => {
 
       setFailureHandled(false);
       setIsAadhaarDifferentConfirmed(false);
+      setVerificationAttempted(false);
 
       if (verificationPolling) {
         clearInterval(verificationPolling);
@@ -1589,7 +1632,6 @@ useEffect(() => {
     userData,
   ]);
 
-  // Custom Picker Component
   const renderCustomPicker = useCallback(
     () => (
       <View style={styles.pickerContainer}>
@@ -1634,7 +1676,6 @@ useEffect(() => {
     [days, months, years, selectedDate]
   );
 
-  // Consent Modal Component
   const renderConsentModal = useCallback(() => {
     const isSame = isSameAadhaar();
 
@@ -1705,7 +1746,6 @@ useEffect(() => {
                 Information Technology Act, 2000.
               </Text>
 
-              {/* Show warning if same Aadhaar */}
               {isSame && (
                 <View style={styles.warningBox}>
                   <MaterialIcons name="warning" size={20} color="#FF6B6B" />
@@ -1716,7 +1756,6 @@ useEffect(() => {
                 </View>
               )}
 
-              {/* Confirmation Checkbox */}
               <View style={styles.confirmationCheckboxContainer}>
                 <TouchableOpacity
                   style={styles.checkboxIconContainer}
@@ -1785,7 +1824,6 @@ useEffect(() => {
     handleConsentConfirm,
   ]);
 
-  // Helper function to render input
   const renderInput = useCallback(
     (field, label, handler, isRequired = true, editable = true) => (
       <View style={styles.inputGroup}>
@@ -1811,17 +1849,17 @@ useEffect(() => {
     [formData, validationErrors, updateField]
   );
 
-  // Show loading while fetching API data
- if (apiLoading) {
-  return (
-    <View style={styles.loadingContainer}>
-      <ActivityIndicator size="large" color={COLORS.primary} />
-      <Text style={styles.loadingText}>
-        {userData ? "Loading your profile data..." : "Checking your profile..."}
-      </Text>
-    </View>
-  );
-}
+  if (apiLoading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.loadingText}>
+          {userData ? "Loading your profile data..." : "Checking your profile..."}
+        </Text>
+      </View>
+    );
+  }
+
   return (
     <KeyboardAvoidingView
       behavior={Platform.OS === "ios" ? "padding" : "height"}
@@ -2014,26 +2052,13 @@ useEffect(() => {
         </View>
 
         {/* Address Section */}
-        {/* Address Section */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>Address</Text>
-
-          {/* Door No - from address1 */}
           {renderInput("doorNo", "Door No.", null, true, true)}
-
-          {/* Street - from address2 */}
           {renderInput("street", "Street", null, true, true)}
-
-          {/* Area/Locality - you can keep this for manual entry */}
           {renderInput("area", "Area / Locality", null, false, true)}
-
-          {/* PIN Code */}
           {renderInput("pincode", "PIN Code", handlePincode, true, true)}
-
-          {/* City - from userData.city, auto-filled by pincode */}
           {renderInput("city", "City", null, true, false)}
-
-          {/* State - from userData.state, auto-filled by pincode */}
           {renderInput("state", "State", null, true, false)}
         </View>
 
@@ -2206,17 +2231,31 @@ useEffect(() => {
         visible={showDigiLockerWebView}
         animationType="slide"
         onRequestClose={() => {
-          setShowDigiLockerWebView(false);
-          if (verificationPolling) {
-            clearInterval(verificationPolling);
-            setVerificationPolling(null);
+          if (!verificationAttempted) {
+            checkStatusAndComplete();
+          } else {
+            setShowDigiLockerWebView(false);
+            if (verificationPolling) {
+              clearInterval(verificationPolling);
+              setVerificationPolling(null);
+            }
           }
         }}
       >
         <View style={styles.webViewContainer}>
           <CommonHeader
             title="DigiLocker Verification"
-            onBackPress={() => setShowDigiLockerWebView(false)}
+            onBackPress={() => {
+              if (!verificationAttempted) {
+                checkStatusAndComplete();
+              } else {
+                setShowDigiLockerWebView(false);
+                if (verificationPolling) {
+                  clearInterval(verificationPolling);
+                  setVerificationPolling(null);
+                }
+              }
+            }}
           />
           {digiLockerUrl ? (
             <WebView

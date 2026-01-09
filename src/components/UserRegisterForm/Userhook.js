@@ -166,243 +166,201 @@ const fetchUserData = async (userId) => {
 };
 
   // ===== FORM FIELD UPDATES =====
-  const updateField = (field, value) => {
-    if (!state.isFormDirty) updateState({ isFormDirty: true });
+// ===== FORM FIELD UPDATES =====
+const updateField = (field, value) => {
+  if (!state.isFormDirty) updateState({ isFormDirty: true });
 
-    // Handle termsAccepted with KYC logic
-    if (field === "termsAccepted") {
-      const newValue = value;
+  // Handle termsAccepted with KYC logic
+  if (field === "termsAccepted") {
+    const newValue = value;
+    const updatedFormData = {
+      ...formData,
+      [field]: newValue,
+      kycVerified: formData.aadhaarVerified && newValue ? true : false,
+    };
+    setFormData(updatedFormData);
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+    updateState((prev) => ({
+      fieldValidity: {
+        ...prev.fieldValidity,
+        [field]: true,
+        kycVerified: prev.fieldValidity.aadhaarVerified && newValue,
+      },
+    }));
+    return;
+  }
+
+  // Handle aadhaarVerified with KYC logic
+  if (field === "aadhaarVerified") {
+    const newValue = value;
+    const updatedFormData = {
+      ...formData,
+      [field]: newValue,
+      kycVerified: newValue && formData.termsAccepted ? true : false,
+    };
+    setFormData(updatedFormData);
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+    updateState((prev) => ({
+      fieldValidity: {
+        ...prev.fieldValidity,
+        [field]: true,
+        kycVerified: newValue && prev.fieldValidity.termsAccepted,
+      },
+    }));
+    return;
+  }
+
+  // Handle Aadhaar number input
+  if (field === "idProofNo") {
+    const processedValue = value.replace(/[^0-9]/g, "").slice(0, 12);
+    const previousAadhaar = formData.idProofNo || "";
+    const newAadhaar = processedValue;
+    const isSameAadhaar =
+      previousAadhaar &&
+      newAadhaar &&
+      previousAadhaar.substring(8) === newAadhaar.substring(8);
+
+    if (formData.aadhaarVerified && field === "idProofNo" && !isSameAadhaar) {
       const updatedFormData = {
         ...formData,
-        [field]: newValue,
-        kycVerified: formData.aadhaarVerified && newValue ? true : false,
+        [field]: processedValue,
+        aadhaarVerified: false,
+        maskedAadhaar: "",
+        aadhaarVerificationId: "",
+        aadhaarVerifiedAt: "",
+        aadhaarStatus: "pending",
+        kycVerified: false,
       };
       setFormData(updatedFormData);
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-      updateState((prev) => ({
-        fieldValidity: {
-          ...prev.fieldValidity,
-          [field]: true,
-          kycVerified: prev.fieldValidity.aadhaarVerified && newValue,
-        },
-      }));
-      return;
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: processedValue }));
     }
 
-    // Handle aadhaarVerified with KYC logic
-    if (field === "aadhaarVerified") {
-      const newValue = value;
-      const updatedFormData = {
-        ...formData,
-        [field]: newValue,
-        kycVerified: newValue && formData.termsAccepted ? true : false,
-      };
-      setFormData(updatedFormData);
-      setErrors((prev) => ({ ...prev, [field]: "" }));
-      updateState((prev) => ({
-        fieldValidity: {
-          ...prev.fieldValidity,
-          [field]: true,
-          kycVerified: newValue && prev.fieldValidity.termsAccepted,
-        },
-      }));
-      return;
-    }
-
-    // Handle Aadhaar number input
-    if (field === "idProofNo") {
-      const processedValue = value.replace(/[^0-9]/g, "").slice(0, 12);
-      const previousAadhaar = formData.idProofNo || "";
-      const newAadhaar = processedValue;
-      const isSameAadhaar =
-        previousAadhaar &&
-        newAadhaar &&
-        previousAadhaar.substring(8) === newAadhaar.substring(8);
-
-      if (formData.aadhaarVerified && field === "idProofNo" && !isSameAadhaar) {
-        const updatedFormData = {
-          ...formData,
-          [field]: processedValue,
-          aadhaarVerified: false,
-          maskedAadhaar: "",
-          aadhaarVerificationId: "",
-          aadhaarVerifiedAt: "",
-          aadhaarStatus: "pending",
-          kycVerified: false,
-        };
-        setFormData(updatedFormData);
-      } else {
-        setFormData({ ...formData, [field]: processedValue });
-      }
-
-      if (processedValue && processedValue.length === 12) {
-        const aadhaarError = validateAadhaar(processedValue);
-        if (aadhaarError) {
-          setErrors((prev) => ({ ...prev, [field]: aadhaarError }));
-          updateState((prev) => ({
-            fieldValidity: { ...prev.fieldValidity, [field]: false },
-          }));
-        } else {
-          setErrors((prev) => ({ ...prev, [field]: "" }));
-          updateState((prev) => ({
-            fieldValidity: { ...prev.fieldValidity, [field]: true },
-          }));
-        }
+    if (processedValue && processedValue.length === 12) {
+      const aadhaarError = validateAadhaar(processedValue);
+      if (aadhaarError) {
+        setErrors((prev) => ({ ...prev, [field]: aadhaarError }));
+        updateState((prev) => ({
+          fieldValidity: { ...prev.fieldValidity, [field]: false },
+        }));
       } else {
         setErrors((prev) => ({ ...prev, [field]: "" }));
-      }
-      return;
-    }
-
-    // Apply field-specific formatting for other fields
-    let processedValue = value;
-    if (field === "pincode") {
-      processedValue = value.replace(/[^0-9]/g, "").slice(0, 6);
-      if (processedValue.length === 6) {
-        fetchCityStateFromPincode(processedValue);
-      }
-    } else if (field === "contactNumber") {
-      processedValue = value.replace(/[^0-9]/g, "").slice(0, 10);
-      if (formData.phoneVerified && field === "contactNumber") {
-        setFormData((prev) => ({
-          ...prev,
-          phoneVerified: false,
-        }));
-      }
-    }
-
-    // Update form data
-    const updatedFormData = { ...formData, [field]: processedValue };
-    setFormData(updatedFormData);
-
-    // Clear error for this field
-    if (errors[field]) {
-      setErrors({ ...errors, [field]: "" });
-    }
-
-    // Real-time validation
-    if (
-      (typeof processedValue === "string" && processedValue.trim()) ||
-      [
-        "email",
-        "username",
-        "address1",
-        "address2",
-        "city",
-        "state",
-        "pincode",
-        "dateOfBirth",
-        "contactNumber",
-      ].includes(field)
-    ) {
-      let isValid = false;
-      let errorMsg = "";
-
-      switch (field) {
-        case "pincode":
-          errorMsg = validatePincode(processedValue);
-          isValid = !errorMsg;
-          break;
-        case "email":
-          errorMsg = validateEmail(processedValue);
-          isValid = !errorMsg;
-          break;
-        case "username":
-          errorMsg = validateName(processedValue);
-          isValid = !errorMsg;
-          break;
-        case "dateOfBirth":
-          errorMsg = validateDOB(processedValue);
-          isValid = !errorMsg;
-          break;
-        case "address1":
-          errorMsg = validateAddressField(processedValue, "Address Line 1");
-          isValid = !errorMsg;
-          break;
-        case "address2":
-          errorMsg = validateAddressField(processedValue, "Address Line 2");
-          isValid = !errorMsg;
-          break;
-        case "city":
-          errorMsg = validateAddressField(processedValue, "City");
-          isValid = !errorMsg;
-          break;
-        case "state":
-          errorMsg = validateAddressField(processedValue, "State");
-          isValid = !errorMsg;
-          break;
-        case "contactNumber":
-          errorMsg = validateMobile(processedValue);
-          isValid = !errorMsg;
-          break;
-        default:
-          isValid = true;
-      }
-
-      updateState((prev) => ({
-        fieldValidity: { ...prev.fieldValidity, [field]: isValid },
-      }));
-
-      if (!isValid && errorMsg) {
-        setErrors((prev) => ({ ...prev, [field]: errorMsg }));
-      }
-    }
-  };
-
-  // ===== PINCODE FETCHING =====
-  const fetchCityStateFromPincode = async (pincode) => {
-    if (pincode.length !== 6) return;
-    updateState({ isFetchingPincode: true });
-
-    try {
-      const result = await userService.fetchPincodeDetails(pincode);
-
-      if (result.success) {
-        const updatedFormData = {
-          ...formData,
-          city: result.city,
-          state: result.state,
-          country: result.country,
-        };
-        setFormData(updatedFormData);
-
-        setErrors((prev) => ({
-          ...prev,
-          city: "",
-          state: "",
-          pincode: "",
-        }));
-
         updateState((prev) => ({
-          fieldValidity: {
-            ...prev.fieldValidity,
-            city: true,
-            state: true,
-            pincode: true,
-          },
-        }));
-      } else {
-        setErrors((prev) => ({
-          ...prev,
-          pincode: "Invalid PIN code. No records found.",
-        }));
-        setFormData((prev) => ({
-          ...prev,
-          city: "",
-          state: "",
-          country: "India",
+          fieldValidity: { ...prev.fieldValidity, [field]: true },
         }));
       }
-    } catch (error) {
-      console.error("Fetch error:", error);
-      setErrors((prev) => ({
-        ...prev,
-        pincode: "Network error. Please try again.",
-      }));
-    } finally {
-      updateState({ isFetchingPincode: false });
+    } else {
+      setErrors((prev) => ({ ...prev, [field]: "" }));
     }
-  };
+    return;
+  }
+
+  // Apply field-specific formatting for other fields
+  let processedValue = value;
+  
+  if (field === "pincode") {
+    processedValue = value.replace(/[^0-9]/g, "").slice(0, 6);
+    
+    // Update form data FIRST with a callback to ensure we have the updated value
+    setFormData((prev) => {
+      const updatedFormData = { ...prev, [field]: processedValue };
+      
+      // If we have a complete 6-digit pincode, fetch city/state
+      if (processedValue.length === 6) {
+        // Use setTimeout to ensure state update is complete before fetching
+        setTimeout(() => {
+          fetchCityStateFromPincode(processedValue);
+        }, 0);
+      }
+      
+      return updatedFormData;
+    });
+    
+    // Don't return here - let the rest of the function handle validation and errors
+  } else if (field === "contactNumber") {
+    processedValue = value.replace(/[^0-9]/g, "").slice(0, 10);
+    if (formData.phoneVerified && field === "contactNumber") {
+      setFormData((prev) => ({
+        ...prev,
+        phoneVerified: false,
+        [field]: processedValue
+      }));
+    } else {
+      setFormData((prev) => ({ ...prev, [field]: processedValue }));
+    }
+  } else {
+    // For other fields, update normally
+    setFormData((prev) => ({ ...prev, [field]: processedValue }));
+  }
+
+  // Clear error for this field
+  if (errors[field]) {
+    setErrors((prev) => ({ ...prev, [field]: "" }));
+  }
+
+  // Real-time validation (skip for pincode since we handle it differently)
+  if (field !== "pincode" && (
+    (typeof processedValue === "string" && processedValue.trim()) ||
+    [
+      "email",
+      "username",
+      "address1",
+      "address2",
+      "city",
+      "state",
+      "dateOfBirth",
+      "contactNumber",
+    ].includes(field)
+  )) {
+    let isValid = false;
+    let errorMsg = "";
+
+    switch (field) {
+      case "email":
+        errorMsg = validateEmail(processedValue);
+        isValid = !errorMsg;
+        break;
+      case "username":
+        errorMsg = validateName(processedValue);
+        isValid = !errorMsg;
+        break;
+      case "dateOfBirth":
+        errorMsg = validateDOB(processedValue);
+        isValid = !errorMsg;
+        break;
+      case "address1":
+        errorMsg = validateAddressField(processedValue, "Address Line 1");
+        isValid = !errorMsg;
+        break;
+      case "address2":
+        errorMsg = validateAddressField(processedValue, "Address Line 2");
+        isValid = !errorMsg;
+        break;
+      case "city":
+        errorMsg = validateAddressField(processedValue, "City");
+        isValid = !errorMsg;
+        break;
+      case "state":
+        errorMsg = validateAddressField(processedValue, "State");
+        isValid = !errorMsg;
+        break;
+      case "contactNumber":
+        errorMsg = validateMobile(processedValue);
+        isValid = !errorMsg;
+        break;
+      default:
+        isValid = true;
+    }
+
+    updateState((prev) => ({
+      fieldValidity: { ...prev.fieldValidity, [field]: isValid },
+    }));
+
+    if (!isValid && errorMsg) {
+      setErrors((prev) => ({ ...prev, [field]: errorMsg }));
+    }
+  }
+};
 
   // ===== AADHAAR VERIFICATION =====
   const handleVerifyAadhaar = async () => {
@@ -464,6 +422,108 @@ const fetchUserData = async (userId) => {
   const handleConsentClose = () => {
     updateState({ showConsentModal: false, pendingAadhaarVerification: false });
   };
+const fetchCityStateFromPincode = async (pincode) => {
+  if (pincode.length !== 6) return;
+  updateState({ isFetchingPincode: true });
+
+  try {
+    // Using the postal pincode API as shown in your example
+    const response = await fetch(
+      `https://api.postalpincode.in/pincode/${pincode}`
+    );
+    
+    if (!response.ok) {
+      throw new Error(`HTTP error! status: ${response.status}`);
+    }
+    
+    const data = await response.json();
+    
+    if (data[0]?.Status === "Success" && data[0].PostOffice?.length > 0) {
+      // Get the first post office entry
+      const postOffice = data[0].PostOffice[0];
+      const district = postOffice.District || "";
+      const state = postOffice.State || "";
+      const country = postOffice.Country || "India";
+      
+      console.log(`📍 Pincode ${pincode} resolved to: District=${district}, State=${state}`);
+      
+      // Update form data with the fetched city and state
+      setFormData((prev) => ({
+        ...prev,
+        city: district,
+        state: state,
+        country: country,
+      }));
+
+      // Clear any existing errors
+      setErrors((prev) => ({
+        ...prev,
+        city: "",
+        state: "",
+        pincode: "",
+      }));
+
+      updateState((prev) => ({
+        fieldValidity: {
+          ...prev.fieldValidity,
+          city: district ? true : false,
+          state: state ? true : false,
+          pincode: true,
+        },
+      }));
+      
+      return {
+        success: true,
+        city: district,
+        state: state,
+        country: country,
+        postOfficeCount: data[0].PostOffice.length,
+      };
+    } else {
+      // Handle no records found
+      const errorMessage = data[0]?.Message || "Invalid PIN code. No records found.";
+      setErrors((prev) => ({
+        ...prev,
+        pincode: errorMessage,
+      }));
+      
+      // Clear city and state fields
+      setFormData((prev) => ({
+        ...prev,
+        city: "",
+        state: "",
+        country: "India",
+      }));
+      
+      return {
+        success: false,
+        message: errorMessage,
+      };
+    }
+  } catch (error) {
+    console.error("Pincode fetch error:", error);
+    
+    let errorMessage = "Network error. Please try again.";
+    if (error.message.includes("Failed to fetch")) {
+      errorMessage = "Unable to connect to service. Check your internet connection.";
+    }
+    
+    setErrors((prev) => ({
+      ...prev,
+      pincode: errorMessage,
+    }));
+    
+    return {
+      success: false,
+      message: errorMessage,
+      error: error.message,
+    };
+  } finally {
+    updateState({ isFetchingPincode: false });
+  }
+};
+
+// ===== UPDATE IN AADHAAR VERIFICATION SECTION =====
 const handleVerificationComplete = async (result) => {
   console.log("Verification result:", JSON.stringify(result, null, 2));
 
@@ -493,8 +553,8 @@ const handleVerificationComplete = async (result) => {
         return dob;
       };
 
-      const updatedFormData = {
-        ...formData,
+      // Prepare initial updated data
+      const initialUpdate = {
         idProofNo: actualAadhaarNumber,
         aadhaarVerified: true,
         maskedAadhaar: properMaskedAadhaar,
@@ -514,35 +574,89 @@ const handleVerificationComplete = async (result) => {
         address1:
           addressData?.address1 || aadhaarData.address || formData.address1,
         address2: addressData?.address2 || formData.address2,
-        city: addressData?.city || formData.city,
-        state: addressData?.state || formData.state,
-        pincode:
-          addressData?.pincode ||
-          documentData.split_address?.pincode ||
-          formData.pincode,
         country: addressData?.country || formData.country || "India",
         kycVerified: formData.termsAccepted ? true : false,
       };
 
+      // If we have pincode from Aadhaar, fetch city and state
+      const pincodeFromAadhaar = addressData?.pincode || 
+                                  documentData.split_address?.pincode;
+      
+      let cityStateFromPincode = { city: "", state: "" };
+      
+      if (pincodeFromAadhaar && pincodeFromAadhaar.length === 6) {
+        try {
+          // Use the pincode API to get city (district) and state
+          const pincodeResult = await fetchCityStateFromPincode(pincodeFromAadhaar);
+          
+          if (pincodeResult.success) {
+            cityStateFromPincode = {
+              city: pincodeResult.city || addressData?.city || formData.city,
+              state: pincodeResult.state || addressData?.state || formData.state,
+              pincode: pincodeFromAadhaar
+            };
+          } else {
+            // Fallback to whatever we have
+            cityStateFromPincode = {
+              city: addressData?.city || formData.city,
+              state: addressData?.state || formData.state,
+              pincode: pincodeFromAadhaar
+            };
+          }
+        } catch (pincodeError) {
+          console.error("Failed to fetch pincode details:", pincodeError);
+          cityStateFromPincode = {
+            city: addressData?.city || formData.city,
+            state: addressData?.state || formData.state,
+            pincode: pincodeFromAadhaar
+          };
+        }
+      } else {
+        // No valid pincode from Aadhaar
+        cityStateFromPincode = {
+          city: addressData?.city || formData.city,
+          state: addressData?.state || formData.state,
+          pincode: formData.pincode
+        };
+      }
+
+      // Complete updated form data
+      const updatedFormData = {
+        ...initialUpdate,
+        city: cityStateFromPincode.city,
+        state: cityStateFromPincode.state,
+        pincode: cityStateFromPincode.pincode || formData.pincode,
+      };
+
       setFormData(updatedFormData);
+      
+      // Update validation state
+      const fieldValidityUpdates = {
+        idProofNo: true,
+        address1: updatedFormData.address1 ? true : false,
+        city: updatedFormData.city ? true : false,
+        state: updatedFormData.state ? true : false,
+        pincode: updatedFormData.pincode ? true : false,
+        kycVerified: updatedFormData.kycVerified,
+      };
+      
       updateState((prev) => ({
         fieldValidity: {
           ...prev.fieldValidity,
-          idProofNo: true,
-          address1: true,
-          city: true,
-          state: true,
-          pincode: true,
-          kycVerified: updatedFormData.kycVerified,
+          ...fieldValidityUpdates,
         },
       }));
+      
+      // Clear errors
+      const clearedErrors = {};
+      Object.keys(fieldValidityUpdates).forEach(key => {
+        if (fieldValidityUpdates[key]) {
+          clearedErrors[key] = "";
+        }
+      });
       setErrors((prev) => ({
         ...prev,
-        idProofNo: "",
-        address1: "",
-        city: "",
-        state: "",
-        pincode: "",
+        ...clearedErrors,
       }));
 
       // First, update local storage with all the data
@@ -565,10 +679,10 @@ const handleVerificationComplete = async (result) => {
           ...(aadhaarData.gender && { gender: aadhaarData.gender.toLowerCase() }),
           ...(addressData?.address1 && { address1: addressData.address1 }),
           ...(addressData?.address2 && { address2: addressData.address2 }),
-          ...(addressData?.city && { city: addressData.city }),
-          ...(addressData?.state && { state: addressData.state }),
-          ...(addressData?.pincode && { pincode: addressData.pincode }),
-          ...(addressData?.country && { country: addressData.country }),
+          city: updatedFormData.city,
+          state: updatedFormData.state,
+          pincode: updatedFormData.pincode,
+          country: updatedFormData.country,
         };
 
         console.log("📤 Sending Aadhaar update to server:", serverApiData);
@@ -594,7 +708,7 @@ const handleVerificationComplete = async (result) => {
 
       Alert.alert(
         "✅ Aadhaar Verified Successfully",
-        `Your Aadhaar has been verified and profile has been updated.`,
+        `Your Aadhaar has been verified and profile has been updated.\n\nCity: ${updatedFormData.city}\nState: ${updatedFormData.state}\nPincode: ${updatedFormData.pincode}`,
         [{ text: "OK" }]
       );
 
@@ -610,6 +724,7 @@ const handleVerificationComplete = async (result) => {
       );
     }
   } else {
+    // ... rest of the failure handling remains the same
     Alert.alert(
       "Verification Failed",
       result.message || "Aadhaar verification could not be completed.",

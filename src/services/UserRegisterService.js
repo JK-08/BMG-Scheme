@@ -83,11 +83,12 @@ async fetchUserData(userId) {
   // ===== OTP VERIFICATION =====
   async verifyOTP(userId, otp) {
     if (!userId) throw new Error("User ID is required");
+    console.log("User ID:", userId);
 
     try {
       const token = await getAuthToken();
       
-      const response = await fetch(`${API_BASE_URL}/user/${userId}/verify-otp`, {
+      const response = await fetch(`${API_BASE_URL}/${userId}/verify-otp`, {
         method: "POST",
         headers: { 
           "Content-Type": "application/json",

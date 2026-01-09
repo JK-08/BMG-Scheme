@@ -12,6 +12,7 @@ export const getRemainingDaysData = async (schemeId, joinDate) => {
     }
     
     const data = await response.json();
+   
     return data;
   } catch (error) {
     console.error('Error fetching remaining days data:', error);

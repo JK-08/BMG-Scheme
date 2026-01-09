@@ -54,7 +54,7 @@ const faqSections = [
       },
       {
         q: "What are the bonus benefits?",
-        a: "• Lumpsum: upto Flat 15% Bonus\n• Bright: 1 Month's Instalment\n• Smart Pay: Up to 10% based on payment period",
+        a: "• Lumpsum: upto Flat 15% Bonus\n• Bright: 1 Month's Instalment\n• Smart Pay: Up to 9% based on payment period",
       },
       {
         q: "What's the minimum amount to join?",
@@ -313,7 +313,7 @@ const faqSectionsTamil = [
       },
       {
         q: "போனஸ் பலன்கள் என்ன?",
-        a: "• Lumpsum: Flat 15% வரை போனஸ்\n• Bright: 1 மாதத்தின் தவணை\n• Smart Pay: கட்டணம் செலுத்தும் காலத்தைப் பொறுத்து 10% வரை",
+        a: "• Lumpsum: Flat 15% வரை போனஸ்\n• Bright: 1 மாதத்தின் தவணை\n• Smart Pay: கட்டணம் செலுத்தும் காலத்தைப் பொறுத்து 9% வரை",
       },
       {
         q: "சேர குறைந்தபட்ச தொகை என்ன?",

@@ -1,17 +1,24 @@
-import React, { useState } from 'react';
+import React, { useState } from "react";
 import {
-  ScrollView,
   View,
+  ScrollView,
   StyleSheet,
-  ImageBackground,
   TouchableOpacity,
-} from 'react-native';
-import { TextDefault } from '../../components';
-import theme from '../../utils/AppTheme';
-import CommonHeader from '../../components/CommonHeader/CommonHeader';
-import Icon from 'react-native-vector-icons/MaterialIcons';
+  ImageBackground,
+} from "react-native";
+import Icon from "react-native-vector-icons/MaterialIcons";
+import CommonHeader from "../../components/CommonHeader/CommonHeader";
+import { TextDefault } from "../../components";
+import theme from "../../utils/AppTheme";
 
-const { COLORS, SIZES, FONTS, verticalScale, moderateScale, SHADOWS } = theme;
+const {
+  COLORS,
+  SIZES,
+  FONTS,
+  verticalScale,
+  moderateScale,
+  SHADOWS,
+} = theme;
 
 const TermsFAQPage = () => {
   const termsData = [
@@ -252,140 +259,114 @@ const TermsFAQPage = () => {
     },
   ];
 
-  // Initialize all sections as closed (collapsed) initially
-  const [openSections, setOpenSections] = useState(
-    termsData.map(() => false) // All sections closed by default
-  );
+const [openSections, setOpenSections] = useState(
+  termsData.map(() => true) // 👈 ALL OPEN by default
+);
 
-  const toggleSection = (index) => {
-    const updated = [...openSections];
+
+ const toggleSection = (index) => {
+  setOpenSections((prev) => {
+    const updated = [...prev];
     updated[index] = !updated[index];
-    setOpenSections(updated);
-  };
+    return updated;
+  });
+};
 
-  // Helper function to render content with unique keys
-  const renderContent = (content, contentIndex) => (
-    <View key={`content-${contentIndex}`} style={styles.pointContainer}>
-      <View style={styles.bullet} />
-      <TextDefault style={styles.pointText}>{content}</TextDefault>
+  const BulletPoint = ({ text }) => (
+    <View style={styles.bulletRow}>
+      <View style={styles.bulletDot} />
+      <TextDefault style={styles.bulletText}>{text}</TextDefault>
     </View>
   );
 
-  const renderNumberedContent = (content, contentIndex, parentIndex) => (
-    <View key={`numbered-${parentIndex}-${contentIndex}`} style={styles.numberedContainer}>
+  const NumberedPoint = ({ index, text }) => (
+    <View style={styles.numberRow}>
       <View style={styles.numberCircle}>
-        <TextDefault style={styles.numberText}>{contentIndex + 1}</TextDefault>
+        <TextDefault style={styles.numberText}>{index}</TextDefault>
       </View>
-      <TextDefault style={styles.pointText}>{content}</TextDefault>
+      <TextDefault style={styles.bulletText}>{text}</TextDefault>
     </View>
   );
-
-  // Function to check if content should be rendered as numbered list
-  const shouldRenderNumbered = (sectionTitle, contentIndex) => {
-    if (sectionTitle === "3. Account Registration" && contentIndex >= 1 && contentIndex <= 6) {
-      return true;
-    } else if (sectionTitle === "5. Services Offered" && contentIndex >= 1 && contentIndex <= 3) {
-      return true;
-    } else if (sectionTitle === "10. Force Majeure" && contentIndex >= 1 && contentIndex <= 5) {
-      return true;
-    } else if (sectionTitle === "14. Communication Consent" && contentIndex >= 1 && contentIndex <= 3) {
-      return true;
-    }
-    return false;
-  };
 
   return (
     <View style={styles.container}>
       <ImageBackground
-        source={require('../../assets/image.png')}
-        style={styles.backgroundImage}
-        resizeMode="cover"
+        source={require("../../assets/image.png")}
+        style={styles.background}
       >
         <ScrollView
-          style={styles.scrollView}
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
           <CommonHeader title="Terms of Use" />
 
-          <View style={styles.headerContainer}>
-            <TextDefault style={styles.headerTitle}>
+          {/* Header */}
+          <View style={styles.topCard}>
+            <TextDefault style={styles.companyName}>
               BMG Jewellers Private Limited
             </TextDefault>
-            <TextDefault style={styles.headerSubtitle}>
+
+            <TextDefault style={styles.updatedText}>
               Last Updated: 26/12/2024
             </TextDefault>
-            <TextDefault style={styles.introText}>
-              These Terms of Use ("Terms") govern your access to and use of the mobile application, website, digital platforms, and related services (collectively, the "Platform") operated by BMG Jewellers Private Limited, a company incorporated under the Companies Act, 2013, India (hereinafter referred to as "BMG", "Company", "we", "us", or "our").
+
+            <TextDefault style={styles.paragraph}>
+              These Terms of Use govern your access to and use of the mobile
+              application, website, and services operated by BMG Jewellers
+              Private Limited.
             </TextDefault>
-            <TextDefault style={styles.introText}>
-              By accessing, registering on, or using the Platform, you acknowledge that you have read, understood, and agreed to be legally bound by these Terms and all applicable laws and regulations.
+
+            <TextDefault style={styles.paragraph}>
+              By using the Platform, you confirm that you have read, understood,
+              and agreed to these Terms.
             </TextDefault>
           </View>
 
-          <View style={styles.contentContainer}>
-            {termsData.map((section, index) => (
-              <View key={section.id} style={styles.section}>
-                <TouchableOpacity
-                  style={styles.sectionHeader}
-                  activeOpacity={0.8}
-                  onPress={() => toggleSection(index)}
-                >
-                  <View style={styles.iconContainer}>
-                    <Icon
-                      name={openSections[index] ? "expand-less" : "expand-more"}
-                      size={moderateScale(20)}
-                      color={COLORS.primary}
-                    />
-                  </View>
-                  <TextDefault style={styles.sectionTitle}>{section.title}</TextDefault>
-                </TouchableOpacity>
+          {/* Sections */}
+          <View style={styles.contentCard}>
+          {termsData.map((section, index) => (
+  <View key={section.id} style={styles.section}>
+    <TouchableOpacity
+      activeOpacity={0.8}
+      style={styles.sectionHeader}
+      onPress={() => toggleSection(index)}
+    >
+      <Icon
+        name={
+          openSections[index]
+            ? "keyboard-arrow-up"
+            : "keyboard-arrow-down"
+        }
+        size={moderateScale(24)}
+        color={COLORS.primary}
+      />
+      <TextDefault style={styles.sectionTitle}>
+        {section.title}
+      </TextDefault>
+    </TouchableOpacity>
 
-                {openSections[index] && (
-                  <View style={styles.sectionContent}>
-                    {section.content.map((point, contentIndex) => {
-                      // Check if content starts with bullet points list
-                      if (point.includes(":")) {
-                        const [prefix, ...rest] = point.split(":");
-                        return (
-                          <View key={`${section.id}-prefix-${contentIndex}`}>
-                            <TextDefault style={styles.subsectionTitle}>{prefix}:</TextDefault>
-                            {rest.length > 0 && renderContent(rest.join(":").trim(), contentIndex)}
-                          </View>
-                        );
-                      } else if (shouldRenderNumbered(section.title, contentIndex)) {
-                        return renderNumberedContent(point, contentIndex - 1, index);
-                      } else {
-                        return renderContent(point, contentIndex);
-                      }
-                    })}
+    {openSections[index] && (
+      <View style={styles.sectionBody}>
+        {section.content.map((item, i) => (
+          <BulletPoint key={i} text={item} />
+        ))}
 
-                    {section.subsections &&
-                      section.subsections.map((sub, subIndex) => (
-                        <View key={`${section.id}-sub-${sub.id}`} style={styles.subsection}>
-                          <TextDefault style={styles.subsectionTitle}>{sub.title}</TextDefault>
-                          {sub.content.map((point, contentIndex) => {
-                            if (point.includes(":")) {
-                              const [prefix, ...rest] = point.split(":");
-                              return (
-                                <View key={`${section.id}-sub-${sub.id}-${contentIndex}`}>
-                                  <TextDefault style={styles.subsectionSubtitle}>{prefix}:</TextDefault>
-                                  {rest.length > 0 && renderContent(rest.join(":").trim(), contentIndex)}
-                                </View>
-                              );
-                            } else {
-                              return renderContent(point, contentIndex);
-                            }
-                          })}
-                        </View>
-                      ))}
-                  </View>
-                )}
-              </View>
+        {section.subsections?.map((sub) => (
+          <View key={sub.id} style={styles.subSection}>
+            <TextDefault style={styles.subTitle}>{sub.title}</TextDefault>
+            {sub.content.map((text, i) => (
+              <BulletPoint key={i} text={text} />
             ))}
+          </View>
+        ))}
+      </View>
+    )}
+  </View>
+))}
+
 
             <View style={styles.footer}>
-              <TextDefault style={styles.lastUpdated}>
+              <TextDefault style={styles.footerText}>
                 © 2024 BMG Jewellers Private Limited. All rights reserved.
               </TextDefault>
             </View>
@@ -395,159 +376,113 @@ const TermsFAQPage = () => {
     </View>
   );
 };
-
 const styles = StyleSheet.create({
-  container: { 
-    flex: 1,
+  container: { flex: 1 },
+  background: { flex: 1 },
+
+  scrollContent: {
+    paddingBottom: verticalScale(30),
   },
-  backgroundImage: { 
-    flex: 1, 
-  },
-  scrollView: { 
-    flex: 1 
-  },
-  scrollContent: { 
-    flexGrow: 1,
-    paddingBottom: verticalScale(SIZES.padding.xl),
-  },
-  headerContainer: {
+
+  topCard: {
     backgroundColor: COLORS.card,
+    margin: SIZES.padding.lg,
+    padding: SIZES.padding.lg,
     borderRadius: SIZES.radius.lg,
-    padding: SIZES.padding.xl,
-    marginHorizontal: SIZES.padding.lg,
-    marginTop: verticalScale(SIZES.padding.md),
-    marginBottom: verticalScale(SIZES.padding.lg),
     ...SHADOWS.md,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
   },
-  headerTitle: {
+
+  companyName: {
     ...FONTS.h4,
+    textAlign: "center",
     color: COLORS.primary,
-    textAlign: 'center',
-    marginBottom: verticalScale(SIZES.xs),
   },
-  headerSubtitle: {
-    ...FONTS.body,
+
+  updatedText: {
+    ...FONTS.bodySmall,
+    textAlign: "center",
+    marginVertical: verticalScale(6),
     color: COLORS.textSecondary,
-    textAlign: 'center',
-    marginBottom: verticalScale(SIZES.padding.lg),
-    fontStyle: 'italic',
   },
-  introText: {
+
+  paragraph: {
     ...FONTS.body,
-    color: COLORS.textPrimary,
-    lineHeight: SIZES.font.lg * 1.4,
-    marginBottom: verticalScale(SIZES.padding.md),
-    textAlign: 'justify',
+    textAlign: "justify",
+    lineHeight: 22,
+    marginTop: verticalScale(8),
   },
-  contentContainer: {
+
+  contentCard: {
     backgroundColor: COLORS.card,
-    borderRadius: SIZES.radius.lg,
-    padding: SIZES.padding.xl,
     marginHorizontal: SIZES.padding.lg,
-    marginBottom: verticalScale(SIZES.padding.xl),
+    borderRadius: SIZES.radius.lg,
+    padding: SIZES.padding.lg,
     ...SHADOWS.md,
-    borderWidth: 1,
-    borderColor: COLORS.borderLight,
   },
+
   section: {
-    marginBottom: verticalScale(SIZES.padding.lg),
-    borderLeftWidth: 3,
-    borderLeftColor: COLORS.primaryLight,
-    paddingLeft: SIZES.padding.md,
+    borderBottomWidth: 1,
+    borderBottomColor: COLORS.borderLight,
+    paddingVertical: verticalScale(10),
   },
+
   sectionHeader: {
-    flexDirection: 'row',
-    alignItems: 'center',
-    marginBottom: verticalScale(SIZES.padding.sm),
+    flexDirection: "row",
+    alignItems: "center",
   },
-  iconContainer: { 
-    marginRight: SIZES.padding.sm,
-    width: moderateScale(24),
-    alignItems: 'center',
-  },
+
   sectionTitle: {
     ...FONTS.h5,
-    color: COLORS.textPrimary,
-    flex: 1,
-    lineHeight: SIZES.font.lg * 1.3,
-  },
-  sectionContent: {
-    marginTop: verticalScale(SIZES.xs),
-  },
-  subsection: {
     marginLeft: SIZES.padding.sm,
-    marginTop: verticalScale(SIZES.padding.md),
-    paddingLeft: SIZES.padding.sm,
-    borderLeftWidth: 2,
-    borderLeftColor: COLORS.borderMedium,
+    flex: 1,
+    flexWrap: "wrap",
   },
-  subsectionTitle: {
+
+  sectionBody: {
+    marginTop: verticalScale(10),
+    paddingLeft: moderateScale(30),
+  },
+
+  bulletRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: verticalScale(8),
+  },
+
+  bulletDot: {
+    width: 6,
+    height: 6,
+    borderRadius: 3,
+    backgroundColor: COLORS.primary,
+    marginTop: 8,
+    marginRight: 10,
+  },
+
+  bulletText: {
+    ...FONTS.body,
+    flex: 1,
+    lineHeight: 22,
+  },
+
+  subSection: {
+    marginTop: verticalScale(10),
+  },
+
+  subTitle: {
     ...FONTS.bodyMedium,
     color: COLORS.primary,
-    marginBottom: verticalScale(SIZES.padding.sm),
-    fontWeight: '600',
+    marginBottom: verticalScale(6),
   },
-  subsectionSubtitle: {
-    ...FONTS.bodySmall,
-    color: COLORS.textSecondary,
-    marginBottom: verticalScale(SIZES.xs),
-    fontWeight: '500',
-  },
-  pointContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: verticalScale(SIZES.padding.sm),
-    paddingLeft: SIZES.xs,
-  },
-  numberedContainer: {
-    flexDirection: 'row',
-    alignItems: 'flex-start',
-    marginBottom: verticalScale(SIZES.padding.sm),
-    marginLeft: SIZES.padding.sm,
-  },
-  bullet: {
-    width: moderateScale(6),
-    height: moderateScale(6),
-    borderRadius: SIZES.radius.full,
-    backgroundColor: COLORS.primary,
-    marginRight: SIZES.padding.sm,
-    marginTop: verticalScale(SIZES.padding.sm),
-  },
-  numberCircle: {
-    width: moderateScale(22),
-    height: moderateScale(22),
-    borderRadius: SIZES.radius.full,
-    backgroundColor: COLORS.primaryLight,
-    justifyContent: 'center',
-    alignItems: 'center',
-    marginRight: SIZES.padding.sm,
-    marginTop: verticalScale(SIZES.xs),
-  },
-  numberText: {
-    ...FONTS.bodySmall,
-    color: COLORS.white,
-    fontWeight: '600',
-  },
-  pointText: {
-    flex: 1,
-    ...FONTS.body,
-    color: COLORS.textPrimary,
-    lineHeight: SIZES.font.lg * 1.4,
-  },
+
   footer: {
-    borderTopWidth: 1,
-    borderTopColor: COLORS.borderLight,
-    paddingTop: verticalScale(SIZES.padding.lg),
-    marginTop: verticalScale(SIZES.padding.sm),
-    alignItems: 'center',
+    marginTop: verticalScale(20),
+    alignItems: "center",
   },
-  lastUpdated: {
+
+  footerText: {
     ...FONTS.bodySmall,
     color: COLORS.textSecondary,
-    fontStyle: 'italic',
-    textAlign: 'center',
+    textAlign: "center",
   },
 });
 

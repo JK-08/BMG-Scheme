@@ -364,7 +364,7 @@ const ReceiptPreviewModal = ({
                   <View style={[styles.tableCol, { flex: 1.5 }]}>
                     <Text style={styles.tableHeaderText}>Description</Text>
                   </View>
-                  <View style={[styles.tableCol, { flex: 1 }]}>
+                  <View style={[styles.tableCol, { flex: 0.8 }]}>
                     <Text style={styles.tableHeaderText}>HSN Code</Text>
                   </View>
                   <View style={[styles.tableCol, { flex: 1 }]}>
@@ -671,13 +671,13 @@ const styles = StyleSheet.create({
   },
   tableHeaderText: {
     ...FONTS.caption,
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(10),
     fontWeight: FONTS.weight.bold,
     color: COLORS.textPrimary,
   },
   tableCellText: {
     ...FONTS.bodySmall,
-    fontSize: moderateScale(11),
+    fontSize: moderateScale(10),
     color: COLORS.textPrimary,
     textAlign: "center",
     paddingHorizontal: moderateScale(2),
