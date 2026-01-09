@@ -24,47 +24,34 @@ const PrivacyPolicyPage = () => {
       title: "Legal Basis & Applicable Laws",
       icon: "gavel",
       content: "This Policy is framed in compliance with:",
-      subsections: [
-        {
-          content: "Digital Personal Data Protection Act, 2023 (India)"
-        },
-        {
-          content: "Information Technology Act, 2000"
-        },
-        {
-          content: "Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011"
-        },
-        {
-          content: "Aadhaar Act, 2016 and UIDAI regulations"
-        },
-        {
-          content: "Reserve Bank of India / State Chit Fund guidelines (where applicable)"
-        },
-        {
-          content: "Global data protection principles including GDPR (EU), to the extent applicable as best practice"
-        }
+      points: [
+        "Digital Personal Data Protection Act, 2023 (India)",
+        "Information Technology Act, 2000",
+        "Information Technology (Reasonable Security Practices and Procedures and Sensitive Personal Data or Information) Rules, 2011",
+        "Aadhaar Act, 2016 and UIDAI regulations",
+        "Reserve Bank of India / State Chit Fund guidelines (where applicable)",
+        "Global data protection principles including GDPR (EU), to the extent applicable as best practice"
       ]
     },
     {
       title: "Definitions",
       icon: "menu-book",
-      content: "",
-      subsections: [
+      definitions: [
         {
-          title: "Personal Data",
-          content: "Any data about an individual who is identifiable, such as name, mobile number, address, etc."
+          term: "Personal Data",
+          meaning: "Any data about an individual who is identifiable, such as name, mobile number, address, etc."
         },
         {
-          title: "Sensitive Personal Data",
-          content: "As defined under IT Rules, 2011 (bank details, biometric data, etc.)"
+          term: "Sensitive Personal Data",
+          meaning: "As defined under IT Rules, 2011 (bank details, biometric data, etc.)"
         },
         {
-          title: "Data Fiduciary",
-          content: "The Company, which determines the purpose and means of processing personal data"
+          term: "Data Fiduciary",
+          meaning: "The Company, which determines the purpose and means of processing personal data"
         },
         {
-          title: "Data Principal",
-          content: "The individual to whom the personal data relates (Customer/User)"
+          term: "Data Principal",
+          meaning: "The individual to whom the personal data relates (Customer/User)"
         }
       ]
     },
@@ -72,38 +59,49 @@ const PrivacyPolicyPage = () => {
       title: "User Consent",
       icon: "check-circle",
       content: "By accessing or using our App, Website, or Services, and by ticking the consent checkbox during login or enrolment, you:",
-      subsections: [
-        {
-          content: "Freely and voluntarily consent to the collection and processing of your personal data"
-        },
-        {
-          content: "Confirm that the information provided is accurate"
-        },
-        {
-          content: "Understand the purpose, usage, and retention of your data"
-        },
-        {
-          content: "Acknowledge your rights under applicable laws"
-        }
+      points: [
+        "Freely and voluntarily consent to the collection and processing of your personal data",
+        "Confirm that the information provided is accurate",
+        "Understand the purpose, usage, and retention of your data",
+        "Acknowledge your rights under applicable laws"
       ],
       note: "Consent is purpose-specific, informed, revocable, and recorded electronically."
     },
     {
       title: "Information We Collect",
       icon: "category",
-      content: "",
       subsections: [
         {
           title: "Information Provided Directly by You",
-          content: "Full Name, Mobile Number, Email Address (optional), Residential Address, PAN / Voter ID / Driving Licence (as applicable), Chit enrolment details, Payment details (transaction reference only, not card data)"
+          points: [
+            "Full Name",
+            "Mobile Number",
+            "Email Address (optional)",
+            "Residential Address",
+            "PAN / Voter ID / Driving Licence (as applicable)",
+            "Chit enrolment details",
+            "Payment details (transaction reference only, not card data)"
+          ]
         },
         {
           title: "Aadhaar Information (Important Clarification)",
-          content: "Aadhaar is used only for identity verification. Aadhaar number, copy, image, XML, or biometric data is NOT stored. Only masked Aadhaar (last 4 digits) and verification status may be recorded. Aadhaar may be viewed physically or verified through UIDAI-authorised mechanisms."
+          points: [
+            "Aadhaar is used only for identity verification.",
+            " Aadhaar number, copy, image, XML, or biometric data is NOT stored.",
+            "Only masked Aadhaar (last 4 digits) and verification status may be recorded.",
+            " Aadhaar may be viewed physically or verified through UIDAI-authorised mechanisms.",
+            
+          ]
         },
         {
           title: "Information Collected Automatically",
-          content: "IP address, Device type, OS, browser, App usage logs, Date, time, and activity history, Cookies and similar technologies (Website only)"
+          points: [
+            "IP address",
+            "Device type, OS, browser",
+            "App usage logs",
+            "Date, time, and activity history",
+            "Cookies and similar technologies (Website only)"
+          ]
         }
       ]
     },
@@ -111,28 +109,14 @@ const PrivacyPolicyPage = () => {
       title: "Purpose of Data Collection",
       icon: "data-usage",
       content: "We collect and process personal data strictly for:",
-      subsections: [
-        {
-          content: "Jewellery chit enrolment and management"
-        },
-        {
-          content: "Customer identification and verification"
-        },
-        {
-          content: "Compliance with legal and regulatory obligations"
-        },
-        {
-          content: "Transaction processing and account maintenance"
-        },
-        {
-          content: "Customer support and grievance redressal"
-        },
-        {
-          content: "Fraud prevention and security monitoring"
-        },
-        {
-          content: "Audit, accounting, and statutory reporting"
-        }
+      points: [
+        "Jewellery chit enrolment and management",
+        "Customer identification and verification",
+        "Compliance with legal and regulatory obligations",
+        "Transaction processing and account maintenance",
+        "Customer support and grievance redressal",
+        "Fraud prevention and security monitoring",
+        "Audit, accounting, and statutory reporting"
       ]
     },
     {
@@ -143,39 +127,22 @@ const PrivacyPolicyPage = () => {
     {
       title: "Storage & Retention of Data",
       icon: "storage",
-      content: "",
-      subsections: [
-        {
-          content: "Data is stored in secure servers located in India"
-        },
-        {
-          content: "Physical records are kept in locked premises with restricted access"
-        },
-        {
-          content: "Personal data is retained during active chit period and for statutory period after closure (generally 7 years)"
-        },
-        {
-          content: "Data is securely deleted or anonymised after retention period"
-        }
+      points: [
+        "Data is stored in secure servers located in India",
+        "Physical records are kept in locked premises with restricted access",
+        "Personal data is retained during active chit period and for statutory period after closure (generally 7 years)",
+        "Data is securely deleted or anonymised after retention period"
       ]
     },
     {
       title: "Data Sharing & Disclosure",
       icon: "share",
       content: "We do not sell or rent personal data. Data may be shared only with:",
-      subsections: [
-        {
-          content: "UIDAI-authorised service providers (verification only)"
-        },
-        {
-          content: "Payment gateways and banks (transaction processing)"
-        },
-        {
-          content: "Auditors, legal advisors, and statutory authorities"
-        },
-        {
-          content: "Government agencies when legally required"
-        }
+      points: [
+        "UIDAI-authorised service providers (verification only)",
+        "Payment gateways and banks (transaction processing)",
+        "Auditors, legal advisors, and statutory authorities",
+        "Government agencies when legally required"
       ],
       note: "All third parties are bound by confidentiality and data protection obligations."
     },
@@ -183,47 +150,25 @@ const PrivacyPolicyPage = () => {
       title: "Data Security Practices",
       icon: "security",
       content: "We implement reasonable security practices including:",
-      subsections: [
-        {
-          content: "Encryption of digital data"
-        },
-        {
-          content: "Role-based access control"
-        },
-        {
-          content: "Audit logs and monitoring"
-        },
-        {
-          content: "Secure APIs"
-        },
-        {
-          content: "Firewalls and malware protection"
-        },
-        {
-          content: "Staff training and confidentiality agreements"
-        }
+      points: [
+        "Encryption of digital data",
+        "Role-based access control",
+        "Audit logs and monitoring",
+        "Secure APIs",
+        "Firewalls and malware protection",
+        "Staff training and confidentiality agreements"
       ]
     },
     {
       title: "User Rights (Data Principal Rights)",
       icon: "person",
       content: "You have the right to:",
-      subsections: [
-        {
-          content: "Access your personal data"
-        },
-        {
-          content: "Correct inaccurate data"
-        },
-        {
-          content: "Withdraw consent (subject to legal obligations)"
-        },
-        {
-          content: "Request deletion after legal retention"
-        },
-        {
-          content: "Grievance redressal"
-        }
+      points: [
+        "Access your personal data",
+        "Correct inaccurate data",
+        "Withdraw consent (subject to legal obligations)",
+        "Request deletion after legal retention",
+        "Grievance redressal"
       ],
       note: "Requests may be submitted via email or support portal."
     },
@@ -241,16 +186,10 @@ const PrivacyPolicyPage = () => {
       title: "Data Breach Management",
       icon: "warning",
       content: "In the event of a data breach:",
-      subsections: [
-        {
-          content: "Internal assessment will be conducted immediately"
-        },
-        {
-          content: "Affected users and authorities will be notified as per law"
-        },
-        {
-          content: "Remedial measures will be taken promptly"
-        }
+      points: [
+        "Internal assessment will be conducted immediately",
+        "Affected users and authorities will be notified as per law",
+        "Remedial measures will be taken promptly"
       ]
     },
     {
@@ -281,6 +220,22 @@ const PrivacyPolicyPage = () => {
     </View>
   );
 
+  const PointItem = ({ point, index }) => (
+    <View style={styles.pointItem} key={index}>
+      <View style={styles.bulletPoint}>
+        <Text style={styles.bulletText}>•</Text>
+      </View>
+      <Text style={styles.pointText}>{point}</Text>
+    </View>
+  );
+
+  const DefinitionItem = ({ term, meaning, index }) => (
+    <View style={styles.definitionItem} key={index}>
+      <Text style={styles.definitionTerm}>{term}:</Text>
+      <Text style={styles.definitionMeaning}>{meaning}</Text>
+    </View>
+  );
+
   return (
     <View style={styles.container}>
       <ImageBackground
@@ -288,14 +243,12 @@ const PrivacyPolicyPage = () => {
         style={styles.backgroundImage}
         resizeMode="cover"
       >
+        <CommonHeader title={"Privacy Policy"} />
+        
         <ScrollView
           contentContainerStyle={styles.scrollContent}
           showsVerticalScrollIndicator={false}
         >
-          <CommonHeader title={"Privacy Policy"} />
-
-          
-
           {/* Company Info */}
           <View style={styles.companyInfoCard}>
             <Text style={styles.companyName}>BMG Jewellers Private Limited</Text>
@@ -314,24 +267,57 @@ const PrivacyPolicyPage = () => {
                 <Text style={styles.sectionTitle}>{section.title}</Text>
               </View>
 
-              {section.content ? (
+              {section.content && (
                 <Text style={styles.sectionContent}>{section.content}</Text>
-              ) : null}
+              )}
 
-              {section.subsections &&
-                section.subsections.map((subsection, subIndex) => (
-                  <View key={subIndex} style={styles.subsection}>
-                    {subsection.title && (
-                      <Text style={styles.subsectionTitle}>{subsection.title}</Text>
-                    )}
-                    <Text style={styles.subsectionContent}>
-                      {subsection.content}
-                    </Text>
-                  </View>
-                ))}
+              {/* Points List */}
+              {section.points && (
+                <View style={styles.pointsContainer}>
+                  {section.points.map((point, pointIndex) => (
+                    <PointItem key={pointIndex} point={point} index={pointIndex} />
+                  ))}
+                </View>
+              )}
 
+              {/* Definitions List */}
+              {section.definitions && (
+                <View style={styles.definitionsContainer}>
+                  {section.definitions.map((definition, defIndex) => (
+                    <DefinitionItem
+                      key={defIndex}
+                      term={definition.term}
+                      meaning={definition.meaning}
+                    />
+                  ))}
+                </View>
+              )}
+
+              {/* Subsections */}
+              {section.subsections && section.subsections.map((subsection, subIndex) => (
+                <View key={subIndex} style={styles.subsection}>
+                  {subsection.title && (
+                    <Text style={styles.subsectionTitle}>{subsection.title}</Text>
+                  )}
+                  
+                  {subsection.content && (
+                    <Text style={styles.subsectionContent}>{subsection.content}</Text>
+                  )}
+                  
+                  {subsection.points && (
+                    <View style={styles.subPointsContainer}>
+                      {subsection.points.map((point, pointIndex) => (
+                        <PointItem key={pointIndex} point={point} index={pointIndex} />
+                      ))}
+                    </View>
+                  )}
+                </View>
+              ))}
+
+              {/* Note */}
               {section.note && (
                 <View style={styles.noteContainer}>
+                  <Icon name="info" size={moderateScale(14)} color={COLORS.primary} style={styles.noteIcon} />
                   <Text style={styles.noteText}>{section.note}</Text>
                 </View>
               )}
@@ -372,7 +358,7 @@ const PrivacyPolicyPage = () => {
 
           {/* Governing Law */}
           <View style={styles.governingCard}>
-            <Icon name="balance" size={moderateScale(20)} color={COLORS.primary} />
+            <Icon name="balance" size={moderateScale(24)} color={COLORS.primary} />
             <Text style={styles.governingText}>
               Governing Law & Jurisdiction
             </Text>
@@ -386,7 +372,7 @@ const PrivacyPolicyPage = () => {
             colors={COLORS.gradient.primary}
             style={styles.acknowledgementCard}
           >
-            <Icon name="verified" size={moderateScale(20)} color={COLORS.white} />
+            <Icon name="verified" size={moderateScale(24)} color={COLORS.white} />
             <Text style={styles.acknowledgementText}>
               By using our App or Website, you acknowledge that you have read, understood, and agreed to this Privacy Policy.
               Aadhaar is used strictly for verification purposes and is never stored.
@@ -415,11 +401,17 @@ const PrivacyPolicyPage = () => {
 };
 
 const styles = StyleSheet.create({
-  container: { flex: 1 },
-  backgroundImage: { flex: 1 },
+  container: { 
+    flex: 1,
+    backgroundColor: COLORS.background 
+  },
+  backgroundImage: { 
+    flex: 1 
+  },
   scrollContent: { 
     flexGrow: 1,
     paddingBottom: verticalScale(SIZES.padding.xl),
+    paddingTop: verticalScale(SIZES.padding.sm),
   },
   effectiveDateCard: {
     backgroundColor: COLORS.card,
@@ -459,7 +451,7 @@ const styles = StyleSheet.create({
     ...FONTS.body,
     color: COLORS.textPrimary,
     textAlign: "center",
-    lineHeight: SIZES.font.md * 1.4,
+    lineHeight: moderateScale(20),
   },
   sectionCard: {
     backgroundColor: COLORS.card,
@@ -490,15 +482,55 @@ const styles = StyleSheet.create({
     ...FONTS.h5,
     color: COLORS.textPrimary,
     flex: 1,
+    fontSize: moderateScale(16),
   },
   sectionContent: {
     ...FONTS.body,
     color: COLORS.textPrimary,
-    lineHeight: SIZES.font.lg * 1.4,
+    lineHeight: moderateScale(20),
     marginBottom: verticalScale(SIZES.padding.sm),
   },
-  subsection: { 
+  pointsContainer: {
+    marginTop: verticalScale(SIZES.padding.xs),
+  },
+  pointItem: {
+    flexDirection: "row",
+    marginBottom: verticalScale(SIZES.padding.xs),
+    alignItems: "flex-start",
+  },
+  bulletPoint: {
+    marginRight: SIZES.padding.sm,
+    marginTop: moderateScale(2),
+  },
+  bulletText: {
+    fontSize: moderateScale(18),
+    color: COLORS.primary,
+  },
+  pointText: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    flex: 1,
+    lineHeight: moderateScale(20),
+  },
+  definitionsContainer: {
+    marginTop: verticalScale(SIZES.padding.xs),
+  },
+  definitionItem: {
     marginBottom: verticalScale(SIZES.padding.sm),
+  },
+  definitionTerm: {
+    ...FONTS.bodyMedium,
+    color: COLORS.primary,
+    fontWeight: "600",
+    marginBottom: verticalScale(2),
+  },
+  definitionMeaning: {
+    ...FONTS.body,
+    color: COLORS.textPrimary,
+    lineHeight: moderateScale(20),
+  },
+  subsection: {
+    marginTop: verticalScale(SIZES.padding.md),
     paddingLeft: SIZES.padding.sm,
     borderLeftWidth: 2,
     borderLeftColor: COLORS.primaryLight,
@@ -512,7 +544,11 @@ const styles = StyleSheet.create({
   subsectionContent: {
     ...FONTS.body,
     color: COLORS.textPrimary,
-    lineHeight: SIZES.font.md * 1.4,
+    lineHeight: moderateScale(20),
+    marginBottom: verticalScale(SIZES.padding.sm),
+  },
+  subPointsContainer: {
+    marginTop: verticalScale(SIZES.padding.xs),
   },
   noteContainer: {
     marginTop: verticalScale(SIZES.padding.sm),
@@ -521,11 +557,19 @@ const styles = StyleSheet.create({
     borderRadius: SIZES.radius.sm,
     borderLeftWidth: 3,
     borderLeftColor: COLORS.primary,
+    flexDirection: "row",
+    alignItems: "flex-start",
+  },
+  noteIcon: {
+    marginRight: SIZES.padding.xs,
+    marginTop: moderateScale(2),
   },
   noteText: {
     ...FONTS.bodySmall,
     color: COLORS.textPrimary,
     fontStyle: "italic",
+    flex: 1,
+    lineHeight: moderateScale(18),
   },
   grievanceCard: {
     backgroundColor: COLORS.card,
@@ -572,7 +616,7 @@ const styles = StyleSheet.create({
   contactValue: {
     ...FONTS.body,
     color: COLORS.textPrimary,
-    lineHeight: SIZES.font.lg * 1.3,
+    lineHeight: moderateScale(20),
     paddingLeft: moderateScale(28),
   },
   link: { 
@@ -600,7 +644,7 @@ const styles = StyleSheet.create({
     ...FONTS.body,
     color: COLORS.textPrimary,
     textAlign: "center",
-    lineHeight: SIZES.font.md * 1.4,
+    lineHeight: moderateScale(20),
   },
   acknowledgementCard: {
     borderRadius: SIZES.radius.lg,
@@ -615,7 +659,7 @@ const styles = StyleSheet.create({
     color: COLORS.white,
     marginTop: verticalScale(SIZES.padding.sm),
     textAlign: "center",
-    lineHeight: SIZES.font.md * 1.4,
+    lineHeight: moderateScale(20),
   },
   copyright: { 
     alignItems: "center", 

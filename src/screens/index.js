@@ -51,6 +51,7 @@ import AadhaarVerificationScreen from '../components/UserRegisterForm/AadhaarVer
 import DuePayment from "../components/DuePayment/DuePayment"
 import SchemeListPage from './MyRedeemption/MyRedeemption'
 import ReferralPending from './ReferalPending/ReferalPending'
+import ReferralShareScreen from './AppShare/AppShare'
 
 export {
   MainLanding,
@@ -104,5 +105,6 @@ export {
   AadhaarVerificationScreen,
   DuePayment,
   SchemeListPage,
-  ReferralPending
+  ReferralPending,
+  ReferralShareScreen
 }

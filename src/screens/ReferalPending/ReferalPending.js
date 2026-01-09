@@ -20,7 +20,6 @@ import theme from '../../utils/AppTheme';
 import CommonHeader from '../../components/CommonHeader/CommonHeader';
 import AsyncStorage from '@react-native-async-storage/async-storage';
 import { API_BASE_URL_OLD, API_BASE_URL } from '../../Config/API';
-
 const { width } = Dimensions.get('window');
 
 const ReferralPending = () => {
@@ -66,7 +65,7 @@ const ReferralPending = () => {
   const loadData = useCallback(async () => {
     try {
       setLoading(true);
-      const userId = await AsyncStorage.getItem('userId');
+      const userId = await AsyncStorage.getItem("userId");
       
       if (userId) {
         await fetchAllReferrals(userId);
@@ -574,48 +573,69 @@ const ReferralPending = () => {
         key={item.id}
         style={[
           styles.referralCard,
-          isPending && styles.pendingCard,
+          isPending ? styles.pendingCard : styles.completedCard,
           { opacity: fadeAnim }
         ]}
       >
+        {/* Status indicator strip */}
+        <View style={[
+          styles.statusStrip,
+          isPending ? styles.pendingStrip : styles.completedStrip
+        ]} />
+        
         <View style={styles.cardHeader}>
           <View style={styles.userInfoRow}>
             <View style={styles.avatarContainer}>
-              <Text style={styles.avatarText}>
-                {item.name?.charAt(0).toUpperCase() || '?'}
-              </Text>
+              <View style={[
+                styles.avatar,
+                isPending ? styles.pendingAvatar : styles.completedAvatar
+              ]}>
+                <Text style={styles.avatarText}>
+                  {item.name?.charAt(0).toUpperCase() || '?'}
+                </Text>
+              </View>
             </View>
             <View style={styles.userDetails}>
-              <Text style={styles.userName} numberOfLines={1}>
-                {item.name}
-              </Text>
+              <View style={styles.nameStatusRow}>
+                <Text style={styles.userName} numberOfLines={1}>
+                  {item.name}
+                </Text>
+                <View style={[
+                  styles.statusBadge,
+                  isPending ? styles.pendingBadge : styles.completedBadge
+                ]}>
+                  <View style={[
+                    styles.statusDot,
+                    isPending ? { backgroundColor: theme.COLORS.warning } : { backgroundColor: theme.COLORS.success }
+                  ]} />
+                  <Text style={[
+                    styles.statusText,
+                    isPending ? { color: theme.COLORS.warning } : { color: theme.COLORS.success }
+                  ]}>
+                    {isPending ? 'Pending' : 'Completed'}
+                  </Text>
+                </View>
+              </View>
+              
               <Text style={styles.userId}>
                 ID: {item.userId}
               </Text>
-              <Text style={[
-                styles.schemeName,
-                isPending && styles.pendingSchemeName
-              ]}>
-                {item.schemeName}
-                {item.schemeId && ` (ID: ${item.schemeId})`}
-              </Text>
+              
+              <View style={styles.schemeRow}>
+                <Icon 
+                  name={isCompleted ? "verified" : "schedule"} 
+                  size={14} 
+                  color={isCompleted ? theme.COLORS.success : theme.COLORS.warning} 
+                />
+                <Text style={[
+                  styles.schemeName,
+                  isPending ? styles.pendingSchemeName : styles.completedSchemeName
+                ]}>
+                  {item.schemeName}
+                  
+                </Text>
+              </View>
             </View>
-          </View>
-          
-          <View style={[
-            styles.statusBadge,
-            isPending ? styles.pendingBadge : styles.completedBadge
-          ]}>
-            <View style={[
-              styles.statusDot,
-              isPending ? { backgroundColor: theme.COLORS.warning } : { backgroundColor: theme.COLORS.success }
-            ]} />
-            <Text style={[
-              styles.statusText,
-              isPending ? { color: theme.COLORS.warning } : { color: theme.COLORS.success }
-            ]}>
-              {isPending ? 'Pending' : 'Completed'}
-            </Text>
           </View>
         </View>
 
@@ -624,7 +644,10 @@ const ReferralPending = () => {
             <View style={styles.infoItem}>
               <Icon name="phone" size={14} color={theme.COLORS.textTertiary} />
               <Text style={styles.infoLabel}>Phone:</Text>
-              <Text style={styles.infoValue}>
+              <Text style={[
+                styles.infoValue,
+                isPending && { color: theme.COLORS.textSecondary }
+              ]}>
                 {item.phone || '--'}
               </Text>
               {item.phone && item.phone.length >= 10 && (
@@ -638,37 +661,28 @@ const ReferralPending = () => {
               )}
             </View>
           </View>
-          
-          {isCompleted && (
-            <View style={styles.earningsContainer}>
-              {item.amount > 0 && (
-                <View style={styles.amountContainer}>
-                  <Icon name="currency-rupee" size={14} color={theme.COLORS.success} />
-                  <Text style={styles.amountText}>
-                    You Earned: ₹{item.amount.toFixed(2)}
-                  </Text>
-                </View>
-              )}
-              {item.newMemberReward > 0 && (
-                <View style={[styles.amountContainer, { backgroundColor: theme.COLORS.primary + '10' }]}>
-                  <Icon name="gift" size={14} color={theme.COLORS.primary} />
-                  <Text style={[styles.amountText, { color: theme.COLORS.primary }]}>
-                    Friend's Bonus: ₹{item.newMemberReward.toFixed(2)}
-                  </Text>
-                </View>
-              )}
-            </View>
-          )}
         </View>
 
         <View style={styles.cardFooter}>
           <View style={styles.dateInfo}>
-            <Icon name="calendar-today" size={14} color={theme.COLORS.textTertiary} />
-            <Text style={styles.dateText}>{formatDate(item.date)}</Text>
+            <Icon 
+              name="calendar-today" 
+              size={14} 
+              color={isPending ? theme.COLORS.warning : theme.COLORS.success} 
+            />
+            <Text style={[
+              styles.dateText,
+              isPending && { color: theme.COLORS.textSecondary }
+            ]}>
+              {formatDate(item.date)}
+            </Text>
             <Text style={styles.timeText}>• {formatTime(item.date)}</Text>
           </View>
           
-          <View style={styles.referralCodeBadge}>
+          <View style={[
+            styles.referralCodeBadge,
+            isPending ? styles.pendingCodeBadge : styles.completedCodeBadge
+          ]}>
             <Icon name="code" size={12} color={theme.COLORS.primary} />
             <Text style={styles.referralCodeBadgeText}>
               {item.referralCode || userData?.referral_code}
@@ -777,7 +791,7 @@ const ReferralPending = () => {
 };
 
 const styles = StyleSheet.create({
-  container: {
+   container: {
     flex: 1,
     backgroundColor: theme.COLORS.background,
   },
@@ -982,6 +996,7 @@ const styles = StyleSheet.create({
     fontFamily: theme.FONTS.family.semiBold,
     color: theme.COLORS.textPrimary,
   },
+  // Updated referral card styles for better visual distinction
   referralCard: {
     backgroundColor: theme.COLORS.white,
     marginHorizontal: 16,
@@ -991,31 +1006,58 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     borderColor: theme.COLORS.borderLight,
     ...theme.SHADOWS.small,
+    position: 'relative',
+    overflow: 'hidden',
+  },
+  // Status strip on the left side
+  statusStrip: {
+    position: 'absolute',
+    left: 0,
+    top: 0,
+    bottom: 0,
+    width: 4,
+    borderTopLeftRadius: 12,
+    borderBottomLeftRadius: 12,
+  },
+  pendingStrip: {
+    backgroundColor: theme.COLORS.warning,
+  },
+  completedStrip: {
+    backgroundColor: theme.COLORS.success,
   },
   pendingCard: {
-    borderLeftWidth: 4,
-    borderLeftColor: theme.COLORS.warning,
+    borderWidth: 1.5,
+    borderColor: theme.COLORS.warning + '30',
+    backgroundColor: theme.COLORS.white,
+  },
+  completedCard: {
+    borderWidth: 1.5,
+    borderColor: theme.COLORS.success + '30',
+    backgroundColor: theme.COLORS.white,
   },
   cardHeader: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
     marginBottom: 12,
   },
   userInfoRow: {
     flexDirection: 'row',
-    flex: 1,
   },
   avatarContainer: {
     marginRight: 12,
   },
-  avatarText: {
+  avatar: {
     width: 44,
     height: 44,
     borderRadius: 22,
-    backgroundColor: theme.COLORS.primary + '15',
-    textAlign: 'center',
-    textAlignVertical: 'center',
+    justifyContent: 'center',
+    alignItems: 'center',
+  },
+  pendingAvatar: {
+    backgroundColor: theme.COLORS.warning + '15',
+  },
+  completedAvatar: {
+    backgroundColor: theme.COLORS.success + '15',
+  },
+  avatarText: {
     fontSize: 16,
     fontFamily: theme.FONTS.family.bold,
     color: theme.COLORS.primary,
@@ -1023,24 +1065,39 @@ const styles = StyleSheet.create({
   userDetails: {
     flex: 1,
   },
+  nameStatusRow: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'flex-start',
+    marginBottom: 4,
+  },
   userName: {
     fontSize: 15,
     fontFamily: theme.FONTS.family.semiBold,
     color: theme.COLORS.textPrimary,
-    marginBottom: 4,
+    flex: 1,
+    marginRight: 8,
   },
   userId: {
     fontSize: 12,
     color: theme.COLORS.textTertiary,
-    marginBottom: 4,
+    marginBottom: 6,
+    fontFamily: theme.FONTS.family.regular,
+  },
+  schemeRow: {
+    flexDirection: 'row',
+    alignItems: 'center',
   },
   schemeName: {
     fontSize: 12,
-    color: theme.COLORS.primary,
     fontFamily: theme.FONTS.family.medium,
+    marginLeft: 4,
   },
   pendingSchemeName: {
     color: theme.COLORS.textSecondary,
+  },
+  completedSchemeName: {
+    color: theme.COLORS.primary,
   },
   statusBadge: {
     flexDirection: 'row',
@@ -1071,7 +1128,6 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
   infoRow: {
-    gap: 12,
     marginBottom: 12,
   },
   infoItem: {
@@ -1114,6 +1170,43 @@ const styles = StyleSheet.create({
     fontFamily: theme.FONTS.family.semiBold,
     marginLeft: 4,
   },
+  // Pending specific styles
+  pendingInfo: {
+    flexDirection: 'row',
+    justifyContent: 'space-between',
+    alignItems: 'center',
+    backgroundColor: theme.COLORS.warning + '05',
+    padding: 10,
+    borderRadius: 8,
+    borderWidth: 1,
+    borderColor: theme.COLORS.warning + '15',
+  },
+  waitingContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    flex: 1,
+  },
+  waitingText: {
+    fontSize: 12,
+    color: theme.COLORS.warning,
+    fontFamily: theme.FONTS.family.medium,
+    marginLeft: 6,
+  },
+  remindButton: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: theme.COLORS.warning,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 6,
+    marginLeft: 10,
+  },
+  remindText: {
+    fontSize: 12,
+    color: theme.COLORS.white,
+    fontFamily: theme.FONTS.family.semiBold,
+    marginLeft: 4,
+  },
   cardFooter: {
     flexDirection: 'row',
     justifyContent: 'space-between',
@@ -1140,10 +1233,15 @@ const styles = StyleSheet.create({
   referralCodeBadge: {
     flexDirection: 'row',
     alignItems: 'center',
-    backgroundColor: theme.COLORS.primary + '10',
     paddingHorizontal: 10,
     paddingVertical: 4,
     borderRadius: 6,
+  },
+  pendingCodeBadge: {
+    backgroundColor: theme.COLORS.warning + '10',
+  },
+  completedCodeBadge: {
+    backgroundColor: theme.COLORS.success + '10',
   },
   referralCodeBadgeText: {
     fontSize: 10,

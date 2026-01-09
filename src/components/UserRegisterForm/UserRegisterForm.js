@@ -29,22 +29,42 @@ import { styles } from "./UserStyles";
 // ===== CUSTOM DATE PICKER COMPONENT =====
 const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
   const months = [
-    "Jan", "Feb", "Mar", "Apr", "May", "Jun",
-    "Jul", "Aug", "Sep", "Oct", "Nov", "Dec"
+    "Jan",
+    "Feb",
+    "Mar",
+    "Apr",
+    "May",
+    "Jun",
+    "Jul",
+    "Aug",
+    "Sep",
+    "Oct",
+    "Nov",
+    "Dec",
   ];
-  
+
   const monthsFull = [
-    "January", "February", "March", "April", "May", "June",
-    "July", "August", "September", "October", "November", "December"
+    "January",
+    "February",
+    "March",
+    "April",
+    "May",
+    "June",
+    "July",
+    "August",
+    "September",
+    "October",
+    "November",
+    "December",
   ];
-  
+
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth());
   const [selectedDay, setSelectedDay] = useState(new Date().getDate());
-  
+
   const [yearsList, setYearsList] = useState([]);
   const [daysList, setDaysList] = useState([]);
-  
+
   // Refs for ScrollViews
   const yearScrollRef = useRef(null);
   const monthScrollRef = useRef(null);
@@ -61,7 +81,7 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
       years.push(i);
     }
     setYearsList(years);
-    
+
     // Initialize with current date or passed date
     if (currentDate) {
       const date = new Date(currentDate);
@@ -79,7 +99,7 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
       days.push(i);
     }
     setDaysList(days);
-    
+
     // Adjust selected day if it exceeds days in month
     if (selectedDay > daysInMonth) {
       setSelectedDay(daysInMonth);
@@ -89,7 +109,7 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
   // Scroll to selected item when it changes
   useEffect(() => {
     if (yearScrollRef.current && yearsList.length > 0) {
-      const yearIndex = yearsList.findIndex(y => y === selectedYear);
+      const yearIndex = yearsList.findIndex((y) => y === selectedYear);
       const scrollY = yearIndex * ITEM_HEIGHT;
       yearScrollRef.current.scrollTo({ y: scrollY, animated: true });
     }
@@ -123,7 +143,10 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
   };
 
   const handleConfirm = () => {
-    const formattedDate = `${selectedYear}-${String(selectedMonth + 1).padStart(2, '0')}-${String(selectedDay).padStart(2, '0')}`;
+    const formattedDate = `${selectedYear}-${String(selectedMonth + 1).padStart(
+      2,
+      "0"
+    )}-${String(selectedDay).padStart(2, "0")}`;
     onSelectDate(formattedDate);
     onClose();
   };
@@ -139,20 +162,21 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
     return (
       <TouchableOpacity
         key={year}
-        style={[
-          styles.columnItem,
-          isSelected && styles.columnItemSelected
-        ]}
+        style={[styles.columnItem, isSelected && styles.columnItemSelected]}
         onPress={() => handleYearSelect(year)}
       >
-        <View style={[
-          styles.columnItemContent,
-          isSelected && styles.columnItemContentSelected
-        ]}>
-          <Text style={[
-            styles.columnItemText,
-            isSelected && styles.columnItemTextSelected
-          ]}>
+        <View
+          style={[
+            styles.columnItemContent,
+            isSelected && styles.columnItemContentSelected,
+          ]}
+        >
+          <Text
+            style={[
+              styles.columnItemText,
+              isSelected && styles.columnItemTextSelected,
+            ]}
+          >
             {year}
           </Text>
         </View>
@@ -165,20 +189,21 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
     return (
       <TouchableOpacity
         key={index}
-        style={[
-          styles.columnItem,
-          isSelected && styles.columnItemSelected
-        ]}
+        style={[styles.columnItem, isSelected && styles.columnItemSelected]}
         onPress={() => handleMonthSelect(index)}
       >
-        <View style={[
-          styles.columnItemContent,
-          isSelected && styles.columnItemContentSelected
-        ]}>
-          <Text style={[
-            styles.columnItemText,
-            isSelected && styles.columnItemTextSelected
-          ]}>
+        <View
+          style={[
+            styles.columnItemContent,
+            isSelected && styles.columnItemContentSelected,
+          ]}
+        >
+          <Text
+            style={[
+              styles.columnItemText,
+              isSelected && styles.columnItemTextSelected,
+            ]}
+          >
             {month}
           </Text>
         </View>
@@ -191,20 +216,21 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
     return (
       <TouchableOpacity
         key={day}
-        style={[
-          styles.columnItem,
-          isSelected && styles.columnItemSelected
-        ]}
+        style={[styles.columnItem, isSelected && styles.columnItemSelected]}
         onPress={() => handleDaySelect(day)}
       >
-        <View style={[
-          styles.columnItemContent,
-          isSelected && styles.columnItemContentSelected
-        ]}>
-          <Text style={[
-            styles.columnItemText,
-            isSelected && styles.columnItemTextSelected
-          ]}>
+        <View
+          style={[
+            styles.columnItemContent,
+            isSelected && styles.columnItemContentSelected,
+          ]}
+        >
+          <Text
+            style={[
+              styles.columnItemText,
+              isSelected && styles.columnItemTextSelected,
+            ]}
+          >
             {day}
           </Text>
         </View>
@@ -226,32 +252,33 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
           {/* Header */}
           <View style={styles.datePickerHeader}>
             <Text style={styles.datePickerTitle}>Select Date of Birth</Text>
-            <TouchableOpacity 
-              onPress={onClose} 
+            <TouchableOpacity
+              onPress={onClose}
               style={styles.datePickerCloseButton}
             >
               <Text style={styles.datePickerCloseText}>✕</Text>
             </TouchableOpacity>
           </View>
-          
+
           {/* Current Selection Display */}
           <View style={styles.selectedDatePreview}>
             <Text style={styles.selectedDatePreviewText}>
               {getCurrentDate()}
             </Text>
           </View>
-          
+
+          {/* Three Row Selector */}
+          {/* Three Row Selector */}
           {/* Three Row Selector */}
           <View style={styles.threeRowSelector}>
             {/* Year Column */}
             <View style={styles.columnContainer}>
               <Text style={styles.columnTitle}>Year</Text>
               <View style={styles.columnScrollContainer}>
-                <View style={styles.selectionIndicatorTop} />
+                {/* Only middle indicator remains */}
                 <View style={styles.selectionIndicatorMiddle} />
-                <View style={styles.selectionIndicatorBottom} />
-                
-                <ScrollView 
+
+                <ScrollView
                   ref={yearScrollRef}
                   style={styles.columnScrollView}
                   showsVerticalScrollIndicator={false}
@@ -264,16 +291,15 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
                 </ScrollView>
               </View>
             </View>
-            
+
             {/* Month Column */}
             <View style={styles.columnContainer}>
               <Text style={styles.columnTitle}>Month</Text>
               <View style={styles.columnScrollContainer}>
-                <View style={styles.selectionIndicatorTop} />
+                {/* Only middle indicator remains */}
                 <View style={styles.selectionIndicatorMiddle} />
-                <View style={styles.selectionIndicatorBottom} />
-                
-                <ScrollView 
+
+                <ScrollView
                   ref={monthScrollRef}
                   style={styles.columnScrollView}
                   showsVerticalScrollIndicator={false}
@@ -286,16 +312,15 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
                 </ScrollView>
               </View>
             </View>
-            
+
             {/* Day Column */}
-            <View style={styles.columnContainer}>
+            <View style={[styles.columnContainer, styles.columnContainerLast]}>
               <Text style={styles.columnTitle}>Day</Text>
               <View style={styles.columnScrollContainer}>
-                <View style={styles.selectionIndicatorTop} />
+                {/* Only middle indicator remains */}
                 <View style={styles.selectionIndicatorMiddle} />
-                <View style={styles.selectionIndicatorBottom} />
-                
-                <ScrollView 
+
+                <ScrollView
                   ref={dayScrollRef}
                   style={styles.columnScrollView}
                   showsVerticalScrollIndicator={false}
@@ -309,17 +334,17 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
               </View>
             </View>
           </View>
-          
+
           {/* Action Buttons */}
           <View style={styles.datePickerActions}>
-            <TouchableOpacity 
+            <TouchableOpacity
               style={styles.datePickerCancelButton}
               onPress={onClose}
             >
               <Text style={styles.datePickerCancelText}>Cancel</Text>
             </TouchableOpacity>
-            
-            <TouchableOpacity 
+
+            <TouchableOpacity
               style={styles.datePickerConfirmButton}
               onPress={handleConfirm}
             >
@@ -333,21 +358,21 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
 };
 
 // ===== DATE OF BIRTH INPUT COMPONENT =====
-const DateOfBirthInput = ({ 
-  value, 
-  onChangeText, 
-  error, 
-  required, 
+const DateOfBirthInput = ({
+  value,
+  onChangeText,
+  error,
+  required,
   isValid,
-  showValidationIcon 
+  showValidationIcon,
 }) => {
   const [showDatePicker, setShowDatePicker] = useState(false);
 
   // Format date for display
   const formatDateForDisplay = (dateString) => {
-    if (!dateString) return '';
+    if (!dateString) return "";
     try {
-      const [year, month, day] = dateString.split('-');
+      const [year, month, day] = dateString.split("-");
       return `${day}-${month}-${year}`;
     } catch (e) {
       return dateString;
@@ -358,7 +383,8 @@ const DateOfBirthInput = ({
     <View style={styles.dobContainer}>
       <View style={styles.dobInputHeader}>
         <Text style={styles.inputLabel}>
-          Date of Birth {required && <Text style={styles.requiredIndicator}>*</Text>}
+          Date of Birth{" "}
+          {required && <Text style={styles.requiredIndicator}>*</Text>}
         </Text>
         {showValidationIcon && isValid && (
           <View style={styles.validationIcon}>
@@ -366,7 +392,7 @@ const DateOfBirthInput = ({
           </View>
         )}
       </View>
-      
+
       <View style={styles.dobInputWrapper}>
         <TextInput
           style={[
@@ -387,9 +413,9 @@ const DateOfBirthInput = ({
           <Text style={styles.calendarIcon}>📅</Text>
         </TouchableOpacity>
       </View>
-      
+
       <Text style={styles.dobHintText}>Format: DD-MM-YYYY</Text>
-      
+
       {error && (
         <View style={styles.errorContainer}>
           <Text style={styles.errorIcon}>⚠️</Text>
@@ -491,7 +517,8 @@ const AadhaarField = ({
   pendingAadhaarVerification,
   userData,
 }) => {
-  const isAadhaarVerified = formData.aadhaarVerified || (userData && userData.aadhaarVerified);
+  const isAadhaarVerified =
+    formData.aadhaarVerified || (userData && userData.aadhaarVerified);
   const maskedAadhaar = formData.maskedAadhaar || userData?.maskedAadhaar;
 
   if (isAadhaarVerified) {
@@ -506,7 +533,8 @@ const AadhaarField = ({
 
         <View style={styles.verifiedAadhaarContent}>
           <Text style={styles.verifiedAadhaarNumber}>
-            {maskedAadhaar || `XXXX-XXXX-${formData.idProofNo?.slice(8) || "****"}`}
+            {maskedAadhaar ||
+              `XXXX-XXXX-${formData.idProofNo?.slice(8) || "****"}`}
           </Text>
         </View>
       </View>
@@ -525,7 +553,10 @@ const AadhaarField = ({
           style={[
             styles.input,
             styles.aadhaarInput,
-            formData.idProofNo && formData.idProofNo.length === 12 && !errors.idProofNo && styles.inputAadhaarReady,
+            formData.idProofNo &&
+              formData.idProofNo.length === 12 &&
+              !errors.idProofNo &&
+              styles.inputAadhaarReady,
             errors.idProofNo && styles.inputError,
           ]}
           value={formData.idProofNo}
@@ -535,25 +566,27 @@ const AadhaarField = ({
           maxLength={12}
         />
 
-        {formData.idProofNo && formData.idProofNo.length === 12 && !errors.idProofNo && (
-          <View style={styles.aadhaarActions}>
-            <TouchableOpacity
-              style={styles.verifyButtonFull}
-              onPress={handleVerifyAadhaar}
-              disabled={verificationInProgress || pendingAadhaarVerification}
-            >
-              {verificationInProgress || pendingAadhaarVerification ? (
-                <ActivityIndicator size="small" color="#FFF" />
-              ) : (
-                <>
-                  <Text style={styles.verifyButtonText}>
-                    🔐 Verify Aadhaar
-                  </Text>
-                </>
-              )}
-            </TouchableOpacity>
-          </View>
-        )}
+        {formData.idProofNo &&
+          formData.idProofNo.length === 12 &&
+          !errors.idProofNo && (
+            <View style={styles.aadhaarActions}>
+              <TouchableOpacity
+                style={styles.verifyButtonFull}
+                onPress={handleVerifyAadhaar}
+                disabled={verificationInProgress || pendingAadhaarVerification}
+              >
+                {verificationInProgress || pendingAadhaarVerification ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <>
+                    <Text style={styles.verifyButtonText}>
+                      🔐 Verify Aadhaar
+                    </Text>
+                  </>
+                )}
+              </TouchableOpacity>
+            </View>
+          )}
       </View>
 
       {errors.idProofNo && (
@@ -633,7 +666,7 @@ export default function ProfileManagement() {
       <CommonHeader
         title="User Profile Management"
         subtitle={userData ? `Welcome, ${userData.username}` : "Loading..."}
-        onBackPress={() => navigation.navigate('MainLanding')}
+        onBackPress={() => navigation.navigate("MainLanding")}
       />
 
       {/* Form Modal */}

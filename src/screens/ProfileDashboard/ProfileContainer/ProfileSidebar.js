@@ -190,6 +190,10 @@ const DrawerMenu = ({ isVisible, onClose }) => {
     };
   }, []);
 
+  const handleApprefernavigate = () => {
+    navigation.navigate("ReferralShareScreen");
+  };
+
   // Drawer open/close effects
   useEffect(() => {
     if (isVisible) {
@@ -721,6 +725,12 @@ const DrawerMenu = ({ isVisible, onClose }) => {
                 <View style={styles.menuItemContent}>
                   <MaterialIcons name="star-rate" size={moderateScale(22)} color={COLORS.textPrimary} />
                   <TextDefault style={styles.menuItemText}>Rate Us</TextDefault>
+                </View>
+              </TouchableOpacity>
+              <TouchableOpacity style={styles.menuItem} onPress={handleApprefernavigate}>
+                <View style={styles.menuItemContent}>
+                  <MaterialIcons name="star-rate" size={moderateScale(22)} color={COLORS.textPrimary} />
+                  <TextDefault style={styles.menuItemText}>Refer App & Earn</TextDefault>
                 </View>
               </TouchableOpacity>
 

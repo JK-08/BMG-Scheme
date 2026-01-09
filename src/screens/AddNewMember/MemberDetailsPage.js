@@ -2228,60 +2228,70 @@ const MemberDetailsPage = ({
 
       {/* DigiLocker WebView Modal */}
       <Modal
-        visible={showDigiLockerWebView}
-        animationType="slide"
-        onRequestClose={() => {
-          if (!verificationAttempted) {
-            checkStatusAndComplete();
-          } else {
-            setShowDigiLockerWebView(false);
-            if (verificationPolling) {
-              clearInterval(verificationPolling);
-              setVerificationPolling(null);
-            }
+  visible={showDigiLockerWebView}
+  animationType="slide"
+  onRequestClose={() => {
+    if (!verificationAttempted) {
+      checkStatusAndComplete();
+    } else {
+      setShowDigiLockerWebView(false);
+      if (verificationPolling) {
+        clearInterval(verificationPolling);
+        setVerificationPolling(null);
+      }
+    }
+  }}
+>
+  <View style={styles.webViewContainer}>
+    <CommonHeader
+      title="DigiLocker Verification"
+      onBackPress={() => {
+        if (!verificationAttempted) {
+          checkStatusAndComplete();
+        } else {
+          setShowDigiLockerWebView(false);
+          if (verificationPolling) {
+            clearInterval(verificationPolling);
+            setVerificationPolling(null);
           }
-        }}
-      >
-        <View style={styles.webViewContainer}>
-          <CommonHeader
-            title="DigiLocker Verification"
-            onBackPress={() => {
-              if (!verificationAttempted) {
-                checkStatusAndComplete();
-              } else {
-                setShowDigiLockerWebView(false);
-                if (verificationPolling) {
-                  clearInterval(verificationPolling);
-                  setVerificationPolling(null);
-                }
-              }
-            }}
-          />
-          {digiLockerUrl ? (
-            <WebView
-              source={{ uri: digiLockerUrl }}
-              style={styles.webView}
-              onNavigationStateChange={handleWebViewNavigationStateChange}
-              startInLoadingState={true}
-              renderLoading={() => (
-                <View style={styles.webViewLoading}>
-                  <ActivityIndicator size="large" color={COLORS.primary} />
-                  <Text style={styles.webViewLoadingText}>
-                    Loading DigiLocker...
-                  </Text>
-                </View>
-              )}
-            />
-          ) : (
-            <View style={styles.webViewLoading}>
-              <ActivityIndicator size="large" color={COLORS.primary} />
-              <Text style={styles.webViewLoadingText}>
-                Preparing verification...
-              </Text>
-            </View>
-          )}
-        </View>
-      </Modal>
+        }
+      }}
+    />
+    
+    {/* Add the warning message */}
+    <View style={styles.warningContainer}>
+      <Text style={styles.warningText}>
+        <Text style={styles.warningIcon}>⚠️ </Text>
+        Please ensure you do not use the same Aadhaar that was used for registration.
+        Nominee Aadhaar must be different from the registered user's Aadhaar.
+      </Text>
+    </View>
+    
+    {digiLockerUrl ? (
+      <WebView
+        source={{ uri: digiLockerUrl }}
+        style={styles.webView}
+        onNavigationStateChange={handleWebViewNavigationStateChange}
+        startInLoadingState={true}
+        renderLoading={() => (
+          <View style={styles.webViewLoading}>
+            <ActivityIndicator size="large" color={COLORS.primary} />
+            <Text style={styles.webViewLoadingText}>
+              Loading DigiLocker...
+            </Text>
+          </View>
+        )}
+      />
+    ) : (
+      <View style={styles.webViewLoading}>
+        <ActivityIndicator size="large" color={COLORS.primary} />
+        <Text style={styles.webViewLoadingText}>
+          Preparing verification...
+        </Text>
+      </View>
+    )}
+  </View>
+</Modal>
 
       {/* Date Picker Modal */}
       <Modal visible={!!showDatePicker} transparent animationType="fade">

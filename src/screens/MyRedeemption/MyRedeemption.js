@@ -13,29 +13,30 @@ import {
   Modal,
   ScrollView,
   Dimensions,
+  Alert,
 } from "react-native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { getPhoneDetails } from "../../services/SchemeDetailsService";
 import { getRemainingDaysData } from "../../services/Remainingdays";
+import { sendRedemption } from "../../services/RedemptionService";
 import theme from "../../utils/AppTheme";
 import CommonHeader from "../../components/CommonHeader/CommonHeader";
 
-const { width: SCREEN_WIDTH } = Dimensions.get('window');
+const { width: SCREEN_WIDTH } = Dimensions.get("window");
 
 // Helper function to determine button font size based on text length
 const getButtonFontSize = (text = "How to Redeem") => {
   const textLength = text.length;
-  
-  // Base font sizes adjusted for better fit
-  if (SCREEN_WIDTH < 350) { // Small phones
+
+  if (SCREEN_WIDTH < 350) {
     if (textLength > 12) return 9;
     if (textLength > 10) return 10;
     return 11;
-  } else if (SCREEN_WIDTH < 400) { // Medium phones
+  } else if (SCREEN_WIDTH < 400) {
     if (textLength > 12) return 10;
     if (textLength > 10) return 11;
     return 12;
-  } else { // Large phones
+  } else {
     if (textLength > 12) return 11;
     if (textLength > 10) return 12;
     return 13;
@@ -53,31 +54,39 @@ const SchemeListPage = ({ route, navigation }) => {
   const [schemeApiData, setSchemeApiData] = useState({});
   const [selectedScheme, setSelectedScheme] = useState(null);
   const [modalVisible, setModalVisible] = useState(false);
+  const [redeeming, setRedeeming] = useState(false);
+  const [redemptionMessage, setRedemptionMessage] = useState(null);
+  const [redemptionSubmitted, setRedemptionSubmitted] = useState(false);
+  const [redemptionStatusData, setRedemptionStatusData] = useState([]);
+  const [loadingRedemptionStatus, setLoadingRedemptionStatus] = useState(false);
 
   // Helper function to extract date part from ISO string
   const extractDatePart = (isoString) => {
-    if (!isoString) return null;
-    // If it's already just date (YYYY-MM-DD), return as is
+    if (!isoString) return "";
+
     if (/^\d{4}-\d{2}-\d{2}$/.test(isoString)) {
       return isoString;
     }
-    // If it has 'T' in it, extract date part
-    if (isoString.includes("T")) {
-      return isoString.split("T")[0];
-    }
-    // Try to parse as date and extract YYYY-MM-DD
-    try {
-      const date = new Date(isoString);
-      if (!isNaN(date.getTime())) {
-        const year = date.getFullYear();
-        const month = String(date.getMonth() + 1).padStart(2, "0");
-        const day = String(date.getDate()).padStart(2, "0");
-        return `${year}-${month}-${day}`;
+
+    const date = new Date(isoString);
+    if (isNaN(date.getTime())) {
+      const match = isoString.match(/^(\d{4}-\d{2}-\d{2})/);
+      if (match) {
+        return match[1];
       }
-    } catch (e) {
-      console.error("Error parsing date:", e);
+      return "";
     }
-    return null;
+
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, "0");
+    const day = String(date.getDate()).padStart(2, "0");
+    return `${year}-${month}-${day}`;
+  };
+
+  const formatToIsoDateTime = (dateTimeStr) => {
+    if (!dateTimeStr) return "";
+    const cleaned = dateTimeStr.replace(".0", "").replace(" ", "T");
+    return cleaned;
   };
 
   // Memoized formatCurrency function
@@ -123,16 +132,11 @@ const SchemeListPage = ({ route, navigation }) => {
 
     const promises = schemesData.map(async (scheme) => {
       const schemeId = scheme.schemeSummary?.schemeId;
-
-      // Extract just the date part from the ISO string
       const extractedDate = extractDatePart(scheme.joinDate);
 
       if (schemeId && extractedDate) {
         try {
-          // Pass the extracted date (YYYY-MM-DD) to your existing API
           const apiData = await getRemainingDaysData(schemeId, extractedDate);
-
-          // Store with original joinDate as key for consistency
           apiDataMap[`${schemeId}_${scheme.joinDate}`] = apiData;
         } catch (apiError) {
           console.warn(
@@ -147,9 +151,76 @@ const SchemeListPage = ({ route, navigation }) => {
     });
 
     await Promise.allSettled(promises);
-    console.log("All API Data Stored:", Object.keys(apiDataMap));
     return apiDataMap;
   }, []);
+
+  // Fetch redemption status from API
+  const fetchRedemptionStatus = useCallback(async (phone) => {
+    if (!phone) return [];
+
+    try {
+      setLoadingRedemptionStatus(true);
+      const response = await fetch(
+        `https://scheme.bmgjewellers.com/api/v1/redemption/mobile/${phone}`
+      );
+      const data = await response.json();
+
+      if (data.success && data.data) {
+        return data.data;
+      } else {
+        console.warn("No redemption status data found:", data.message);
+        return [];
+      }
+    } catch (error) {
+      console.error("Error fetching redemption status:", error);
+      return [];
+    } finally {
+      setLoadingRedemptionStatus(false);
+    }
+  }, []);
+
+  // Check if scheme is already submitted via API
+  const isSchemeSubmitted = useCallback(
+    (scheme) => {
+      if (!scheme || !redemptionStatusData.length) return false;
+
+      const regNo = scheme.regNo || 1;
+      const groupCode = scheme.groupCode || "";
+      const schemeId = scheme.schemeSummary?.schemeId || "";
+
+      // Find matching redemption record
+      const submittedRecord = redemptionStatusData.find((record) => {
+        return (
+          record.regNo === regNo &&
+          record.groupCode === groupCode &&
+          record.schemeId === schemeId.toString()
+        );
+      });
+
+      return !!submittedRecord;
+    },
+    [redemptionStatusData]
+  );
+
+  // Get submission details if scheme is submitted
+  const getSubmissionDetails = useCallback(
+    (scheme) => {
+      if (!scheme || !redemptionStatusData.length) return null;
+
+      const regNo = scheme.regNo || 1;
+      const groupCode = scheme.groupCode || "";
+      const schemeId = scheme.schemeSummary?.schemeId || "";
+
+      return redemptionStatusData.find((record) => {
+        return (
+          record.regNo === regNo &&
+          record.groupCode === groupCode &&
+          record.schemeId === schemeId.toString()
+        );
+      });
+    },
+    [redemptionStatusData]
+  );
 
   // Fetch schemes
   const fetchSchemes = useCallback(
@@ -157,16 +228,24 @@ const SchemeListPage = ({ route, navigation }) => {
       try {
         setLoading(true);
         setError(null);
-        const data = await getPhoneDetails(phone);
 
-        if (data?.length > 0) {
-          setSchemes(data);
-          const apiData = await fetchApiDataForSchemes(data);
+        // Fetch schemes and redemption status in parallel
+        const [schemesData, redemptionData] = await Promise.all([
+          getPhoneDetails(phone),
+          fetchRedemptionStatus(phone),
+        ]);
+
+        if (schemesData?.length > 0) {
+          setSchemes(schemesData);
+          const apiData = await fetchApiDataForSchemes(schemesData);
           setSchemeApiData(apiData);
         } else {
           setSchemes([]);
           setError("No schemes found for this phone number");
         }
+
+        // Set redemption status data
+        setRedemptionStatusData(redemptionData || []);
       } catch (err) {
         console.error("Error fetching schemes:", err);
         setError("Failed to load schemes. Please try again.");
@@ -175,21 +254,232 @@ const SchemeListPage = ({ route, navigation }) => {
         setRefreshing(false);
       }
     },
-    [fetchApiDataForSchemes]
+    [fetchApiDataForSchemes, fetchRedemptionStatus]
   );
 
   // Handle redeem button press
   const handleRedeemPress = useCallback(
     (scheme, remainingBonusDays, displayAmount) => {
+      // Check if already submitted via API
+      if (isSchemeSubmitted(scheme)) {
+        Alert.alert(
+          "Already Submitted",
+          "Redemption request for this scheme has already been submitted. Our team will contact you soon.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+
       setSelectedScheme({
         scheme,
         remainingBonusDays,
         displayAmount,
       });
       setModalVisible(true);
+      setRedemptionMessage(null);
+      setRedemptionSubmitted(false);
     },
-    []
+    [isSchemeSubmitted]
   );
+
+  // Handle redemption submission
+  const handleRedemptionSubmit = useCallback(async () => {
+    if (!selectedScheme?.scheme) return;
+
+    // Check if scheme is ready for redemption
+    const schemeCloseDays = selectedScheme.scheme.remainingDays ?? 0;
+    if (schemeCloseDays > 0) {
+      Alert.alert(
+        "Not Eligible",
+        "This scheme is not yet ready for redemption. Please wait for the maturity date.",
+        [{ text: "OK" }]
+      );
+      return;
+    }
+
+    // Check if already submitted via API
+    if (isSchemeSubmitted(selectedScheme.scheme)) {
+      Alert.alert(
+        "Already Submitted",
+        "Redemption request for this scheme has already been submitted. Our team will contact you soon.",
+        [{ text: "OK" }]
+      );
+      setModalVisible(false);
+      return;
+    }
+
+    // Ask for confirmation
+    Alert.alert(
+      "Confirm Redemption",
+      `Are you sure you want to redeem ${
+        selectedScheme.scheme.schemeSummary?.schemeName || "this scheme"
+      } for ${formatCurrency(selectedScheme.displayAmount)}?`,
+      [
+        { text: "Cancel", style: "cancel" },
+        {
+          text: "Confirm",
+          onPress: async () => {
+            try {
+              setRedeeming(true);
+              setRedemptionMessage(null);
+              setRedemptionSubmitted(false);
+
+              // Prepare redemption data from scheme
+              const scheme = selectedScheme.scheme;
+              const personalInfo = scheme.personalInfo || {};
+              const schemeSummary = scheme.schemeSummary || {};
+              const transBalance =
+                schemeSummary.schemaSummaryTransBalance || {};
+
+              // Get the latest payment from payment history
+              const latestPayment =
+                scheme.paymentHistoryList &&
+                scheme.paymentHistoryList.length > 0
+                  ? scheme.paymentHistoryList[
+                      scheme.paymentHistoryList.length - 1
+                    ]
+                  : {};
+
+              // Calculate maturity date (joinDate + totalDays)
+              let maturityDate = "";
+              try {
+                const joinDate = new Date(scheme.joinDate);
+                const totalDays = scheme.totalDays || 0;
+                joinDate.setDate(joinDate.getDate() + totalDays);
+                const year = joinDate.getFullYear();
+                const month = String(joinDate.getMonth() + 1).padStart(2, "0");
+                const day = String(joinDate.getDate()).padStart(2, "0");
+                maturityDate = `${year}-${month}-${day}`;
+              } catch (e) {
+                console.error("Error calculating maturity date:", e);
+                maturityDate = scheme.maturityDate
+                  ? extractDatePart(scheme.maturityDate)
+                  : "";
+              }
+
+              // Extract just the date part from joinDate
+              const joinDateFormatted = extractDatePart(scheme.joinDate) || "";
+
+              const redemptionPayload = {
+                regNo: scheme.regNo || 1,
+                groupCode: scheme.groupCode || "BDS",
+                pName: scheme.pName || personalInfo.pName || "Customer",
+
+                maturityDate: maturityDate,
+                joinDate: joinDateFormatted,
+
+                personalId: personalInfo.personalId || "",
+                doorNo: personalInfo.doorNo || "",
+                address1: personalInfo.address1 || "",
+                address2: personalInfo.address2 || "",
+                area: personalInfo.area || "",
+                city: personalInfo.city || "",
+                state: personalInfo.state || "",
+                country: personalInfo.country || "India",
+                pinCode: personalInfo.pinCode || "",
+                mobile: personalInfo.mobile || phoneNumber || "",
+                mobile2: personalInfo.mobile2 || "",
+                costId: personalInfo.costId || "BP",
+
+                schemeId: schemeSummary.schemeId || "",
+                schemeName: schemeSummary.schemeName || "",
+                schemeSName: schemeSummary.schemeSName || "",
+                instalment: schemeSummary.instalment || "11",
+
+                // Convert string amounts to numbers
+                amount: parseFloat(scheme.amount) || 0,
+                amtrecd: parseFloat(transBalance.amtrecd) || 0,
+                bonusAmount: parseFloat(scheme.bonusAmount) || 0,
+                totalAmount: parseFloat(scheme.totalAmount) || 0,
+                totalAmountWithBonus:
+                  parseFloat(scheme.totalAmountWithBonus) || 0,
+                bonusPercent: parseFloat(scheme.bonusPercent) || 0,
+
+                insPaid: parseInt(transBalance.insPaid) || 0,
+                fixedIns: schemeSummary.fixedIns || "N",
+                weightLedger: schemeSummary.weightLedger || "N",
+                totalWeight: parseFloat(schemeSummary.totalWeight) || 0,
+                lastWeight: parseFloat(schemeSummary.lastWeight) || 0,
+
+                // Use latest payment details
+                receiptNo: latestPayment.receiptNo || "",
+                paymentAmount: parseFloat(latestPayment.amount) || 0,
+                installment: parseInt(latestPayment.installment) || 0,
+
+                updateTime:
+                  formatToIsoDateTime(latestPayment.updateTime) ||
+                  new Date().toISOString().slice(0, 19),
+
+                weight: parseFloat(latestPayment.weight) || 0,
+                chqBankCode: latestPayment.chqBankCode || "",
+                chq_CardNo: latestPayment.chq_CardNo || "",
+                chqBranch: latestPayment.chqBranch || "",
+                chqBank: latestPayment.chqBank || "",
+                chqRtnReason: latestPayment.chqRtnReason || "",
+
+                lastPaidDate: scheme.lastPaidDate
+                  ? extractDatePart(scheme.lastPaidDate)
+                  : "",
+
+                fromDays: scheme.fromDays || 0,
+                toDays: scheme.toDays || 0,
+                totalDays: scheme.totalDays || 0,
+                remainingDays: scheme.remainingDays || 0,
+              };
+
+              console.log(
+                "Sending redemption data:",
+                JSON.stringify(redemptionPayload, null, 2)
+              );
+
+              // Call redemption service
+              const result = await sendRedemption(redemptionPayload);
+
+              // Check if redemption was successful
+              if (result.success) {
+                setRedemptionMessage({
+                  type: "success",
+                  text:
+                    result.message ||
+                    "Redemption request submitted successfully!",
+                });
+                setRedemptionSubmitted(true);
+
+                // Refresh schemes and redemption status after successful redemption
+                setTimeout(() => {
+                  if (phoneNumber) {
+                    fetchSchemes(phoneNumber);
+                  }
+                }, 2000);
+              } else {
+                setRedemptionMessage({
+                  type: "error",
+                  text:
+                    result.message || "Failed to submit redemption request.",
+                });
+              }
+            } catch (err) {
+              console.error("Redemption error:", err);
+              setRedemptionMessage({
+                type: "error",
+                text:
+                  err.message ||
+                  "Failed to submit redemption request. Please try again.",
+              });
+            } finally {
+              setRedeeming(false);
+            }
+          },
+        },
+      ]
+    );
+  }, [
+    selectedScheme,
+    phoneNumber,
+    formatCurrency,
+    fetchSchemes,
+    isSchemeSubmitted,
+  ]);
 
   // Effects
   useEffect(() => {
@@ -216,11 +506,13 @@ const SchemeListPage = ({ route, navigation }) => {
       const schemeCloseDays = item.remainingDays ?? 0;
       const schemeName = item.schemeSummary?.schemeName || "N/A";
 
-      // Use the original joinDate as key
-      const joinDate = item.joinDate; // "2025-10-01T00:00:00"
-      const schemeId = item.schemeSummary?.schemeId;
+      // Check if scheme is already submitted via API
+      const alreadySubmitted = isSchemeSubmitted(item);
+      const submissionDetails = getSubmissionDetails(item);
 
       // Create key matching what we stored in fetchApiDataForSchemes
+      const schemeId = item.schemeSummary?.schemeId;
+      const joinDate = item.joinDate;
       const apiDataKey = `${schemeId}_${joinDate}`;
       const apiData = schemeApiData[apiDataKey] || {};
 
@@ -237,14 +529,12 @@ const SchemeListPage = ({ route, navigation }) => {
       // Determine which amount to display
       let displayAmount = baseAmount;
       if (bonusUnlockDays !== null) {
-        // If we have bonus API data
         displayAmount = bonusUnlockDays > 0 ? baseAmount : bonusAmount;
       } else {
-        // Fallback
         displayAmount = schemeCloseDays > 0 ? baseAmount : bonusAmount;
       }
 
-      const canRedeem = schemeCloseDays <= 0;
+      const canRedeem = schemeCloseDays <= 0 && !alreadySubmitted;
 
       // Status color for scheme close days
       let statusColor = theme.COLORS.warning;
@@ -263,8 +553,25 @@ const SchemeListPage = ({ route, navigation }) => {
         : theme.COLORS.textSecondary;
 
       // Get button text properties
-      const buttonText = "How to Redeem";
+      const buttonText = alreadySubmitted ? "Submitted ✓" : "How to Redeem";
       const buttonFontSize = getButtonFontSize(buttonText);
+
+      // Format submission date if available
+      let submissionDateText = "";
+      if (submissionDetails && submissionDetails.updateTime) {
+        try {
+          const date = new Date(submissionDetails.updateTime);
+          if (!isNaN(date.getTime())) {
+            submissionDateText = date.toLocaleDateString("en-IN", {
+              day: "2-digit",
+              month: "short",
+              year: "numeric",
+            });
+          }
+        } catch (e) {
+          console.error("Error parsing submission date:", e);
+        }
+      }
 
       return (
         <View style={styles.tableRow}>
@@ -273,6 +580,28 @@ const SchemeListPage = ({ route, navigation }) => {
             <Text style={styles.schemeName} numberOfLines={2}>
               {schemeName}
             </Text>
+            {alreadySubmitted && (
+              <View style={styles.submittedInfoContainer}>
+                <Text style={styles.submittedBadge}>Request Submitted</Text>
+                {submissionDateText ? (
+                  <Text style={styles.submissionDate}>
+                    On: {submissionDateText}
+                  </Text>
+                ) : null}
+                {submissionDetails?.status !== undefined && (
+                  <Text
+                    style={[
+                      styles.statusText,
+                      submissionDetails.status
+                        ? styles.statusApproved
+                        : styles.statusPending,
+                    ]}
+                  >
+                    {submissionDetails.status ? "Approved" : "Pending"}
+                  </Text>
+                )}
+              </View>
+            )}
           </View>
 
           {/* Remaining Days */}
@@ -280,7 +609,6 @@ const SchemeListPage = ({ route, navigation }) => {
             <Text style={[styles.daysText, { color: statusColor }]}>
               {schemeCloseDays}
             </Text>
-            {/* Show bonus days from API */}
           </View>
 
           {/* Amount Section */}
@@ -308,17 +636,29 @@ const SchemeListPage = ({ route, navigation }) => {
               disabled={!canRedeem}
               style={[
                 styles.redeemButton,
-                !canRedeem && styles.redeemButtonDisabled,
+                alreadySubmitted && styles.redeemButtonSubmitted,
+                !canRedeem && !alreadySubmitted && styles.redeemButtonDisabled,
               ]}
-              onPress={() =>
-                handleRedeemPress(item, remainingBonusDays, displayAmount)
-              }
+              onPress={() => {
+                if (alreadySubmitted) {
+                  Alert.alert(
+                    "Already Submitted",
+                    "Redemption request for this scheme has already been submitted. Our team will contact you soon.",
+                    [{ text: "OK" }]
+                  );
+                } else {
+                  handleRedeemPress(item, remainingBonusDays, displayAmount);
+                }
+              }}
             >
               <Text
                 style={[
                   styles.redeemButtonText,
-                  !canRedeem && styles.redeemButtonTextDisabled,
-                  { fontSize: buttonFontSize }
+                  alreadySubmitted && styles.redeemButtonTextSubmitted,
+                  !canRedeem &&
+                    !alreadySubmitted &&
+                    styles.redeemButtonTextDisabled,
+                  { fontSize: buttonFontSize },
                 ]}
                 numberOfLines={2}
                 adjustsFontSizeToFit
@@ -331,7 +671,13 @@ const SchemeListPage = ({ route, navigation }) => {
         </View>
       );
     },
-    [formatCurrency, schemeApiData, handleRedeemPress]
+    [
+      formatCurrency,
+      schemeApiData,
+      handleRedeemPress,
+      isSchemeSubmitted,
+      getSubmissionDetails,
+    ]
   );
 
   // Render table header
@@ -359,12 +705,14 @@ const SchemeListPage = ({ route, navigation }) => {
         <CommonHeader
           title="My Redemption"
           rightComponent={
-            <TouchableOpacity
-              onPress={() => navigation.navigate("GoldPlanScreen")}
-              style={styles.plansButton}
-            >
-              <Text style={styles.plansButtonText}>Join Now</Text>
-            </TouchableOpacity>
+            <View style={{ flexDirection: "row" }}>
+              <TouchableOpacity
+                onPress={() => navigation.navigate("GoldPlanScreen")}
+                style={styles.plansButton}
+              >
+                <Text style={styles.plansButtonText}>Join Now</Text>
+              </TouchableOpacity>
+            </View>
           }
         />
       </View>
@@ -460,7 +808,12 @@ const SchemeListPage = ({ route, navigation }) => {
         animationType="slide"
         transparent={true}
         visible={modalVisible}
-        onRequestClose={() => setModalVisible(false)}
+        onRequestClose={() => {
+          if (!redeeming) {
+            setModalVisible(false);
+            setRedemptionSubmitted(false);
+          }
+        }}
       >
         <View style={styles.modalOverlay}>
           <View style={styles.modalContainer}>
@@ -469,7 +822,13 @@ const SchemeListPage = ({ route, navigation }) => {
                 Redemption Terms & Conditions
               </Text>
               <TouchableOpacity
-                onPress={() => setModalVisible(false)}
+                onPress={() => {
+                  if (!redeeming) {
+                    setModalVisible(false);
+                    setRedemptionSubmitted(false);
+                  }
+                }}
+                disabled={redeeming}
                 style={styles.closeButton}
               >
                 <Text style={styles.closeButtonText}>×</Text>
@@ -502,18 +861,184 @@ const SchemeListPage = ({ route, navigation }) => {
                 </Text>
               </View>
 
+              {/* Already Submitted Warning */}
+              {selectedScheme?.scheme &&
+                isSchemeSubmitted(selectedScheme.scheme) && (
+                  <View style={styles.alreadySubmittedWarning}>
+                    <Text style={styles.alreadySubmittedWarningText}>
+                      ⚠️ Redemption request already submitted. Our team will
+                      contact you soon.
+                    </Text>
+                    {(() => {
+                      const submissionDetails = getSubmissionDetails(
+                        selectedScheme.scheme
+                      );
+                      if (submissionDetails) {
+                        return (
+                          <View style={styles.submissionDetails}>
+                            <Text style={styles.submissionDetailText}>
+                              Submitted on:{" "}
+                              {submissionDetails.updateTime
+                                ? new Date(
+                                    submissionDetails.updateTime
+                                  ).toLocaleDateString("en-IN", {
+                                    day: "2-digit",
+                                    month: "short",
+                                    year: "numeric",
+                                  })
+                                : "N/A"}
+                            </Text>
+                            <Text style={styles.submissionDetailText}>
+                              Status:{" "}
+                              {submissionDetails.status !== undefined
+                                ? submissionDetails.status
+                                  ? "Approved"
+                                  : "Pending"
+                                : "Processing"}
+                            </Text>
+                          </View>
+                        );
+                      }
+                      return null;
+                    })()}
+                  </View>
+                )}
+
               <View style={styles.termsSection}>
                 <Text style={styles.termsTitle}>Please read carefully:</Text>
                 <Text style={styles.redeemNoteText}>
-                  • Reward money is applicable only for purchases of ₹10,000 and
-                  above.{"\n\n"}• Redemption is subject to eligibility, validity
-                  period, and the company's reward policy.{"\n\n"}• The company
-                  reserves the right to modify or withdraw the reward scheme
-                  without prior notice.{"\n\n"}• Amount can only be redeemed
-                  when scheme reaches maturity date.{"\n\n"}• Processing may
-                  take 24-48 hours.{"\n\n"}
+                  • Once the scheme is completed, customers can visit the
+                  nearest showroom to claim their reward.{"\n\n"}• Reward can be
+                  claimed only after the scheme reaches its maturity date.
+                  {"\n\n"}• Valid scheme documents or proof may be required at
+                  the time of claiming.{"\n\n"}• Reward claiming is subject to
+                  company verification and policy.{"\n\n"}• Please contact the
+                  showroom staff for further assistance and details.{"\n\n"}
                 </Text>
               </View>
+
+              {/* Redemption Status Message */}
+              {redemptionMessage && (
+                <View
+                  style={[
+                    styles.messageContainer,
+                    styles[`${redemptionMessage.type}Message`],
+                  ]}
+                >
+                  <Text style={styles.messageText}>
+                    {redemptionMessage.text}
+                  </Text>
+                </View>
+              )}
+
+              {/* Redemption Button - Different states */}
+              {(() => {
+                const scheme = selectedScheme?.scheme;
+                const alreadySubmitted = scheme
+                  ? isSchemeSubmitted(scheme)
+                  : false;
+
+                if (alreadySubmitted) {
+                  return (
+                    <View style={styles.alreadySubmittedContainer}>
+                      <View style={styles.successIconContainer}>
+                        <Text style={styles.successIcon}>✓</Text>
+                      </View>
+                      <Text style={styles.alreadySubmittedTitle}>
+                        Submitted
+                      </Text>
+                      <Text style={styles.alreadySubmittedMessage}>
+                        Your redemption request has already been submitted. Our
+                        team will contact you within 24-48 hours.
+                      </Text>
+
+                      <TouchableOpacity
+                        style={styles.doneButton}
+                        onPress={() => {
+                          setModalVisible(false);
+                          setRedemptionSubmitted(false);
+                        }}
+                      >
+                        <Text style={styles.doneButtonText}>Close</Text>
+                      </TouchableOpacity>
+                    </View>
+                  );
+                } else if (!redemptionSubmitted) {
+                  return (
+                    <>
+                      <TouchableOpacity
+                        style={[
+                          styles.redemptionButton,
+                          redeeming && styles.redemptionButtonDisabled,
+                        ]}
+                        onPress={handleRedemptionSubmit}
+                        disabled={redeeming}
+                      >
+                        {redeeming ? (
+                          <ActivityIndicator
+                            color={theme.COLORS.white}
+                            size="small"
+                          />
+                        ) : (
+                          <Text style={styles.redemptionButtonText}>
+                            Submit Redemption Request
+                          </Text>
+                        )}
+                      </TouchableOpacity>
+
+                      <Text style={styles.redemptionNote}>
+                        By clicking above, you agree to all terms and
+                        conditions.
+                      </Text>
+                    </>
+                  );
+                } else {
+                  return (
+                    <>
+                      <View style={styles.submittedContainer}>
+                        <View style={styles.successIconContainer}>
+                          <Text style={styles.successIcon}>✓</Text>
+                        </View>
+                        <Text style={styles.submittedTitle}>
+                          Redemption Submitted!
+                        </Text>
+                        <Text style={styles.submittedMessage}>
+                          Your redemption request has been submitted
+                          successfully. Our team will process it within 24-48
+                          hours.
+                        </Text>
+
+                        <TouchableOpacity
+                          style={styles.viewDetailsButton}
+                          onPress={() => {
+                            Alert.alert(
+                              "Redemption Details",
+                              `Your request for ${
+                                selectedScheme?.scheme?.schemeSummary
+                                  ?.schemeName || "the scheme"
+                              } has been recorded. Reference ID will be shared via SMS.`
+                            );
+                          }}
+                        >
+                          <Text style={styles.viewDetailsButtonText}>
+                            View Details
+                          </Text>
+                        </TouchableOpacity>
+                      </View>
+
+                      <TouchableOpacity
+                        style={styles.doneButton}
+                        onPress={() => {
+                          setModalVisible(false);
+                          setRedemptionSubmitted(false);
+                        }}
+                      >
+                        <Text style={styles.doneButtonText}>Done</Text>
+                      </TouchableOpacity>
+                    </>
+                  );
+                }
+              })()}
             </ScrollView>
           </View>
         </View>
@@ -591,7 +1116,7 @@ const styles = StyleSheet.create({
     borderRadius: theme.SIZES.radius.md,
     borderWidth: 1,
     borderColor: theme.COLORS.borderLight,
-    minHeight: 70,
+    minHeight: 80,
     alignItems: "center",
   },
 
@@ -606,6 +1131,43 @@ const styles = StyleSheet.create({
     fontWeight: "500",
     color: theme.COLORS.textPrimary,
     lineHeight: 18,
+  },
+  submittedInfoContainer: {
+    marginTop: 2,
+  },
+  submittedBadge: {
+    fontSize: 9,
+    color: theme.COLORS.success,
+    fontWeight: "500",
+    backgroundColor: "#e8f5e9",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 10,
+    alignSelf: "flex-start",
+    marginBottom: 2,
+  },
+  submissionDate: {
+    fontSize: 8,
+    color: theme.COLORS.textSecondary,
+    fontStyle: "italic",
+    marginTop: 1,
+  },
+  statusText: {
+    fontSize: 8,
+    fontWeight: "600",
+    marginTop: 1,
+    alignSelf: "flex-start",
+    paddingHorizontal: 4,
+    paddingVertical: 1,
+    borderRadius: 4,
+  },
+  statusApproved: {
+    backgroundColor: "#d4edda",
+    color: "#155724",
+  },
+  statusPending: {
+    backgroundColor: "#fff3cd",
+    color: "#856404",
   },
 
   // Days Column
@@ -652,7 +1214,7 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
-  // Action Column - Optimized for text centering
+  // Action Column
   actionContainer: {
     flex: 1,
     justifyContent: "center",
@@ -669,6 +1231,9 @@ const styles = StyleSheet.create({
     paddingHorizontal: 4,
     paddingVertical: 0,
   },
+  redeemButtonSubmitted: {
+    backgroundColor: theme.COLORS.success,
+  },
   redeemButtonDisabled: {
     backgroundColor: theme.COLORS.gray300,
   },
@@ -680,6 +1245,9 @@ const styles = StyleSheet.create({
     includeFontPadding: false,
     paddingVertical: 0,
     lineHeight: 14,
+  },
+  redeemButtonTextSubmitted: {
+    color: theme.COLORS.white,
   },
   redeemButtonTextDisabled: {
     color: theme.COLORS.gray600,
@@ -806,6 +1374,35 @@ const styles = StyleSheet.create({
     fontWeight: "bold",
     color: theme.COLORS.primary,
   },
+
+  // Already Submitted Warning
+  alreadySubmittedWarning: {
+    backgroundColor: "#fff3cd",
+    borderColor: "#ffeaa7",
+    borderWidth: 1,
+    borderRadius: theme.SIZES.radius.sm,
+    padding: theme.SIZES.md,
+    marginBottom: theme.SIZES.lg,
+  },
+  alreadySubmittedWarningText: {
+    color: "#856404",
+    fontSize: theme.SIZES.font.sm,
+    fontWeight: "500",
+    textAlign: "center",
+    marginBottom: theme.SIZES.sm,
+  },
+  submissionDetails: {
+    marginTop: theme.SIZES.sm,
+    paddingTop: theme.SIZES.sm,
+    borderTopWidth: 1,
+    borderTopColor: "#ffeaa7",
+  },
+  submissionDetailText: {
+    fontSize: theme.SIZES.font.xs,
+    color: "#856404",
+    marginBottom: 2,
+  },
+
   termsSection: {
     marginTop: theme.SIZES.lg,
   },
@@ -819,6 +1416,141 @@ const styles = StyleSheet.create({
     fontSize: theme.SIZES.font.sm,
     color: theme.COLORS.textSecondary,
     lineHeight: 22,
+  },
+
+  // Redemption Button Styles
+  redemptionButton: {
+    backgroundColor: theme.COLORS.success,
+    borderRadius: theme.SIZES.radius.md,
+    paddingVertical: theme.SIZES.md,
+    paddingHorizontal: theme.SIZES.lg,
+    alignItems: "center",
+    marginTop: theme.SIZES.lg,
+    marginBottom: theme.SIZES.sm,
+  },
+  redemptionButtonDisabled: {
+    backgroundColor: theme.COLORS.gray400,
+  },
+  redemptionButtonText: {
+    color: theme.COLORS.white,
+    fontSize: theme.SIZES.font.md,
+    fontWeight: "bold",
+  },
+  redemptionNote: {
+    fontSize: theme.SIZES.font.xs,
+    color: theme.COLORS.textSecondary,
+    textAlign: "center",
+    fontStyle: "italic",
+    marginBottom: theme.SIZES.md,
+  },
+
+  // Already Submitted Container in Modal
+  alreadySubmittedContainer: {
+    alignItems: "center",
+    marginTop: theme.SIZES.lg,
+    marginBottom: theme.SIZES.md,
+    padding: theme.SIZES.md,
+    backgroundColor: theme.COLORS.backgroundSecondary,
+    borderRadius: theme.SIZES.radius.md,
+  },
+  alreadySubmittedTitle: {
+    fontSize: theme.SIZES.font.lg,
+    fontWeight: "bold",
+    color: theme.COLORS.success,
+    marginBottom: theme.SIZES.sm,
+    textAlign: "center",
+  },
+  alreadySubmittedMessage: {
+    fontSize: theme.SIZES.font.sm,
+    color: theme.COLORS.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: theme.SIZES.md,
+  },
+
+  // Message Container
+  messageContainer: {
+    padding: theme.SIZES.md,
+    borderRadius: theme.SIZES.radius.sm,
+    marginTop: theme.SIZES.lg,
+  },
+  successMessage: {
+    backgroundColor: "#d4edda",
+    borderColor: "#c3e6cb",
+    borderWidth: 1,
+  },
+  errorMessage: {
+    backgroundColor: "#f8d7da",
+    borderColor: "#f5c6cb",
+    borderWidth: 1,
+  },
+  messageText: {
+    fontSize: theme.SIZES.font.sm,
+    textAlign: "center",
+  },
+
+  // Submitted State Styles
+  submittedContainer: {
+    alignItems: "center",
+    marginTop: theme.SIZES.lg,
+    marginBottom: theme.SIZES.md,
+    padding: theme.SIZES.md,
+    backgroundColor: theme.COLORS.backgroundSecondary,
+    borderRadius: theme.SIZES.radius.md,
+  },
+  successIconContainer: {
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: theme.COLORS.success,
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: theme.SIZES.md,
+  },
+  successIcon: {
+    fontSize: 30,
+    color: theme.COLORS.white,
+    fontWeight: "bold",
+  },
+  submittedTitle: {
+    fontSize: theme.SIZES.font.lg,
+    fontWeight: "bold",
+    color: theme.COLORS.success,
+    marginBottom: theme.SIZES.sm,
+    textAlign: "center",
+  },
+  submittedMessage: {
+    fontSize: theme.SIZES.font.sm,
+    color: theme.COLORS.textSecondary,
+    textAlign: "center",
+    lineHeight: 20,
+    marginBottom: theme.SIZES.md,
+  },
+  viewDetailsButton: {
+    backgroundColor: theme.COLORS.primary,
+    paddingVertical: theme.SIZES.sm,
+    paddingHorizontal: theme.SIZES.lg,
+    borderRadius: theme.SIZES.radius.sm,
+    marginBottom: theme.SIZES.md,
+  },
+  viewDetailsButtonText: {
+    color: theme.COLORS.white,
+    fontSize: theme.SIZES.font.sm,
+    fontWeight: "600",
+  },
+  doneButton: {
+    backgroundColor: theme.COLORS.gray300,
+    paddingVertical: theme.SIZES.md,
+    paddingHorizontal: theme.SIZES.lg,
+    borderRadius: theme.SIZES.radius.md,
+    alignItems: "center",
+    marginTop: theme.SIZES.sm,
+    marginBottom: 10,
+  },
+  doneButtonText: {
+    color: theme.COLORS.textPrimary,
+    fontSize: theme.SIZES.font.md,
+    fontWeight: "bold",
   },
 });
 

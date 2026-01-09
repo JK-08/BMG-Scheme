@@ -21,6 +21,9 @@ import theme from "../../utils/AppTheme";
 import styles from "./Styles";
 import { API_BASE_URL_OLD } from "../../Config/API";
 import NotificationService from "../../services/NotificationService";
+import { Modal } from "react-native";
+import { WebView } from "react-native-webview";
+import CommonHeader from "../CommonHeader/CommonHeader";
 
 const { COLORS } = theme;
 const ANIMATION_DURATION = 2000;
@@ -45,7 +48,20 @@ const getFormattedUpdateTime = () => {
   const formattedHour = hours % 12 || 12;
 
   const day = now.getDate().toString().padStart(2, "0");
-  const monthNames = ["JAN","FEB","MAR","APR","MAY","JUN","JUL","AUG","SEP","OCT","NOV","DEC"];
+  const monthNames = [
+    "JAN",
+    "FEB",
+    "MAR",
+    "APR",
+    "MAY",
+    "JUN",
+    "JUL",
+    "AUG",
+    "SEP",
+    "OCT",
+    "NOV",
+    "DEC",
+  ];
   const month = monthNames[now.getMonth()];
   const year = now.getFullYear();
 
@@ -65,7 +81,9 @@ const useIconAnimation = (delay = 0) => {
       })
     );
 
-    const timer = delay ? setTimeout(() => animation.start(), delay) : animation.start();
+    const timer = delay
+      ? setTimeout(() => animation.start(), delay)
+      : animation.start();
     return () => {
       animation.stop();
       if (timer) clearTimeout(timer);
@@ -103,9 +121,13 @@ function Header() {
   const [rateUpdated, setRateUpdated] = useState("");
   const [isDrawerVisible, setIsDrawerVisible] = useState(false);
   const [unreadCount, setUnreadCount] = useState(0);
+  const [showShopWebView, setShowShopWebView] = useState(false);
 
   const silverAnimatedStyle = useIconAnimation(SILVER_ANIMATION_DELAY);
-  const toggleDrawer = useCallback(() => setIsDrawerVisible((prev) => !prev), []);
+  const toggleDrawer = useCallback(
+    () => setIsDrawerVisible((prev) => !prev),
+    []
+  );
 
   // ========== Fetch Rates ==========
   const fetchRates = useCallback(async () => {
@@ -180,7 +202,10 @@ function Header() {
         </TouchableOpacity>
 
         {/* Drawer Menu */}
-        <DrawerMenu isVisible={isDrawerVisible} onClose={() => setIsDrawerVisible(false)} />
+        <DrawerMenu
+          isVisible={isDrawerVisible}
+          onClose={() => setIsDrawerVisible(false)}
+        />
 
         {/* Logo */}
         <View style={styles.mainHeaderSection}>
@@ -192,7 +217,10 @@ function Header() {
         </View>
 
         {/* Menu Button */}
-        <TouchableOpacity style={styles.menuIconContainer} onPress={toggleDrawer}>
+        <TouchableOpacity
+          style={styles.menuIconContainer}
+          onPress={toggleDrawer}
+        >
           <Icon name="menu" size={26} color={COLORS.textInverse} />
         </TouchableOpacity>
       </View>
@@ -208,9 +236,14 @@ function Header() {
       {/* Floating Rate Cards */}
       <View style={styles.rateCardsOverlayContainer}>
         {/* Silver Rate */}
-        <LinearGradient colors={[COLORS.white, COLORS.white]} style={styles.rateCardOverlay}>
+        <LinearGradient
+          colors={[COLORS.white, COLORS.white]}
+          style={styles.rateCardOverlay}
+        >
           <View style={styles.rateCardContent}>
-            <Animated.View style={[styles.animatedCoinContainer, silverAnimatedStyle]}>
+            <Animated.View
+              style={[styles.animatedCoinContainer, silverAnimatedStyle]}
+            >
               <Image
                 source={require("../../assets/silver.png")}
                 style={styles.rateCoinIcon}
@@ -224,15 +257,43 @@ function Header() {
             </View>
           </View>
         </LinearGradient>
+        <Modal
+          visible={showShopWebView}
+          animationType="slide"
+          onRequestClose={() => setShowShopWebView(false)}
+        >
+          <View style={{ flex: 1 }}>
+            {/* Common Header */}
+            <CommonHeader
+              title="Online Shopping"
+              onBackPress={() => setShowShopWebView(false)}
+            />
+
+            {/* WebView */}
+            <WebView
+              source={{ uri: "https://app.bmgjewellers.com" }}
+              startInLoadingState
+              javaScriptEnabled
+              domStorageEnabled
+            />
+          </View>
+        </Modal>
 
         {/* Shopping Card */}
-        <LinearGradient colors={[COLORS.white, COLORS.white]} style={styles.rateCardOverlay}>
+        <LinearGradient
+          colors={[COLORS.white, COLORS.white]}
+          style={styles.rateCardOverlay}
+        >
           <TouchableOpacity
             style={styles.rateCardContent}
-            onPress={() => Linking.openURL("https://app.bmgjewellers.com")}
+            onPress={() => setShowShopWebView(true)}
           >
             <View style={styles.rateIconContainer}>
-              <MaterialIcons name="shopping-cart" size={32} color={COLORS.primary} />
+              <MaterialIcons
+                name="shopping-cart"
+                size={32}
+                color={COLORS.primary}
+              />
             </View>
             <Text style={styles.shopTitle}>Online {"\n"}Shopping</Text>
           </TouchableOpacity>

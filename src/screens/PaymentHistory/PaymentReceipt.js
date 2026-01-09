@@ -9,16 +9,16 @@ class PaymentReceiptPDF {
   // Constants
   static STORAGE_KEYS = {
     DOWNLOAD_DIR: "BMG_DOWNLOAD_DIR",
-    COMPANY_DATA: "BMG_COMPANY_DATA"
+    COMPANY_DATA: "BMG_COMPANY_DATA",
   };
 
   static ASSETS = {
     BACKGROUND: require("../../assets/bg12.jpg"),
-    LOGO: require("../../assets/image/logo08.jpeg")
+    LOGO: require("../../assets/image/logo08.jpeg"),
   };
 
   static API_ENDPOINTS = {
-    COMPANY: `${API_BASE_URL_OLD}/company`
+    COMPANY: `${API_BASE_URL_OLD}/company`,
   };
 
   // ---------------------------------------------------------------------------
@@ -38,11 +38,11 @@ class PaymentReceiptPDF {
         const response = await fetch(this.API_ENDPOINTS.COMPANY, {
           signal: controller.signal,
           headers: {
-            'Accept': 'application/json',
-            'Content-Type': 'application/json',
-          }
+            Accept: "application/json",
+            "Content-Type": "application/json",
+          },
         });
-        
+
         clearTimeout(timeoutId);
 
         console.log("📊 Response Status:", response.status);
@@ -51,7 +51,9 @@ class PaymentReceiptPDF {
         if (!response.ok) {
           const errorText = await response.text();
           console.error("❌ API Error Response:", errorText);
-          throw new Error(`HTTP ${response.status}: ${errorText.substring(0, 100)}`);
+          throw new Error(
+            `HTTP ${response.status}: ${errorText.substring(0, 100)}`
+          );
         }
 
         const apiResponse = await response.json();
@@ -59,17 +61,23 @@ class PaymentReceiptPDF {
 
         if (!apiResponse.success) {
           console.warn("⚠️ API reported failure:", apiResponse.message);
-          throw new Error(`API Error: ${apiResponse.message || "Unknown error"}`);
+          throw new Error(
+            `API Error: ${apiResponse.message || "Unknown error"}`
+          );
         }
 
         let companyData;
-        
+
         // Handle different response structures
-        if (apiResponse.message && Array.isArray(apiResponse.message) && apiResponse.message.length > 0) {
+        if (
+          apiResponse.message &&
+          Array.isArray(apiResponse.message) &&
+          apiResponse.message.length > 0
+        ) {
           companyData = apiResponse.message[0];
         } else if (apiResponse.data) {
           companyData = apiResponse.data;
-        } else if (typeof apiResponse.message === 'object') {
+        } else if (typeof apiResponse.message === "object") {
           companyData = apiResponse.message;
         } else {
           console.warn("⚠️ Unexpected API response structure:", apiResponse);
@@ -85,12 +93,12 @@ class PaymentReceiptPDF {
         }
 
         console.log("✅ Using fresh company data from API");
-        
+
         return companyData;
       } catch (fetchError) {
         clearTimeout(timeoutId);
-        
-        if (fetchError.name === 'AbortError') {
+
+        if (fetchError.name === "AbortError") {
           console.error("⏰ API request timeout");
           throw new Error("API request timeout (10 seconds)");
         }
@@ -100,9 +108,9 @@ class PaymentReceiptPDF {
       console.error("❌ getCompanyData Error:", {
         message: error.message,
         stack: error.stack,
-        endpoint: this.API_ENDPOINTS.COMPANY
+        endpoint: this.API_ENDPOINTS.COMPANY,
       });
-      
+
       // Only use default data if API completely fails
       console.log("🔄 API failed, returning default company data");
       return this.getDefaultCompanyData();
@@ -115,21 +123,22 @@ class PaymentReceiptPDF {
       console.log("❌ Company data is null/undefined");
       return false;
     }
-    
+
     // Basic validation - ensure company name exists
-    const isValid = companyData && 
-           companyData.cname && 
-           typeof companyData.cname === 'string' &&
-           companyData.cname.trim().length > 0;
-    
+    const isValid =
+      companyData &&
+      companyData.cname &&
+      typeof companyData.cname === "string" &&
+      companyData.cname.trim().length > 0;
+
     if (!isValid) {
       console.log("❌ Company data validation failed:", {
         hasCname: !!companyData.cname,
         cnameType: typeof companyData.cname,
-        cnameLength: companyData.cname ? companyData.cname.trim().length : 0
+        cnameLength: companyData.cname ? companyData.cname.trim().length : 0,
       });
     }
-    
+
     return isValid;
   }
 
@@ -148,7 +157,7 @@ class PaymentReceiptPDF {
       cFax: "9514333609",
       companyLogo: "",
       gstNo: "",
-      stateId: 24
+      stateId: 24,
     };
   }
 
@@ -164,13 +173,13 @@ class PaymentReceiptPDF {
     try {
       console.log("🧪 Testing API Endpoint...");
       console.log("🔗 URL:", this.API_ENDPOINTS.COMPANY);
-      
+
       const response = await fetch(this.API_ENDPOINTS.COMPANY);
       console.log("📊 Response Status:", response.status);
-      
+
       const text = await response.text();
       console.log("📝 Raw Response (first 500 chars):", text.substring(0, 500));
-      
+
       try {
         const json = JSON.parse(text);
         console.log("📦 Parsed JSON:", JSON.stringify(json, null, 2));
@@ -190,13 +199,19 @@ class PaymentReceiptPDF {
   // ---------------------------------------------------------------------------
   static async getDirectoryUri() {
     try {
-      const savedUri = await AsyncStorage.getItem(this.STORAGE_KEYS.DOWNLOAD_DIR);
+      const savedUri = await AsyncStorage.getItem(
+        this.STORAGE_KEYS.DOWNLOAD_DIR
+      );
       if (savedUri) return savedUri;
 
-      const permissions = await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
+      const permissions =
+        await FileSystem.StorageAccessFramework.requestDirectoryPermissionsAsync();
 
       if (permissions.granted) {
-        await AsyncStorage.setItem(this.STORAGE_KEYS.DOWNLOAD_DIR, permissions.directoryUri);
+        await AsyncStorage.setItem(
+          this.STORAGE_KEYS.DOWNLOAD_DIR,
+          permissions.directoryUri
+        );
         return permissions.directoryUri;
       } else {
         Alert.alert("Permission Needed", "Please allow access to save files.");
@@ -215,7 +230,7 @@ class PaymentReceiptPDF {
 
   static async assetToBase64(moduleAsset) {
     const asset = Asset.fromModule(moduleAsset);
-    
+
     try {
       await asset.downloadAsync();
     } catch (e) {
@@ -253,7 +268,10 @@ class PaymentReceiptPDF {
         const buffer = await response.arrayBuffer();
         return this.arrayBufferToBase64(buffer);
       } catch (fetchErr) {
-        console.error("assetToBase64: all fallbacks failed", { copyErr, fetchErr });
+        console.error("assetToBase64: all fallbacks failed", {
+          copyErr,
+          fetchErr,
+        });
         throw new Error("Unable to convert asset to base64");
       }
     }
@@ -262,10 +280,11 @@ class PaymentReceiptPDF {
   static arrayBufferToBase64(buffer) {
     const bytes = new Uint8Array(buffer);
     const binary = String.fromCharCode(...bytes);
-    
+
     if (typeof btoa === "function") return btoa(binary);
-    if (typeof Buffer !== "undefined") return Buffer.from(binary, "binary").toString("base64");
-    
+    if (typeof Buffer !== "undefined")
+      return Buffer.from(binary, "binary").toString("base64");
+
     return global.btoa ? global.btoa(binary) : null;
   }
 
@@ -291,9 +310,42 @@ class PaymentReceiptPDF {
   }
 
   static numberToWords(num) {
-    const ones = ["", "One", "Two", "Three", "Four", "Five", "Six", "Seven", "Eight", "Nine"];
-    const tens = ["", "", "Twenty", "Thirty", "Forty", "Fifty", "Sixty", "Seventy", "Eighty", "Ninety"];
-    const teens = ["Ten", "Eleven", "Twelve", "Thirteen", "Fourteen", "Fifteen", "Sixteen", "Seventeen", "Eighteen", "Nineteen"];
+    const ones = [
+      "",
+      "One",
+      "Two",
+      "Three",
+      "Four",
+      "Five",
+      "Six",
+      "Seven",
+      "Eight",
+      "Nine",
+    ];
+    const tens = [
+      "",
+      "",
+      "Twenty",
+      "Thirty",
+      "Forty",
+      "Fifty",
+      "Sixty",
+      "Seventy",
+      "Eighty",
+      "Ninety",
+    ];
+    const teens = [
+      "Ten",
+      "Eleven",
+      "Twelve",
+      "Thirteen",
+      "Fourteen",
+      "Fifteen",
+      "Sixteen",
+      "Seventeen",
+      "Eighteen",
+      "Nineteen",
+    ];
 
     if (num === 0) return "Zero";
 
@@ -303,7 +355,11 @@ class PaymentReceiptPDF {
       if (n < 100) {
         return tens[Math.floor(n / 10)] + (n % 10 ? " " + ones[n % 10] : "");
       }
-      return ones[Math.floor(n / 100)] + " Hundred " + (n % 100 ? toWords(n % 100) : "");
+      return (
+        ones[Math.floor(n / 100)] +
+        " Hundred " +
+        (n % 100 ? toWords(n % 100) : "")
+      );
     };
 
     const crore = Math.floor(num / 10000000);
@@ -325,7 +381,6 @@ class PaymentReceiptPDF {
       const schemeData = responseData?.schemeData || {};
       const personalInfo = schemeData?.personalInfo || {};
       const paymentData = responseData?.payment || {};
-        
 
       return {
         payment: {
@@ -340,25 +395,36 @@ class PaymentReceiptPDF {
         },
 
         customerInfo: {
-          customerName: responseData?.customerInfo?.customerName || personalInfo?.pName || "N/A",
-          mobile: responseData?.customerInfo?.mobile || personalInfo?.mobile || "N/A",
-         address1:
-  personalInfo?.doorNo || personalInfo?.address1 || personalInfo?.area
-    ? `${personalInfo?.doorNo || ""}, ${personalInfo?.address1 || ""}, ${personalInfo?.area || ""}`.replace(/(^,\s*)|(,\s*,)|(,\s*$)/g, "")
-    : "N/A",
+          customerName:
+            responseData?.customerInfo?.customerName ||
+            personalInfo?.pName ||
+            "N/A",
+          mobile:
+            responseData?.customerInfo?.mobile || personalInfo?.mobile || "N/A",
+          address1:
+            personalInfo?.doorNo || personalInfo?.address1 || personalInfo?.area
+              ? `${personalInfo?.doorNo || ""}, ${
+                  personalInfo?.address1 || ""
+                }, ${personalInfo?.area || ""}`.replace(
+                  /(^,\s*)|(,\s*,)|(,\s*$)/g,
+                  ""
+                )
+              : "N/A",
 
-address2: `${personalInfo?.pinCode}, ${personalInfo?.state || "Tamil Nadu"}`,
+          address2: `${personalInfo?.pinCode}, ${
+            personalInfo?.state || "Tamil Nadu"
+          }`,
         },
 
-      
-
         schemeInfo: {
-          schemeName: schemeData?.schemeSummary?.schemeName || 
-                     responseData?.schemeInfo?.schemeName || 
-                     "BMG Scheme",
-          hsnCode: schemeData?.schemeSummary?.hsnCode || 
-                   responseData?.schemeInfo?.hsnCode || 
-                   "",
+          schemeName:
+            schemeData?.schemeSummary?.schemeName ||
+            responseData?.schemeInfo?.schemeName ||
+            "BMG Scheme",
+          hsnCode:
+            schemeData?.schemeSummary?.hsnCode ||
+            responseData?.schemeInfo?.hsnCode ||
+            "",
         },
       };
     } catch (error) {
@@ -367,15 +433,24 @@ address2: `${personalInfo?.pinCode}, ${personalInfo?.state || "Tamil Nadu"}`,
     }
   }
 
-  static generateReceiptHTML({ payment, customerInfo, schemeInfo, companyData, bgBase64, logoBase64 }) {
+  static generateReceiptHTML({
+    payment,
+    customerInfo,
+    schemeInfo,
+    companyData,
+    bgBase64,
+    logoBase64,
+  }) {
     // Build company address dynamically
     const companyAddress = [
       companyData.cAddress1,
       companyData.cAddress2,
       companyData.cAddress3,
       companyData.cAddress4,
-      companyData.cPincode ? `PIN: ${companyData.cPincode}` : ""
-    ].filter(Boolean).join(", ");
+      companyData.cPincode ? `PIN: ${companyData.cPincode}` : "",
+    ]
+      .filter(Boolean)
+      .join(", ");
 
     return `
 <!DOCTYPE html>
@@ -560,8 +635,12 @@ address2: `${personalInfo?.pinCode}, ${personalInfo?.state || "Tamil Nadu"}`,
   <div class="header-container">
     <div class="left-info">
       <div class="receipt-info">
-        <div><span class="label">Receipt Number :</span> ${payment.receiptNo}</div>
-        <div><span class="label">Receipt Date :</span> ${this.formatDate(payment.updateTime)}</div>
+        <div><span class="label">Receipt Number :</span> ${
+          payment.receiptNo
+        }</div>
+        <div><span class="label">Receipt Date :</span> ${this.formatDate(
+          payment.updateTime
+        )}</div>
       </div>
       <div class="company-section">
         <div class="company-name">${companyData.cname}</div>
@@ -569,16 +648,29 @@ address2: `${personalInfo?.pinCode}, ${personalInfo?.state || "Tamil Nadu"}`,
           <div>${companyAddress}</div>
           <div>${companyData.cEmail}</div>
           <div>${companyData.cPhone}</div>
-          ${companyData.gstNo ? `<div>GSTIN : ${companyData.gstNo}</div>` : '<div>GSTIN :</div>'}
+          ${
+            companyData.gstNo
+              ? `<div>GSTIN : ${companyData.gstNo}</div>`
+              : "<div>GSTIN :</div>"
+          }
         </div>
       </div>
     </div>
     <div class="customer-address">
       <div><span class="label">Name :</span> ${customerInfo.customerName}</div>
       <div><span class="label">Mobile :</span> ${customerInfo.mobile}</div>
-      <div><span class="label">Transaction ID :</span> ${payment.transactionId}</div>
-      <div><span class="label">Transaction Mode :</span> ${payment.paymentMode}-${payment.paymentSubMode}</div>
-      <div><span class="label">Address :</span> ${customerInfo.address1}${customerInfo.address2 ? ", " + customerInfo.address2 : ""}</div>
+      <div><span class="label">Transaction ID :</span> ${
+        payment.transactionId
+      }</div>
+      <div><span class="label">Transaction Mode :</span> ${
+        payment.paymentMode
+      }-${payment.paymentSubMode}</div>
+      <div>
+  <span class="label">Address :</span>
+  <div>${customerInfo.address1}</div>
+  ${customerInfo.address2 ? `<div>${customerInfo.address2}</div>` : ""}
+</div>
+
     </div>
   </div>
   <table class="payment-table">
@@ -617,12 +709,13 @@ address2: `${personalInfo?.pinCode}, ${personalInfo?.state || "Tamil Nadu"}`,
   static async generatePDF(responseData) {
     try {
       console.log("🔄 Starting PDF generation...");
-      const { payment, customerInfo, schemeInfo } = this.extractDataFromResponse(responseData);
+      const { payment, customerInfo, schemeInfo } =
+        this.extractDataFromResponse(responseData);
 
-      console.log("📥 Extracted data:", { 
+      console.log("📥 Extracted data:", {
         receiptNo: payment.receiptNo,
         amount: payment.amount,
-        customerName: customerInfo.customerName 
+        customerName: customerInfo.customerName,
       });
 
       // Load assets and company data in parallel
@@ -630,12 +723,12 @@ address2: `${personalInfo?.pinCode}, ${personalInfo?.state || "Tamil Nadu"}`,
       const [bgBase64, logoBase64, companyData] = await Promise.all([
         this.assetToBase64(this.ASSETS.BACKGROUND),
         this.assetToBase64(this.ASSETS.LOGO),
-        this.getCompanyData() // Always fetches fresh from API
+        this.getCompanyData(), // Always fetches fresh from API
       ]);
 
       console.log("✅ Assets loaded, company data:", {
         companyName: companyData.cname,
-        source: "Direct from API (no cache)"
+        source: "Direct from API (no cache)",
       });
 
       const html = this.generateReceiptHTML({
@@ -672,7 +765,7 @@ address2: `${personalInfo?.pinCode}, ${personalInfo?.state || "Tamil Nadu"}`,
         await FileSystem.writeAsStringAsync(newUri, base64, {
           encoding: FileSystem.EncodingType.Base64,
         });
-        
+
         console.log("✅ PDF saved to:", newUri);
       } else {
         const newUri = FileSystem.documentDirectory + fileName;
@@ -680,16 +773,18 @@ address2: `${personalInfo?.pinCode}, ${personalInfo?.state || "Tamil Nadu"}`,
         console.log("✅ PDF saved to:", newUri);
       }
 
-      Alert.alert("Success ✓", `Receipt saved successfully!\n\nFile: ${fileName}`, [
-        { text: "OK", style: "default" }
-      ]);
+      Alert.alert(
+        "Success ✓",
+        `Receipt saved successfully!\n\nFile: ${fileName}`,
+        [{ text: "OK", style: "default" }]
+      );
 
       return { success: true, fileName, uri };
     } catch (error) {
       console.error("❌ PDF Generation Error:", {
         message: error.message,
         stack: error.stack,
-        timestamp: new Date().toISOString()
+        timestamp: new Date().toISOString(),
       });
       Alert.alert("Error", `Failed to generate PDF: ${error.message}`, [
         { text: "OK", style: "cancel" },

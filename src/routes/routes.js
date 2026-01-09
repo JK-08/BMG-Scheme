@@ -53,6 +53,7 @@ function Drawer() {
       <NavigationStack.Screen name="DuePayment" component={Screen.DuePayment} />
       <NavigationStack.Screen name="SchemeListPage" component={Screen.SchemeListPage} />
       <NavigationStack.Screen name="ReferralPending" component={Screen.ReferralPending} />
+      <NavigationStack.Screen name="ReferralShareScreen" component={Screen.ReferralShareScreen} />
     </NavigationStack.Navigator>
   );
 }

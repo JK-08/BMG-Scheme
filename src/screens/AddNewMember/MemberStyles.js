@@ -542,4 +542,22 @@ export const styles = StyleSheet.create({
     color: COLORS.textSecondary,
     marginTop: SIZES.margin.md,
   },
+   warningContainer: {
+    backgroundColor: '#FFF3CD',
+    borderColor: '#FFEAA7',
+    borderWidth: 1,
+    borderRadius: 8,
+    margin: 16,
+    padding: 12,
+    marginTop: 8,
+  },
+  warningText: {
+    color: '#856404',
+    fontSize: 14,
+    lineHeight: 20,
+    textAlign: 'center',
+  },
+  warningIcon: {
+    fontSize: 16,
+  },
 });

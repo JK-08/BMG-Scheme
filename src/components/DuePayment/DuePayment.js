@@ -73,7 +73,7 @@ const SchemeDetailsScreen = ({ route }) => {
     try {
       setLoading(true);
       setError(null);
-      
+
       // Get user phone number first
       const phone = await fetchUserPhoneNumber();
       if (!phone) {
@@ -82,12 +82,12 @@ const SchemeDetailsScreen = ({ route }) => {
 
       const API_URL = `${API_BASE_URL_OLD}/account/phone_details?phoneNo=${phone}`;
       console.log("Fetching data from:", API_URL);
-      
+
       const response = await fetch(API_URL, {
-        method: 'GET',
+        method: "GET",
         headers: {
-          'Accept': 'application/json',
-          'Content-Type': 'application/json',
+          Accept: "application/json",
+          "Content-Type": "application/json",
         },
         timeout: 30000, // 30 second timeout
       });
@@ -98,7 +98,7 @@ const SchemeDetailsScreen = ({ route }) => {
 
       const data = await response.json();
       console.log("API Response:", data);
-      
+
       if (!data || !Array.isArray(data)) {
         console.warn("Invalid data format received from API:", data);
         throw new Error("Invalid data format received from API");
@@ -108,79 +108,115 @@ const SchemeDetailsScreen = ({ route }) => {
       const rules = await fetchSchemeRules();
 
       // Process schemes with scheme rules
-      const processedSchemes = data.map(scheme => {
-        const rowColor = getRowColor(scheme);
-        const statusText = getStatusText(rowColor);
-        
-        // Get scheme name with fallback
-        const schemeName = (scheme.schemeSummary?.schemeName || scheme.schemeName || "BMG Scheme").trim();
-        const schemeRule = rules[schemeName] || {};
-        
-        // Determine scheme type based on API rules
-        const isWeightScheme = schemeRule.WeightLedger === "Y";
-        const isAmountScheme = schemeRule.FixedIns === "Y" && schemeRule.WeightLedger !== "Y";
-        const isFixedDeposit = schemeRule.FixedIns !== "Y" && schemeRule.WeightLedger !== "Y" && parseInt(schemeRule.Instalment) === 1;
-        const isDigitalScheme = schemeRule.FixedIns !== "Y" && schemeRule.WeightLedger !== "Y" && parseInt(schemeRule.Instalment) > 1;
+      const processedSchemes = data
+        .map((scheme) => {
+          const rowColor = getRowColor(scheme);
+          const statusText = getStatusText(rowColor);
 
-        return {
-          ...scheme,
-          regNo: scheme.regNo || scheme.regno || "N/A",
-          groupCode: scheme.groupCode || scheme.groupcode || "N/A",
-          pname: scheme.pName || scheme.pname || "N/A",
-          amount: scheme.amount || scheme.schemeAmount || scheme.monthlyAmount || "0",
-          nextDueDate: scheme.nextDueDate || scheme.nextDue || null,
-          lastPaidDate: scheme.lastPaidDate || scheme.lastPaid || null,
-          rowColor,
-          statusText,
-          
-          /* 🔥 CRITICAL: Add schemeSummary with proper rules */
-          schemeSummary: {
-            ...(scheme.schemeSummary || {}),
-            schemeId: schemeRule.SchemeId || scheme.schemeSummary?.schemeId || scheme.schemeId,
-            schemeName: schemeName,
-            instalment: schemeRule.Instalment || scheme.schemeSummary?.instalment || scheme.instalment || "0",
-            WeightLedger: schemeRule.WeightLedger || scheme.schemeSummary?.WeightLedger || scheme.weightLedger || "N",
-            FixedIns: schemeRule.FixedIns || scheme.schemeSummary?.FixedIns || scheme.fixedIns || "N",
-            
-            // Add transaction balance data with fallbacks
-            schemaSummaryTransBalance: {
-              insPaid: scheme.schemeSummary?.schemaSummaryTransBalance?.insPaid || 
-                      scheme.trans?.insPaid || 
-                      scheme.insPaid || "0",
-              amtrecd: scheme.schemeSummary?.schemaSummaryTransBalance?.amtrecd || 
-                       scheme.trans?.amtrecd || 
-                       scheme.amountReceived || "0",
-            },
-            
-            // Add scheme type info (for debugging)
-            schemeType: {
-              isWeightScheme,
-              isAmountScheme,
-              isFixedDeposit,
-              isDigitalScheme,
-            }
-          },
-          
-          // Add personalInfo for consistency
-          personalInfo: {
-            pName: scheme.pName || scheme.pname || "N/A",
-            mobile: phone,
-          },
-          
-          // Add accountDetails
-          accountDetails: {
+          // Get scheme name with fallback
+          const schemeName = (
+            scheme.schemeSummary?.schemeName ||
+            scheme.schemeName ||
+            "BMG Scheme"
+          ).trim();
+          const schemeRule = rules[schemeName] || {};
+
+          // Determine scheme type based on API rules
+          const isWeightScheme = schemeRule.WeightLedger === "Y";
+          const isAmountScheme =
+            schemeRule.FixedIns === "Y" && schemeRule.WeightLedger !== "Y";
+          const isFixedDeposit =
+            schemeRule.FixedIns !== "Y" &&
+            schemeRule.WeightLedger !== "Y" &&
+            parseInt(schemeRule.Instalment) === 1;
+          const isDigitalScheme =
+            schemeRule.FixedIns !== "Y" &&
+            schemeRule.WeightLedger !== "Y" &&
+            parseInt(schemeRule.Instalment) > 1;
+
+          return {
+            ...scheme,
             regNo: scheme.regNo || scheme.regno || "N/A",
             groupCode: scheme.groupCode || scheme.groupcode || "N/A",
-          }
-        };
-      }).filter(scheme => scheme.regNo !== "N/A"); // Filter out invalid schemes
+            pname: scheme.pName || scheme.pname || "N/A",
+            amount:
+              scheme.amount ||
+              scheme.schemeAmount ||
+              scheme.monthlyAmount ||
+              "0",
+            nextDueDate: scheme.nextDueDate || scheme.nextDue || null,
+            lastPaidDate: scheme.lastPaidDate || scheme.lastPaid || null,
+            rowColor,
+            statusText,
+
+            /* 🔥 CRITICAL: Add schemeSummary with proper rules */
+            schemeSummary: {
+              ...(scheme.schemeSummary || {}),
+              schemeId:
+                schemeRule.SchemeId ||
+                scheme.schemeSummary?.schemeId ||
+                scheme.schemeId,
+              schemeName: schemeName,
+              instalment:
+                schemeRule.Instalment ||
+                scheme.schemeSummary?.instalment ||
+                scheme.instalment ||
+                "0",
+              WeightLedger:
+                schemeRule.WeightLedger ||
+                scheme.schemeSummary?.WeightLedger ||
+                scheme.weightLedger ||
+                "N",
+              FixedIns:
+                schemeRule.FixedIns ||
+                scheme.schemeSummary?.FixedIns ||
+                scheme.fixedIns ||
+                "N",
+
+              // Add transaction balance data with fallbacks
+              schemaSummaryTransBalance: {
+                insPaid:
+                  scheme.schemeSummary?.schemaSummaryTransBalance?.insPaid ||
+                  scheme.trans?.insPaid ||
+                  scheme.insPaid ||
+                  "0",
+                amtrecd:
+                  scheme.schemeSummary?.schemaSummaryTransBalance?.amtrecd ||
+                  scheme.trans?.amtrecd ||
+                  scheme.amountReceived ||
+                  "0",
+              },
+
+              // Add scheme type info (for debugging)
+              schemeType: {
+                isWeightScheme,
+                isAmountScheme,
+                isFixedDeposit,
+                isDigitalScheme,
+              },
+            },
+
+            // Add personalInfo for consistency
+            personalInfo: {
+              pName: scheme.pName || scheme.pname || "N/A",
+              mobile: phone,
+            },
+
+            // Add accountDetails
+            accountDetails: {
+              regNo: scheme.regNo || scheme.regno || "N/A",
+              groupCode: scheme.groupCode || scheme.groupcode || "N/A",
+            },
+          };
+        })
+        .filter((scheme) => scheme.regNo !== "N/A"); // Filter out invalid schemes
 
       // Sort by row color priority: Red > Yellow > Green
       processedSchemes.sort((a, b) => {
         const priority = { red: 1, yellow: 2, green: 3 };
         return priority[a.rowColor] - priority[b.rowColor];
       });
-      
+
       setSchemes(processedSchemes);
       console.log("Fetched", processedSchemes.length, "schemes");
       if (processedSchemes.length > 0) {
@@ -190,14 +226,16 @@ const SchemeDetailsScreen = ({ route }) => {
           fixedIns: processedSchemes[0]?.schemeSummary?.FixedIns,
           amount: processedSchemes[0]?.amount,
           regNo: processedSchemes[0]?.regNo,
-          groupCode: processedSchemes[0]?.groupCode
+          groupCode: processedSchemes[0]?.groupCode,
         });
       }
-
     } catch (err) {
       console.error("Error fetching schemes:", err);
       setError(err.message || "Failed to fetch scheme details");
-      Alert.alert("Error", err.message || "Failed to load scheme details. Please try again.");
+      Alert.alert(
+        "Error",
+        err.message || "Failed to load scheme details. Please try again."
+      );
     } finally {
       setLoading(false);
       setRefreshing(false);
@@ -223,40 +261,50 @@ const SchemeDetailsScreen = ({ route }) => {
   const getRowColor = (scheme) => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
-    
+
     // Get next due date from scheme with multiple fallbacks
-    const nextDueDateStr = scheme.nextDueDate || scheme.nextDue || scheme.schemeSummary?.nextDue;
-    
-    if (!nextDueDateStr || nextDueDateStr === "1900-01-01" || nextDueDateStr === "1900-01-01 00:00:00.0") {
+    const nextDueDateStr =
+      scheme.nextDueDate || scheme.nextDue || scheme.schemeSummary?.nextDue;
+
+    if (
+      !nextDueDateStr ||
+      nextDueDateStr === "1900-01-01" ||
+      nextDueDateStr === "1900-01-01 00:00:00.0"
+    ) {
       return "green"; // No due date means no payment pending
     }
-    
+
     // Parse next due date
     const nextDue = parseDate(nextDueDateStr);
-    
+
     if (isNaN(nextDue.getTime())) {
       return "green"; // Invalid date, assume no payment pending
     }
-    
+
     const nextDueYear = nextDue.getFullYear();
     const nextDueMonth = nextDue.getMonth();
     const nextDueDay = nextDue.getDate();
-    const nextDueAtMidnight = new Date(nextDueYear, nextDueMonth, nextDueDay, 0, 0, 0);
-    
+    const nextDueAtMidnight = new Date(
+      nextDueYear,
+      nextDueMonth,
+      nextDueDay,
+      0,
+      0,
+      0
+    );
+
     // Compare dates
     if (today.getTime() > nextDueAtMidnight.getTime()) {
       return "red"; // Overdue
-    } 
-    else if (today.getTime() === nextDueAtMidnight.getTime()) {
+    } else if (today.getTime() === nextDueAtMidnight.getTime()) {
       return "yellow"; // Due today
-    }
-    else {
+    } else {
       return "green"; // Future date (paid or not yet due)
     }
   };
 
   const getStatusText = (rowColor) => {
-    switch(rowColor) {
+    switch (rowColor) {
       case "red":
         return "Overdue";
       case "yellow":
@@ -270,27 +318,27 @@ const SchemeDetailsScreen = ({ route }) => {
 
   const parseDate = (dateString) => {
     if (!dateString) return new Date(NaN);
-    
+
     let cleanDateStr = dateString.toString().trim();
-    
+
     // Handle different date formats
-    if (cleanDateStr.includes(' ')) {
-      cleanDateStr = cleanDateStr.split(' ')[0];
+    if (cleanDateStr.includes(" ")) {
+      cleanDateStr = cleanDateStr.split(" ")[0];
     }
-    
-    if (cleanDateStr.includes('T')) {
-      cleanDateStr = cleanDateStr.split('T')[0];
+
+    if (cleanDateStr.includes("T")) {
+      cleanDateStr = cleanDateStr.split("T")[0];
     }
-    
+
     // Try to parse as ISO format first
     const isoDate = new Date(cleanDateStr);
     if (!isNaN(isoDate.getTime())) {
       return isoDate;
     }
-    
+
     // Try DD-MM-YYYY format
-    if (cleanDateStr.includes('/')) {
-      const parts = cleanDateStr.split('/');
+    if (cleanDateStr.includes("/")) {
+      const parts = cleanDateStr.split("/");
       if (parts.length === 3) {
         const day = parseInt(parts[0]);
         const month = parseInt(parts[1]) - 1;
@@ -298,10 +346,10 @@ const SchemeDetailsScreen = ({ route }) => {
         return new Date(year, month, day);
       }
     }
-    
+
     // Try YYYY-MM-DD format
-    if (cleanDateStr.includes('-')) {
-      const parts = cleanDateStr.split('-');
+    if (cleanDateStr.includes("-")) {
+      const parts = cleanDateStr.split("-");
       if (parts.length === 3) {
         const year = parseInt(parts[0]);
         const month = parseInt(parts[1]) - 1;
@@ -309,25 +357,29 @@ const SchemeDetailsScreen = ({ route }) => {
         return new Date(year, month, day);
       }
     }
-    
+
     return new Date(NaN);
   };
 
   const formatDate = (dateInput) => {
-    if (!dateInput || dateInput === "1900-01-01" || dateInput === "1900-01-01 00:00:00.0") {
+    if (
+      !dateInput ||
+      dateInput === "1900-01-01" ||
+      dateInput === "1900-01-01 00:00:00.0"
+    ) {
       return "N/A";
     }
-    
+
     const date = parseDate(dateInput);
-    
+
     if (isNaN(date.getTime())) {
       return "N/A";
     }
-    
-    const day = date.getDate().toString().padStart(2, '0');
-    const month = (date.getMonth() + 1).toString().padStart(2, '0');
+
+    const day = date.getDate().toString().padStart(2, "0");
+    const month = (date.getMonth() + 1).toString().padStart(2, "0");
     const year = date.getFullYear();
-    
+
     return `${day}-${month}-${year}`;
   };
 
@@ -335,33 +387,45 @@ const SchemeDetailsScreen = ({ route }) => {
     if (amount === undefined || amount === null || amount === "") return "₹0";
     const num = parseFloat(amount);
     if (isNaN(num)) return "₹0";
-    return `₹${num.toLocaleString('en-IN', { maximumFractionDigits: 0 })}`;
+    return `₹${num.toLocaleString("en-IN", { maximumFractionDigits: 0 })}`;
   };
 
   const getStatusColor = (status) => {
-    switch(status) {
-      case 'red': return '#FFEBEE';
-      case 'yellow': return '#FFF8E1';
-      case 'green': return '#E8F5E9';
-      default: return '#FFFFFF';
+    switch (status) {
+      case "red":
+        return "#FFEBEE";
+      case "yellow":
+        return "#FFF8E1";
+      case "green":
+        return "#E8F5E9";
+      default:
+        return "#FFFFFF";
     }
   };
 
   const getBorderColor = (status) => {
-    switch(status) {
-      case 'red': return '#F44336';
-      case 'yellow': return '#FF9800';
-      case 'green': return '#4CAF50';
-      default: return '#E0E0E0';
+    switch (status) {
+      case "red":
+        return "#F44336";
+      case "yellow":
+        return "#FF9800";
+      case "green":
+        return "#4CAF50";
+      default:
+        return "#E0E0E0";
     }
   };
 
   const getStatusTextColor = (status) => {
-    switch(status) {
-      case 'red': return '#D32F2F';
-      case 'yellow': return '#F57C00';
-      case 'green': return '#388E3C';
-      default: return '#757575';
+    switch (status) {
+      case "red":
+        return "#D32F2F";
+      case "yellow":
+        return "#F57C00";
+      case "green":
+        return "#388E3C";
+      default:
+        return "#757575";
     }
   };
 
@@ -372,7 +436,7 @@ const SchemeDetailsScreen = ({ route }) => {
       fixedIns: scheme.schemeSummary?.FixedIns,
       amount: scheme.amount,
       regNo: scheme.regNo,
-      groupCode: scheme.groupCode
+      groupCode: scheme.groupCode,
     });
 
     navigation.navigate("Buy", {
@@ -382,7 +446,8 @@ const SchemeDetailsScreen = ({ route }) => {
 
   const renderSchemeRow = (scheme, index) => {
     const schemeName = scheme.schemeSummary?.schemeName || "BMG Scheme";
-    const paidInstallments = scheme.schemeSummary?.schemaSummaryTransBalance?.insPaid || "0";
+    const paidInstallments =
+      scheme.schemeSummary?.schemaSummaryTransBalance?.insPaid || "0";
     const totalInstallments = scheme.schemeSummary?.instalment || "0";
     const amount = scheme.amount || "0";
     const nextDueDate = formatDate(scheme.nextDueDate);
@@ -391,15 +456,15 @@ const SchemeDetailsScreen = ({ route }) => {
     const statusText = scheme.statusText || "Up to Date";
 
     return (
-      <View 
-        key={index} 
+      <View
+        key={index}
         style={[
           styles.schemeRow,
-          { 
+          {
             backgroundColor: getStatusColor(rowColor),
             borderLeftWidth: 4,
-            borderLeftColor: getBorderColor(rowColor)
-          }
+            borderLeftColor: getBorderColor(rowColor),
+          },
         ]}
       >
         <View style={styles.rowContent}>
@@ -412,8 +477,18 @@ const SchemeDetailsScreen = ({ route }) => {
               Reg: {scheme.regNo} | Group: {scheme.groupCode}
             </Text>
             <View style={styles.statusContainer}>
-              <View style={[styles.statusDot, { backgroundColor: getBorderColor(rowColor) }]} />
-              <Text style={[styles.statusText, { color: getStatusTextColor(rowColor) }]}>
+              <View
+                style={[
+                  styles.statusDot,
+                  { backgroundColor: getBorderColor(rowColor) },
+                ]}
+              />
+              <Text
+                style={[
+                  styles.statusText,
+                  { color: getStatusTextColor(rowColor) },
+                ]}
+              >
                 {statusText}
               </Text>
             </View>
@@ -429,32 +504,37 @@ const SchemeDetailsScreen = ({ route }) => {
 
           {/* Right Section - Amount & Date */}
           <View style={styles.rightSection}>
-            <Text style={styles.amountText}>
-              {formatCurrency(amount)}
-            </Text>
+            <Text style={styles.amountText}>{formatCurrency(amount)}</Text>
             <View style={styles.dateInfo}>
-              <Text style={styles.dateLabel}>
-                {rowColor === 'green' ? 'Last Paid:' : 'Next Due:'}
-              </Text>
-              <Text style={[
-                styles.dateValue, 
-                { color: rowColor === 'red' ? '#D32F2F' : rowColor === 'yellow' ? '#F57C00' : '#388E3C' }
-              ]}>
-                {rowColor === 'green' ? lastPaidDate : nextDueDate}
+              <Text style={styles.dateLabel}>Last Paid:</Text>
+              <Text
+                style={[
+                  styles.dateValue,
+                  {
+                    color:
+                      rowColor === "red"
+                        ? "#D32F2F"
+                        : rowColor === "yellow"
+                        ? "#F57C00"
+                        : "#388E3C",
+                  },
+                ]}
+              >
+                {lastPaidDate}
               </Text>
             </View>
           </View>
         </View>
 
         {/* Action Button - Show for RED and YELLOW status */}
-        {(rowColor === 'red' || rowColor === 'yellow') && (
+        {(rowColor === "red" || rowColor === "yellow") && (
           <TouchableOpacity
             style={[
               styles.payButton,
-              { 
-                backgroundColor: rowColor === 'red' ? '#D32F2F' : '#FF9800',
-                marginTop: 10
-              }
+              {
+                backgroundColor: rowColor === "red" ? "#D32F2F" : "#FF9800",
+                marginTop: 10,
+              },
             ]}
             onPress={() => handlePayNow(scheme)}
           >
@@ -463,15 +543,16 @@ const SchemeDetailsScreen = ({ route }) => {
             </Text>
           </TouchableOpacity>
         )}
-        
+
         {/* Show next due info for Green (Paid) rows */}
-        {rowColor === 'green' && scheme.nextDueDate && scheme.nextDueDate !== "1900-01-01" && (
-          <View style={styles.paidInfo}>
-            <Text style={styles.paidText}>
-              Next due: {nextDueDate}
-            </Text>
-          </View>
-        )}
+        {rowColor === "green" &&
+          scheme.nextDueDate &&
+          scheme.nextDueDate !== "1900-01-01" &&
+          scheme.schemeSummary?.schemeId === 1 && (
+            <View style={styles.paidInfo}>
+              <Text style={styles.paidText}>Next due: {nextDueDate}</Text>
+            </View>
+          )}
       </View>
     );
   };
@@ -495,7 +576,10 @@ const SchemeDetailsScreen = ({ route }) => {
         <View style={styles.centerContainer}>
           <Text style={styles.errorText}>Oops! Something went wrong</Text>
           <Text style={styles.errorSubText}>{error}</Text>
-          <TouchableOpacity style={styles.retryButton} onPress={fetchSchemeDetails}>
+          <TouchableOpacity
+            style={styles.retryButton}
+            onPress={fetchSchemeDetails}
+          >
             <Text style={styles.retryButtonText}>Retry</Text>
           </TouchableOpacity>
         </View>
@@ -506,22 +590,22 @@ const SchemeDetailsScreen = ({ route }) => {
   return (
     <SafeAreaView style={styles.container}>
       <StatusBar barStyle="dark-content" backgroundColor="#f8f9fa" />
-      
+
       {/* Header */}
       <CommonHeader title="My Schemes" />
 
       {/* Summary Bar - Red, Yellow, and Green */}
       <View style={styles.summaryBar}>
         <View style={styles.summaryItem}>
-          <View style={[styles.summaryDot, { backgroundColor: '#F44336' }]} />
+          <View style={[styles.summaryDot, { backgroundColor: "#F44336" }]} />
           <Text style={styles.summaryText}>Overdue</Text>
         </View>
         <View style={styles.summaryItem}>
-          <View style={[styles.summaryDot, { backgroundColor: '#FF9800' }]} />
+          <View style={[styles.summaryDot, { backgroundColor: "#FF9800" }]} />
           <Text style={styles.summaryText}>Due Today</Text>
         </View>
         <View style={styles.summaryItem}>
-          <View style={[styles.summaryDot, { backgroundColor: '#4CAF50' }]} />
+          <View style={[styles.summaryDot, { backgroundColor: "#4CAF50" }]} />
           <Text style={styles.summaryText}>Up to Date</Text>
         </View>
       </View>
@@ -530,24 +614,25 @@ const SchemeDetailsScreen = ({ route }) => {
       {schemes.length > 0 && (
         <View style={styles.totalSummary}>
           <Text style={styles.totalText}>
-            Total Schemes: <Text style={styles.totalCount}>{schemes.length}</Text>
+            Total Schemes:{" "}
+            <Text style={styles.totalCount}>{schemes.length}</Text>
           </Text>
           <View style={styles.totalStats}>
             <View style={styles.statItem}>
-              <Text style={[styles.statCount, { color: '#F44336' }]}>
-                {schemes.filter(s => s.rowColor === 'red').length}
+              <Text style={[styles.statCount, { color: "#F44336" }]}>
+                {schemes.filter((s) => s.rowColor === "red").length}
               </Text>
               <Text style={styles.statLabel}>Overdue</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={[styles.statCount, { color: '#FF9800' }]}>
-                {schemes.filter(s => s.rowColor === 'yellow').length}
+              <Text style={[styles.statCount, { color: "#FF9800" }]}>
+                {schemes.filter((s) => s.rowColor === "yellow").length}
               </Text>
               <Text style={styles.statLabel}>Due Today</Text>
             </View>
             <View style={styles.statItem}>
-              <Text style={[styles.statCount, { color: '#4CAF50' }]}>
-                {schemes.filter(s => s.rowColor === 'green').length}
+              <Text style={[styles.statCount, { color: "#4CAF50" }]}>
+                {schemes.filter((s) => s.rowColor === "green").length}
               </Text>
               <Text style={styles.statLabel}>Up to Date</Text>
             </View>
@@ -569,7 +654,10 @@ const SchemeDetailsScreen = ({ route }) => {
             <Text style={styles.emptySubtext}>
               You haven't joined any schemes yet
             </Text>
-            <TouchableOpacity style={styles.emptyButton} onPress={() => navigation.navigate("Schemes")}>
+            <TouchableOpacity
+              style={styles.emptyButton}
+              onPress={() => navigation.navigate("Schemes")}
+            >
               <Text style={styles.emptyButtonText}>Browse Schemes</Text>
             </TouchableOpacity>
           </View>
@@ -658,16 +746,16 @@ const styles = StyleSheet.create({
     fontWeight: "600",
   },
   summaryBar: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
-    backgroundColor: '#fff',
+    flexDirection: "row",
+    justifyContent: "space-around",
+    backgroundColor: "#fff",
     paddingVertical: 12,
     borderBottomWidth: 1,
-    borderBottomColor: '#e9ecef',
+    borderBottomColor: "#e9ecef",
   },
   summaryItem: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   summaryDot: {
     width: 10,
@@ -677,10 +765,10 @@ const styles = StyleSheet.create({
   },
   summaryText: {
     fontSize: 12,
-    color: '#666',
+    color: "#666",
   },
   totalSummary: {
-    backgroundColor: '#fff',
+    backgroundColor: "#fff",
     borderRadius: 10,
     padding: 15,
     margin: 15,
@@ -692,29 +780,29 @@ const styles = StyleSheet.create({
   },
   totalText: {
     fontSize: 14,
-    color: '#666',
-    textAlign: 'center',
+    color: "#666",
+    textAlign: "center",
     marginBottom: 12,
   },
   totalCount: {
-    fontWeight: 'bold',
-    color: '#1976d2',
+    fontWeight: "bold",
+    color: "#1976d2",
   },
   totalStats: {
-    flexDirection: 'row',
-    justifyContent: 'space-around',
+    flexDirection: "row",
+    justifyContent: "space-around",
   },
   statItem: {
-    alignItems: 'center',
+    alignItems: "center",
   },
   statCount: {
     fontSize: 18,
-    fontWeight: 'bold',
+    fontWeight: "bold",
     marginBottom: 4,
   },
   statLabel: {
     fontSize: 11,
-    color: '#666',
+    color: "#666",
   },
   schemesList: {
     padding: 15,
@@ -730,33 +818,33 @@ const styles = StyleSheet.create({
     elevation: 1,
   },
   rowContent: {
-    flexDirection: 'row',
-    justifyContent: 'space-between',
-    alignItems: 'flex-start',
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "flex-start",
   },
   leftSection: {
     flex: 2.5,
   },
   schemeName: {
     fontSize: 16,
-    fontWeight: '600',
-    color: '#333',
+    fontWeight: "600",
+    color: "#333",
     marginBottom: 2,
   },
   schemeId: {
     fontSize: 11,
-    color: '#666',
+    color: "#666",
     marginBottom: 2,
   },
   schemeType: {
     fontSize: 10,
-    color: '#888',
+    color: "#888",
     marginBottom: 8,
-    fontStyle: 'italic',
+    fontStyle: "italic",
   },
   statusContainer: {
-    flexDirection: 'row',
-    alignItems: 'center',
+    flexDirection: "row",
+    alignItems: "center",
   },
   statusDot: {
     width: 8,
@@ -766,66 +854,66 @@ const styles = StyleSheet.create({
   },
   statusText: {
     fontSize: 12,
-    fontWeight: '500',
+    fontWeight: "500",
   },
   middleSection: {
     flex: 1,
-    alignItems: 'center',
+    alignItems: "center",
   },
   installmentCount: {
     fontSize: 18,
-    fontWeight: 'bold',
-    color: '#1976d2',
+    fontWeight: "bold",
+    color: "#1976d2",
     marginBottom: 4,
   },
   installmentLabel: {
     fontSize: 10,
-    color: '#666',
+    color: "#666",
   },
   rightSection: {
     flex: 1.5,
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   amountText: {
     fontSize: 16,
-    fontWeight: 'bold',
-    color: '#2e7d32',
+    fontWeight: "bold",
+    color: "#2e7d32",
     marginBottom: 8,
   },
   dateInfo: {
-    alignItems: 'flex-end',
+    alignItems: "flex-end",
   },
   dateLabel: {
     fontSize: 10,
-    color: '#666',
+    color: "#666",
     marginBottom: 2,
   },
   dateValue: {
     fontSize: 12,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   payButton: {
     paddingVertical: 10,
     paddingHorizontal: 20,
     borderRadius: 6,
-    alignItems: 'center',
+    alignItems: "center",
   },
   payButtonText: {
-    color: '#fff',
+    color: "#fff",
     fontSize: 14,
-    fontWeight: '600',
+    fontWeight: "600",
   },
   paidInfo: {
     marginTop: 10,
     paddingTop: 10,
     borderTopWidth: 1,
-    borderTopColor: 'rgba(0,0,0,0.1)',
-    alignItems: 'center',
+    borderTopColor: "rgba(0,0,0,0.1)",
+    alignItems: "center",
   },
   paidText: {
     fontSize: 12,
-    color: '#4CAF50',
-    fontWeight: '500',
+    color: "#4CAF50",
+    fontWeight: "500",
   },
 });
 

@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useState, useCallback, useMemo } from "react";
 import {
   View,
   Text,
@@ -32,44 +32,37 @@ const ReferralScreen = () => {
     loadReferralData();
   }, []);
 
-  const loadReferralData = async () => {
+  const loadReferralData = useCallback(async () => {
     try {
       setLoading(true);
       setError(null);
-      
+
       const userId = await AsyncStorage.getItem("userId");
-      
+
       if (!userId) {
         setError("User ID not found. Please login again.");
         setLoading(false);
         return;
       }
 
-      const url = `${API_BASE_URL_OLD}/account/referrals/${userId}`;
-      console.log("Fetching data from:", url);
+      const response = await fetch(`${API_BASE_URL_OLD}/account/referrals/${userId}`);
 
-      const response = await fetch(url);
-      
       if (!response.ok) {
         throw new Error(`Network error: ${response.status}`);
       }
 
       const data = await response.json();
-      console.log("API Response:", JSON.stringify(data, null, 2));
 
-      // Handle the API response structure
-      if (data && data.referrer) {
+      if (data?.referrer) {
         setReferralData(data.referrer);
         setTransactions(data.transactions || []);
       } else if (Array.isArray(data)) {
-        // Fallback for array format
         setReferralData(data[0] || null);
         setTransactions(data.slice(1) || []);
       } else {
         setReferralData(null);
         setTransactions([]);
       }
-      
     } catch (err) {
       console.error("Error loading referral data:", err);
       setError(err.message || "An error occurred while loading data");
@@ -77,19 +70,19 @@ const ReferralScreen = () => {
       setLoading(false);
       setRefreshing(false);
     }
-  };
+  }, []);
 
-  const onRefresh = async () => {
+  const onRefresh = useCallback(async () => {
     setRefreshing(true);
     await loadReferralData();
-  };
+  }, [loadReferralData]);
 
-  const shareReferralLink = async () => {
+  const shareReferralLink = useCallback(async () => {
     if (!referralData?.playStoreLink) return;
 
     try {
       const shareMessage = `Join me on BMG Scheme! Use my referral code: ${referralData.referral_code}\n\nDownload app: ${referralData.playStoreLink}`;
-      
+
       await Share.share({
         message: shareMessage,
         title: "Join BMG Scheme",
@@ -97,9 +90,9 @@ const ReferralScreen = () => {
     } catch (error) {
       Alert.alert("Error", "Failed to share referral link");
     }
-  };
+  }, [referralData]);
 
-  const formatDate = (dateString) => {
+  const formatDate = useCallback((dateString) => {
     if (!dateString) return "N/A";
     try {
       const date = new Date(dateString);
@@ -108,51 +101,117 @@ const ReferralScreen = () => {
         month: "short",
         year: "numeric",
       });
-    } catch (error) {
+    } catch {
       return "Invalid Date";
     }
-  };
+  }, []);
 
-  const formatTime = (dateString) => {
-    if (!dateString) return "";
-    try {
-      const date = new Date(dateString);
-      return date.toLocaleTimeString("en-IN", {
-        hour: "2-digit",
-        minute: "2-digit",
-      });
-    } catch (error) {
-      return "";
-    }
-  };
-
-  const formatAmount = (amount) => {
+  const formatAmount = useCallback((amount) => {
     const numAmount = parseFloat(amount || 0);
     return `₹${numAmount.toLocaleString("en-IN", {
       minimumFractionDigits: 2,
       maximumFractionDigits: 2,
     })}`;
-  };
+  }, []);
 
-  // Stats Data
-  const stats = [
+  const stats = useMemo(() => [
     {
       label: "Wallet Balance",
       value: formatAmount(referralData?.wallet_balance),
       icon: "account-balance-wallet",
       color: theme.COLORS.primary,
-    }
-  ];
+      description: "Available to withdraw",
+      gradient: true,
+    },
+  ], [referralData?.wallet_balance, formatAmount]);
 
-  // Steps Data
-  const steps = [
+  const steps = useMemo(() => [
     { icon: "person-add", text: "Share your referral code" },
     { icon: "download", text: "Friend installs app" },
     { icon: "verified", text: "First purchase made" },
     { icon: "account-balance-wallet", text: "Earn rewards instantly" },
-  ];
+  ], []);
 
-  // Loading State
+  const StatCard = useMemo(() => ({ stat }) => (
+    <TouchableOpacity
+      activeOpacity={0.9}
+      style={[styles.statCard, theme.SHADOWS.md, styles.singleStatCard]}
+    >
+      <LinearGradient
+        colors={[theme.COLORS.primary, theme.COLORS.primaryDark]}
+        start={{ x: 0, y: 0 }}
+        end={{ x: 1, y: 1 }}
+        style={styles.statGradient}
+      >
+        <View style={styles.statHeader}>
+          <View style={styles.statIcon}>
+            <Icon
+              name={stat.icon}
+              size={theme.SIZES.icon.lg}
+              color={theme.COLORS.white}
+            />
+          </View>
+          <Text style={styles.statLabelLight}>{stat.label}</Text>
+        </View>
+        <Text style={styles.statValueLight} numberOfLines={1}>{stat.value}</Text>
+        <Text style={styles.statDescriptionLight}>{stat.description}</Text>
+        <View style={styles.cornerCircleTop} />
+        <View style={styles.cornerCircleBottom} />
+      </LinearGradient>
+    </TouchableOpacity>
+  ), []);
+
+  const TransactionItem = useMemo(() => ({ item, index }) => (
+    <View key={index} style={[styles.historyItem, theme.SHADOWS.xs]}>
+      <View style={styles.itemHeader}>
+        <View style={styles.userAvatar}>
+          <IconFA
+            name="user"
+            size={theme.SIZES.font.xs}
+            color={theme.COLORS.primary}
+          />
+        </View>
+        <View style={styles.userInfo}>
+          <Text style={styles.userName} numberOfLines={1}>
+            {item.new_member_personal_name || "New Member"}
+          </Text>
+          <Text style={styles.userPhone}>
+            {item.new_member_mobile || "N/A"}
+          </Text>
+        </View>
+        <Text style={styles.earnedAmount}>
+          +{formatAmount(item.credited_amount)}
+        </Text>
+      </View>
+
+      <View style={styles.itemDetails}>
+        <View style={styles.detailRow}>
+          <View style={styles.detailItem}>
+            <Icon
+              name="business-center"
+              size={theme.SIZES.font.xs}
+              color={theme.COLORS.gray500}
+            />
+            <Text style={styles.detailText} numberOfLines={1}>
+              {item.schemeName || "N/A"}
+            </Text>
+          </View>
+
+          <View style={styles.detailItem}>
+            <Icon
+              name="calendar-today"
+              size={theme.SIZES.font.xs}
+              color={theme.COLORS.gray500}
+            />
+            <Text style={styles.detailText}>
+              {formatDate(item.created_at)}
+            </Text>
+          </View>
+        </View>
+      </View>
+    </View>
+  ), [formatAmount, formatDate]);
+
   if (loading && !refreshing) {
     return (
       <View style={styles.centeredContainer}>
@@ -162,14 +221,21 @@ const ReferralScreen = () => {
     );
   }
 
-  // Error State
   if (error) {
     return (
       <View style={styles.centeredContainer}>
-        <Icon name="error-outline" size={theme.SIZES.icon.xxxl} color={theme.COLORS.error} />
+        <Icon
+          name="error-outline"
+          size={theme.SIZES.icon.xxxl}
+          color={theme.COLORS.error}
+        />
         <Text style={styles.errorText}>{error}</Text>
         <TouchableOpacity style={styles.retryButton} onPress={loadReferralData}>
-          <Icon name="refresh" size={theme.SIZES.icon.sm} color={theme.COLORS.white} />
+          <Icon
+            name="refresh"
+            size={theme.SIZES.icon.sm}
+            color={theme.COLORS.white}
+          />
           <Text style={styles.retryButtonText}>Retry</Text>
         </TouchableOpacity>
       </View>
@@ -196,7 +262,11 @@ const ReferralScreen = () => {
           {/* User Info Card */}
           <View style={[styles.userInfoCard, theme.SHADOWS.sm]}>
             <View style={styles.userAvatarLarge}>
-              <IconFA name="user" size={theme.SIZES.icon.md} color={theme.COLORS.white} />
+              <IconFA
+                name="user"
+                size={theme.SIZES.icon.md}
+                color={theme.COLORS.white}
+              />
             </View>
             <View style={styles.userInfo}>
               <Text style={styles.userName} numberOfLines={1}>
@@ -208,19 +278,9 @@ const ReferralScreen = () => {
             </View>
           </View>
 
-          {/* Stats Grid */}
-          <View style={styles.statsGrid}>
-            {stats.map((stat, index) => (
-              <View key={index} style={[styles.statCard, theme.SHADOWS.xs]}>
-                <View style={[styles.statIcon, { backgroundColor: `${stat.color}15` }]}>
-                  <Icon name={stat.icon} size={theme.SIZES.icon.md} color={stat.color} />
-                </View>
-                <Text style={[styles.statValue, { color: stat.color }]}>
-                  {stat.value}
-                </Text>
-                <Text style={styles.statLabel}>{stat.label}</Text>
-              </View>
-            ))}
+          {/* Centered Single Stat Card */}
+          <View style={styles.statsContainer}>
+            <StatCard stat={stats[0]} />
           </View>
 
           {/* Referral Code Card */}
@@ -232,21 +292,23 @@ const ReferralScreen = () => {
               style={styles.referralGradient}
             >
               <Text style={styles.referralTitle}>Your Referral Code</Text>
-              
+
               <View style={styles.codeContainer}>
                 <Text style={styles.codeText}>
                   {referralData?.referral_code || "N/A"}
                 </Text>
               </View>
-              
-             
 
               <TouchableOpacity
                 style={styles.shareButton}
                 onPress={shareReferralLink}
                 activeOpacity={0.7}
               >
-                <Icon name="share" size={theme.SIZES.icon.sm} color={theme.COLORS.primary} />
+                <Icon
+                  name="share"
+                  size={theme.SIZES.icon.sm}
+                  color={theme.COLORS.primary}
+                />
                 <Text style={styles.shareButtonText}>Share Referral Link</Text>
               </TouchableOpacity>
             </LinearGradient>
@@ -258,7 +320,7 @@ const ReferralScreen = () => {
               <View>
                 <Text style={styles.sectionTitle}>Transaction History</Text>
                 <Text style={styles.sectionSubtitle}>
-                  {transactions.length} {transactions.length === 1 ? 'Transaction' : 'Transactions'}
+                  {transactions.length} Transaction{transactions.length !== 1 ? "s" : ""}
                 </Text>
               </View>
               <View style={styles.totalEarned}>
@@ -271,65 +333,20 @@ const ReferralScreen = () => {
 
             {transactions.length === 0 ? (
               <View style={styles.emptyState}>
-                <Icon name="receipt-long" size={theme.SIZES.icon.xxxl} color={theme.COLORS.gray400} />
+                <Icon
+                  name="receipt-long"
+                  size={theme.SIZES.icon.xxxl}
+                  color={theme.COLORS.gray400}
+                />
                 <Text style={styles.emptyText}>No transactions yet</Text>
-                <Text style={styles.emptySubtext}>Share your referral code to start earning</Text>
+                <Text style={styles.emptySubtext}>
+                  Share your referral code to start earning
+                </Text>
               </View>
             ) : (
               <View style={styles.historyList}>
                 {transactions.map((item, index) => (
-                  <View key={index} style={[styles.historyItem, theme.SHADOWS.xs]}>
-                    <View style={styles.itemHeader}>
-                      <View style={styles.userAvatar}>
-                        <IconFA name="user" size={theme.SIZES.font.xs} color={theme.COLORS.primary} />
-                      </View>
-                      <View style={styles.userInfo}>
-                        <Text style={styles.userName} numberOfLines={1}>
-                          {item.new_member_personal_name || "New Member"}
-                        </Text>
-                        <Text style={styles.userPhone}>
-                          {item.new_member_mobile || "N/A"}
-                        </Text>
-                      </View>
-                      <Text style={styles.earnedAmount}>
-                        +{formatAmount(item.credited_amount)}
-                      </Text>
-                    </View>
-                    
-                    <View style={styles.itemDetails}>
-                      <View style={styles.detailRow}>
-                        <View style={styles.detailItem}>
-                          <Icon name="business-center" size={theme.SIZES.font.xs} color={theme.COLORS.gray500} />
-                          <Text style={styles.detailText} numberOfLines={1}>
-                            {item.schemeName || "N/A"}
-                          </Text>
-                        </View>
-                        
-                        <View style={styles.detailItem}>
-                          <Icon name="card-giftcard" size={theme.SIZES.font.xs} color={theme.COLORS.gray500} />
-                          <Text style={styles.detailText}>
-                            Member: {formatAmount(item.new_member_reward)}
-                          </Text>
-                        </View>
-                      </View>
-                      
-                      <View style={styles.detailRow}>
-                        <View style={styles.detailItem}>
-                          <Icon name="calendar-today" size={theme.SIZES.font.xs} color={theme.COLORS.gray500} />
-                          <Text style={styles.detailText}>
-                            {formatDate(item.created_at)}
-                          </Text>
-                        </View>
-                        
-                        <View style={styles.detailItem}>
-                          <Icon name="access-time" size={theme.SIZES.font.xs} color={theme.COLORS.gray500} />
-                          <Text style={styles.detailText}>
-                            {formatTime(item.created_at)}
-                          </Text>
-                        </View>
-                      </View>
-                    </View>
-                  </View>
+                  <TransactionItem key={index} item={item} />
                 ))}
               </View>
             )}
@@ -338,24 +355,32 @@ const ReferralScreen = () => {
           {/* How It Works */}
           <View style={[styles.howItWorksCard, theme.SHADOWS.sm]}>
             <View style={styles.sectionHeader}>
-              <Icon name="help-outline" size={theme.SIZES.icon.lg} color={theme.COLORS.primary} />
+              <Icon
+                name="help-outline"
+                size={theme.SIZES.icon.lg}
+                color={theme.COLORS.primary}
+              />
               <Text style={styles.sectionTitle}>How It Works</Text>
             </View>
-            
+
             <View style={styles.stepsContainer}>
               {steps.map((step, index) => (
                 <View key={index} style={styles.stepItem}>
                   <View style={styles.stepNumber}>
                     <Text style={styles.stepNumberText}>{index + 1}</Text>
                   </View>
-                  <Icon name={step.icon} size={theme.SIZES.icon.md} color={theme.COLORS.primary} />
+                  <Icon
+                    name={step.icon}
+                    size={theme.SIZES.icon.md}
+                    color={theme.COLORS.primary}
+                  />
                   <Text style={styles.stepText}>{step.text}</Text>
                 </View>
               ))}
             </View>
           </View>
         </View>
-        
+
         <View style={styles.bottomSpace} />
       </ScrollView>
     </View>
@@ -449,41 +474,86 @@ const styles = StyleSheet.create({
     color: theme.COLORS.textSecondary,
   },
 
-  // Stats Grid
-  statsGrid: {
-    flexDirection: "row",
-    flexWrap: "wrap",
-    justifyContent: "space-between",
+  // Stats Container - Centered
+  statsContainer: {
+    alignItems: "center",
     marginBottom: theme.SIZES.margin.lg,
-    gap: theme.SIZES.margin.md,
+  },
+  singleStatCard: {
+    width: width - (theme.SIZES.padding.lg * 2),
+    minHeight: 140,
   },
   statCard: {
-    width: (width - theme.SIZES.padding.lg * 2 - theme.SIZES.margin.md) / 2,
     backgroundColor: theme.COLORS.card,
-    borderRadius: theme.SIZES.radius.lg,
-    padding: theme.SIZES.padding.lg,
-    alignItems: "center",
-    borderWidth: 1,
-    borderColor: theme.COLORS.borderLight,
+    borderRadius: theme.SIZES.radius.xl,
+    overflow: "hidden",
+    borderWidth: 2,
+    borderColor: theme.COLORS.primary,
+    elevation: 8,
+    shadowColor: theme.COLORS.primary,
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.3,
+    shadowRadius: 8,
   },
-  statIcon: {
-    width: theme.SIZES.icon.xxl,
-    height: theme.SIZES.icon.xxl,
-    borderRadius: theme.SIZES.radius.md,
-    justifyContent: "center",
+  statGradient: {
+    flex: 1,
+    padding: theme.SIZES.padding.lg,
+    alignItems: "center", // Center content horizontally
+    justifyContent: "center", // Center content vertically
+    position: "relative",
+    overflow: "hidden",
+  },
+  statHeader: {
+    flexDirection: "row",
     alignItems: "center",
     marginBottom: theme.SIZES.margin.sm,
   },
-  statValue: {
-    fontSize: theme.SIZES.font.lg,
-    fontFamily: theme.FONTS.family.bold,
-    marginBottom: theme.SIZES.margin.xs,
+  statIcon: {
+    width: theme.SIZES.icon.xl,
+    height: theme.SIZES.icon.xl,
+    borderRadius: theme.SIZES.radius.md,
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: theme.SIZES.margin.sm,
+    backgroundColor: theme.COLORS.whiteOpacity20,
   },
-  statLabel: {
-    fontSize: theme.SIZES.font.xs,
+  statValueLight: {
+    fontSize: theme.SIZES.font.xxxl,
+    fontFamily: theme.FONTS.family.extraBold,
+    color: theme.COLORS.white,
+    marginBottom: theme.SIZES.margin.xs,
+    textAlign: "center", // Center the text
+    width: "100%", // Take full width for centering
+  },
+  statLabelLight: {
+    fontSize: theme.SIZES.font.xl,
+    fontFamily: theme.FONTS.family.semiBold,
+    color: theme.COLORS.whiteOpacity50,
+    textAlign: "center", // Center the label
+  },
+  statDescriptionLight: {
+    fontSize: theme.SIZES.font.xl,
     fontFamily: theme.FONTS.family.regular,
-    color: theme.COLORS.textTertiary,
-    textAlign: "center",
+    color: theme.COLORS.whiteOpacity50,
+    textAlign: "center", // Center the description
+  },
+  cornerCircleTop: {
+    position: "absolute",
+    top: -20,
+    right: -20,
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: theme.COLORS.whiteOpacity10,
+  },
+  cornerCircleBottom: {
+    position: "absolute",
+    bottom: -15,
+    left: -15,
+    width: 50,
+    height: 50,
+    borderRadius: 25,
+    backgroundColor: theme.COLORS.whiteOpacity10,
   },
 
   // Referral Card
@@ -512,20 +582,13 @@ const styles = StyleSheet.create({
     borderRadius: theme.SIZES.radius.lg,
     marginBottom: theme.SIZES.margin.sm,
     width: "100%",
-    justifyContent: "space-between",
+    justifyContent: "center",
   },
   codeText: {
     fontSize: theme.SIZES.font.xxxl,
     fontFamily: theme.FONTS.family.extraBold,
     color: theme.COLORS.primary,
     letterSpacing: 2,
-    alignSelf:"center"
-  },
-  tapToCopy: {
-    fontSize: theme.SIZES.font.sm,
-    fontFamily: theme.FONTS.family.medium,
-    color: theme.COLORS.whiteOpacity50,
-    marginBottom: theme.SIZES.margin.lg,
   },
   shareButton: {
     flexDirection: "row",
@@ -535,6 +598,7 @@ const styles = StyleSheet.create({
     paddingVertical: theme.SIZES.padding.md,
     paddingHorizontal: theme.SIZES.padding.xl,
     gap: theme.SIZES.margin.sm,
+    marginTop: theme.SIZES.margin.lg,
   },
   shareButtonText: {
     fontSize: theme.SIZES.font.md,
