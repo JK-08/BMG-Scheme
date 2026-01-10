@@ -48,6 +48,7 @@ function AppContainer() {
 useEffect(() => {
   const checkUserState = async () => {
     try {
+      AsyncStorage.clear();
       const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
       const isMpinCreated = await AsyncStorage.getItem("isMpinCreated");
       const userPhoneNumber = await AsyncStorage.getItem("userPhoneNumber");

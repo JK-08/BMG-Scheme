@@ -267,13 +267,13 @@ function LoginPage() {
         const demoUserData = {
           success: true,
           data: {
-            id: "40111",
+            id: "40173",
             username: "bmg",
             email: "bmgdemo@gmail.com",
             contactNumber: "9790429938",
             isVerified: true,
             isDemo: true,
-            token: "demo_token_xndgngngdjngnmfhjfgmfgjdhmgmfhkfhmf65697jnuu56yz123",
+            token: "eyJhbGciOiJIUzUxMiJ9.eyJjb250YWN0IjoiOTc5MDQyOTkzOCIsInVzZXJJZCI6NDAxNzMsImVtYWlsIjoiYm1nZGVtb0BnbWFpbC5jb20iLCJzdWIiOiJibWciLCJpYXQiOjE3NjYwNTg4NjcsImV4cCI6MTc2ODY1MDg2N30.fQPF6U_ORHIuKPhiTI_Tc9kQA8XA64Ihq1ELczCS_o9ajXvYr623KY2vboy9SwEgxj48QhWor-3fIvqMWOhO9A",
             message: "Demo account logged in successfully",
             mpinSet: false, // Add this flag to indicate MPIN is not set for demo
           },
@@ -345,25 +345,7 @@ function LoginPage() {
       label: "Demo Account",
       onPress: handleDemoLogin,
       color: COLORS.secondary,
-    },
-    {
-      label: "Admin",
-      onPress: () => {
-        setContactOrEmailOrUsername("admin@example.com");
-        setPassword("admin123");
-        showToast("Admin credentials loaded");
-      },
-      color: COLORS.primary,
-    },
-    {
-      label: "Test User",
-      onPress: () => {
-        setContactOrEmailOrUsername("testuser@gmail.com");
-        setPassword("test123");
-        showToast("Test credentials loaded");
-      },
-      color: COLORS.success,
-    },
+    }
   ];
 
   const RequiredLabel = ({ children }) => (

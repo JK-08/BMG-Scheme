@@ -1,7 +1,7 @@
 {
   "expo": {
     "name": "BMG Digi Schemes",
-    "slug": "bmg-scheme",
+    "slug": "bmg-scheme-production",
     "version": "1.2.4",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
@@ -14,7 +14,7 @@
     },
     "ios": {
       "supportsTablet": true,
-      "buildNumber": "3",
+      "buildNumber": "4",
       "bundleIdentifier": "com.bmg.bmgscheme",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false
@@ -41,10 +41,10 @@
     },
     "extra": {
       "eas": {
-        "projectId": "a2916d84-f040-424a-805e-0be799d7a6ff"
+        "projectId": "61824d70-dc8d-43f1-99be-1f5e810e64f5"
       }
     },
-    "owner": "brightech",
+    "owner": "kiruba08",
     "plugins": [
       "expo-font",
       "expo-localization"

@@ -214,7 +214,7 @@ const styles = StyleSheet.create({
   },
   bottomNavContainer: {
     position: "absolute",
-    bottom: theme.verticalScale(theme.SIZES.xxl * 2),
+    bottom: theme.verticalScale(theme.SIZES.xxl * 1),
     left: 0,
     right: 0,
     flexDirection: "row",
@@ -268,7 +268,7 @@ const styles = StyleSheet.create({
   },
   buttonContainer: {
     position: "absolute",
-    bottom: theme.verticalScale(theme.SIZES.xxl * 2.4),
+    bottom: theme.verticalScale(theme.SIZES.xxl * 3),
     alignSelf: "center",
     width: theme.moderateScale(200),
   },

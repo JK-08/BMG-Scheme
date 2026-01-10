@@ -305,12 +305,8 @@ const DrawerMenu = ({ isVisible, onClose }) => {
       icon: "description",
       route: "TermsandCondition",
     },
-    {
-      label: "Refer a Friend",
-      icon: "monetization-on",
-      route: "ReferralScreen",
-    },
-    
+   
+
   ];
 
   /* -------------------------
@@ -399,7 +395,7 @@ const DrawerMenu = ({ isVisible, onClose }) => {
             >
               <TouchableOpacity
                 style={styles.profileCircle}
-                // onPress={handleProfilePictureUpdate}
+              // onPress={handleProfilePictureUpdate}
               >
                 {userData.picture ? (
                   <Image
