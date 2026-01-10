@@ -727,7 +727,7 @@ const SchemeListPage = ({ route, navigation }) => {
           <Text style={styles.emptyIconText}>📋</Text>
         </View>
         <Text style={styles.emptyTitle}>
-          {error ? "Error Loading Schemes" : "No Schemes Found"}
+          { "No Schemes Found"}
         </Text>
         <Text style={styles.emptyMessage}>
           {error ||

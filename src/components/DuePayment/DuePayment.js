@@ -656,7 +656,7 @@ const SchemeDetailsScreen = ({ route }) => {
             </Text>
             <TouchableOpacity
               style={styles.emptyButton}
-              onPress={() => navigation.navigate("Schemes")}
+              onPress={() => navigation.navigate("GoldPlanScreen")}
             >
               <Text style={styles.emptyButtonText}>Browse Schemes</Text>
             </TouchableOpacity>
