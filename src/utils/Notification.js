@@ -1,43 +1,53 @@
 import { Alert, Platform } from "react-native";
 import * as Notifications from "expo-notifications";
+import * as Device from "expo-device";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import Constants from "expo-constants";
 import { API_BASE_URL } from "../Config/API";
 
 /* =====================================================
-   ANDROID NOTIFICATION CHANNEL (REQUIRED)
+   FOREGROUND NOTIFICATION HANDLER
+   - Show banners in foreground
+   - Play sound
+   - Show in list
 ===================================================== */
-if (Platform.OS === "android") {
-  Notifications.setNotificationChannelAsync("default", {
+Notifications.setNotificationHandler({
+  handleNotification: async () => ({
+    shouldShowBanner: true,
+    shouldShowList: true,
+    shouldPlaySound: true,
+    shouldSetBadge: false,
+  }),
+});
+
+/* =====================================================
+   ANDROID NOTIFICATION CHANNEL
+   - Needed for images to show on Android
+===================================================== */
+async function setupAndroidChannel() {
+  if (Platform.OS !== "android") return;
+
+  await Notifications.setNotificationChannelAsync("default", {
     name: "Default Notifications",
     importance: Notifications.AndroidImportance.MAX,
     sound: "default",
     vibrationPattern: [0, 250, 250, 250],
     lightColor: "#FF231F7C",
+    allowBubbles: true,  // helps rich media
   });
 }
 
 /* =====================================================
-   FOREGROUND POPUP HANDLER (CRITICAL)
-===================================================== */
-Notifications.setNotificationHandler({
-  handleNotification: async () => ({
-    shouldShowAlert: true,   // 🔔 SHOW POPUP
-    shouldPlaySound: true,
-    shouldSetBadge: true,
-  }),
-});
-
-/* =====================================================
-   DEVICE ID GENERATION
+   DEVICE ID
 ===================================================== */
 async function generateDeviceId() {
-  const saved = await AsyncStorage.getItem("deviceId");
-  if (saved) return saved;
+  const stored = await AsyncStorage.getItem("deviceId");
+  if (stored) return stored;
 
   const newId = `dev-${Date.now()}-${Math.random()
     .toString(36)
-    .substring(2, 8)}`;
+    .slice(2, 8)}`;
+
   await AsyncStorage.setItem("deviceId", newId);
   return newId;
 }
@@ -51,7 +61,7 @@ export async function sendPushTokenToServer(expoToken, userId) {
 
     const payload = {
       deviceId,
-      deviceType: "mobile",
+      deviceType: Platform.OS,
       expoToken,
       fcmToken: "",
       userId,
@@ -59,13 +69,10 @@ export async function sendPushTokenToServer(expoToken, userId) {
 
     const res = await fetch(`${API_BASE_URL}/device/register`, {
       method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-      },
+      headers: { "Content-Type": "application/json" },
       body: JSON.stringify(payload),
     });
 
-    console.log("📤 Token sent to server:", payload);
     return res.ok;
   } catch (err) {
     console.error("❌ Token send failed:", err);
@@ -77,82 +84,93 @@ export async function sendPushTokenToServer(expoToken, userId) {
    REGISTER FOR PUSH NOTIFICATIONS
 ===================================================== */
 export async function registerForPushNotifications(userId) {
-  try {
-    // 1️⃣ Permission
-    const { status: existingStatus } =
-      await Notifications.getPermissionsAsync();
+  if (Platform.OS === "web") return null;
 
-    let finalStatus = existingStatus;
-    if (existingStatus !== "granted") {
-      const { status } = await Notifications.requestPermissionsAsync();
-      finalStatus = status;
-    }
+  if (!Device.isDevice) {
+    console.warn(
+      "⚠️ Physical device required for push notifications. Images will not work on simulator."
+    );
+  }
 
-    if (finalStatus !== "granted") {
-      Alert.alert(
-        "Notifications Disabled",
-        "Enable notifications to receive important updates."
-      );
-      return null;
-    }
+  await setupAndroidChannel();
 
-    // 2️⃣ Get Expo Project ID
-    const projectId =
-      Constants.expoConfig?.extra?.eas?.projectId ||
-      Constants.easConfig?.projectId;
+  // 1️⃣ Permissions
+  let { status } = await Notifications.getPermissionsAsync();
 
-    if (!projectId) {
-      console.error("❌ Expo projectId missing");
-      return null;
-    }
-
-    // 3️⃣ Get Expo Push Token
-    const tokenResponse = await Notifications.getExpoPushTokenAsync({
-      projectId,
+  if (status !== "granted") {
+    const request = await Notifications.requestPermissionsAsync({
+      ios: { allowAlert: true, allowSound: true, allowBadge: true },
     });
+    status = request.status;
+  }
 
-    const expoToken = tokenResponse.data;
-    console.log("📨 Expo Push Token:", expoToken);
-
-    // 4️⃣ Send token to backend
-    if (userId) {
-      await sendPushTokenToServer(expoToken, userId);
-    }
-
-    return expoToken;
-  } catch (error) {
-    console.error("❌ Push registration error:", error);
+  if (status !== "granted") {
+    Alert.alert("Notifications permission denied");
     return null;
   }
+
+  // 2️⃣ Project ID (EAS-safe)
+  const projectId =
+    Constants.expoConfig?.extra?.eas?.projectId ||
+    Constants.easConfig?.projectId;
+
+  if (!projectId) {
+    console.error("❌ Missing EAS projectId");
+    return null;
+  }
+
+  // 3️⃣ Expo Push Token
+  const tokenResponse = await Notifications.getExpoPushTokenAsync({ projectId });
+  const expoToken = tokenResponse.data;
+  console.log("✅ Expo Push Token:", expoToken);
+
+  // 4️⃣ Send to backend
+  if (userId) {
+    await sendPushTokenToServer(expoToken, userId);
+  }
+
+  return expoToken;
 }
 
 /* =====================================================
    LISTEN FOR NOTIFICATIONS
+   - Handles foreground and taps
+   - Supports image notifications
 ===================================================== */
 export function listenForNotifications(navigation) {
-  // 🔔 Notification received (foreground)
-  const notificationListener =
-    Notifications.addNotificationReceivedListener((notification) => {
-      console.log(
-        "📦 Notification Received:",
-        JSON.stringify(notification.request.content, null, 2)
-      );
-    });
+  // Foreground notifications
+  const notificationListener = Notifications.addNotificationReceivedListener(
+    (notification) => {
+      const content = notification.request.content;
+      console.log("📩 Foreground notification:", content);
 
-  // 🖱 Notification tapped
-  const responseListener =
-    Notifications.addNotificationResponseReceivedListener((response) => {
-      const data = response.notification.request.content.data;
-      console.log("🖱 Notification tapped:", data);
+      // Optional: show alert manually
+      if (content.image) {
+        Alert.alert(
+          content.title || "Notification",
+          content.body || "",
+          [{ text: "OK" }]
+        );
+      }
+    }
+  );
 
-      // Example deep link handling
+  // Notification taps
+  const responseListener = Notifications.addNotificationResponseReceivedListener(
+    (response) => {
+      const content = response.notification.request.content;
+      console.log("👆 Notification tapped:", content);
+
+      const data = content.data;
+
+      // Navigate based on data
       if (data?.type === "payment") {
         navigation?.navigate("Payments");
-      }
-      if (data?.type === "rate_update") {
+      } else if (data?.type === "rate_update") {
         navigation?.navigate("Rates");
       }
-    });
+    }
+  );
 
   return { notificationListener, responseListener };
 }
@@ -161,14 +179,6 @@ export function listenForNotifications(navigation) {
    REMOVE LISTENERS
 ===================================================== */
 export function removeNotificationListeners(listeners) {
-  if (listeners?.notificationListener) {
-    Notifications.removeNotificationSubscription(
-      listeners.notificationListener
-    );
-  }
-  if (listeners?.responseListener) {
-    Notifications.removeNotificationSubscription(
-      listeners.responseListener
-    );
-  }
+  listeners?.notificationListener?.remove();
+  listeners?.responseListener?.remove();
 }
