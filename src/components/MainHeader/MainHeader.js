@@ -257,26 +257,27 @@ function Header() {
             </View>
           </View>
         </LinearGradient>
-       <Modal
-  visible={showShopWebView}
-  animationType="slide"
-  onRequestClose={() => setShowShopWebView(false)}
->
-  <View style={{ flex: 1 }}>
-    <CommonHeader
-      title="Online Shopping"
-      onBackPress={() => setShowShopWebView(false)}
-    />
+        <Modal
+          visible={showShopWebView}
+          animationType="slide"
+          onRequestClose={() => setShowShopWebView(false)}
+        >
+          <View style={{ flex: 1 }}>
+            {/* Common Header */}
+            <CommonHeader
+              title="Online Shopping"
+              onBackPress={() => setShowShopWebView(false)}
+            />
 
-    <WebView
-      source={{ uri: "https://bmgjewellers.com" }}
-      startInLoadingState
-      javaScriptEnabled
-      domStorageEnabled
-    />
-  </View>
-</Modal>
-
+            {/* WebView */}
+            <WebView
+              source={{ uri: "https://app.bmgjewellers.com" }}
+              startInLoadingState
+              javaScriptEnabled
+              domStorageEnabled
+            />
+          </View>
+        </Modal>
 
         {/* Shopping Card */}
         <LinearGradient
