@@ -496,10 +496,19 @@ const SchemeDetailsScreen = ({ route }) => {
 
           {/* Middle Section - Installment Info */}
           <View style={styles.middleSection}>
-            <Text style={styles.installmentCount}>
-              {paidInstallments}/{totalInstallments}
-            </Text>
-            <Text style={styles.installmentLabel}>Installments</Text>
+            {scheme.schemeSummary?.schemeId === 2 ? (
+              <>
+                <Text style={styles.installmentCount}>{paidInstallments}</Text>
+                <Text style={styles.installmentLabel}>Installments</Text>
+              </>
+            ) : (
+              <>
+                <Text style={styles.installmentCount}>
+                  {paidInstallments}/{totalInstallments}
+                </Text>
+                <Text style={styles.installmentLabel}>Installments</Text>
+              </>
+            )}
           </View>
 
           {/* Right Section - Amount & Date */}
