@@ -115,7 +115,7 @@ const ReferralShareScreen = () => {
 
   // Generate the share message
   const getShareMessage = useCallback(() => {
-    return `🌟 Join BMG Jewellery Schemes! 🌟\n\nUse my referral code: ${referralCode}\n\nGet exclusive benefits and start your gold savings journey with BMG Bright, BMG Fixed and SmartPay schemes.\n\n🔗 Referral Link: ${referralLink}\n\n📱 Download the App: ${PLAY_STORE_LINK}\n\n#BMGJewellery #GoldSavings #Referral`;
+    return `🌟 Join BMG Jewellery Schemes! 🌟\n\nUse my referral code: ${referralCode}\n\nGet exclusive benefits and start your Silver savings journey with BMG Bright, BMG Fixed and SmartPay schemes.\n\n🔗 Referral Link: ${referralLink}\n\n📱 Download the App: ${PLAY_STORE_LINK}\n\n#BMGJewellery #Savings #Referral`;
   }, [referralCode, referralLink]);
 
   const handleShareNormal = async () => {
@@ -207,7 +207,7 @@ const ReferralShareScreen = () => {
   };
 
   const handleShareEmail = () => {
-    const subject = "BMG Jewellery Referral - Exclusive Gold Savings Schemes";
+    const subject = "BMG Jewellery Referral - Exclusive Silver Savings Schemes";
     const body = `Hello!
 
 I wanted to share an amazing opportunity with you from BMG Jewellery!
@@ -215,7 +215,7 @@ I wanted to share an amazing opportunity with you from BMG Jewellery!
 🌟 Join BMG Jewellery Schemes using my referral code: ${referralCode}
 
 With BMG Bright, BMG Fixed and SmartPay schemes, you can:
-• Save gold systematically
+• Save Silver systematically
 • Earn exclusive benefits
 • Get flexible payment options
 • Enjoy guaranteed returns
@@ -386,7 +386,7 @@ Best regards`;
             <View style={styles.playStoreInfo}>
               <Ionicons name="logo-google-playstore" size={24} color={theme.COLORS.primary} />
               <View style={styles.playStoreTextContainer}>
-                <Text style={styles.playStoreTitle}>BMG Schemes App</Text>
+                <Text style={styles.playStoreTitle}>BMG DIgi Schemes App</Text>
                 <Text style={styles.playStoreLink} numberOfLines={1}>
                   {PLAY_STORE_LINK}
                 </Text>
@@ -486,7 +486,7 @@ Best regards`;
           <View style={styles.stepsContainer}>
             {[
               { icon: 'person-add', text: 'Share your referral code with friends' },
-              { icon: 'link', text: 'They use your code to join BMG schemes' },
+              { icon: 'link', text: 'They use your code to join BMG Digi schemes' },
               { icon: 'card-giftcard', text: 'You earn rewards when they make deposits' },
               { icon: 'trending-up', text: 'Track your earnings in real-time' },
             ].map((step, index) => (
@@ -515,7 +515,7 @@ Best regards`;
           >
             <Text style={styles.schemeTitle}>BMG Jewellery Schemes</Text>
             <Text style={styles.schemeDescription}>
-              Explore our flexible gold saving schemes like BMG BRIGHT, BMG FIXED and SMARTPAY. 
+              Explore our flexible saving schemes like BMG BRIGHT, BMG LUMPSUM and BMG SMARTPAY. 
               Start saving today and enjoy exclusive benefits including guaranteed 
               returns and flexible payment options.
             </Text>

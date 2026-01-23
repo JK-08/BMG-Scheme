@@ -729,7 +729,7 @@ const DrawerMenu = ({ isVisible, onClose }) => {
               </TouchableOpacity>
               <TouchableOpacity style={styles.menuItem} onPress={handleApprefernavigate}>
                 <View style={styles.menuItemContent}>
-                  <MaterialIcons name="star-rate" size={moderateScale(22)} color={COLORS.textPrimary} />
+                  <MaterialIcons name="share" size={moderateScale(22)} color={COLORS.textPrimary} />
                   <TextDefault style={styles.menuItemText}>Refer App & Earn</TextDefault>
                 </View>
               </TouchableOpacity>

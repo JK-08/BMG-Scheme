@@ -56,7 +56,7 @@ function GoldPlanScreen() {
     }
 
     if (!schemes.length) {
-      return <Text style={styles.noDataText}>No Gold Plans available.</Text>;
+      return <Text style={styles.noDataText}>No  Plans available.</Text>;
     }
 
     return schemes.map((scheme) => (
