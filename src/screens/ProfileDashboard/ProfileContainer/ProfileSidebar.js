@@ -314,30 +314,24 @@ const DrawerMenu = ({ isVisible, onClose }) => {
   ).current;
 
   // Image handling functions
-  const pickImageFromGallery = useCallback(async () => {
-    try {
-      const { status } = await ImagePicker.requestMediaLibraryPermissionsAsync();
-      
-      if (status !== "granted") {
-        Alert.alert("Permission Required", "We need permission to access your photo library.");
-        return;
-      }
+const pickImageFromGallery = useCallback(async () => {
+  try {
+    const result = await ImagePicker.launchImageLibraryAsync({
+      mediaTypes: ImagePicker.MediaTypeOptions.Images,
+      allowsEditing: false,
+      quality: 0.8,
+    });
 
-      const result = await ImagePicker.launchImageLibraryAsync({
-        mediaTypes: ImagePicker.MediaTypeOptions.Images,
-        allowsEditing: false,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets?.[0]) {
-        setSelectedImagePreview(result.assets[0]);
-        setPreviewModalVisible(true);
-      }
-    } catch (error) {
-      console.error("Error picking image:", error);
-      Alert.alert("Error", "Failed to pick image from gallery.");
+    if (!result.canceled && result.assets?.[0]) {
+      setSelectedImagePreview(result.assets[0]);
+      setPreviewModalVisible(true);
     }
-  }, []);
+  } catch (error) {
+    console.error("Error picking image:", error);
+    Alert.alert("Error", "Failed to pick image from gallery.");
+  }
+}, []);
+
 
   const takePhotoWithCamera = useCallback(async () => {
     try {

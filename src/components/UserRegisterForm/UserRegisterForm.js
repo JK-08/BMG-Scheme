@@ -268,8 +268,6 @@ const CustomDatePicker = ({ visible, currentDate, onSelectDate, onClose }) => {
           </View>
 
           {/* Three Row Selector */}
-          {/* Three Row Selector */}
-          {/* Three Row Selector */}
           <View style={styles.threeRowSelector}>
             {/* Year Column */}
             <View style={styles.columnContainer}>
@@ -467,12 +465,13 @@ const GenderSelector = ({ gender, updateField, errors }) => (
   </View>
 );
 
-// ===== TERMS CHECKBOX COMPONENT =====
+// ===== UPDATED TERMS CHECKBOX COMPONENT =====
 const TermsCheckbox = ({
   termsAccepted,
   updateField,
   errors,
   setShowTermsModal,
+  aadhaarVerified,
 }) => (
   <View style={styles.termsContainer}>
     <View style={styles.termsHeader}>
@@ -487,21 +486,49 @@ const TermsCheckbox = ({
 
     <View style={styles.termsCheckboxRow}>
       <TouchableOpacity
-        style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}
-        onPress={() => updateField("termsAccepted", !termsAccepted)}
+        style={[
+          styles.checkbox,
+          termsAccepted && styles.checkboxChecked,
+          aadhaarVerified && styles.checkboxAutoAccepted,
+        ]}
+        onPress={() => {
+          if (!aadhaarVerified) {
+            updateField("termsAccepted", !termsAccepted);
+          }
+        }}
+        disabled={aadhaarVerified}
       >
         {termsAccepted && <Text style={styles.checkmark}>✓</Text>}
       </TouchableOpacity>
       <View style={{ flex: 1 }}>
-        <Text style={{ fontSize: 14, color: "#374151" }}>
-          I agree to the Terms and Conditions and Privacy Policy
-        </Text>
+        {aadhaarVerified ? (
+          <View>
+            <Text style={styles.autoAcceptedText}>
+              ✅ Automatically accepted with Aadhaar verification
+            </Text>
+            <Text style={styles.termsHelperText}>
+              Terms and Conditions are automatically accepted when Aadhaar is verified.
+            </Text>
+          </View>
+        ) : (
+          <Text style={{ fontSize: 14, color: "#374151" }}>
+            I agree to the Terms and Conditions and Privacy Policy
+          </Text>
+        )}
       </View>
     </View>
-    {errors.termsAccepted && (
+    {errors.termsAccepted && !aadhaarVerified && (
       <View style={styles.errorContainer}>
         <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorText}>{errors.termsAccepted}</Text>
+      </View>
+    )}
+    {aadhaarVerified && (
+      <View style={styles.infoContainer}>
+        <Text style={styles.infoIcon}>ℹ️</Text>
+        <Text style={styles.infoText}>
+          Terms automatically accepted as part of Aadhaar verification
+        </Text>
       </View>
     )}
   </View>
@@ -535,6 +562,11 @@ const AadhaarField = ({
           <Text style={styles.verifiedAadhaarNumber}>
             {maskedAadhaar ||
               `XXXX-XXXX-${formData.idProofNo?.slice(8) || "****"}`}
+          </Text>
+        </View>
+        <View style={styles.autoAcceptedNote}>
+          <Text style={styles.autoAcceptedNoteText}>
+            ✅ KYC & Terms automatically accepted
           </Text>
         </View>
       </View>
@@ -595,8 +627,43 @@ const AadhaarField = ({
           <Text style={styles.errorText}>{errors.idProofNo}</Text>
         </View>
       )}
+      
+      <View style={styles.aadhaarNoteContainer}>
+        <Text style={styles.aadhaarNoteText}>
+          ℹ️ Aadhaar verification will automatically accept Terms & Conditions and complete KYC
+        </Text>
+      </View>
     </View>
   );
+};
+
+// ===== KYC STATUS BADGE =====
+const KYCStatusBadge = ({ aadhaarVerified, kycVerified, termsAccepted }) => {
+  if (aadhaarVerified && kycVerified && termsAccepted) {
+    return (
+      <View style={styles.fullKycBadge}>
+        <Text style={styles.fullKycBadgeText}>✅ Full KYC Verified</Text>
+      </View>
+    );
+  }
+  
+  if (aadhaarVerified && !kycVerified) {
+    return (
+      <View style={styles.partialKycBadge}>
+        <Text style={styles.partialKycBadgeText}>🔄 KYC Pending Terms</Text>
+      </View>
+    );
+  }
+  
+  if (!aadhaarVerified) {
+    return (
+      <View style={styles.noKycBadge}>
+        <Text style={styles.noKycBadgeText}>❌ KYC Not Started</Text>
+      </View>
+    );
+  }
+  
+  return null;
 };
 
 // ===== MAIN PROFILE MANAGEMENT COMPONENT =====
@@ -634,6 +701,9 @@ export default function ProfileManagement() {
   } = useUserProfile();
 
   const navigation = useNavigation();
+
+  // Disable terms button when Aadhaar is verified
+  const isTermsDisabled = formData.aadhaarVerified;
 
   // ===== RENDER LOADING STATE =====
   if (isFetchingData) {
@@ -690,6 +760,15 @@ export default function ProfileManagement() {
             showsVerticalScrollIndicator={false}
             contentContainerStyle={styles.formContent}
           >
+            {/* KYC Status Banner */}
+            {formData.aadhaarVerified && (
+              <View style={styles.kycBanner}>
+                <Text style={styles.kycBannerText}>
+                  ✅ Aadhaar Verified - Terms & KYC automatically accepted
+                </Text>
+              </View>
+            )}
+
             {/* Personal Information Section */}
             <View style={styles.section}>
               <View style={styles.sectionHeader}>
@@ -863,6 +942,7 @@ export default function ProfileManagement() {
                 updateField={updateField}
                 errors={errors}
                 setShowTermsModal={() => updateState({ showTermsModal: true })}
+                aadhaarVerified={formData.aadhaarVerified}
               />
             </View>
 
@@ -880,7 +960,8 @@ export default function ProfileManagement() {
                 variant="primary"
                 style={styles.saveButton}
                 loading={isLoading}
-                disabled={isLoading || !formData.termsAccepted}
+                // Enable button when Aadhaar is verified OR terms are accepted
+                disabled={isLoading || (!formData.termsAccepted && !formData.aadhaarVerified)}
               />
             </View>
           </ScrollView>
@@ -932,6 +1013,13 @@ export default function ProfileManagement() {
               </View>
             </View>
 
+            {/* KYC Status Summary */}
+            <KYCStatusBadge
+              aadhaarVerified={userData.aadhaarVerified}
+              kycVerified={userData.kycVerified}
+              termsAccepted={userData.termsAccepted}
+            />
+
             <View style={{ gap: 8 }}>
               <DataRow label="Username" value={userData.username} />
               <DataRow label="Email" value={userData.email} />
@@ -980,6 +1068,15 @@ export default function ProfileManagement() {
                 label="Terms Accepted"
                 value={userData.termsAccepted ? "✅ Yes" : "❌ No"}
               />
+              
+              {/* Auto-acceptance note */}
+              {userData.aadhaarVerified && userData.termsAccepted && (
+                <View style={styles.autoAcceptNoteCard}>
+                  <Text style={styles.autoAcceptNoteText}>
+                    ℹ️ Terms automatically accepted with Aadhaar verification
+                  </Text>
+                </View>
+              )}
             </View>
           </View>
         )}

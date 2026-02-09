@@ -1100,4 +1100,156 @@ validationIcon: {
   justifyContent: 'center',
   alignItems: 'center',
 },
+  // Auto-accept styles
+  checkboxAutoAccepted: {
+    backgroundColor: '#22c55e',
+    borderColor: '#16a34a',
+  },
+  
+  autoAcceptedText: {
+    fontSize: 14,
+    color: '#059669',
+    fontWeight: '600',
+  },
+  
+  termsHelperText: {
+    fontSize: 12,
+    color: '#6b7280',
+    marginTop: 4,
+  },
+  
+  infoContainer: {
+    flexDirection: 'row',
+    alignItems: 'center',
+    backgroundColor: '#dbeafe',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+  },
+  
+  infoIcon: {
+    fontSize: 14,
+    marginRight: 8,
+  },
+  
+  infoText: {
+    fontSize: 12,
+    color: '#1e40af',
+    flex: 1,
+  },
+  
+  autoAcceptedNote: {
+    backgroundColor: '#dcfce7',
+    padding: 8,
+    borderRadius: 6,
+    marginTop: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#22c55e',
+  },
+  
+  autoAcceptedNoteText: {
+    fontSize: 12,
+    color: '#166534',
+    fontStyle: 'italic',
+  },
+  
+  aadhaarNoteContainer: {
+    backgroundColor: '#f0f9ff',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    borderWidth: 1,
+    borderColor: '#bae6fd',
+  },
+  
+  aadhaarNoteText: {
+    fontSize: 12,
+    color: '#0369a1',
+    fontStyle: 'italic',
+  },
+  
+  // KYC Banner
+  kycBanner: {
+    backgroundColor: '#dcfce7',
+    padding: 12,
+    borderRadius: 8,
+    marginBottom: 16,
+    borderWidth: 1,
+    borderColor: '#22c55e',
+  },
+  
+  kycBannerText: {
+    color: '#166534',
+    fontSize: 14,
+    fontWeight: '600',
+    textAlign: 'center',
+  },
+  
+  // KYC Status Badges
+  fullKycBadge: {
+    backgroundColor: '#dcfce7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#22c55e',
+  },
+  
+  fullKycBadgeText: {
+    color: '#166534',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  
+  partialKycBadge: {
+    backgroundColor: '#fef3c7',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#f59e0b',
+  },
+  
+  partialKycBadgeText: {
+    color: '#92400e',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  
+  noKycBadge: {
+    backgroundColor: '#fee2e2',
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 16,
+    alignSelf: 'flex-start',
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: '#ef4444',
+  },
+  
+  noKycBadgeText: {
+    color: '#991b1b',
+    fontSize: 12,
+    fontWeight: '600',
+  },
+  
+  // Auto accept note in card
+  autoAcceptNoteCard: {
+    backgroundColor: '#f0f9ff',
+    padding: 10,
+    borderRadius: 8,
+    marginTop: 8,
+    borderLeftWidth: 3,
+    borderLeftColor: '#3b82f6',
+  },
+  
+  autoAcceptNoteText: {
+    fontSize: 12,
+    color: '#1e40af',
+    fontStyle: 'italic',
+  },
 });

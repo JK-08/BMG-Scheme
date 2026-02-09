@@ -437,11 +437,8 @@ const MemberDetailsPage = ({
                     }
                   });
                 },
-              },
-              {
-                text: "Cancel",
-                style: "cancel"
               }
+              
             ]
           );
           setApiLoading(false);
