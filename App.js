@@ -3,28 +3,52 @@ import { StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import FlashMessage from "react-native-flash-message";
 import AppContainer from "./src/routes/routes";
+import DevelopmentScreen from "./src/screens/Splashscreen/DevelopmentScreen";
+import SplashScreen from "./src/screens/Splashscreen/SplashScreen";
 import { colors } from "./src/utils/colors";
 import useFonts from "./src/utils/Fonts";
-import 'react-native-gesture-handler'
+import { getAppStatus } from "./src/services/DevelopmentService";
+import "react-native-gesture-handler";
 
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
+  const [appEnabled, setAppEnabled] = useState(null);
+  const [devMessage, setDevMessage] = useState("");
 
-
-  // --- Load fonts ---
   useEffect(() => {
-    (async () => {
-      await useFonts();
-      setFontsLoaded(true);
-    })();
+    const initApp = async () => {
+  try {
+    await useFonts();
+    setFontsLoaded(true);
+
+    const response = await getAppStatus();
+
+    setAppEnabled(response?.enabled ?? false);
+    setDevMessage(response?.message ?? "");
+
+  } catch (error) {
+    console.log("Initialization error:", error);
+    setAppEnabled(false);
+  }
+};
+
+
+    initApp();
   }, []);
 
-  if (!fontsLoaded) return null;
+  // Show splash while loading
+  if (!fontsLoaded || appEnabled === null) {
+    return <SplashScreen />;
+  }
 
   return (
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar barStyle="dark-content" />
-      <AppContainer />
+      {appEnabled ? (
+        <AppContainer />
+      ) : (
+        <DevelopmentScreen message={devMessage} />
+      )}
       <FlashMessage position="top" />
     </SafeAreaView>
   );
