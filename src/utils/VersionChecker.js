@@ -1,57 +1,82 @@
 import * as Application from "expo-application";
+import * as Updates from "expo-updates";
+import { Alert, Linking, Platform } from "react-native";
 
-// Fetch Play Store HTML page and extract latest version
-const fetchPlayStoreVersion = async (packageName) => {
-  try {
-    const url = `https://play.google.com/store/apps/details?id=${packageName}&hl=en`;
+/**
+ * Compare semantic versions (e.g. 1.1.1)
+ * Returns true if current < target
+ */
+const isVersionLower = (current, target) => {
+  const c = current.split(".").map(Number);
+  const t = target.split(".").map(Number);
 
-    const response = await fetch(url);
-    const html = await response.text();
-
-    // Extract version (Google Play uses "Current Version")
-    const versionMatch = html.match(/Current Version<\/div><span.*?>(.*?)<\/span>/);
-
-    if (versionMatch && versionMatch[1]) {
-      return versionMatch[1].trim();
-    }
-
-    return null;
-  } catch (error) {
-    console.log("Play Store fetch error:", error);
-    return null;
-  }
-};
-
-// Compare version numbers
-const compareVersions = (store, local) => {
-  const a = store.split(".").map(Number);
-  const b = local.split(".").map(Number);
-
-  for (let i = 0; i < a.length; i++) {
-    if ((a[i] || 0) > (b[i] || 0)) return true;
-    if ((a[i] || 0) < (b[i] || 0)) return false;
+  for (let i = 0; i < t.length; i++) {
+    if ((c[i] || 0) < t[i]) return true;
+    if ((c[i] || 0) > t[i]) return false;
   }
   return false;
 };
 
-export const checkForUpdate = async (packageName) => {
+export const checkForAppUpdate = async () => {
   try {
     const localVersion = Application.nativeApplicationVersion;
-    const storeVersion = await fetchPlayStoreVersion(packageName);
+    console.log("Installed version:", localVersion);
 
-    if (!storeVersion) {
-      return { isUpdateAvailable: false };
+    /* ----------------------------------
+       1️⃣ OTA UPDATE (ONLY IN PROD)
+    ----------------------------------- */
+    if (!__DEV__ && Updates.isEnabled) {
+      const otaUpdate = await Updates.checkForUpdateAsync();
+      if (otaUpdate.isAvailable) {
+        console.log("OTA update available, fetching...");
+        await Updates.fetchUpdateAsync();
+        await Updates.reloadAsync();
+        return;
+      }
     }
 
-    const isUpdateAvailable = compareVersions(storeVersion, localVersion);
+    /* ----------------------------------
+       2️⃣ PLAY STORE VERSION CHECK
+    ----------------------------------- */
+    const response = await fetch(
+      "https://raw.githubusercontent.com/JK-08/Jaiguru-Scheme/Dev/app-version.json?ts=" +
+        Date.now()
+    );
 
-    return {
-      isUpdateAvailable,
-      storeVersion,
-      localVersion,
-    };
+    if (!response.ok) {
+      throw new Error("Failed to fetch version config");
+    }
+
+    const text = await response.text();
+    let config;
+    try {
+      config = JSON.parse(text);
+    } catch {
+      throw new Error("Invalid JSON in app-version.json");
+    }
+
+    if (Platform.OS === "android") {
+      const { latestVersion, playStoreUrl } = config.android;
+      console.log("Latest version:", latestVersion);
+
+      // ✨ OPTIONAL UPDATE ONLY
+      if (isVersionLower(localVersion, latestVersion)) {
+        Alert.alert(
+          "New Version Available ✨",
+          `A new version (${latestVersion}) is available.\nYou're using ${localVersion}.`,
+          [
+            { text: "Later", style: "cancel" },
+            {
+              text: "Update",
+              onPress: () => Linking.openURL(playStoreUrl),
+            },
+          ]
+        );
+      } else {
+        console.log("App is up to date. Installed:", localVersion);
+      }
+    }
   } catch (error) {
-    console.log("Version check error:", error);
-    return { isUpdateAvailable: false };
+    console.log("Version check failed:", error.message || error);
   }
 };
