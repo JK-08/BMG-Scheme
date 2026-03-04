@@ -38,7 +38,7 @@ export const checkForAppUpdate = async () => {
     /* ----------------------------------
        2️⃣ PLAY STORE VERSION CHECK
     ----------------------------------- */
- const response = await fetch(
+const response = await fetch(
   "https://raw.githubusercontent.com/JK-08/BMG-Scheme/Update-Alerts/app-version.json?ts=" +
     Date.now()
 );

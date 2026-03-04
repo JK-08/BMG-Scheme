@@ -2,7 +2,7 @@
   "expo": {
     "name": "BMG Digi Schemes",
     "slug": "bmg-scheme-final",
-    "version": "1.4.8",
+    "version": "1.4.9",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -27,7 +27,7 @@
     "android.permission.READ_MEDIA_IMAGES",
     "android.permission.READ_MEDIA_VIDEO"
   ],
-  "versionCode": 48,
+  "versionCode": 49,
   "package": "com.bmg.bmgscheme"
 },
     "web": {
