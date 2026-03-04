@@ -9,32 +9,39 @@ import { colors } from "./src/utils/colors";
 import useFonts from "./src/utils/Fonts";
 import { getAppStatus } from "./src/services/DevelopmentService";
 import "react-native-gesture-handler";
+import { checkForAppUpdate } from "./src/utils/VersionChecker";
 
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [appEnabled, setAppEnabled] = useState(null);
   const [devMessage, setDevMessage] = useState("");
 
-  useEffect(() => {
-    const initApp = async () => {
-  try {
-    await useFonts();
-    setFontsLoaded(true);
+useEffect(() => {
+  const initApp = async () => {
+    try {
+      await useFonts();
+      setFontsLoaded(true);
 
-    const response = await getAppStatus();
+      const response = await getAppStatus();
 
-    setAppEnabled(response?.enabled ?? false);
-    setDevMessage(response?.message ?? "");
+      setAppEnabled(response?.enabled ?? false);
+      setDevMessage(response?.message ?? "");
 
-  } catch (error) {
-    console.log("Initialization error:", error);
-    setAppEnabled(false);
-  }
-};
+      // ✅ CHECK FOR UPDATE AFTER APP IS READY
+      if (response?.enabled) {
+        setTimeout(() => {
+          checkForAppUpdate();
+        }, 1500); // slight delay so splash doesn't clash with alert
+      }
 
+    } catch (error) {
+      console.log("Initialization error:", error);
+      setAppEnabled(false);
+    }
+  };
 
-    initApp();
-  }, []);
+  initApp();
+}, []);
 
   // Show splash while loading
   if (!fontsLoaded || appEnabled === null) {

@@ -38,10 +38,10 @@ export const checkForAppUpdate = async () => {
     /* ----------------------------------
        2️⃣ PLAY STORE VERSION CHECK
     ----------------------------------- */
-    const response = await fetch(
-      "https://raw.githubusercontent.com/JK-08/Jaiguru-Scheme/Dev/app-version.json?ts=" +
-        Date.now()
-    );
+ const response = await fetch(
+  "https://raw.githubusercontent.com/JK-08/BMG-Scheme/Update-Alerts/app-version.json?ts=" +
+    Date.now()
+);
 
     if (!response.ok) {
       throw new Error("Failed to fetch version config");
