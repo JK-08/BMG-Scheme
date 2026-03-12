@@ -675,11 +675,9 @@ const ReferralScreen = () => {
               <View style={styles.redeemNoteContainer}>
                 <Text style={styles.redeemNoteTitle}>Important:</Text>
                 <Text style={styles.redeemNoteText}>
-                  • Reward money is applicable only for purchases of ₹10,000 and
-                  above. {"\n\n"}• Redemption is subject to eligibility,
-                  validity period, and the company's reward policy.{"\n\n"}• The
+                  • Reward money is applicable only for purchases of ₹10,000 and above. {"\n\n"} • Redemption is subject to eligibility, validity period, and the company’s reward policy.{"\n\n"}• The
                   company reserves the right to modify or withdraw the reward
-                  scheme without prior notice{"\n\n"}✅ Redemption is allowed
+                  {/* scheme without prior notice{"\n\n"}✅ Redemption is allowed
                   after scheme completion / eligibility {"\n\n"}🏬 Visit any authorized
                   showroom / branch {"\n\n"}📱 Carry your registered mobile number / App
                   ID {"\n\n"}🧾 Benefits can be redeemed only against jewellery purchase
@@ -687,7 +685,7 @@ const ReferralScreen = () => {
                   redemption date {"\n\n"}🔖 Valid ID proof may be required {"\n\n"}⏳
                   Redemption must be done within the validity period{"\n\n"} 🚫 Benefits
                   are non-transferable and cannot be encashed{"\n\n"} 📜 Subject to
-                  scheme Terms & Conditions
+                  scheme Terms & Conditions */}
                 </Text>
               </View>
             </View>

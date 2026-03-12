@@ -221,7 +221,7 @@ const ReceiptPreviewModal = ({
                 </Text>
                 <View style={styles.logoPlaceholder}>
                   <Image
-                    source={require("../../assets/image/logo08.jpeg")}
+                    source={require("../../assets/icon.png")}
                     style={styles.logoImage}
                     resizeMode="contain"
                   />

@@ -84,7 +84,7 @@ const AboutPage = () => {
           <View style={styles.logoSection}>
             <View style={styles.logoContainer}>
               <Image
-                source={require('../../assets/image/logo08.jpeg')}
+                source={require('../../assets/icon.png')}
                 style={styles.logo}
                 resizeMode="contain"
               />

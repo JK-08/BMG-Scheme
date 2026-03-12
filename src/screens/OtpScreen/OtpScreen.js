@@ -363,7 +363,7 @@ const handleVerifyOtp = async () => {
             <View style={styles.container}>
               <View style={styles.logoContainer}>
                 <Image
-                  source={require("../../assets/logo2.png")}
+                  source={require("../../assets/icon.png")}
                   style={styles.logoImage}
                 />
               </View>

@@ -141,7 +141,7 @@ const SchemeListPage = ({ route, navigation }) => {
         } catch (apiError) {
           console.warn(
             `Failed to fetch API data for scheme ${schemeId}:`,
-            apiError
+            apiError,
           );
           apiDataMap[`${schemeId}_${scheme.joinDate}`] = null;
         }
@@ -161,7 +161,7 @@ const SchemeListPage = ({ route, navigation }) => {
     try {
       setLoadingRedemptionStatus(true);
       const response = await fetch(
-        `https://scheme.bmgjewellers.com/api/v1/redemption/mobile/${phone}`
+        `https://scheme.bmgjewellers.com/api/v1/redemption/mobile/${phone}`,
       );
       const data = await response.json();
 
@@ -199,7 +199,7 @@ const SchemeListPage = ({ route, navigation }) => {
 
       return !!submittedRecord;
     },
-    [redemptionStatusData]
+    [redemptionStatusData],
   );
 
   // Get submission details if scheme is submitted
@@ -219,7 +219,7 @@ const SchemeListPage = ({ route, navigation }) => {
         );
       });
     },
-    [redemptionStatusData]
+    [redemptionStatusData],
   );
 
   // Fetch schemes
@@ -254,7 +254,7 @@ const SchemeListPage = ({ route, navigation }) => {
         setRefreshing(false);
       }
     },
-    [fetchApiDataForSchemes, fetchRedemptionStatus]
+    [fetchApiDataForSchemes, fetchRedemptionStatus],
   );
 
   // Handle redeem button press
@@ -265,7 +265,7 @@ const SchemeListPage = ({ route, navigation }) => {
         Alert.alert(
           "Already Submitted",
           "Redemption request for this scheme has already been submitted. Our team will contact you soon.",
-          [{ text: "OK" }]
+          [{ text: "OK" }],
         );
         return;
       }
@@ -279,7 +279,7 @@ const SchemeListPage = ({ route, navigation }) => {
       setRedemptionMessage(null);
       setRedemptionSubmitted(false);
     },
-    [isSchemeSubmitted]
+    [isSchemeSubmitted],
   );
 
   // Handle redemption submission
@@ -292,7 +292,7 @@ const SchemeListPage = ({ route, navigation }) => {
       Alert.alert(
         "Not Eligible",
         "This scheme is not yet ready for redemption. Please wait for the maturity date.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
       return;
     }
@@ -302,7 +302,7 @@ const SchemeListPage = ({ route, navigation }) => {
       Alert.alert(
         "Already Submitted",
         "Redemption request for this scheme has already been submitted. Our team will contact you soon.",
-        [{ text: "OK" }]
+        [{ text: "OK" }],
       );
       setModalVisible(false);
       return;
@@ -429,7 +429,7 @@ const SchemeListPage = ({ route, navigation }) => {
 
               console.log(
                 "Sending redemption data:",
-                JSON.stringify(redemptionPayload, null, 2)
+                JSON.stringify(redemptionPayload, null, 2),
               );
 
               // Call redemption service
@@ -471,7 +471,7 @@ const SchemeListPage = ({ route, navigation }) => {
             }
           },
         },
-      ]
+      ],
     );
   }, [
     selectedScheme,
@@ -644,7 +644,7 @@ const SchemeListPage = ({ route, navigation }) => {
                   Alert.alert(
                     "Already Submitted",
                     "Redemption request for this scheme has already been submitted. Our team will contact you soon.",
-                    [{ text: "OK" }]
+                    [{ text: "OK" }],
                   );
                 } else {
                   handleRedeemPress(item, remainingBonusDays, displayAmount);
@@ -677,7 +677,7 @@ const SchemeListPage = ({ route, navigation }) => {
       handleRedeemPress,
       isSchemeSubmitted,
       getSubmissionDetails,
-    ]
+    ],
   );
 
   // Render table header
@@ -726,9 +726,7 @@ const SchemeListPage = ({ route, navigation }) => {
         <View style={styles.emptyIcon}>
           <Text style={styles.emptyIconText}>📋</Text>
         </View>
-        <Text style={styles.emptyTitle}>
-          { "No Schemes Found"}
-        </Text>
+        <Text style={styles.emptyTitle}>{"No Schemes Found"}</Text>
         <Text style={styles.emptyMessage}>
           {error ||
             "You don't have any schemes registered with this phone number."}
@@ -871,7 +869,7 @@ const SchemeListPage = ({ route, navigation }) => {
                     </Text>
                     {(() => {
                       const submissionDetails = getSubmissionDetails(
-                        selectedScheme.scheme
+                        selectedScheme.scheme,
                       );
                       if (submissionDetails) {
                         return (
@@ -880,7 +878,7 @@ const SchemeListPage = ({ route, navigation }) => {
                               Submitted on:{" "}
                               {submissionDetails.updateTime
                                 ? new Date(
-                                    submissionDetails.updateTime
+                                    submissionDetails.updateTime,
                                   ).toLocaleDateString("en-IN", {
                                     day: "2-digit",
                                     month: "short",
@@ -907,13 +905,18 @@ const SchemeListPage = ({ route, navigation }) => {
               <View style={styles.termsSection}>
                 <Text style={styles.termsTitle}>Please read carefully:</Text>
                 <Text style={styles.redeemNoteText}>
-                  • Once the scheme is completed, customers can visit the
-                  nearest showroom to claim their reward.{"\n\n"}• Reward can be
-                  claimed only after the scheme reaches its maturity date.
-                  {"\n\n"}• Valid scheme documents or proof may be required at
-                  the time of claiming.{"\n\n"}• Reward claiming is subject to
-                  company verification and policy.{"\n\n"}• Please contact the
-                  showroom staff for further assistance and details.{"\n\n"}
+                  🔓 How to Redeem Your Benefits{"\n\n"}✅ Redemption is allowed
+                  after scheme completion / eligibility{"\n"}
+                  🏬 Visit any authorized showroom / branch{"\n"}
+                  📱 Carry your registered mobile number / App ID{"\n"}
+                  🧾 Benefits can be redeemed only against jewellery purchase
+                  {"\n"}
+                  ⚖️ Final value depends on prevailing gold / silver rate on
+                  redemption date{"\n"}
+                  🔖 Valid ID proof may be required{"\n"}⏳ Redemption must be
+                  done within the validity period{"\n"}
+                  🚫 Benefits are non-transferable and cannot be encashed{"\n"}
+                  📜 Subject to scheme Terms & Conditions
                 </Text>
               </View>
 
@@ -1016,7 +1019,7 @@ const SchemeListPage = ({ route, navigation }) => {
                               `Your request for ${
                                 selectedScheme?.scheme?.schemeSummary
                                   ?.schemeName || "the scheme"
-                              } has been recorded. Reference ID will be shared via SMS.`
+                              } has been recorded. Reference ID will be shared via SMS.`,
                             );
                           }}
                         >

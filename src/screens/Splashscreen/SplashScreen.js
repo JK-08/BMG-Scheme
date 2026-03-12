@@ -8,7 +8,7 @@ export default function SplashScreen() {
   return (
     <View style={styles.container}>
       {/* If you have logo */}
-      <Image source={require("../../assets/logo.png")} style={styles.logo} />
+      <Image source={require("../../assets/icon.png")} style={styles.logo} />
 
       {/* <ActivityIndicator size="large" color={colors.primary} /> */}
     </View>

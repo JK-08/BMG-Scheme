@@ -251,7 +251,7 @@ const MpinScreen = ({ navigation }) => {
               <View style={styles.logoContainer}>
                 <View style={styles.logoRow}>
                   <Image
-                    source={require("../../assets/image/logo08.jpeg")}
+                    source={require("../../assets/icon.png")}
                     style={styles.logoImage}
                   />
                 </View>
