@@ -16,7 +16,6 @@ import {
 } from "react-native";
 import { LinearGradient } from "expo-linear-gradient";
 import AsyncStorage from "@react-native-async-storage/async-storage";
-import { getHash } from "react-native-otp-verify";
 import {
   GoogleSignin,
   statusCodes,
@@ -55,7 +54,6 @@ function RegisterPage({ navigation }) {
   });
   const [loading, setLoading] = useState(false);
   const [googleLoading, setGoogleLoading] = useState(false);
-  const [appHash, setAppHash] = useState("");
 
   // Validation rules
   const validationRules = {
@@ -81,10 +79,9 @@ function RegisterPage({ navigation }) {
     }
   };
 
-  // ✅ Google Sign-In Config & App Hash
+  // ✅ Google Sign-In Config
   useEffect(() => {
     initializeGoogleSignIn();
-    initializeAppHash();
   }, []);
 
   const initializeGoogleSignIn = useCallback(() => {
@@ -94,19 +91,6 @@ function RegisterPage({ navigation }) {
       scopes: ["profile", "email"],
       offlineAccess: true,
     });
-  }, []);
-
-  const initializeAppHash = useCallback(async () => {
-    try {
-      if (Platform.OS === "android") {
-        const hashCodes = await getHash();
-        if (hashCodes?.[0]) {
-          setAppHash(hashCodes[0]);
-        }
-      }
-    } catch (error) {
-      console.error("Error getting app hash:", error);
-    }
   }, []);
 
   // Validation functions
@@ -273,7 +257,6 @@ function RegisterPage({ navigation }) {
         email: formData.email.trim().toLowerCase(),
         contactNumber: formData.phone,
         password: formData.password,
-        hashKey: appHash || "",
         used_referral_code: formData.referralCode.trim() || ""
       };
 
@@ -291,17 +274,12 @@ function RegisterPage({ navigation }) {
             email: formData.email,
             phone: formData.phone,
             password: formData.password,
-            appHash,
             used_referral_code: formData.referralCode || ""
           })
         );
 
-        console.log("✅ Registration successful!");
         showToast("Registration successful! OTP sent.");
-        navigation.navigate("OTP", {
-          phoneNumber: formData.phone,
-          appHash: appHash,
-        });
+        navigation.navigate("OTP", { phoneNumber: formData.phone });
       } else {
         handleRegistrationError(res.error, res.details);
       }
@@ -312,7 +290,7 @@ function RegisterPage({ navigation }) {
     } finally {
       setLoading(false);
     }
-  }, [formData, appHash, navigation, validateAllFields]);
+  }, [formData, navigation, validateAllFields]);
 
   const handleRegistrationError = useCallback((error, details = {}) => {
     const errorMessage = error?.toString()?.toLowerCase() || "";
@@ -602,7 +580,7 @@ function RegisterPage({ navigation }) {
                 </View>
 
                 {/* Google Sign-In Button */}
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={[styles.googleButton, googleLoading && styles.disabledButton]}
                   onPress={handleGoogleSignIn}
                   disabled={googleLoading}
@@ -618,7 +596,7 @@ function RegisterPage({ navigation }) {
                       <Text style={styles.googleButtonText}>Continue with Google</Text>
                     </View>
                   )}
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 <View style={styles.loginContainer}>
                   <Text style={styles.loginText}>Already have an account?</Text>

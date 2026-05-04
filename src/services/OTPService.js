@@ -1,26 +1,11 @@
 import { API_BASE_URL } from "../Config/API";
-import { getHash } from "react-native-otp-verify";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { saveUserData } from "../utils/AsynchStorageHelper";
 
 class OTPService {
-  // Get hash key for OTP
-  async getHashKey() {
-    try {
-      const hashArray = await getHash();
-      if (Array.isArray(hashArray) && hashArray.length > 0) {
-        return hashArray[0];
-      }
-      throw new Error("Unable to generate hash key");
-    } catch (error) {
-      console.warn("Failed to get hash:", error);
-      throw error;
-    }
-  }
-
   // Send OTP for forgot password
-  async sendForgotPasswordOTP(contactNumber, hashKey) {
-    const payload = { contactNumber, hashKey };
+  async sendForgotPasswordOTP(contactNumber) {
+    const payload = { contactNumber };
 
     const response = await fetch(`${API_BASE_URL}/user/forgot-password`, {
       method: "POST",

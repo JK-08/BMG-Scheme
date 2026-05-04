@@ -2,43 +2,69 @@
   "expo": {
     "name": "BMG Digi Schemes",
     "slug": "bmg-scheme-final",
-    "version": "1.5.0",
+    "version": "1.5.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
     "newArchEnabled": true,
+
     "splash": {
       "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
+
     "ios": {
-      "supportsTablet": true
+      "supportsTablet": true,
+      "bundleIdentifier": "com.bmg.bmgscheme",
+      "buildNumber": "5",
+      "infoPlist": {
+        "ITSAppUsesNonExemptEncryption": false,
+        "NSCameraUsageDescription": "This app uses the camera for profile photo upload",
+        "NSPhotoLibraryUsageDescription": "This app accesses photos for profile upload"
+      }
     },
+
     "android": {
-  "permissions": [
-    "android.permission.NOTIFICATIONS",
-    "android.permission.WAKE_LOCK",
-    "android.permission.VIBRATE",
-    "android.permission.RECORD_AUDIO"
-  ],
-  "blockedPermissions": [
-    "android.permission.READ_MEDIA_IMAGES",
-    "android.permission.READ_MEDIA_VIDEO"
-  ],
-  "versionCode": 50,
-  "package": "com.bmg.bmgscheme",
-  "googleServicesFile": "./google-services.json"
-},
+      "package": "com.bmg.bmgscheme",
+      "versionCode": 51,
+      "permissions": [
+        "android.permission.NOTIFICATIONS",
+        "android.permission.WAKE_LOCK",
+        "android.permission.VIBRATE",
+        "android.permission.RECORD_AUDIO"
+      ],
+      "blockedPermissions": [
+        "android.permission.READ_MEDIA_IMAGES",
+        "android.permission.READ_MEDIA_VIDEO"
+      ],
+      "googleServicesFile": "./google-services.json"
+    },
+
     "web": {
       "favicon": "./assets/icon.png"
     },
+
+    "updates": {
+      "fallbackToCacheTimeout": 0
+    },
+
+    "runtimeVersion": {
+      "policy": "appVersion"
+    },
+
+    "assetBundlePatterns": [
+      "**/*"
+    ],
+
     "extra": {
       "eas": {
         "projectId": "be255b57-6265-4d16-9101-9d8134295cf4"
       }
     },
+
     "owner": "jk_08",
+
     "plugins": [
       "expo-font",
       "expo-localization",

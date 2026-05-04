@@ -353,7 +353,7 @@ function LoginPage() {
                 </View>
 
                 {/* Google Button */}
-                <TouchableOpacity
+                {/* <TouchableOpacity
                   style={[styles.googleButton, googleLoading && styles.disabledButton]}
                   onPress={handleGoogleSignIn}
                   disabled={googleLoading}
@@ -370,7 +370,7 @@ function LoginPage() {
                       <Text style={styles.googleButtonText}>Continue with Google</Text>
                     </View>
                   )}
-                </TouchableOpacity>
+                </TouchableOpacity> */}
 
                 {/* Register */}
                 <View style={styles.registerContainer}>
