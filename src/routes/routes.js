@@ -3,6 +3,7 @@ import { NavigationContainer } from "@react-navigation/native";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import { createStackNavigator } from "@react-navigation/stack";
 import * as Screen from "../screens";
+import SplashScreen from "../screens/Splashscreen/SplashScreen";
 
 
 const MainStack = createStackNavigator();
@@ -66,27 +67,18 @@ useEffect(() => {
     try {
       const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
       const isMpinCreated = await AsyncStorage.getItem("isMpinCreated");
-      const userPhoneNumber = await AsyncStorage.getItem("userPhoneNumber");
+      const authToken = await AsyncStorage.getItem("authToken");
 
-      console.log("🟩 Storage Values:", {
-        hasSeenOnboarding,
-        isMpinCreated,
-        userPhoneNumber,
-      });
+      console.log("🟩 Storage Values:", { hasSeenOnboarding, isMpinCreated, authToken: !!authToken });
 
       if (!hasSeenOnboarding) {
-        // First-time open → Onboarding
         setInitialRoute("OnboardingScreen");
-      } else if (userPhoneNumber) {
-        // Phone number exists → go to MPIN
-        if (isMpinCreated === "true") {
-          setInitialRoute("VerifyMpinScreen");
-        } else {
-          setInitialRoute("MpinScreen");
-        }
-      } else {
-        // No phone number → show login
+      } else if (!authToken) {
         setInitialRoute("LoginPage");
+      } else if (isMpinCreated === "true") {
+        setInitialRoute("VerifyMpinScreen");
+      } else {
+        setInitialRoute("MpinScreen");
       }
     } catch (error) {
       console.error("❌ Error checking user state:", error);
@@ -99,8 +91,7 @@ useEffect(() => {
 
 
   if (!initialRoute) {
-    // Add splash or loader here if you want
-    return null;
+    return <SplashScreen />;
   }
 
   return (

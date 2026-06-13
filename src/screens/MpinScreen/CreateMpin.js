@@ -20,6 +20,7 @@ import { LinearGradient } from "expo-linear-gradient";
 import { mpinStyles as styles } from "./MpinStyles";
 import { createMpinApi } from "../../services/MpinService";
 import theme from "../../utils/AppTheme";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 const { COLORS } = theme;
 
@@ -127,22 +128,12 @@ const MpinScreen = ({ navigation }) => {
       const response = await createMpinApi(enteredMpin);
 
       if (response?.alreadyExists) {
-        setMpinExists(true);
-        Alert.alert(
-          "MPIN Already Exists",
-          "You already have an MPIN. Please enter your existing MPIN.",
-          [
-            { text: "Cancel", style: "cancel" },
-            {
-              text: "Enter MPIN",
-              onPress: () => navigation.navigate("VerifyMpinScreen"),
-            },
-          ],
-          { cancelable: false }
-        );
+        await AsyncStorage.setItem("isMpinCreated", "true");
+        navigation.replace("VerifyMpinScreen");
         return;
       }
 
+      await AsyncStorage.setItem("isMpinCreated", "true");
       showToast("MPIN created successfully!");
       setTimeout(() => {
         navigation.replace("Drawer");

@@ -80,28 +80,13 @@ export const createMpinApi = async (mpin) => {
 export const verifyMpinApi = async (mpin) => {
   try {
     const headers = await getHeaders();
-    console.log("📤 Verify MPIN Request Headers:", headers);
-
     const response = await fetch(
       `${API_BASE_URL_2}/verify?enteredMpin=${encodeURIComponent(mpin)}`,
       { method: "POST", headers }
     );
-
     const result = await parseResponse(response);
     console.log("📩 Verify MPIN Response:", result);
-
-    // ✅ Handle different response cases gracefully
-    if (typeof result === "string") {
-      if (result.includes("MPIN not found for this user")) {
-        return { success: false, code: "NOT_FOUND", message: result };
-      }
-      if (result.toLowerCase().includes("incorrect")) {
-        return { success: false, code: "INCORRECT", message: result };
-      }
-    }
-
-    if (!response.ok) throw new Error(result?.message || result || "MPIN verification failed");
-    return { success: true, message: result };
+    return result;
   } catch (error) {
     console.error("❌ Verify MPIN API Error:", error);
     throw error;
@@ -125,7 +110,15 @@ export const resetMpinApi = async (newMpin) => {
     const result = await parseResponse(response);
     console.log("📩 Reset MPIN Response:", result);
 
-    if (!response.ok) throw new Error(result?.message || result || "Failed to reset MPIN");
+    // Token expired or unauthorized
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("SESSION_EXPIRED");
+    }
+
+    if (!response.ok) {
+      const errMsg = typeof result === "string" ? result : (result?.message || "Failed to reset MPIN");
+      throw new Error(errMsg);
+    }
     return result;
   } catch (error) {
     console.error("❌ Reset MPIN API Error:", error);
@@ -158,9 +151,14 @@ export const resetMpinWithOldApi = async (oldMpin, newMpin) => {
 
     // Handle 400 Bad Request - Old MPIN incorrect or same as new
     if (response.status === 400) {
-      const errorMsg = typeof result === 'string' ? result : 
+      const errorMsg = typeof result === 'string' ? result :
                       (result?.message || result?.error || "Old MPIN is incorrect or new MPIN cannot be same as old MPIN.");
       throw new Error(errorMsg);
+    }
+
+    // Token expired or unauthorized
+    if (response.status === 401 || response.status === 403) {
+      throw new Error("SESSION_EXPIRED");
     }
 
     // Handle other error statuses

@@ -58,17 +58,20 @@ function ResetMpinScreen({ navigation }) {
   }, [fadeAnim, slideAnim]);
 
   // MPIN validation
-  const validateMpin = useCallback((newMpin, isConfirm = false) => {
-    const mpinValue = newMpin.join("");
-    
+  const validateMpin = useCallback((newMpinArr, isConfirm = false, otherArr = null) => {
+    const mpinValue = newMpinArr.join("");
+
     if (!isConfirm && mpinValue.length === 4) {
       setIsWeakMpin(checkWeakMpin(mpinValue));
     } else if (!isConfirm) {
       setIsWeakMpin(false);
     }
 
-    if (mpin.join("").length === 4 && confirmMpin.join("").length === 4) {
-      setMpinMatch(mpin.join("") === confirmMpin.join(""));
+    const currentMpin = isConfirm ? (otherArr || mpin) : newMpinArr;
+    const currentConfirm = isConfirm ? newMpinArr : (otherArr || confirmMpin);
+
+    if (currentMpin.join("").length === 4 && currentConfirm.join("").length === 4) {
+      setMpinMatch(currentMpin.join("") === currentConfirm.join(""));
     }
   }, [mpin, confirmMpin]);
 
@@ -82,10 +85,11 @@ function ResetMpinScreen({ navigation }) {
     setTargetMpin(prev => {
       const newMpin = [...prev];
       newMpin[index] = value;
-      
-      // Validate after state update
-      setTimeout(() => validateMpin(newMpin, isConfirm), 0);
-      
+
+      // Validate after state update using the freshly computed array
+      const otherArr = isConfirm ? mpin : confirmMpin;
+      setTimeout(() => validateMpin(newMpin, isConfirm, otherArr), 0);
+
       return newMpin;
     });
 
@@ -134,18 +138,13 @@ function ResetMpinScreen({ navigation }) {
 
     setIsLoading(true);
     try {
-      const response = await resetMpinApi(newMpin);
-      
-      await AsyncStorage.setItem("mpin", newMpin);
+      await resetMpinApi(newMpin);
       await AsyncStorage.setItem("isMpinCreated", "true");
-      
       showToast("MPIN reset successfully!");
-      setTimeout(() => {
-        navigation.replace("Drawer");
-      }, 1000);
+      setTimeout(() => navigation.replace("Drawer"), 1000);
     } catch (error) {
       console.error("MPIN reset error:", error);
-      showToast(error.message || "Failed to reset MPIN. Please try again.");
+      showToast("Failed to reset MPIN. Please try again.");
     } finally {
       setIsLoading(false);
     }

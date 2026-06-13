@@ -22,6 +22,22 @@ import CommonHeader from "../../../components/CommonHeader/CommonHeader";
 
 const { COLORS, SIZES, FONTS, SHADOWS } = theme;
 
+// Common patterns for validation
+const commonPatterns = [
+  "0000",
+  "1111",
+  "2222",
+  "3333",
+  "4444",
+  "5555",
+  "6666",
+  "7777",
+  "8888",
+  "9999",
+  "1234",
+  "4321",
+];
+
 export default function ResetMpinScreen() {
   const navigation = useNavigation();
 
@@ -134,22 +150,6 @@ export default function ResetMpinScreen() {
       return;
     }
 
-    // Avoid common patterns
-    const commonPatterns = [
-      "0000",
-      "1111",
-      "2222",
-      "3333",
-      "4444",
-      "5555",
-      "6666",
-      "7777",
-      "8888",
-      "9999",
-      "1234",
-      "4321",
-    ];
-
     if (commonPatterns.includes(newMpin)) {
       setErrorMessage("Please choose a stronger MPIN");
       triggerShake();
@@ -220,6 +220,13 @@ export default function ResetMpinScreen() {
       }
     } catch (error) {
       console.error("Reset MPIN Error:", error);
+
+      if (error.message === "SESSION_EXPIRED") {
+        setErrorMessage("Session expired. Please log in again.");
+        triggerShake();
+        setTimeout(() => navigation.replace("LoginPage"), 1500);
+        return;
+      }
 
       // More specific error messages
       if (error.message) {
@@ -738,19 +745,3 @@ const styles = StyleSheet.create({
     textAlign: "center",
   },
 });
-
-// Common patterns for validation
-const commonPatterns = [
-  "0000",
-  "1111",
-  "2222",
-  "3333",
-  "4444",
-  "5555",
-  "6666",
-  "7777",
-  "8888",
-  "9999",
-  "1234",
-  "4321",
-];

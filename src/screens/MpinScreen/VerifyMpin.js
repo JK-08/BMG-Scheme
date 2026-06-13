@@ -79,20 +79,7 @@ function VerifyMpinScreen({ navigation }) {
     ]).start();
   }, [shakeAnim]);
 
-  const completeVerification = useCallback(async () => {
-    await AsyncStorage.setItem("isMpinCreated", "true");
-    
-    const userId = await AsyncStorage.getItem("userId");
-    console.log("📌 Logged-in User ID:", userId);
 
-    showToast("MPIN verified successfully!");
-    
-    setTimeout(() => {
-      navigation.replace("Drawer");
-    }, 800);
-  }, [navigation]);
-
-  // MPIN input handlers
   const handleMpinChange = useCallback((value, index) => {
     if (value && !/^\d$/.test(value)) return;
 
@@ -120,60 +107,48 @@ function VerifyMpinScreen({ navigation }) {
 
   // MPIN verification
   const handleVerifyMpin = useCallback(async () => {
+    if (isLoading) return;
     const enteredMpin = mpin.join("");
-
-    if (enteredMpin.length !== 4) {
-      showToast("Please enter a valid 4-digit MPIN.");
-      return;
-    }
+    if (enteredMpin.length !== 4) return;
 
     setIsLoading(true);
-
     try {
-      const response = await verifyMpinApi(enteredMpin);
-      console.log("📩 Verify MPIN Response:", response);
+      const result = await verifyMpinApi(enteredMpin);
+      const resultStr = typeof result === "string" ? result.toLowerCase() : "";
 
-      const isNotFoundString =
-        typeof response === "string" &&
-        response.toLowerCase().includes("mpin not found");
+      const isWrong =
+        resultStr.includes("invalid") ||
+        resultStr.includes("incorrect") ||
+        resultStr.includes("wrong");
 
-      const isNotFoundObject =
-        typeof response === "object" &&
-        response?.code === "NOT_FOUND" &&
-        response?.message?.toLowerCase().includes("mpin not found");
-
-      if (isNotFoundString || isNotFoundObject) {
-        showToast("No MPIN found. Please create a new one.");
-
-        await AsyncStorage.setItem("isMpinCreated", "false");
-
-        setTimeout(() => {
-          setMpin(Array(4).fill(""));
-          navigation.replace("MpinScreen");
-        }, 800);
-
+      if (isWrong) {
+        setShowError(true);
+        triggerShake();
+        setMpin(Array(4).fill(""));
+        inputRefs.current[0]?.focus();
+        showToast("Incorrect MPIN. Please try again.");
         return;
       }
 
-      // MPIN verified successfully
-      await completeVerification();
+      // success
+      await AsyncStorage.setItem("isMpinCreated", "true");
+      showToast("MPIN verified successfully!");
+      setTimeout(() => navigation.replace("Drawer"), 800);
 
     } catch (error) {
-      console.error("MPIN verification error:", error);
-
       setShowError(true);
       triggerShake();
       setMpin(Array(4).fill(""));
       inputRefs.current[0]?.focus();
-
-      showToast("Incorrect MPIN. Please try again.");
+      showToast("Something went wrong. Please try again.");
     } finally {
       setIsLoading(false);
     }
-  }, [mpin, navigation, triggerShake, completeVerification]);
+  }, [mpin, isLoading, navigation, triggerShake]);
 
-  const handleForgotPress = useCallback(() => {
-    navigation.navigate("ForgotMpin");
+  const handleForgotPress = useCallback(async () => {
+    await AsyncStorage.multiRemove(["authToken", "isMpinCreated", "userData", "userId"]);
+    navigation.replace("LoginPage", { resetMpin: true });
   }, [navigation]);
 
   const dismissKeyboard = useCallback(() => Keyboard.dismiss(), []);
