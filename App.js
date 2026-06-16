@@ -46,7 +46,7 @@ export default function App() {
 
   // Setup FCM listeners once app is ready
   useEffect(() => {
-    if (!appEnabled) return;
+    if (!appEnabled || listenersRef.current) return;
 
     listenersRef.current = listenForNotifications(navigationRef.current);
     checkInitialNotification(navigationRef.current);
@@ -54,6 +54,7 @@ export default function App() {
     return () => {
       if (listenersRef.current) {
         removeNotificationListeners(listenersRef.current);
+        listenersRef.current = null;
       }
     };
   }, [appEnabled]);

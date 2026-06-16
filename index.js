@@ -6,18 +6,9 @@ import App from './App';
 
 // ── Background FCM handler ────────────────────────────────────────
 messaging().setBackgroundMessageHandler(async (remoteMessage) => {
-  console.log('[FCM] Background message:', remoteMessage);
   const { notification, data } = remoteMessage;
-
-  // Only show via notifee for data-only messages
-  // If notification payload exists, FCM shows it natively (avoid duplicate)
   if (!notification && data?.title) {
-    await displayNotification(
-      data.title,
-      data.body ?? '',
-      data,
-      data.imageUrl
-    );
+    await displayNotification(data.title, data.body ?? '', data, data.imageUrl);
   }
 });
 
@@ -27,5 +18,27 @@ notifee.onBackgroundEvent(async ({ type, detail }) => {
     console.log('[Notifee] Background press:', detail.notification?.data);
   }
 });
+
+// ── Foreground FCM handler (registered ONCE here, not inside React) ──
+let foregroundFCMRegistered = false;
+if (!foregroundFCMRegistered) {
+  foregroundFCMRegistered = true;
+  messaging().onMessage(async (remoteMessage) => {
+    const { notification, data } = remoteMessage;
+    if (notification) {
+      const imageUrl =
+        notification.android?.imageUrl ??
+        notification.apple?.imageUrl ??
+        data?.image ??
+        data?.imageUrl;
+      await displayNotification(
+        notification.title ?? 'Notification',
+        notification.body ?? '',
+        data ?? {},
+        imageUrl
+      );
+    }
+  });
+}
 
 registerRootComponent(App);

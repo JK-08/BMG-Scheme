@@ -3,7 +3,6 @@ import {
   getMessaging,
   getToken,
   onTokenRefresh,
-  onMessage,
   onNotificationOpenedApp,
   getInitialNotification,
   requestPermission,
@@ -125,24 +124,6 @@ export async function registerForPushNotifications(userId) {
 
 /* ── Listen for notifications ── */
 export function listenForNotifications(navigation) {
-  // Foreground FCM — show via notifee (supports image, no duplicate)
-  const foregroundFCM = onMessage(fcm, async (remoteMessage) => {
-    console.log("📦 Foreground FCM:", remoteMessage);
-    const { notification, data } = remoteMessage;
-    if (notification) {
-      const imageUrl =
-        notification.android?.imageUrl ??
-        notification.apple?.imageUrl ??
-        data?.imageUrl;
-      await displayNotification(
-        notification.title ?? "Notification",
-        notification.body ?? "",
-        data ?? {},
-        imageUrl
-      );
-    }
-  });
-
   // Foreground notifee tap
   const foregroundNotifee = notifee.onForegroundEvent(({ type, detail }) => {
     if (type === EventType.PRESS && detail.notification?.data) {
@@ -152,11 +133,10 @@ export function listenForNotifications(navigation) {
 
   // Background FCM tap
   const backgroundOpenSub = onNotificationOpenedApp(fcm, (remoteMessage) => {
-    console.log("🖱 Opened from background:", remoteMessage);
     handleNavigation(navigation, remoteMessage.data);
   });
 
-  return { foregroundFCM, foregroundNotifee, backgroundOpenSub };
+  return { foregroundNotifee, backgroundOpenSub };
 }
 
 /* ── Check app opened from closed state ── */
@@ -182,7 +162,6 @@ function handleNavigation(navigation, data) {
 
 /* ── Remove listeners ── */
 export function removeNotificationListeners(listeners) {
-  listeners?.foregroundFCM?.();
   listeners?.foregroundNotifee?.();
   listeners?.backgroundOpenSub?.();
 }
