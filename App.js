@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { StatusBar } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import FlashMessage from "react-native-flash-message";
@@ -10,40 +10,54 @@ import useFonts from "./src/utils/Fonts";
 import { getAppStatus } from "./src/services/DevelopmentService";
 import "react-native-gesture-handler";
 import { checkForAppUpdate } from "./src/utils/VersionChecker";
+import {
+  listenForNotifications,
+  removeNotificationListeners,
+  checkInitialNotification,
+} from "./src/utils/Notification";
 
 export default function App() {
   const [fontsLoaded, setFontsLoaded] = useState(false);
   const [appEnabled, setAppEnabled] = useState(null);
   const [devMessage, setDevMessage] = useState("");
+  const navigationRef = useRef(null);
+  const listenersRef = useRef(null);
 
-useEffect(() => {
-  const initApp = async () => {
-    try {
-      await useFonts();
-      setFontsLoaded(true);
+  useEffect(() => {
+    const initApp = async () => {
+      try {
+        await useFonts();
+        setFontsLoaded(true);
 
-      const response = await getAppStatus();
+        const response = await getAppStatus();
+        setAppEnabled(response?.enabled ?? false);
+        setDevMessage(response?.message ?? "");
 
-      setAppEnabled(response?.enabled ?? false);
-      setDevMessage(response?.message ?? "");
-
-      // ✅ CHECK FOR UPDATE AFTER APP IS READY
-      if (response?.enabled) {
-        setTimeout(() => {
-          checkForAppUpdate();
-        }, 1500); // slight delay so splash doesn't clash with alert
+        if (response?.enabled) {
+          setTimeout(() => checkForAppUpdate(), 1500);
+        }
+      } catch (error) {
+        console.log("Initialization error:", error);
+        setAppEnabled(false);
       }
+    };
+    initApp();
+  }, []);
 
-    } catch (error) {
-      console.log("Initialization error:", error);
-      setAppEnabled(false);
-    }
-  };
+  // Setup FCM listeners once app is ready
+  useEffect(() => {
+    if (!appEnabled) return;
 
-  initApp();
-}, []);
+    listenersRef.current = listenForNotifications(navigationRef.current);
+    checkInitialNotification(navigationRef.current);
 
-  // Show splash while loading
+    return () => {
+      if (listenersRef.current) {
+        removeNotificationListeners(listenersRef.current);
+      }
+    };
+  }, [appEnabled]);
+
   if (!fontsLoaded || appEnabled === null) {
     return <SplashScreen />;
   }
@@ -52,7 +66,7 @@ useEffect(() => {
     <SafeAreaView style={{ flex: 1, backgroundColor: colors.background }}>
       <StatusBar barStyle="dark-content" />
       {appEnabled ? (
-        <AppContainer />
+        <AppContainer ref={navigationRef} />
       ) : (
         <DevelopmentScreen message={devMessage} />
       )}

@@ -40,12 +40,23 @@
     },
     "owner": "brightech",
     "plugins": [
+      "./plugins/withFirebaseNotificationChannel",
       "expo-font",
       "expo-localization",
       [
         "expo-image-picker",
         {
           "cameraPermission": "Allow camera access to take a profile photo."
+        }
+      ],
+      "@react-native-firebase/app",
+      "@react-native-firebase/messaging",
+      [
+        "expo-notifications",
+        {
+          "icon": "./assets/icon.png",
+          "color": "#ffffff",
+          "androidMode": "default"
         }
       ]
     ]
