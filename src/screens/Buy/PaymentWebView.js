@@ -97,15 +97,16 @@ const PaymentWebView = () => {
   //  CREATE INSERT PAYLOAD FOR SCHEME COLLECTION
   // -------------------------------------------------------------
   const buildSchemeData = (paymentStatus) => {
+    console.log("\n📋 [INSTALLMENT-WEBVIEW] buildSchemeData called");
     if (!paymentStatus) {
-      console.warn(
-        "[Payment] No payment status provided, using fallback values"
-      );
+      console.warn("⚠️ [INSTALLMENT-WEBVIEW] No paymentStatus, using fallback");
       paymentStatus = {};
     }
 
     const schemeInfo = orderDetails?.schemeInfo || {};
+    console.log("📋 [INSTALLMENT-WEBVIEW] schemeInfo:", JSON.stringify(schemeInfo, null, 2));
     const pay = paymentStatus?.payphiResponse || {};
+    console.log("📋 [INSTALLMENT-WEBVIEW] payphiResponse:", JSON.stringify(pay, null, 2));
 
     const groupCode =
       orderDetails?.customer?.groupCode || productData?.groupCode || "BMA";
@@ -120,7 +121,7 @@ const PaymentWebView = () => {
       productData?.amount?.toString() ||
       pay?.amount?.toString() ||
       "1000";
-    const SchemeId = schemeInfo.SchemeId;
+    const SchemeId = schemeInfo.schemeId || schemeInfo.SchemeId;
 
     const installment =
       (parseInt(
@@ -147,7 +148,7 @@ const PaymentWebView = () => {
       schemeId: SchemeId,
     };
 
-    console.log("[Payment] Scheme data payload built", payload);
+    console.log("📋 [INSTALLMENT-WEBVIEW] Built payload:", JSON.stringify(payload, null, 2));
     return payload;
   };
 
@@ -157,17 +158,18 @@ const PaymentWebView = () => {
   // In PaymentWebView.js - Update the checkPaymentStatus function and handleRequest function
 
   const checkPaymentStatus = async (merchantTxnNo) => {
+    console.log("\n🔍 [INSTALLMENT-WEBVIEW] checkPaymentStatus called for:", merchantTxnNo);
     if (!merchantTxnNo) {
-      console.warn("[Payment] No merchant transaction number available");
+      console.warn("⚠️ [INSTALLMENT-WEBVIEW] No merchantTxnNo — aborting");
       return;
     }
     if (paymentStatusChecked) {
-      console.log("[Payment] Payment status already checked, skipping");
+      console.log("🔍 [INSTALLMENT-WEBVIEW] Already checked — skipping");
       return;
     }
 
     setPaymentStatusChecked(true);
-    console.log(`[Payment] Checking payment status for: ${merchantTxnNo}`);
+    console.log("🔍 [INSTALLMENT-WEBVIEW] Calling /payment/status API...");
 
     try {
       const statusPayload = {
@@ -190,11 +192,8 @@ const PaymentWebView = () => {
       );
       
       const data = await response.json();
-      console.log(
-        `[Payment] Status response received: ${
-          data.txnStatus
-        }`
-      );
+      console.log("🔍 [INSTALLMENT-WEBVIEW] /payment/status full response:", JSON.stringify(data, null, 2));
+      console.log("🔍 [INSTALLMENT-WEBVIEW] orderStatus:", data?.orderStatus, "| txnStatus:", data?.payphiResponse?.txnStatus);
 
       await storePaymentData(data);
 
@@ -217,21 +216,19 @@ const PaymentWebView = () => {
         data?.message?.toLowerCase()?.includes("success");
 
       if (isCancelled) {
-        console.log(
-          "[Payment] Payment cancelled - navigating to PaymentCancelled"
-        );
+        console.log("🚫 [INSTALLMENT-WEBVIEW] Payment CANCELLED");
         navigation.replace("PaymentCancelled", {
           orderDetails,
           productData,
           isCashPayment: false,
         });
       } else if (isSuccess) {
-        console.log("[Payment] Payment successful - inserting scheme data");
+        console.log("✅ [INSTALLMENT-WEBVIEW] Payment SUCCESS — inserting scheme collection");
         const schemeData = buildSchemeData(data);
 
         try {
-          await insertSchemeCollection(schemeData);
-          console.log("[Payment] Scheme collection inserted successfully");
+          const insertResult = await insertSchemeCollection(schemeData);
+          console.log("✅ [INSTALLMENT-WEBVIEW] insertSchemeCollection result:", insertResult);
           navigation.replace("PaymentSuccess", {
             status: "SUCCESS",
             schemeData,
@@ -239,12 +236,11 @@ const PaymentWebView = () => {
             orderDetails,
             productData,
             isCashPayment: false,
+            isInstallmentPayment: true,
+            paymentType: "installment",
           });
         } catch (insertErr) {
-          console.warn(
-            "[Payment] Failed to insert scheme collection:",
-            insertErr.message
-          );
+          console.warn("⚠️ [INSTALLMENT-WEBVIEW] insertSchemeCollection failed:", insertErr.message);
           navigation.replace("PaymentSuccess", {
             status: "SUCCESS",
             paymentStatus: data,
@@ -254,7 +250,7 @@ const PaymentWebView = () => {
           });
         }
       } else {
-        console.log("[Payment] Payment failed - navigating to PaymentFailure");
+        console.log("❌ [INSTALLMENT-WEBVIEW] Payment FAILED");
         navigation.replace("PaymentFailure", {
           orderDetails,
           productData,
@@ -263,7 +259,7 @@ const PaymentWebView = () => {
         });
       }
     } catch (error) {
-      console.error("[Payment] Error checking payment status:", error);
+      console.error("❌ [INSTALLMENT-WEBVIEW] checkPaymentStatus error:", error.message);
       navigation.replace("PaymentFailure", {
         orderDetails,
         productData,
@@ -275,20 +271,19 @@ const PaymentWebView = () => {
   // Also update the handleRequest function for failure URLs:
   const handleRequest = (request) => {
     const url = request.url;
-    console.log(`[WebView] Loading: ${url.substring(0, 100)}...`);
+    console.log("\n🌐 [INSTALLMENT-WEBVIEW] URL intercepted:", url.substring(0, 150));
 
     if (paymentProcessed) {
-      console.log("[WebView] Payment already processed, blocking request");
+      console.log("🌐 [INSTALLMENT-WEBVIEW] Already processed — blocking");
       return false;
     }
 
-    // SUCCESS
     if (
       url.includes(successUrl) ||
       url.includes("/payment-success") ||
       url.includes("/success")
     ) {
-      console.log("[WebView] Success URL detected - blocking redirect");
+      console.log("✅ [INSTALLMENT-WEBVIEW] SUCCESS URL detected");
       setPaymentProcessed(true);
       setProcessing(true);
 
@@ -297,13 +292,12 @@ const PaymentWebView = () => {
       return false;
     }
 
-    // FAILURE
     if (
       url.includes(failureUrl) ||
       url.includes("/payment-failure") ||
       url.includes("/failure")
     ) {
-      console.log("[WebView] Failure URL detected - blocking redirect");
+      console.log("❌ [INSTALLMENT-WEBVIEW] FAILURE URL detected");
       setPaymentProcessed(true);
       setProcessing(true);
 
@@ -316,14 +310,13 @@ const PaymentWebView = () => {
       return false;
     }
 
-    // CANCELLATION - Updated to use PaymentCancelled
     if (
       url.includes("/cancel") ||
       url.includes("/cancelled") ||
       url.includes("/payment-cancel") ||
       url.includes("/payment-cancelled")
     ) {
-      console.log("[WebView] Cancel URL detected - blocking redirect");
+      console.log("🚫 [INSTALLMENT-WEBVIEW] CANCEL URL detected");
       setPaymentProcessed(true);
       setProcessing(true);
 

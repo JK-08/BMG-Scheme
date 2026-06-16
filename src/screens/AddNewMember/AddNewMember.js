@@ -686,48 +686,78 @@ const submitMemberData = async (
   }
 };
 
-  // Handle WebView navigation changes
-  const handleWebViewNavigation = (navState) => {
-    const { url } = navState;
-    console.log("🌐 Navigating to:", url);
+  const handleWebViewNavigation = (request) => {
+    const url = request.url;
+    console.log("\n🌐 [JOIN-WEBVIEW] URL intercepted:", url);
+    console.log("🌐 [JOIN-WEBVIEW] paymentProcessed:", paymentProcessed);
 
-    if (paymentProcessed) return;
+    if (paymentProcessed) {
+      console.log("🌐 [JOIN-WEBVIEW] Already processed — blocking URL");
+      return false;
+    }
 
     const successUrl = "https://bmgjewellers.com/payment-success";
     const failureUrl = "https://bmgjewellers.com/payment-failure";
 
-    if (url.includes(successUrl)) {
+    if (
+      url.includes(successUrl) ||
+      url.includes("/payment-success") ||
+      url.includes("/success")
+    ) {
+      console.log("✅ [JOIN-WEBVIEW] SUCCESS URL detected — blocking & processing");
       setPaymentProcessed(true);
-      // Immediately hide WebView and show loading while processing
       setShowWebView(false);
-      setProcessingPayment(true); // Show loading indicator
-      setTimeout(() => {
-        handlePaymentSuccess();
-      }, 1000);
-    } else if (url.includes(failureUrl)) {
+      setProcessingPayment(true);
+      setTimeout(() => handlePaymentSuccess(), 1000);
+      return false;
+    } else if (
+      url.includes(failureUrl) ||
+      url.includes("/payment-failure") ||
+      url.includes("/failure")
+    ) {
+      console.log("❌ [JOIN-WEBVIEW] FAILURE URL detected — blocking & processing");
       setPaymentProcessed(true);
-      // Immediately hide WebView and show loading while processing
       setShowWebView(false);
-      setProcessingPayment(true); // Show loading indicator
-      setTimeout(() => {
-        handlePaymentFailure();
-      }, 1000);
+      setProcessingPayment(true);
+      setTimeout(() => handlePaymentFailure(), 1000);
+      return false;
+    } else if (
+      url.includes("/cancel") ||
+      url.includes("/cancelled") ||
+      url.includes("/payment-cancel")
+    ) {
+      console.log("🚫 [JOIN-WEBVIEW] CANCEL URL detected — blocking");
+      setPaymentProcessed(true);
+      setShowWebView(false);
+      setProcessingPayment(false);
+      Alert.alert("Payment Cancelled", "You cancelled the payment.");
+      setIsProcessingPayment(false);
+      return false;
     }
+
+    console.log("🌐 [JOIN-WEBVIEW] Allowing URL to load");
+    return true;
   };
 
   const handlePaymentSuccess = async () => {
     try {
+      console.log("\n🎯 [JOIN-PAYMENT-SUCCESS] handlePaymentSuccess triggered");
+      console.log("🎯 [JOIN-PAYMENT-SUCCESS] orderDetails:", JSON.stringify(orderDetails, null, 2));
+      console.log("🎯 [JOIN-PAYMENT-SUCCESS] currentPaymentData:", JSON.stringify(currentPaymentData, null, 2));
+
       if (!orderDetails?.merchantTxnNo) {
+        console.error("❌ [JOIN-PAYMENT-SUCCESS] No merchantTxnNo in orderDetails");
         throw new Error("No merchant transaction number found");
       }
 
-      // Check payment status
+      console.log("🔍 [JOIN-PAYMENT-SUCCESS] Checking payment status for:", orderDetails.merchantTxnNo);
       const paymentStatus = await checkPaymentStatus(
         orderDetails.merchantTxnNo
       );
+      console.log("📊 [JOIN-PAYMENT-SUCCESS] Payment status result:", JSON.stringify(paymentStatus, null, 2));
 
       if (paymentStatus?.orderStatus === "PAID") {
-        // 1️⃣ Submit Member Data with payment response
+        console.log("✅ [JOIN-PAYMENT-SUCCESS] Status is PAID — submitting member data");
         await submitMemberData(
           currentPaymentData.numericSchemeId,
           currentPaymentData.schemeData,
@@ -737,6 +767,7 @@ const submitMemberData = async (
         );
 
         // Hide loading and show success popup
+        console.log("✅ [JOIN-PAYMENT-SUCCESS] Member data submitted successfully");
         setProcessingPayment(false);
         Alert.alert(
           "Success",
@@ -753,10 +784,11 @@ const submitMemberData = async (
           ]
         );
       } else {
+        console.warn("⚠️ [JOIN-PAYMENT-SUCCESS] orderStatus is NOT PAID:", paymentStatus?.orderStatus);
         throw new Error("Payment not confirmed");
       }
     } catch (error) {
-      console.error("Error in payment success handling:", error);
+      console.error("❌ [JOIN-PAYMENT-SUCCESS] Error:", error.message);
       // Hide loading and show error popup
       setProcessingPayment(false);
       Alert.alert(
@@ -777,7 +809,7 @@ const submitMemberData = async (
   };
 
   const handlePaymentFailure = () => {
-    // Hide loading and show failure popup
+    console.log("❌ [JOIN-PAYMENT-FAILURE] handlePaymentFailure triggered");
     setProcessingPayment(false);
     Alert.alert(
       "Payment Failed",
@@ -824,9 +856,10 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
   setIsSubmitting(true);
   
   try {
-    console.log("💰 Starting cash payment process...");
-    console.log("Scheme ID:", numericSchemeId);
-    console.log("Scheme Form Data:", schemeFormData);
+    console.log("\n💰 [JOIN-CASH] Starting cash payment process");
+    console.log("💰 [JOIN-CASH] Scheme ID:", numericSchemeId);
+    console.log("💰 [JOIN-CASH] Scheme Form Data:", JSON.stringify(schemeFormData, null, 2));
+    console.log("💰 [JOIN-CASH] Member Data:", JSON.stringify(transformedMemberData, null, 2));
 
     if (!transformedMemberData) {
       Alert.alert("Error", "Member data is missing. Please go back and fill member details.");
@@ -847,7 +880,7 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
     }
     
     const apiData = await response.json();
-    console.log("Scheme API Data:", apiData);
+    console.log("💰 [JOIN-CASH] Scheme API Data:", JSON.stringify(apiData, null, 2));
     
     if (!apiData || apiData.length === 0) {
       throw new Error("No scheme data available for the selected scheme.");
@@ -876,15 +909,15 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
       selectedRecord = apiData[0];
     }
 
-    console.log("Selected Scheme Record:", selectedRecord);
+    console.log("💰 [JOIN-CASH] Selected Scheme Record:", JSON.stringify(selectedRecord, null, 2));
 
-    const groupCode = selectedRecord.GROUPCODE || "BMA"; // Default fallback
+    const groupCode = selectedRecord.GROUPCODE || "BMA";
     const regNo = selectedRecord.CURRENTREGNO || 
                   selectedRecord.REGNO || 
                   generateRandomRegNo();
 
-    console.log("Group Code:", groupCode);
-    console.log("Reg No:", regNo);
+    console.log("💰 [JOIN-CASH] groupCode:", groupCode);
+    console.log("💰 [JOIN-CASH] regNo:", regNo);
 
     // 3. Submit member data
     console.log("📤 Submitting member data...");
@@ -901,8 +934,7 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
       throw new Error("Member data submission failed.");
     }
 
-    // 5. Show success message
-    console.log("🎉 Cash payment process completed successfully");
+    console.log("🎉 [JOIN-CASH] Cash payment process completed successfully");
     
     Alert.alert(
       "Success",
@@ -964,14 +996,18 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
 };
 
   const processOnlinePayment = async (schemeFormData, numericSchemeId) => {
+    console.log("\n💳 [JOIN-ONLINE] Starting online payment process");
+    console.log("💳 [JOIN-ONLINE] Scheme ID:", numericSchemeId);
+    console.log("💳 [JOIN-ONLINE] Amount:", schemeFormData.amount);
+    console.log("💳 [JOIN-ONLINE] Member:", transformedMemberData?.pName, transformedMemberData?.mobile);
     setIsProcessingPayment(true);
     try {
-      // Fetch GROUPCODE and REGNO from API dynamically
       const response = await fetch(
         `${API_BASE_URL_OLD}/member/schemeid?schemeId=${numericSchemeId}`
       );
       if (!response.ok) throw new Error(`HTTP ${response.status}`);
       const apiData = await response.json();
+      console.log("💳 [JOIN-ONLINE] Scheme API data:", JSON.stringify(apiData, null, 2));
 
       if (!apiData || apiData.length === 0)
         throw new Error("No scheme data returned from API.");
@@ -997,7 +1033,8 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
         selectedRecord.REGNO ||
         generateRandomRegNo();
 
-      // Prepare data for payment flow
+      console.log("💳 [JOIN-ONLINE] groupCode:", groupCode, "| regNo:", regNo);
+
       const defaultName = transformedMemberData ? `${transformedMemberData.pName} ${transformedMemberData.sName}`.trim() : "Customer";
       const defaultContact = transformedMemberData?.mobile || "";
       const amount = schemeFormData.amount;
@@ -1011,6 +1048,8 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
         groupCode
       );
 
+      console.log("💳 [JOIN-ONLINE] Order created:", JSON.stringify(orderData, null, 2));
+
       if (!orderData.orderId) {
         throw new Error("No order ID received from payment gateway");
       }
@@ -1022,6 +1061,9 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
         regNo,
         groupCode
       );
+
+      console.log("💳 [JOIN-ONLINE] Payment initiate response:", JSON.stringify(paymentData, null, 2));
+      console.log("💳 [JOIN-ONLINE] Payment URL:", paymentData.paymentUrl);
 
       if (!paymentData.paymentUrl) {
         throw new Error("No payment URL received from payment gateway");
@@ -1058,12 +1100,14 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
         regNo,
       });
 
-      // Show WebView
+      console.log("💳 [JOIN-ONLINE] currentOrderDetails:", JSON.stringify(currentOrderDetails, null, 2));
+
       setPaymentUrl(paymentData.paymentUrl);
       setShowWebView(true);
       setPaymentProcessed(false);
+      console.log("💳 [JOIN-ONLINE] WebView opened with payment URL");
     } catch (error) {
-      console.error("Error during payment processing:", error);
+      console.error("❌ [JOIN-ONLINE] Error:", error.message);
       Alert.alert(
         "Payment Error",
         error.message || "Failed to process payment. Please try again."
@@ -1130,10 +1174,12 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
         <View style={{ flex: 1 }}>
           <WebView
             source={{ uri: paymentUrl }}
-            onNavigationStateChange={handleWebViewNavigation}
+            onShouldStartLoadWithRequest={handleWebViewNavigation}
             onLoadStart={() => setPaymentLoading(true)}
             onLoadEnd={() => setPaymentLoading(false)}
             startInLoadingState={true}
+            javaScriptEnabled={true}
+            domStorageEnabled={true}
             renderLoading={() => (
               <View style={styles.loader}>
                 <ActivityIndicator size="large" color="#d4af37" />

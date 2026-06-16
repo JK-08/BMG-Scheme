@@ -366,11 +366,13 @@ const BuyPage = () => {
   // -----------------------------
   const insertCashPayment = useCallback(async () => {
     try {
-      console.log("[Payment] Processing cash payment...");
+      console.log("\n💰 [INSTALLMENT-CASH] Starting cash installment payment");
+      console.log("💰 [INSTALLMENT-CASH] amount:", amount, "| payType:", payType);
+      console.log("💰 [INSTALLMENT-CASH] productInfo:", JSON.stringify(productInfo, null, 2));
       const schemeData = buildSchemeData();
-      await insertSchemeCollection(schemeData);
-
-      console.log("[Payment] Cash payment processed successfully");
+      console.log("💰 [INSTALLMENT-CASH] schemeData payload:", JSON.stringify(schemeData, null, 2));
+      const insertResult = await insertSchemeCollection(schemeData);
+      console.log("✅ [INSTALLMENT-CASH] insertSchemeCollection result:", insertResult);
       navigation.navigate("PaymentSuccess", {
         status: "SUCCESS",
         orderDetails: {
@@ -391,9 +393,11 @@ const BuyPage = () => {
         },
         productData,
         isCashPayment: true,
+        isInstallmentPayment: true,
+        paymentType: "installment",
       });
     } catch (error) {
-      console.error("[Payment] Cash payment failed:", error);
+      console.error("❌ [INSTALLMENT-CASH] insertSchemeCollection failed:", error.message);
       // Navigate to PaymentFailure for cash payment errors too
       navigation.navigate("PaymentFailure", {
         orderDetails: {
@@ -419,12 +423,16 @@ const BuyPage = () => {
   // Handle Buy (main)
   // -----------------------------
   const handleBuy = useCallback(async () => {
-    // Validate
+    console.log("\n🛒 [INSTALLMENT-HANDLEBUY] handleBuy triggered");
+    console.log("🛒 [INSTALLMENT-HANDLEBUY] payType:", payType, "| amount:", amount);
+    console.log("🛒 [INSTALLMENT-HANDLEBUY] productInfo:", JSON.stringify(productInfo, null, 2));
+
     if (
       productInfo.weightLedger === "N" &&
       productInfo.FixedIns === "N" &&
       !validateAmount(amount)
     ) {
+      console.log("🛒 [INSTALLMENT-HANDLEBUY] Validation failed:", amountError);
       Alert.alert(
         "Invalid Amount",
         amountError || "Please enter a valid amount."
@@ -432,11 +440,11 @@ const BuyPage = () => {
       return;
     }
 
-    console.log(`[Payment] Starting ${payType} payment process`);
     setLoading(true);
 
     try {
       if (payType === "CASH") {
+        console.log("🛒 [INSTALLMENT-HANDLEBUY] CASH selected — routing to insertCashPayment");
         await insertCashPayment();
         return;
       }
@@ -450,9 +458,8 @@ const BuyPage = () => {
         return;
       }
 
-      // Get the order ID with correct parameters
       const orderId = await createOrder(amount, productInfo);
-      console.log(`[Payment] Order ID created: ${orderId}`);
+      console.log("🛒 [INSTALLMENT-HANDLEBUY] Order created. orderId:", orderId);
 
       const payload = {
         merchantTxnNo: orderId,
@@ -465,12 +472,8 @@ const BuyPage = () => {
         returnURL: "https://app.bmgjewellers.com/api/v1/payment/success",
       };
 
-      console.log(`[Payment] Payload for initiate-sale:`, payload);
-      console.log("T", token);
-      console.log(
-  "[Payment] Redirect API Authorization:",
-  `Bearer ${token}`
-);
+      console.log("🛒 [INSTALLMENT-HANDLEBUY] initiate-sale payload:", JSON.stringify(payload, null, 2));
+      console.log("🛒 [INSTALLMENT-HANDLEBUY] Token:", token);
 
       const initiate = await fetch(`${API_BASE_URL}/payment/initiate-sale`, {
         method: "POST",
@@ -484,27 +487,24 @@ const BuyPage = () => {
 
       if (!initiate.ok) {
         const errorData = await initiate.json().catch(() => ({}));
-        console.error(
-          `[Payment] Initiation failed: ${initiate.status}`,
-          errorData
-        );
+        console.error("❌ [INSTALLMENT-HANDLEBUY] initiate-sale failed:", initiate.status, JSON.stringify(errorData, null, 2));
         throw new Error(
           errorData.message || `Payment initiation failed: ${initiate.status}`
         );
       }
 
       const data = await initiate.json();
+      console.log("🛒 [INSTALLMENT-HANDLEBUY] initiate-sale response:", JSON.stringify(data, null, 2));
       if (!data.tranCtx) {
         throw new Error("Transaction context not received");
       }
 
-      console.log("[Payment] Getting redirect URL...");
       let redirectUrl;
       try {
         redirectUrl = await getRedirectUrlApi(data.tranCtx);
-        console.log("[Payment] Redirect URL obtained successfully");
+        console.log("🛒 [INSTALLMENT-HANDLEBUY] Redirect URL:", redirectUrl);
       } catch (err) {
-        console.error("[Payment] Failed to get redirect URL:", err);
+        console.error("❌ [INSTALLMENT-HANDLEBUY] Failed to get redirect URL:", err.message);
         Alert.alert(
           "Payment Error",
           "Failed to obtain payment redirect URL. Would you like to retry?",
@@ -543,7 +543,7 @@ const BuyPage = () => {
         timestamp: new Date().toISOString(),
       };
 
-      console.log("[Payment] Navigating to payment webview");
+      console.log("🛒 [INSTALLMENT-HANDLEBUY] orderDetails to PaymentWebView:", JSON.stringify(orderDetails, null, 2));
       navigation.navigate("PaymentWebView", {
         paymentUrl: redirectUrl,
         orderDetails,
@@ -551,7 +551,7 @@ const BuyPage = () => {
         payTypeResponse,
       });
     } catch (error) {
-      console.error("[Payment] Processing failed:", error);
+      console.error("❌ [INSTALLMENT-HANDLEBUY] error:", error.message);
       Alert.alert(
         "Payment Error",
         error.message || "Unable to process payment. Please try again.",
