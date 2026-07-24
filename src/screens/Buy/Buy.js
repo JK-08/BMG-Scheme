@@ -312,9 +312,12 @@ const BuyPage = () => {
         data.order_id || data.id || data.transactionId || data.referenceNo;
       console.log("Extracted order ID:", orderId);
       if (!orderId) {
-        console.warn("No order ID found in response, using timestamp:", data);
-        // Generate a fallback order ID
-        return `ORD${Date.now()}${Math.floor(Math.random() * 1000)}`;
+        // NEVER invent an order ID client-side — a fabricated ID can't be
+        // matched by /payment/status and produces orphan transactions.
+        console.error("No order ID found in create-order response");
+        throw new Error(
+          "Could not create the payment order. Please try again in a moment."
+        );
       }
 
       return orderId;
@@ -423,6 +426,7 @@ const BuyPage = () => {
   // Handle Buy (main)
   // -----------------------------
   const handleBuy = useCallback(async () => {
+    if (loading) return; // guard against double taps / duplicate submissions
     console.log("\n🛒 [INSTALLMENT-HANDLEBUY] handleBuy triggered");
     console.log("🛒 [INSTALLMENT-HANDLEBUY] payType:", payType, "| amount:", amount);
     console.log("🛒 [INSTALLMENT-HANDLEBUY] productInfo:", JSON.stringify(productInfo, null, 2));
@@ -473,7 +477,6 @@ const BuyPage = () => {
       };
 
       console.log("🛒 [INSTALLMENT-HANDLEBUY] initiate-sale payload:", JSON.stringify(payload, null, 2));
-      console.log("🛒 [INSTALLMENT-HANDLEBUY] Token:", token);
 
       const initiate = await fetch(`${API_BASE_URL}/payment/initiate-sale`, {
         method: "POST",
@@ -576,6 +579,7 @@ const BuyPage = () => {
     amount,
     amountError,
     insertCashPayment,
+    loading,
     navigation,
     payType,
     payTypeResponse,

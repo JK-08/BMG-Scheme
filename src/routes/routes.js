@@ -59,7 +59,9 @@ function Drawer() {
   );
 }
 
-function AppContainer() {
+// forwardRef so App.js can attach its navigationRef to the NavigationContainer —
+// without this, notification-tap deep links have no navigator to act on.
+const AppContainer = React.forwardRef(function AppContainer(props, ref) {
   const [initialRoute, setInitialRoute] = useState(null);
 
 useEffect(() => {
@@ -95,7 +97,7 @@ useEffect(() => {
   }
 
   return (
-    <NavigationContainer>
+    <NavigationContainer ref={ref}>
       <MainStack.Navigator
         screenOptions={{ headerShown: false }}
         initialRouteName={initialRoute}
@@ -118,6 +120,6 @@ useEffect(() => {
       </MainStack.Navigator>
     </NavigationContainer>
   );
-}
+});
 
 export default AppContainer;

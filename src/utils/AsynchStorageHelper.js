@@ -192,6 +192,32 @@ export const clearUserData = async () => {
 };
 
 /**
+ * Single, complete logout used by every logout button in the app.
+ * Clears ALL session/user keys, but deliberately PRESERVES:
+ *  - "hasSeenOnboarding" (device-level flag, not user data)
+ *  - "pendingPayments_v1" and "processedTxn_v1:*" (payment-recovery and
+ *    idempotency records — clearing these could lose a paid-but-uncredited
+ *    payment or allow a duplicate credit)
+ */
+export const logoutUser = async () => {
+  try {
+    const sessionKeys = [
+      ...Object.values(STORAGE_KEYS),
+      "mpin",
+      "isMpinCreated",
+      "tempGoogleUser",
+      "debug_user_data",
+      "userProfilePicture",
+      "paymentResponse",
+    ];
+    await AsyncStorage.multiRemove(sessionKeys);
+    console.log("🧹 Logout: session data cleared");
+  } catch (error) {
+    console.error("❌ Error during logout cleanup:", error);
+  }
+};
+
+/**
  * Verify token exists and is valid
  */
 export const verifyToken = async () => {

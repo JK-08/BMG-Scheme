@@ -33,11 +33,14 @@ const PaymentSuccess = () => {
     productData,
     isInstallmentPayment,
     paymentType,
+    creditPending, // payment confirmed PAID, but crediting to the scheme is still pending
   } = route.params || {};
 
-  console.log("[PaymentSuccess] Screen loaded with status:", status);
+  console.log("[PaymentSuccess] Screen loaded with status:", status, "| creditPending:", !!creditPending);
 
-  const isSuccess = status === "SUCCESS";
+  // Only treat as a full success when the credit/enrollment actually completed —
+  // never celebrate (or SMS) an uncredited payment.
+  const isSuccess = status === "SUCCESS" && !creditPending;
 
   // Determine if it's a joining payment
   useEffect(() => {
@@ -328,22 +331,39 @@ const PaymentSuccess = () => {
           style={styles.image}
         />
 
-        <Text style={styles.title}>Payment Successful!</Text>
-
-        <Text style={styles.subtitle}>
-          Your payment for{" "}
-          <Text style={{ fontWeight: FONTS.weight.bold }}>{schemeName}</Text>{" "}
-          has been processed successfully.
+        <Text style={styles.title}>
+          {creditPending ? "Payment Received" : "Payment Successful!"}
         </Text>
 
-        <Text style={styles.infoText}>
-          Your payment of{" "}
-          <Text style={{ fontWeight: FONTS.weight.bold }}>
-            ₹{orderDetails?.amount || dataToDisplay?.amount}
-          </Text>{" "}
-          has been processed successfully
-          {isJoiningPayment && " and your Scheme Code is"}
-        </Text>
+        {creditPending ? (
+          <Text style={styles.subtitle}>
+            Your payment of{" "}
+            <Text style={{ fontWeight: FONTS.weight.bold }}>
+              ₹{orderDetails?.amount || dataToDisplay?.amount}
+            </Text>{" "}
+            for{" "}
+            <Text style={{ fontWeight: FONTS.weight.bold }}>{schemeName}</Text>{" "}
+            was received. Crediting it to your scheme is taking a little longer
+            than usual — it will be completed automatically. Your money is safe.
+          </Text>
+        ) : (
+          <>
+            <Text style={styles.subtitle}>
+              Your payment for{" "}
+              <Text style={{ fontWeight: FONTS.weight.bold }}>{schemeName}</Text>{" "}
+              has been processed successfully.
+            </Text>
+
+            <Text style={styles.infoText}>
+              Your payment of{" "}
+              <Text style={{ fontWeight: FONTS.weight.bold }}>
+                ₹{orderDetails?.amount || dataToDisplay?.amount}
+              </Text>{" "}
+              has been processed successfully
+              {isJoiningPayment && " and your Scheme Code is"}
+            </Text>
+          </>
+        )}
 
         {isJoiningPayment && (
           <Text style={[styles.highlightText, { marginTop: SIZES.padding.md }]}>
@@ -359,7 +379,8 @@ const PaymentSuccess = () => {
           </View>
         )}
 
-        {/* Show SMS status */}
+        {/* Show SMS status (skipped while credit is pending) */}
+        {!creditPending && (
         <View style={styles.smsStatusContainer}>
           {smsSent ? (
             <Text style={styles.smsSuccessText}>
@@ -378,6 +399,7 @@ const PaymentSuccess = () => {
             </Text>
           )}
         </View>
+        )}
 
         <View style={styles.buttonContainer}>
           <TouchableOpacity

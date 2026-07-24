@@ -7,7 +7,7 @@ import { API_BASE_URL_2 } from "../Config/API";
 const getHeaders = async () => {
   try {
     const token = await getAuthToken();
-    console.log("🟢 Retrieved token:", token);
+    console.log("🟢 Retrieved token:", token ? "Exists" : "Missing");
 
     if (!token) console.warn("⚠️ No auth token found in AsyncStorage!");
 

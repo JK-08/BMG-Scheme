@@ -17,6 +17,7 @@ import { TextDefault } from '../../../components';
 import { colors } from '../../../utils';
 import { colors1 } from '../../../utils/colors';
 import { API_BASE_URL_OLD } from '../../../Config/API';
+import { logoutUser } from '../../../utils/AsynchStorageHelper';
 
 function ProfileContainer(props) {
   const navigation = useNavigation();
@@ -70,13 +71,11 @@ function ProfileContainer(props) {
           text: 'Logout',
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem('mpin');
-              await AsyncStorage.removeItem('isMpinCreated');
-              await AsyncStorage.removeItem('userPhoneNumber');
-              await AsyncStorage.removeItem('isLoggedIn');
-              navigation.replace('LoginPage');
+              await logoutUser();
             } catch (error) {
               console.error('Error during logout:', error);
+            } finally {
+              navigation.replace('LoginPage');
             }
           },
         },

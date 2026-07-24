@@ -169,24 +169,22 @@ export const useUserProfile = () => {
   const updateField = (field, value) => {
     if (!state.isFormDirty) updateState({ isFormDirty: true });
 
-    // Handle aadhaarVerified with automatic KYC and Terms update
+    // Handle aadhaarVerified — KYC requires BOTH Aadhaar verification AND explicit terms acceptance.
+    // Terms are never auto-accepted on the user's behalf.
     if (field === "aadhaarVerified") {
       const newValue = value;
       const updatedFormData = {
         ...formData,
         [field]: newValue,
-        // Auto-update termsAccepted and kycVerified when Aadhaar is verified
-        termsAccepted: newValue ? true : formData.termsAccepted,
-        kycVerified: newValue ? true : (formData.termsAccepted && formData.aadhaarVerified),
+        kycVerified: Boolean(newValue && formData.termsAccepted),
       };
       setFormData(updatedFormData);
-      setErrors((prev) => ({ ...prev, [field]: "", termsAccepted: "" }));
+      setErrors((prev) => ({ ...prev, [field]: "" }));
       updateState((prev) => ({
         fieldValidity: {
           ...prev.fieldValidity,
           [field]: true,
-          termsAccepted: newValue ? true : prev.fieldValidity.termsAccepted,
-          kycVerified: newValue ? true : (prev.fieldValidity.termsAccepted && prev.fieldValidity.aadhaarVerified),
+          kycVerified: Boolean(newValue && prev.fieldValidity.termsAccepted),
         },
       }));
       return;
@@ -379,6 +377,20 @@ export const useUserProfile = () => {
       return;
     }
 
+    // Prevent duplicate verification of an already-verified Aadhaar
+    if (formData.aadhaarVerified) {
+      Alert.alert(
+        "Already Verified",
+        "This Aadhaar number is already verified. Change the Aadhaar number to verify a different one."
+      );
+      return;
+    }
+
+    // Prevent starting a second verification while one is in flight
+    if (state.verificationInProgress || state.pendingAadhaarVerification) {
+      return;
+    }
+
     updateState({ pendingAadhaarVerification: true, showConsentModal: true });
   };
 
@@ -387,7 +399,7 @@ export const useUserProfile = () => {
 
     try {
       const aadhaarNumber = formData.idProofNo;
-      console.log("Starting verification with Aadhaar:", aadhaarNumber);
+      console.log("Starting Aadhaar verification (DigiLocker)");
 
       const result = await digiLockerService.verifyAadhaar(
         state.userId,
@@ -529,7 +541,12 @@ export const useUserProfile = () => {
 
   // ===== UPDATED VERIFICATION COMPLETE HANDLER =====
   const handleVerificationComplete = async (result) => {
-    console.log("Verification result:", JSON.stringify(result, null, 2));
+    console.log(
+      "Verification completed. success:",
+      result?.success,
+      "| verified:",
+      result?.aadhaarVerified
+    );
 
     if (result.success && result.aadhaarVerified) {
       try {
@@ -537,8 +554,12 @@ export const useUserProfile = () => {
         const documentData = result.documentData || {};
         const actualAadhaarNumber = formData.idProofNo;
 
-        const maskedAadhaarFromResult = result.maskedAadhaar || "6485";
-        const properMaskedAadhaar = `XXXX-XXXX-${maskedAadhaarFromResult}`;
+        // Derive masked Aadhaar from the actual number (never a hardcoded fallback)
+        const last4 =
+          actualAadhaarNumber && actualAadhaarNumber.length === 12
+            ? actualAadhaarNumber.slice(-4)
+            : (result.idProofNo || "").slice(-4);
+        const properMaskedAadhaar = last4 ? `XXXX-XXXX-${last4}` : "";
 
         // Parse address from Aadhaar response
         const addressData = parseAadhaarAddress(
@@ -557,7 +578,8 @@ export const useUserProfile = () => {
           return dob;
         };
 
-        // Prepare updated data - AUTO-SET termsAccepted and kycVerified
+        // Prepare updated data — terms acceptance stays whatever the user chose;
+        // kycVerified is only true when BOTH Aadhaar verified AND terms explicitly accepted.
         const initialUpdate = {
           idProofNo: actualAadhaarNumber,
           aadhaarVerified: true,
@@ -579,9 +601,8 @@ export const useUserProfile = () => {
             addressData?.address1 || aadhaarData.address || formData.address1,
           address2: addressData?.address2 || formData.address2,
           country: addressData?.country || formData.country || "India",
-          // AUTO-UPDATE: Set both to true when Aadhaar is verified
-          termsAccepted: true,
-          kycVerified: true,
+          termsAccepted: formData.termsAccepted,
+          kycVerified: Boolean(formData.termsAccepted),
         };
 
         // If we have pincode from Aadhaar, fetch city and state
@@ -643,8 +664,6 @@ export const useUserProfile = () => {
           city: updatedFormData.city ? true : false,
           state: updatedFormData.state ? true : false,
           pincode: updatedFormData.pincode ? true : false,
-          termsAccepted: true, // AUTO-SET to true
-          kycVerified: true,   // AUTO-SET to true
         };
         
         updateState((prev) => ({
@@ -676,9 +695,8 @@ export const useUserProfile = () => {
             idProofNo: actualAadhaarNumber,
             maskedAadhaar: properMaskedAadhaar,
             aadhaarVerified: true,
-            // AUTO-UPDATE: Send true values for terms and KYC
-            termsAccepted: true,
-            kycVerified: true,
+            termsAccepted: Boolean(formData.termsAccepted),
+            kycVerified: Boolean(formData.termsAccepted),
             aadhaarVerificationId: result.aadhaarVerificationId || "",
             aadhaarVerifiedAt: result.aadhaarVerifiedAt || "",
             aadhaarStatus: result.aadhaarStatus || "VERIFIED",
@@ -694,9 +712,9 @@ export const useUserProfile = () => {
             country: updatedFormData.country,
           };
 
-          console.log("📤 Sending Aadhaar update to server:", serverApiData);
+          console.log("📤 Sending Aadhaar verification update to server");
           const serverResult = await userService.updateUserData(state.userId, serverApiData);
-          console.log("📥 Server response for Aadhaar update:", serverResult);
+          console.log("📥 Server Aadhaar update status:", serverResult?.status);
 
           // If server update was successful, wait a moment and then refresh
           if (serverResult.status === "success") {
@@ -717,7 +735,10 @@ export const useUserProfile = () => {
 
         Alert.alert(
           "✅ Aadhaar Verified Successfully",
-          `Your Aadhaar has been verified!\n\n✅ Terms & Conditions automatically accepted\n✅ KYC verification completed\n\nProfile has been updated.\n\nCity: ${updatedFormData.city}\nState: ${updatedFormData.state}\nPincode: ${updatedFormData.pincode}`,
+          `Your Aadhaar has been verified and your profile updated.\n\nCity: ${updatedFormData.city}\nState: ${updatedFormData.state}\nPincode: ${updatedFormData.pincode}` +
+            (formData.termsAccepted
+              ? "\n\n✅ KYC complete."
+              : "\n\n⚠️ Please accept the Terms & Conditions to complete your KYC."),
           [{ text: "OK" }]
         );
 
@@ -820,18 +841,6 @@ export const useUserProfile = () => {
     setErrors(validation.errors);
     updateState({ fieldValidity: validation.fieldValidity });
 
-    // Skip terms validation if Aadhaar is verified (terms will be auto-accepted)
-    if (formData.aadhaarVerified) {
-      delete validation.errors.termsAccepted;
-      updateState((prev) => ({
-        fieldValidity: {
-          ...prev.fieldValidity,
-          termsAccepted: true,
-          kycVerified: true,
-        },
-      }));
-    }
-
     if (!validation.isValid) {
       const errorMessage = Object.entries(validation.errors)
         .filter(([_, e]) => e)
@@ -886,8 +895,8 @@ export const useUserProfile = () => {
   const handleSubmit = async () => {
     console.log("🚀 handleSubmit triggered");
     
-    // Skip terms validation if Aadhaar is verified
-    if (!formData.termsAccepted && !formData.aadhaarVerified) {
+    // Terms & Conditions must always be explicitly accepted by the user
+    if (!formData.termsAccepted) {
       Alert.alert(
         "Terms Required",
         "You must accept the Terms and Conditions before updating your profile.",
@@ -906,12 +915,10 @@ export const useUserProfile = () => {
       return;
     }
 
-    // Auto-update terms and KYC if Aadhaar is verified
+    // KYC is complete only when Aadhaar is verified AND terms were explicitly accepted
     const updatedFormData = {
       ...formData,
-      // Ensure terms are accepted when Aadhaar is verified
-      termsAccepted: formData.aadhaarVerified ? true : formData.termsAccepted,
-      kycVerified: formData.aadhaarVerified ? true : (formData.aadhaarVerified && formData.termsAccepted),
+      kycVerified: Boolean(formData.aadhaarVerified && formData.termsAccepted),
     };
 
     setFormData(updatedFormData);

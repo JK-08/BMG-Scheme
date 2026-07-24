@@ -14,7 +14,7 @@ import {
 import { useNavigation, useRoute } from "@react-navigation/native";
 import theme from "../../utils/AppTheme";
 import { validateAadhaar } from "../../screens/AddNewMember/Validations";
-import { aadhaarService } from "../../services/DigiLockerService";
+import { digiLockerService } from "../../services/DigiLockerService";
 import CommonHeader from "../CommonHeader/CommonHeader";
 
 const { COLORS, SIZES, FONTS, SHADOWS } = theme;
@@ -53,6 +53,8 @@ const AadhaarVerificationScreen = () => {
 
   // Handle Aadhaar verification - Optimized for immediate URL opening
   const handleVerifyAadhaar = async (aadhaarToVerify = null) => {
+    if (isLoading) return; // prevent duplicate requests
+
     const aadhaarNum = aadhaarToVerify || aadhaarNumber.replace(/\s/g, "");
 
     if (!aadhaarNum || aadhaarNum.length !== 12) {
@@ -70,15 +72,12 @@ const AadhaarVerificationScreen = () => {
     setError("");
 
     try {
-      console.log("Initiating verification for:", aadhaarNum);
+      console.log("Initiating DigiLocker Aadhaar verification");
 
       // Start API call
-      const result = await aadhaarService.initiateVerification(
-        userId,
-        aadhaarNum
-      );
+      const result = await digiLockerService.verifyAadhaar(userId, aadhaarNum);
 
-      console.log("Verification API result:", result);
+      console.log("Verification start success:", result?.success);
 
       if (result.success && result.verificationUrl) {
         setVerificationData(result);

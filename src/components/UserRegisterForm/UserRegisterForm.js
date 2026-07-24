@@ -486,49 +486,26 @@ const TermsCheckbox = ({
 
     <View style={styles.termsCheckboxRow}>
       <TouchableOpacity
-        style={[
-          styles.checkbox,
-          termsAccepted && styles.checkboxChecked,
-          aadhaarVerified && styles.checkboxAutoAccepted,
-        ]}
-        onPress={() => {
-          if (!aadhaarVerified) {
-            updateField("termsAccepted", !termsAccepted);
-          }
-        }}
-        disabled={aadhaarVerified}
+        style={[styles.checkbox, termsAccepted && styles.checkboxChecked]}
+        onPress={() => updateField("termsAccepted", !termsAccepted)}
       >
         {termsAccepted && <Text style={styles.checkmark}>✓</Text>}
       </TouchableOpacity>
       <View style={{ flex: 1 }}>
-        {aadhaarVerified ? (
-          <View>
-            <Text style={styles.autoAcceptedText}>
-              ✅ Automatically accepted with Aadhaar verification
-            </Text>
-            <Text style={styles.termsHelperText}>
-              Terms and Conditions are automatically accepted when Aadhaar is verified.
-            </Text>
-          </View>
-        ) : (
-          <Text style={{ fontSize: 14, color: "#374151" }}>
-            I agree to the Terms and Conditions and Privacy Policy
+        <Text style={{ fontSize: 14, color: "#374151" }}>
+          I agree to the Terms and Conditions and Privacy Policy
+        </Text>
+        {aadhaarVerified && !termsAccepted && (
+          <Text style={styles.termsHelperText}>
+            Accept the Terms & Conditions to complete your KYC.
           </Text>
         )}
       </View>
     </View>
-    {errors.termsAccepted && !aadhaarVerified && (
+    {errors.termsAccepted && (
       <View style={styles.errorContainer}>
         <Text style={styles.errorIcon}>⚠️</Text>
         <Text style={styles.errorText}>{errors.termsAccepted}</Text>
-      </View>
-    )}
-    {aadhaarVerified && (
-      <View style={styles.infoContainer}>
-        <Text style={styles.infoIcon}>ℹ️</Text>
-        <Text style={styles.infoText}>
-          Terms automatically accepted as part of Aadhaar verification
-        </Text>
       </View>
     )}
   </View>
@@ -702,9 +679,6 @@ export default function ProfileManagement() {
 
   const navigation = useNavigation();
 
-  // Disable terms button when Aadhaar is verified
-  const isTermsDisabled = formData.aadhaarVerified;
-
   // ===== RENDER LOADING STATE =====
   if (isFetchingData) {
     return (
@@ -764,7 +738,9 @@ export default function ProfileManagement() {
             {formData.aadhaarVerified && (
               <View style={styles.kycBanner}>
                 <Text style={styles.kycBannerText}>
-                  ✅ Aadhaar Verified - Terms & KYC automatically accepted
+                  {formData.termsAccepted
+                    ? "✅ Aadhaar Verified — KYC complete"
+                    : "✅ Aadhaar Verified — accept Terms & Conditions to complete KYC"}
                 </Text>
               </View>
             )}
@@ -960,8 +936,8 @@ export default function ProfileManagement() {
                 variant="primary"
                 style={styles.saveButton}
                 loading={isLoading}
-                // Enable button when Aadhaar is verified OR terms are accepted
-                disabled={isLoading || (!formData.termsAccepted && !formData.aadhaarVerified)}
+                // Terms must always be explicitly accepted before saving
+                disabled={isLoading || !formData.termsAccepted}
               />
             </View>
           </ScrollView>

@@ -29,13 +29,16 @@ export default function App() {
         await useFonts();
         setFontsLoaded(true);
 
-        const response = await getAppStatus();
-        setAppEnabled(response?.enabled ?? false);
-        setDevMessage(response?.message ?? "");
+       const response = await getAppStatus();
+console.log("API Response:", response);
 
-        if (response?.enabled) {
-          setTimeout(() => checkForAppUpdate(), 1500);
-        }
+// Force the app to be enabled
+setAppEnabled(true);
+
+// Optional: still keep the message for debugging
+setDevMessage(response?.message ?? "");
+
+setTimeout(() => checkForAppUpdate(), 1500);
       } catch (error) {
         console.log("Initialization error:", error);
         setAppEnabled(false);
@@ -44,12 +47,20 @@ export default function App() {
     initApp();
   }, []);
 
-  // Setup FCM listeners once app is ready
+  // Setup FCM listeners once app is ready.
+  // Pass a proxy that dereferences the ref at NAVIGATION time — the
+  // NavigationContainer mounts after this effect runs, so capturing
+  // navigationRef.current here would capture null forever.
+  const navigationProxy = {
+    navigate: (...args) => navigationRef.current?.navigate(...args),
+    goBack: () => navigationRef.current?.goBack(),
+  };
+
   useEffect(() => {
     if (!appEnabled || listenersRef.current) return;
 
-    listenersRef.current = listenForNotifications(navigationRef.current);
-    checkInitialNotification(navigationRef.current);
+    listenersRef.current = listenForNotifications(navigationProxy);
+    checkInitialNotification(navigationProxy);
 
     return () => {
       if (listenersRef.current) {

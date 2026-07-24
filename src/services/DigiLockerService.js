@@ -138,7 +138,8 @@ class DigiLockerService {
       );
 
       const result = await response.json();
-      console.log('Aadhaar document response:', result);
+      // Do NOT log the full document — it contains the person's Aadhaar data (PII)
+      console.log('Aadhaar document fetch status:', response.status);
       
       if (response.ok) {
         return {
@@ -268,6 +269,7 @@ formatAddress(splitAddress) {
    * Format gender from single character
    */
   formatGender(genderChar) {
+    if (!genderChar || typeof genderChar !== "string") return "other";
     switch(genderChar.toUpperCase()) {
       case 'M': return 'male';
       case 'F': return 'female';

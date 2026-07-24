@@ -1,5 +1,5 @@
 // screens/PaymentWebView.js
-import React, { useEffect, useState } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import {
   View,
   ActivityIndicator,
@@ -15,22 +15,43 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import { insertSchemeCollection } from "../../services/InstallmentUpdateService";
 import { COLORS, SIZES, FONTS, SHADOWS } from "../../utils/AppTheme";
 import { API_BASE_URL } from "../../Config/API";
+import {
+  fetchWithTimeout,
+  classifyGatewayUrl,
+  interpretPaymentStatus,
+  wasTxnProcessed,
+  markTxnProcessed,
+  savePendingPayment,
+  clearPendingPayment,
+} from "../../utils/PaymentUtils";
 
 const PaymentWebView = () => {
   const route = useRoute();
   const navigation = useNavigation();
 
-  const [paymentProcessed, setPaymentProcessed] = useState(false);
   const [loading, setLoading] = useState(true);
-  const [paymentStatusChecked, setPaymentStatusChecked] = useState(false);
   const [processing, setProcessing] = useState(false);
+
+  // Refs (not state) so redirect races can't fire the handler twice —
+  // state updates are async, refs are synchronous.
+  const paymentProcessedRef = useRef(false);
+  const statusCheckedRef = useRef(false);
 
   const { paymentUrl, orderDetails, productData, payTypeResponse } =
     route.params || {};
 
-  const successUrl = "https://bmgjewellers.com/payment-success";
-  const failureUrl = "https://bmgjewellers.com/payment-failure";
-  const cancelUrl = "/cancel";
+  // Persist a pending-payment record so the payment can be recovered
+  // if the app is closed/killed while the gateway is open.
+  useEffect(() => {
+    const txn = orderDetails?.merchantTxnNo || orderDetails?.orderId;
+    if (txn) {
+      savePendingPayment({
+        merchantTxnNo: txn,
+        type: "installment",
+        payload: { orderDetails, productData },
+      });
+    }
+  }, []);
 
   // -------------------------------------------------------------
   //  HANDLE BACK BUTTON – CONFIRM BEFORE EXITING PAYMENT
@@ -157,78 +178,117 @@ const PaymentWebView = () => {
   // -------------------------------------------------------------
   // In PaymentWebView.js - Update the checkPaymentStatus function and handleRequest function
 
+  const fetchPaymentStatusOnce = async (merchantTxnNo) => {
+    const statusPayload = {
+      merchantId: "T_03342",
+      merchantTxnNo,
+      originalTxnNo: merchantTxnNo,
+      transactionType: "STATUS",
+    };
+
+    const response = await fetchWithTimeout(
+      `${API_BASE_URL}/payment/status`,
+      {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          Accept: "application/json",
+        },
+        body: JSON.stringify(statusPayload),
+      },
+      30000
+    );
+
+    return response.json();
+  };
+
   const checkPaymentStatus = async (merchantTxnNo) => {
-    console.log("\n🔍 [INSTALLMENT-WEBVIEW] checkPaymentStatus called for:", merchantTxnNo);
+    console.log("\n🔍 [INSTALLMENT-WEBVIEW] checkPaymentStatus called");
     if (!merchantTxnNo) {
       console.warn("⚠️ [INSTALLMENT-WEBVIEW] No merchantTxnNo — aborting");
+      navigation.replace("PaymentFailure", {
+        orderDetails,
+        productData,
+        paymentStatus: { message: "Missing transaction reference" },
+        isCashPayment: false,
+      });
       return;
     }
-    if (paymentStatusChecked) {
+    if (statusCheckedRef.current) {
       console.log("🔍 [INSTALLMENT-WEBVIEW] Already checked — skipping");
       return;
     }
-
-    setPaymentStatusChecked(true);
-    console.log("🔍 [INSTALLMENT-WEBVIEW] Calling /payment/status API...");
+    statusCheckedRef.current = true;
 
     try {
-      const statusPayload = {
-        merchantId: "T_03342",
-        merchantTxnNo,
-        originalTxnNo: merchantTxnNo,
-        transactionType: "STATUS",
-      };
-
-      const response = await fetch(
-        `${API_BASE_URL}/payment/status`,
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Accept: "application/json",
-          },
-          body: JSON.stringify(statusPayload),
-        }
-      );
-      
-      const data = await response.json();
-      console.log("🔍 [INSTALLMENT-WEBVIEW] /payment/status full response:", JSON.stringify(data, null, 2));
-      console.log("🔍 [INSTALLMENT-WEBVIEW] orderStatus:", data?.orderStatus, "| txnStatus:", data?.payphiResponse?.txnStatus);
+      // Poll status up to 3 times — gateways can take a moment to settle.
+      let data = null;
+      let verdict = "PENDING";
+      for (let attempt = 1; attempt <= 3; attempt++) {
+        data = await fetchPaymentStatusOnce(merchantTxnNo);
+        verdict = interpretPaymentStatus(data);
+        console.log(
+          `🔍 [INSTALLMENT-WEBVIEW] status attempt ${attempt}: orderStatus=${data?.orderStatus} txnStatus=${data?.payphiResponse?.txnStatus} → ${verdict}`
+        );
+        if (verdict !== "PENDING") break;
+        await new Promise((r) => setTimeout(r, 3000));
+      }
 
       await storePaymentData(data);
 
-      const pay = data?.payphiResponse;
-
-      // Check for cancellation status
-      const isCancelled =
-        data?.orderStatus === "CANCELLED" ||
-        data?.status === "CANCELLED" ||
-        (pay?.txnStatus && ["CANC", "CANCELLED"].includes(pay?.txnStatus)) ||
-        data?.message?.toLowerCase()?.includes("cancel");
-
-      const isSuccess =
-        data?.orderStatus === "PAID" ||
-        data?.status === "SUCCESS" ||
-        (pay?.txnStatus && ["SUC", "SUCCESS"].includes(pay?.txnStatus)) ||
-        (pay?.txnResponseCode &&
-          ["00", "000", "0000"].includes(pay?.txnResponseCode)) ||
-        pay?.txnRespDescription?.toLowerCase()?.includes("success") ||
-        data?.message?.toLowerCase()?.includes("success");
-
-      if (isCancelled) {
+      if (verdict === "CANCELLED") {
         console.log("🚫 [INSTALLMENT-WEBVIEW] Payment CANCELLED");
+        await clearPendingPayment(merchantTxnNo);
         navigation.replace("PaymentCancelled", {
           orderDetails,
           productData,
           isCashPayment: false,
         });
-      } else if (isSuccess) {
-        console.log("✅ [INSTALLMENT-WEBVIEW] Payment SUCCESS — inserting scheme collection");
-        const schemeData = buildSchemeData(data);
+        return;
+      }
 
-        try {
-          const insertResult = await insertSchemeCollection(schemeData);
-          console.log("✅ [INSTALLMENT-WEBVIEW] insertSchemeCollection result:", insertResult);
+      if (verdict === "PAID") {
+        console.log("✅ [INSTALLMENT-WEBVIEW] Payment CONFIRMED PAID by backend");
+
+        // Idempotency: never insert the same transaction twice.
+        if (await wasTxnProcessed(merchantTxnNo)) {
+          console.log("🔁 [INSTALLMENT-WEBVIEW] Txn already credited — skipping insert");
+          await clearPendingPayment(merchantTxnNo);
+          navigation.replace("PaymentSuccess", {
+            status: "SUCCESS",
+            paymentStatus: data,
+            orderDetails,
+            productData,
+            isCashPayment: false,
+            isInstallmentPayment: true,
+            paymentType: "installment",
+          });
+          return;
+        }
+
+        const schemeData = buildSchemeData(data);
+        let inserted = false;
+        let lastInsertError = null;
+
+        // Retry the credit insert up to 3 times before declaring it pending.
+        for (let attempt = 1; attempt <= 3 && !inserted; attempt++) {
+          try {
+            const insertResult = await insertSchemeCollection(schemeData);
+            console.log("✅ [INSTALLMENT-WEBVIEW] insert result:", insertResult);
+            inserted = true;
+          } catch (insertErr) {
+            lastInsertError = insertErr;
+            console.warn(
+              `⚠️ [INSTALLMENT-WEBVIEW] insert attempt ${attempt} failed:`,
+              insertErr.message
+            );
+            if (attempt < 3) await new Promise((r) => setTimeout(r, 2000));
+          }
+        }
+
+        if (inserted) {
+          await markTxnProcessed(merchantTxnNo);
+          await clearPendingPayment(merchantTxnNo);
           navigation.replace("PaymentSuccess", {
             status: "SUCCESS",
             schemeData,
@@ -239,68 +299,99 @@ const PaymentWebView = () => {
             isInstallmentPayment: true,
             paymentType: "installment",
           });
-        } catch (insertErr) {
-          console.warn("⚠️ [INSTALLMENT-WEBVIEW] insertSchemeCollection failed:", insertErr.message);
+        } else {
+          // Payment IS confirmed, but crediting failed. Keep the pending
+          // record for recovery and tell the user the truth — never show a
+          // plain success screen for an uncredited payment.
+          console.error(
+            "❌ [INSTALLMENT-WEBVIEW] Payment PAID but credit insert failed:",
+            lastInsertError?.message
+          );
           navigation.replace("PaymentSuccess", {
             status: "SUCCESS",
+            creditPending: true,
             paymentStatus: data,
             orderDetails,
             productData,
             isCashPayment: false,
+            isInstallmentPayment: true,
+            paymentType: "installment",
           });
         }
-      } else {
-        console.log("❌ [INSTALLMENT-WEBVIEW] Payment FAILED");
+        return;
+      }
+
+      if (verdict === "PENDING") {
+        console.log("⏳ [INSTALLMENT-WEBVIEW] Payment still PENDING after polling");
+        // Keep the pending record — recovery will re-check on next launch.
         navigation.replace("PaymentFailure", {
           orderDetails,
           productData,
-          paymentStatus: data,
+          paymentStatus: {
+            ...data,
+            message:
+              "Your payment is still being processed. If money was deducted, it will be credited automatically — please check Payment History shortly.",
+            isPending: true,
+          },
           isCashPayment: false,
         });
+        return;
       }
-    } catch (error) {
-      console.error("❌ [INSTALLMENT-WEBVIEW] checkPaymentStatus error:", error.message);
+
+      // FAILED
+      console.log("❌ [INSTALLMENT-WEBVIEW] Payment FAILED");
+      await clearPendingPayment(merchantTxnNo);
       navigation.replace("PaymentFailure", {
         orderDetails,
         productData,
-        paymentStatus: { message: "Network error or timeout" },
+        paymentStatus: data,
+        isCashPayment: false,
+      });
+    } catch (error) {
+      console.error("❌ [INSTALLMENT-WEBVIEW] checkPaymentStatus error:", error.message);
+      // Do NOT clear the pending record — status is unknown, recovery will re-check.
+      navigation.replace("PaymentFailure", {
+        orderDetails,
+        productData,
+        paymentStatus: {
+          message:
+            "We couldn't confirm your payment due to a network problem. If money was deducted, it will be verified automatically on your next app launch.",
+          isPending: true,
+        },
         isCashPayment: false,
       });
     }
   };
-  // Also update the handleRequest function for failure URLs:
   const handleRequest = (request) => {
     const url = request.url;
     console.log("\n🌐 [INSTALLMENT-WEBVIEW] URL intercepted:", url.substring(0, 150));
 
-    if (paymentProcessed) {
+    if (paymentProcessedRef.current) {
       console.log("🌐 [INSTALLMENT-WEBVIEW] Already processed — blocking");
       return false;
     }
 
-    if (
-      url.includes(successUrl) ||
-      url.includes("/payment-success") ||
-      url.includes("/success")
-    ) {
-      console.log("✅ [INSTALLMENT-WEBVIEW] SUCCESS URL detected");
-      setPaymentProcessed(true);
+    // Strict, exact-path classification — never bare "/success" substrings.
+    const outcome = classifyGatewayUrl(url);
+
+    if (outcome === "success") {
+      console.log("✅ [INSTALLMENT-WEBVIEW] SUCCESS redirect detected");
+      paymentProcessedRef.current = true;
       setProcessing(true);
 
       const txn = orderDetails?.merchantTxnNo || orderDetails?.orderId;
+      // Backend remains the source of truth — verify before doing anything.
       setTimeout(() => checkPaymentStatus(txn), 1000);
       return false;
     }
 
-    if (
-      url.includes(failureUrl) ||
-      url.includes("/payment-failure") ||
-      url.includes("/failure")
-    ) {
-      console.log("❌ [INSTALLMENT-WEBVIEW] FAILURE URL detected");
-      setPaymentProcessed(true);
+    if (outcome === "failure") {
+      console.log("❌ [INSTALLMENT-WEBVIEW] FAILURE redirect detected");
+      paymentProcessedRef.current = true;
       setProcessing(true);
 
+      const txn = orderDetails?.merchantTxnNo || orderDetails?.orderId;
+      clearPendingPayment(txn);
       navigation.replace("PaymentFailure", {
         orderDetails,
         productData,
@@ -310,18 +401,14 @@ const PaymentWebView = () => {
       return false;
     }
 
-    if (
-      url.includes("/cancel") ||
-      url.includes("/cancelled") ||
-      url.includes("/payment-cancel") ||
-      url.includes("/payment-cancelled")
-    ) {
-      console.log("🚫 [INSTALLMENT-WEBVIEW] CANCEL URL detected");
-      setPaymentProcessed(true);
+    if (outcome === "cancel") {
+      console.log("🚫 [INSTALLMENT-WEBVIEW] CANCEL redirect detected");
+      paymentProcessedRef.current = true;
       setProcessing(true);
 
+      const txn = orderDetails?.merchantTxnNo || orderDetails?.orderId;
+      clearPendingPayment(txn);
       navigation.replace("PaymentCancelled", {
-        // Changed to PaymentCancelled
         orderDetails,
         productData,
         isCashPayment: false,

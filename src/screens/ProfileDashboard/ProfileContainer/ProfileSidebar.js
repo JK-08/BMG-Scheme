@@ -26,6 +26,7 @@ import {
   getUserData,
   clearUserData,
   saveUserData,
+  logoutUser,
 } from "../../../utils/AsynchStorageHelper";
 import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Application from "expo-application";
@@ -459,11 +460,9 @@ const pickImageFromGallery = useCallback(async () => {
         text: "Logout",
         onPress: async () => {
           try {
-            await Promise.all([
-              clearUserData(),
-              AsyncStorage.removeItem("userProfilePicture"),
-              AsyncStorage.clear(),
-            ]);
+            // Shared logout: clears session keys but preserves onboarding
+            // flag and payment-recovery/idempotency records.
+            await logoutUser();
           } catch (error) {
             console.error("Logout error:", error);
           } finally {

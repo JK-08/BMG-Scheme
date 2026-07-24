@@ -399,7 +399,12 @@ const SchemeDetailsPage = ({
                   styles.buttonDisabled,
                 ]}
                 onPress={handleSubmit}
-                disabled={isSubmitting || !numericSchemeId || Number(formData.amount) < minAmount}
+                disabled={
+                  isSubmitting ||
+                  !isAgreed ||
+                  !numericSchemeId ||
+                  Number(formData.amount) < minAmount
+                }
                 activeOpacity={0.7}
               >
                 {isSubmitting ? (

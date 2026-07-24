@@ -32,6 +32,7 @@ import MainHeader from "../../components/MainHeader/MainHeader";
 import { getPhoneDetails } from "../../services/SchemeDetailsService";
 import { getUserData } from "../../utils/AsynchStorageHelper";
 import { getAllSchemes } from "../../services/SchemeNameService";
+import { recoverPendingPayments } from "../../services/PaymentRecoveryService";
 
 import {
   registerForPushNotifications,
@@ -432,6 +433,33 @@ function MainLanding() {
   useEffect(() => {
     fetchProductData(false);
     fetchSchemes();
+  }, []);
+
+  // Recover payments interrupted mid-flow (app closed during payment,
+  // credit insert failed after a confirmed payment, etc.).
+  useEffect(() => {
+    const runRecovery = async () => {
+      try {
+        const { recovered } = await recoverPendingPayments();
+        if (recovered.length > 0) {
+          const joins = recovered.filter((r) => r.type === "join").length;
+          const installments = recovered.length - joins;
+          const parts = [];
+          if (joins) parts.push(`${joins} scheme enrollment${joins > 1 ? "s" : ""}`);
+          if (installments)
+            parts.push(`${installments} installment payment${installments > 1 ? "s" : ""}`);
+          Alert.alert(
+            "Payment Completed",
+            `Good news — we finished processing ${parts.join(" and ")} from your earlier payment${recovered.length > 1 ? "s" : ""}.`
+          );
+          // Refresh dashboard data so the recovered payments are visible
+          fetchProductData(true);
+        }
+      } catch (e) {
+        console.warn("Payment recovery check failed:", e.message);
+      }
+    };
+    runRecovery();
   }, []);
 
   // useFocusEffect to refresh when screen focused

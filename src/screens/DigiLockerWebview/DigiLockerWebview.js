@@ -29,11 +29,39 @@ const DigiLockerWebViewScreen = () => {
     aadhaarNumber,
     onVerificationComplete,
     userId, // Add userId from params
+    sourceScreen, // e.g. "profile" when launched outside the register form
   } = route.params || {};
 
   const [isLoading, setIsLoading] = useState(true);
   const [currentUrl, setCurrentUrl] = useState("");
   const [isCheckingStatus, setIsCheckingStatus] = useState(false);
+
+  // Guards: ensure verification completion runs exactly once,
+  // and the success-redirect is only handled once.
+  const completionStartedRef = useRef(false);
+  const redirectHandledRef = useRef(false);
+
+  // Navigate back to the caller after verification finishes.
+  // If a callback was provided, the caller's own screen handles the result,
+  // so we simply pop back instead of stacking a new UserRegisterForm.
+  const navigateBackToCaller = (params = {}) => {
+    if (onVerificationComplete) {
+      try {
+        if (sourceScreen === "profile" && navigation.canGoBack()) {
+          // Skip the intermediate AadhaarVerification screen when possible
+          navigation.pop(2);
+        } else if (navigation.canGoBack()) {
+          navigation.goBack();
+        } else {
+          navigation.replace("UserRegisterForm", { userId, ...params });
+        }
+      } catch (e) {
+        navigation.goBack();
+      }
+    } else {
+      navigation.replace("UserRegisterForm", { userId, ...params });
+    }
+  };
 
   // Handle back button
   useEffect(() => {
@@ -65,20 +93,31 @@ const DigiLockerWebViewScreen = () => {
   }, [currentUrl, verificationUrl]);
 
   const handleExitVerification = () => {
-    // Navigate back to UserRegisterForm with cancellation status
-    navigation.replace("UserRegisterForm", {
+    // Inform the caller (if any) that verification was cancelled
+    if (onVerificationComplete) {
+      onVerificationComplete({
+        success: false,
+        aadhaarVerified: false,
+        message: "Verification cancelled by user",
+      });
+    }
+    navigateBackToCaller({
       verificationCancelled: true,
       aadhaarNumber: aadhaarNumber,
       message: "Verification cancelled by user",
       allowManualEntry: true,
-      userId: userId, // Pass userId back
     });
   };
 
-  // Complete verification process
+  // Complete verification process (guarded — runs at most once)
   const completeVerification = async () => {
+    if (completionStartedRef.current) {
+      console.log("completeVerification already started — skipping duplicate call");
+      return;
+    }
+    completionStartedRef.current = true;
     setIsCheckingStatus(true);
-    
+
     try {
       // Use the complete verification method that fetches document data
       const verificationResult = await digiLockerService.completeVerification(
@@ -86,14 +125,37 @@ const DigiLockerWebViewScreen = () => {
         aadhaarNumber
       );
       
-      console.log("Complete verification result:", verificationResult);
-      
+      console.log(
+        "Complete verification result — success:",
+        verificationResult?.success,
+        "| verified:",
+        verificationResult?.aadhaarVerified
+      );
+
+      // If verification simply isn't finished yet (still pending), stay on this
+      // screen and let the user finish or retry instead of kicking them out.
+      if (
+        !verificationResult.success &&
+        (verificationResult.aadhaarStatus === "PENDING" ||
+          /not completed/i.test(verificationResult.message || ""))
+      ) {
+        completionStartedRef.current = false;
+        redirectHandledRef.current = false;
+        setIsCheckingStatus(false);
+        Alert.alert(
+          "Verification Not Complete",
+          "Your DigiLocker verification hasn't finished yet. Please complete it and then tap Check Status.",
+          [{ text: "OK" }]
+        );
+        return;
+      }
+
       // Pass result to callback if exists
       if (onVerificationComplete) {
         onVerificationComplete(verificationResult);
       }
-      
-      // Navigate back to UserRegisterForm with verification data
+
+      // Navigate back with verification data
       if (verificationResult.success && verificationResult.aadhaarVerified) {
         // Format date of birth from DD-MM-YYYY to YYYY-MM-DD
         const formatDOB = (dobString) => {
@@ -111,7 +173,7 @@ const DigiLockerWebViewScreen = () => {
         const aadhaarData = verificationResult.userDetails || {};
         const documentData = verificationResult.documentData || {};
         
-        navigation.replace("UserRegisterForm", {
+        navigateBackToCaller({
           verificationData: verificationResult,
           aadhaarVerified: true,
           aadhaarNumber: verificationResult.idProofNo,
@@ -120,33 +182,35 @@ const DigiLockerWebViewScreen = () => {
           aadhaarVerifiedAt: verificationResult.aadhaarVerifiedAt,
           aadhaarStatus: verificationResult.aadhaarStatus || 'VERIFIED',
           kycVerified: false, // Will be computed based on terms acceptance
-          
+
           // Auto-fill data
           username: aadhaarData.name || '',
           dateOfBirth: formatDOB(aadhaarData.dob) || '',
           gender: aadhaarData.gender || '',
           address1: aadhaarData.address || '',
-          
-          userId: userId, // Pass userId back
         });
       } else {
         // Verification failed
-        navigation.replace("UserRegisterForm", {
+        navigateBackToCaller({
           verificationError: verificationResult.message || "Verification failed",
           aadhaarNumber: aadhaarNumber,
           allowManualEntry: true,
-          userId: userId, // Pass userId back
         });
       }
-      
+
     } catch (error) {
       console.error("Verification completion error:", error);
-      // On error, navigate back to UserRegisterForm
-      navigation.replace("UserRegisterForm", {
+      if (onVerificationComplete) {
+        onVerificationComplete({
+          success: false,
+          aadhaarVerified: false,
+          message: "Verification failed. Please try again.",
+        });
+      }
+      navigateBackToCaller({
         verificationError: "Verification failed. Please try again or enter manually.",
         aadhaarNumber: aadhaarNumber,
         allowManualEntry: true,
-        userId: userId, // Pass userId back
       });
     } finally {
       setIsCheckingStatus(false);
@@ -169,16 +233,7 @@ const DigiLockerWebViewScreen = () => {
         },
         {
           text: "Cancel Verification",
-          onPress: () => {
-            // Navigate to UserRegisterForm with cancellation
-            navigation.replace("UserRegisterForm", {
-              verificationCancelled: true,
-              aadhaarNumber: aadhaarNumber,
-              message: "Verification cancelled",
-              allowManualEntry: true,
-              userId: userId, // Pass userId back
-            });
-          },
+          onPress: () => handleExitVerification(),
           style: "destructive",
         },
       ]
@@ -190,10 +245,16 @@ const DigiLockerWebViewScreen = () => {
     setCurrentUrl(url);
     setIsLoading(navState.loading);
 
-    // Check if redirected to success URL (bmgjewellers.com)
-    if (url && url.includes("bmgjewellers.com")) {
-      console.log("Success redirect detected to bmgjewellers.com");
-      // Wait 2 seconds then complete verification
+    // Check if redirected to the configured redirect_url (bmgjewellers.com).
+    // Guarded so multiple navigation-state events only trigger completion once.
+    if (
+      url &&
+      url.startsWith("https://bmgjewellers.com") &&
+      !redirectHandledRef.current
+    ) {
+      redirectHandledRef.current = true;
+      console.log("Redirect to completion URL detected");
+      // Give DigiLocker's backend a moment to persist status, then verify once
       setTimeout(() => {
         completeVerification();
       }, 2000);
@@ -209,14 +270,20 @@ const DigiLockerWebViewScreen = () => {
     Alert.alert(
       "Error Loading DigiLocker",
       "Failed to load DigiLocker. Please check your internet connection.",
-      [{ 
-        text: "OK", 
+      [{
+        text: "OK",
         onPress: () => {
-          navigation.replace("UserRegisterForm", {
+          if (onVerificationComplete) {
+            onVerificationComplete({
+              success: false,
+              aadhaarVerified: false,
+              message: "Failed to load DigiLocker",
+            });
+          }
+          navigateBackToCaller({
             verificationError: "Failed to load DigiLocker",
             aadhaarNumber: aadhaarNumber,
             allowManualEntry: true,
-            userId: userId, // Pass userId back
           });
         }
       }]
