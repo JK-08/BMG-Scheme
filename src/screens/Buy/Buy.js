@@ -183,7 +183,7 @@ const BuyPage = () => {
       return false;
     }
     // Add minimum amount validation
-    if (numValue < 100) {
+    if (numValue < 1) {
       setAmountError("Minimum amount is ₹100");
       return false;
     }
@@ -476,16 +476,37 @@ const BuyPage = () => {
         returnURL: "https://app.bmgjewellers.com/api/v1/payment/success",
       };
 
+      // Same shape buildSchemeData() below produces for the cash path, so the backend
+      // (webhook fallback AND the guarded /account/insert path) can complete this
+      // installment even if the app is closed/killed after payment. chqRtnReason is
+      // stamped with the order id now (no PhiCommerce txnID exists yet) so the
+      // claimCreditOnce() guard can key off it as soon as the payment settles.
+      const schemeData = buildSchemeData();
+      schemeData.modePay = "O";
+      schemeData.accCode = "2";
+      schemeData.chqRtnReason = orderId;
+      // These get overwritten with the real gateway reference by PaymentWebView's own
+      // buildSchemeData() once the client completes crediting; this initiate-time
+      // snapshot only matters if the webhook ends up being the one to credit instead.
+      schemeData.chqBranch = "ONLINE";
+      schemeData.chkBank = "ONLINE";
+
       console.log("🛒 [INSTALLMENT-HANDLEBUY] initiate-sale payload:", JSON.stringify(payload, null, 2));
 
+      // Plain JSON envelope (multipart/FormData was tried first but React Native's fetch
+      // doesn't reliably negotiate a multipart boundary against Spring's multipart
+      // resolver — it blanket-failed with 415 on real devices).
       const initiate = await fetch(`${API_BASE_URL}/payment/initiate-sale`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: token,
         },
-
-        body: JSON.stringify(payload),
+        body: JSON.stringify({
+          request: payload,
+          userType: "insupdate",
+          userDetails: JSON.stringify(schemeData),
+        }),
       });
 
       if (!initiate.ok) {
@@ -588,6 +609,7 @@ const BuyPage = () => {
     token,
     validateAmount,
     createOrder,
+    buildSchemeData,
   ]);
 
   // keep a stable ref to handleBuy so that Alert retry can call it safely

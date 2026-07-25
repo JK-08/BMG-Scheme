@@ -380,11 +380,17 @@ const AddNewMember = () => {
   };
 
   // Initiate payment
+  // numericSchemeId/schemeFormData are needed to build the same userDetails payload
+  // buildMemberCreateBody() would produce, so the backend (webhook fallback AND the
+  // guarded /member/create path) has everything it needs to complete this join even
+  // if the app is closed/killed after payment. See MemberCreateService.js.
   const initiatePayment = async (
     orderId,
     amount,
     defaultRegNo,
-    defaultGroupCode
+    defaultGroupCode,
+    numericSchemeId,
+    schemeFormData
   ) => {
     try {
       const paymentPayload = {
@@ -398,17 +404,37 @@ const AddNewMember = () => {
         returnURL: "https://app.bmgjewellers.com/api/v1/payment/success",
       };
 
+      const memberCreateBody = buildMemberCreateBody({
+        memberData: transformedMemberData,
+        numericSchemeId,
+        groupCode: defaultGroupCode,
+        regNo: defaultRegNo,
+        schemeFormData,
+        referralCode: ReferralCode || "",
+        cashPayment: false,
+      });
+      // This request hasn't reached PhiCommerce yet, so there's no txnID to record on
+      // schemeCollectInsert.chqRtnReason — stamp the order id we already generated so
+      // the webhook/claim guard can key off it as soon as the payment settles.
+      memberCreateBody.schemeCollectInsert.chqRtnReason = orderId;
+
       console.log("Initiating payment with payload:", paymentPayload);
       console.log("🟢 Token present before initiating:", !!token);
 
-      // Step 1: Initiate sale
+      // Step 1: Initiate sale — plain JSON envelope (multipart/FormData was tried first
+      // but React Native's fetch doesn't reliably negotiate a multipart boundary against
+      // Spring's multipart resolver — it blanket-failed with 415 on real devices).
       const initiateRes = await fetch(`${API_BASE_URL}/payment/initiate-sale`, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
           Authorization: token,
         },
-        body: JSON.stringify(paymentPayload),
+        body: JSON.stringify({
+          request: paymentPayload,
+          userType: "newjoin",
+          userDetails: JSON.stringify(memberCreateBody),
+        }),
       });
       const initiateData = await initiateRes.json();
       console.log("initiate payment response:", initiateRes);
@@ -974,7 +1000,9 @@ const processCashPayment = async (schemeFormData, numericSchemeId) => {
         orderData.orderId,
         amount,
         regNo,
-        groupCode
+        groupCode,
+        numericSchemeId,
+        schemeFormData
       );
 
       console.log("💳 [JOIN-ONLINE] Payment initiate response:", JSON.stringify(paymentData, null, 2));
