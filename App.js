@@ -29,16 +29,11 @@ export default function App() {
         await useFonts();
         setFontsLoaded(true);
 
-       const response = await getAppStatus();
-console.log("API Response:", response);
+        const response = await getAppStatus();
+        setAppEnabled(response?.enabled ?? false);
+        setDevMessage(response?.message ?? "");
 
-// Force the app to be enabled
-setAppEnabled(true);
-
-// Optional: still keep the message for debugging
-setDevMessage(response?.message ?? "");
-
-setTimeout(() => checkForAppUpdate(), 1500);
+        setTimeout(() => checkForAppUpdate(), 1500);
       } catch (error) {
         console.log("Initialization error:", error);
         setAppEnabled(false);

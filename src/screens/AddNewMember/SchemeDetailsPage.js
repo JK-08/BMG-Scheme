@@ -108,7 +108,7 @@ const SchemeDetailsPage = ({
 
   const MINIMUM_AMOUNT_MAP = {
     1: 1,    // Amount Scheme
-    2: 1,  // Digi Silver
+    2: 100,  // Digi Silver
     3: 10000, // Fixed Deposit
   };
 

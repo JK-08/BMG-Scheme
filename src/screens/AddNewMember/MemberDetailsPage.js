@@ -560,52 +560,63 @@ const MemberDetailsPage = ({
 
     const loadInitialData = async () => {
       try {
-        const [savedUserData, email, username, phone] = await Promise.all([
+        const [savedUserData, savedMemberForm, email, username] = await Promise.all([
           AsyncStorage.getItem("digigoldUserData"),
+          AsyncStorage.getItem("digigoldMemberForm"),
           AsyncStorage.getItem("userEmail"),
           AsyncStorage.getItem("username"),
-          AsyncStorage.getItem("userPhoneNumber"),
         ]);
 
-        const userDataFromStorage = savedUserData
-          ? JSON.parse(savedUserData)
-          : {};
+        const userDataFromStorage = savedUserData ? JSON.parse(savedUserData) : {};
+        const memberForm = savedMemberForm ? JSON.parse(savedMemberForm) : {};
 
-        setFormData((prev) => {
-          const merged = {
-            ...prev,
-            email: prev.email || email || userDataFromStorage.email || "",
-            name: prev.name || username || userDataFromStorage.name || "",
-            maritalStatus:
-              userDataFromStorage.maritalStatus || prev.maritalStatus || "",
-            anniversaryDate:
-              userDataFromStorage.anniversaryDate || prev.anniversaryDate || "",
-            panNumber: userDataFromStorage.panNumber || prev.panNumber || "",
-            selectedSchemeId:
-              initialSchemeId || userDataFromStorage.selectedSchemeId || null,
-            selectedSchemeName:
-              initialSchemeName || userDataFromStorage.selectedSchemeName || "",
-          };
-          return merged;
-        });
+        setFormData((prev) => ({
+          ...prev,
+          email: prev.email || email || userDataFromStorage.email || "",
+          name: prev.name || username || userDataFromStorage.name || "",
+          maritalStatus: memberForm.maritalStatus || userDataFromStorage.maritalStatus || prev.maritalStatus || "",
+          anniversaryDate: memberForm.anniversaryDate || userDataFromStorage.anniversaryDate || prev.anniversaryDate || "",
+          panNumber: memberForm.panNumber || userDataFromStorage.panNumber || prev.panNumber || "",
+          // Restore nominee fields from saved form
+          nomeni: memberForm.nomeni || prev.nomeni || "",
+          mobile2: memberForm.mobile2 || prev.mobile2 || "",
+          nomineeAadhaarNumber: memberForm.nomineeAadhaarNumber || prev.nomineeAadhaarNumber || "",
+          nomineeAadhaarVerified: memberForm.nomineeAadhaarVerified || false,
+          nomineeAadhaarVerificationId: memberForm.nomineeAadhaarVerificationId || "",
+          nomineeName: memberForm.nomineeName || prev.nomineeName || "",
+          nomineeDOB: memberForm.nomineeDOB || prev.nomineeDOB || "",
+          nomineeGender: memberForm.nomineeGender || prev.nomineeGender || "",
+          nomineeAddress: memberForm.nomineeAddress || prev.nomineeAddress || "",
+          nomineeCareOf: memberForm.nomineeCareOf || prev.nomineeCareOf || "",
+          nomineeYearOfBirth: memberForm.nomineeYearOfBirth || prev.nomineeYearOfBirth || "",
+          nomineeRelationship: memberForm.nomineeRelationship || prev.nomineeRelationship || "Spouse",
+          nomAddr1: memberForm.nomAddr1 || prev.nomAddr1 || "",
+          nomAddr2: memberForm.nomAddr2 || prev.nomAddr2 || "",
+          nomCity: memberForm.nomCity || prev.nomCity || "",
+          nomState: memberForm.nomState || prev.nomState || "",
+          nomPincode: memberForm.nomPincode || prev.nomPincode || "",
+          nomCountry: memberForm.nomCountry || prev.nomCountry || "India",
+          selectedSchemeId: initialSchemeId || memberForm.selectedSchemeId || null,
+          selectedSchemeName: initialSchemeName || memberForm.selectedSchemeName || "",
+        }));
 
-        if (initialSchemeId || userDataFromStorage.selectedSchemeId) {
+        if (initialSchemeId || memberForm.selectedSchemeId) {
           setSelectedScheme({
-            id: initialSchemeId || userDataFromStorage.selectedSchemeId,
-            name:
-              initialSchemeName ||
-              userDataFromStorage.selectedSchemeName ||
-              "Select a Scheme",
+            id: initialSchemeId || memberForm.selectedSchemeId,
+            name: initialSchemeName || memberForm.selectedSchemeName || "Select a Scheme",
           });
         }
 
-        setNomineeAadhaarStatus({
-          isVerified: false,
-          isVerifying: false,
-          verificationId: "",
-          message: "",
-          aadhaarData: null,
-        });
+        // Restore nominee verification status if previously verified
+        if (memberForm.nomineeAadhaarVerified && memberForm.nomineeAadhaarVerificationId) {
+          setNomineeAadhaarStatus({
+            isVerified: true,
+            isVerifying: false,
+            verificationId: memberForm.nomineeAadhaarVerificationId,
+            message: "Nominee Aadhaar verified",
+            aadhaarData: memberForm.nomineeAadhaarData || null,
+          });
+        }
       } catch (error) {
         console.error("Load error:", error);
       }
@@ -775,16 +786,15 @@ const MemberDetailsPage = ({
       if (field === "nomineeAadhaarNumber") {
         const cleanValue = value.replace(/\s/g, "");
 
-        if (cleanValue.length === 12) {
-          setNomineeAadhaarStatus((prev) => ({
-            ...prev,
+        if (cleanValue.length > 0) {
+          setNomineeAadhaarStatus({
             isVerified: false,
+            isVerifying: false,
             verificationId: "",
             message: "",
             aadhaarData: null,
-          }));
-          setFormData((prev) => ({
-            ...prev,
+          });
+          const clearedNomineeFields = {
             nomineeAadhaarVerified: false,
             nomineeAadhaarVerificationId: "",
             nomineeName: "",
@@ -798,7 +808,9 @@ const MemberDetailsPage = ({
             nomCity: "",
             nomState: "",
             nomPincode: "",
-          }));
+          };
+          setFormData((prev) => ({ ...prev, ...clearedNomineeFields }));
+          AsyncStorage.removeItem("digilocker_verification_id");
 
           if (isSameAadhaar()) {
             const userLast4 = getUserAadhaarLast4();

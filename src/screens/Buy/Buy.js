@@ -183,7 +183,7 @@ const BuyPage = () => {
       return false;
     }
     // Add minimum amount validation
-    if (numValue < 1) {
+    if (numValue < 100) {
       setAmountError("Minimum amount is ₹100");
       return false;
     }
