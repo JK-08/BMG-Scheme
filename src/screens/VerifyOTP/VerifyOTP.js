@@ -111,10 +111,7 @@ const VerifyOtpScreen = ({ route }) => {
           "Success",
           data.errorMessage || "Contact number updated successfully!"
         );
-        navigation.reset({
-          index: 0,
-          routes: [{ name: "MpinScreen", params: { step: 3 } }],
-        });
+        navigation.navigate("Drawer");
       } else {
         data = await OTPService.verifyForgotPasswordOTP(
           contactNumber,

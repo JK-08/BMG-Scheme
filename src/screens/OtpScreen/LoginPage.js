@@ -167,7 +167,7 @@ function LoginPage() {
         if (!contactNumber || contactNumber.trim() === "") {
           navigation.navigate("EnterNumber", { userId: id, email, username });
         } else {
-          navigation.navigate("VerifyMpinScreen", { step: 3 });
+          navigation.navigate("Drawer");
         }
       } else {
         showToast(response.error || "Google authentication failed");
@@ -213,7 +213,7 @@ function LoginPage() {
         await saveUserData(normalizedData);
 
         showToast("Login successful!");
-        navigation.navigate("VerifyMpinScreen", { step: 3 });
+        navigation.navigate("Drawer");
       } else {
         showToast(res.error || "Invalid credentials");
         setErrors((prev) => ({

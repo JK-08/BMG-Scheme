@@ -2,7 +2,7 @@
   "expo": {
     "name": "BMG Digi Schemes",
     "slug": "bmg-scheme-final",
-    "version": "1.5.1",
+    "version": "1.6.1",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
     "userInterfaceStyle": "light",
@@ -17,7 +17,7 @@
     "ios": {
       "supportsTablet": true,
       "bundleIdentifier": "com.bmg.bmgscheme",
-      "buildNumber": "5",
+      "buildNumber": "6",
       "infoPlist": {
         "ITSAppUsesNonExemptEncryption": false,
         "NSCameraUsageDescription": "This app uses the camera for profile photo upload",

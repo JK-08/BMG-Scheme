@@ -65,12 +65,10 @@ useEffect(() => {
   const checkUserState = async () => {
     try {
       const hasSeenOnboarding = await AsyncStorage.getItem("hasSeenOnboarding");
-      const isMpinCreated = await AsyncStorage.getItem("isMpinCreated");
       const userPhoneNumber = await AsyncStorage.getItem("userPhoneNumber");
 
       console.log("🟩 Storage Values:", {
         hasSeenOnboarding,
-        isMpinCreated,
         userPhoneNumber,
       });
 
@@ -78,12 +76,8 @@ useEffect(() => {
         // First-time open → Onboarding
         setInitialRoute("OnboardingScreen");
       } else if (userPhoneNumber) {
-        // Phone number exists → go to MPIN
-        if (isMpinCreated === "true") {
-          setInitialRoute("VerifyMpinScreen");
-        } else {
-          setInitialRoute("MpinScreen");
-        }
+        // Phone number exists → go to main app
+        setInitialRoute("Drawer");
       } else {
         // No phone number → show login
         setInitialRoute("LoginPage");

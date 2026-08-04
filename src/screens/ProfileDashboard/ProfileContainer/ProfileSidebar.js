@@ -31,8 +31,8 @@ import AsyncStorage from "@react-native-async-storage/async-storage";
 import * as Application from "expo-application";
 import { checkForUpdate } from "../../../utils/VersionChecker";
 import { SafeAreaView } from "react-native-safe-area-context";
-import * as ImagePicker from "expo-image-picker";
-import memberPhotoService from "../../../services/UserProfileService";
+// import * as ImagePicker from "expo-image-picker";
+// import memberPhotoService from "../../../services/UserProfileService";
 import { API_BASE_URL } from "../../../Config/API";
 
 const { COLORS, SIZES, FONTS, moderateScale } = theme;
@@ -61,8 +61,8 @@ const MENU_ITEMS = [
 ];
 
 const SETTINGS_ITEMS = [
-  { label: "Update Profile Picture", icon: "photo-camera", action: "profilePicture" },
-  { label: "Reset MPIN", icon: "lock-reset", route: "ResetMpin" },
+  // { label: "Update Profile Picture", icon: "photo-camera", action: "profilePicture" },
+  // { label: "Reset MPIN", icon: "lock-reset", route: "ResetMpin" },
   { label: "Account Delete", icon: "delete", route: "DeleteButton" },
 ];
 
@@ -72,10 +72,10 @@ const DrawerMenu = ({ isVisible, onClose }) => {
   
   // State
   const [userData, setUserData] = useState({});
-  const [uploading, setUploading] = useState(false);
+  // const [uploading, setUploading] = useState(false);
   const [showSettings, setShowSettings] = useState(false);
-  const [selectedImagePreview, setSelectedImagePreview] = useState(null);
-  const [previewModalVisible, setPreviewModalVisible] = useState(false);
+  // const [selectedImagePreview, setSelectedImagePreview] = useState(null);
+  // const [previewModalVisible, setPreviewModalVisible] = useState(false);
   const [loading, setLoading] = useState(false);
   
   // Refs
@@ -313,139 +313,6 @@ const DrawerMenu = ({ isVisible, onClose }) => {
     })
   ).current;
 
-  // Image handling functions
-const pickImageFromGallery = useCallback(async () => {
-  try {
-    const result = await ImagePicker.launchImageLibraryAsync({
-      mediaTypes: ImagePicker.MediaTypeOptions.Images,
-      allowsEditing: false,
-      quality: 0.8,
-    });
-
-    if (!result.canceled && result.assets?.[0]) {
-      setSelectedImagePreview(result.assets[0]);
-      setPreviewModalVisible(true);
-    }
-  } catch (error) {
-    console.error("Error picking image:", error);
-    Alert.alert("Error", "Failed to pick image from gallery.");
-  }
-}, []);
-
-
-  const takePhotoWithCamera = useCallback(async () => {
-    try {
-      const { status } = await ImagePicker.requestCameraPermissionsAsync();
-      
-      if (status !== "granted") {
-        Alert.alert("Permission Required", "We need camera permission to take a photo.");
-        return;
-      }
-
-      const result = await ImagePicker.launchCameraAsync({
-        allowsEditing: false,
-        quality: 0.8,
-      });
-
-      if (!result.canceled && result.assets?.[0]) {
-        setSelectedImagePreview(result.assets[0]);
-        setPreviewModalVisible(true);
-      }
-    } catch (error) {
-      console.error("Error taking photo:", error);
-      Alert.alert("Error", "Failed to take photo.");
-    }
-  }, []);
-
-  const uploadProfilePicture = useCallback(async (imageAsset) => {
-    setUploading(true);
-    
-    try {
-      const image = {
-        uri: imageAsset.uri,
-        type: imageAsset.mimeType || "image/jpeg",
-        fileName: imageAsset.fileName || `profile_${Date.now()}.jpg`,
-      };
-
-      const response = await memberPhotoService.uploadPhoto(image);
-      
-      if (response.photoPath) {
-        let fullImageUrl;
-        
-        if (response.photoPath.startsWith('http')) {
-          fullImageUrl = response.photoPath;
-        } else if (response.photoPath.startsWith('/')) {
-          fullImageUrl = `${IMAGE_BASE_URL}${response.photoPath}`;
-        } else {
-          fullImageUrl = `${IMAGE_BASE_URL}/uploads/${response.photoPath}`;
-        }
-        
-        setUserData(prev => ({ ...prev, picture: fullImageUrl }));
-        await AsyncStorage.setItem("userProfilePicture", fullImageUrl);
-        
-        Alert.alert("Success", response.message || "Profile picture updated successfully!");
-      } else {
-        Alert.alert("Warning", "Upload completed but no photo path returned.");
-      }
-    } catch (error) {
-      console.error("Upload error:", error);
-      Alert.alert("Upload Failed", error.message || "Failed to upload profile picture.");
-    } finally {
-      setUploading(false);
-    }
-  }, []);
-
-  const deleteProfilePicture = useCallback(async () => {
-    Alert.alert(
-      "Delete Profile Picture",
-      "Are you sure you want to remove your profile picture?",
-      [
-        { text: "Cancel", style: "cancel" },
-        {
-          text: "Delete",
-          style: "destructive",
-          onPress: async () => {
-            try {
-              setUploading(true);
-              await memberPhotoService.deletePhoto();
-              setUserData(prev => ({ ...prev, picture: null }));
-              await AsyncStorage.removeItem("userProfilePicture");
-              Alert.alert("Success", "Profile picture removed successfully!");
-            } catch (error) {
-              console.error("Delete error:", error);
-              Alert.alert("Error", "Failed to delete profile picture.");
-            } finally {
-              setUploading(false);
-            }
-          },
-        },
-      ]
-    );
-  }, []);
-
-  const handleUseImage = useCallback(async () => {
-    if (selectedImagePreview) {
-      setPreviewModalVisible(false);
-      await uploadProfilePicture(selectedImagePreview);
-      setSelectedImagePreview(null);
-    }
-  }, [selectedImagePreview, uploadProfilePicture]);
-
-  const handleProfilePictureUpdate = useCallback(() => {
-    const options = [
-      { text: "Take Photo", onPress: takePhotoWithCamera },
-      { text: "Choose from Gallery", onPress: pickImageFromGallery },
-      ...(userData.picture ? [{
-        text: "Remove Current Photo",
-        onPress: deleteProfilePicture,
-        style: "destructive",
-      }] : []),
-      { text: "Cancel", style: "cancel" },
-    ];
-    
-    Alert.alert("Update Profile Picture", "Choose an option", options);
-  }, [userData.picture, takePhotoWithCamera, pickImageFromGallery, deleteProfilePicture]);
-
   // Navigation and utility functions
   const handleMenuNavigate = useCallback((routeName) => {
     onClose();
@@ -508,12 +375,10 @@ const pickImageFromGallery = useCallback(async () => {
   }, []);
 
   const handleSettingsAction = useCallback((item) => {
-    if (item.action === 'profilePicture') {
-      handleProfilePictureUpdate();
-    } else if (item.route) {
+    if (item.route) {
       handleMenuNavigate(item.route);
     }
-  }, [handleProfilePictureUpdate, handleMenuNavigate]);
+  }, [handleMenuNavigate]);
 
   // Render helpers
   const renderMenuItem = useCallback((item, index) => {
@@ -638,10 +503,9 @@ const pickImageFromGallery = useCallback(async () => {
               >
                 <TouchableOpacity
                   style={styles.profileCircle}
-                  onPress={handleProfilePictureUpdate}
-                  disabled={uploading}
+                  disabled={true}
                 >
-                  {uploading || loading ? (
+                  {loading ? (
                     <ActivityIndicator size="large" color={COLORS.white} />
                   ) : userData.picture ? (
                     <Image
@@ -655,13 +519,7 @@ const pickImageFromGallery = useCallback(async () => {
                       color={COLORS.white}
                     />
                   )}
-                  <View style={styles.editProfileIcon}>
-                    <MaterialIcons
-                      name="edit"
-                      size={moderateScale(12)}
-                      color={COLORS.white}
-                    />
-                  </View>
+                  {/* edit icon disabled */}
                 </TouchableOpacity>
 
                 <TextDefault style={styles.welcomeText}>
@@ -749,47 +607,7 @@ const pickImageFromGallery = useCallback(async () => {
         </Animated.View>
       </Modal>
 
-      {previewModalVisible && (
-        <Modal
-          visible={previewModalVisible}
-          transparent
-          animationType="fade"
-          onRequestClose={() => setPreviewModalVisible(false)}
-        >
-          <View style={styles.previewModalContainer}>
-            <View style={styles.previewModalContent}>
-              <Text style={styles.previewTitle}>Profile Picture Preview</Text>
-              
-              {selectedImagePreview && (
-                <Image
-                  source={{ uri: selectedImagePreview.uri }}
-                  style={styles.previewImage}
-                  resizeMode="contain"
-                />
-              )}
-              
-              <View style={styles.previewButtonsContainer}>
-                <TouchableOpacity
-                  style={[styles.previewButton, styles.cancelButton]}
-                  onPress={() => {
-                    setPreviewModalVisible(false);
-                    setSelectedImagePreview(null);
-                  }}
-                >
-                  <Text style={styles.cancelButtonText}>Cancel</Text>
-                </TouchableOpacity>
-                
-                <TouchableOpacity
-                  style={[styles.previewButton, styles.useButton]}
-                  onPress={handleUseImage}
-                >
-                  <Text style={styles.useButtonText}>Use Image</Text>
-                </TouchableOpacity>
-              </View>
-            </View>
-          </View>
-        </Modal>
-      )}
+      {/* Profile picture preview modal - disabled for now */}
     </>
   );
 };

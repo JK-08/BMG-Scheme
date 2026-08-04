@@ -204,7 +204,7 @@ function RegisterPage({ navigation }) {
             username,
           });
         } else {
-          navigation.navigate("MpinScreen", { step: 3 });
+          navigation.navigate("Drawer");
         }
       } else {
         showToast(response.error || "Google authentication failed");

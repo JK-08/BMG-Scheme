@@ -113,7 +113,7 @@ function OtpPage({ navigation, route }) {
         }
 
         await AsyncStorage.removeItem("tempUserData");
-        navigation.navigate("MpinScreen", { step: 3 });
+        navigation.navigate("Drawer");
       } else {
         showToast(res.error || "OTP verification failed");
         clearOtp();

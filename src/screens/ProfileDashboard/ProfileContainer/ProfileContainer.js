@@ -70,8 +70,6 @@ function ProfileContainer(props) {
           text: 'Logout',
           onPress: async () => {
             try {
-              await AsyncStorage.removeItem('mpin');
-              await AsyncStorage.removeItem('isMpinCreated');
               await AsyncStorage.removeItem('userPhoneNumber');
               await AsyncStorage.removeItem('isLoggedIn');
               navigation.replace('LoginPage');
